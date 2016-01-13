@@ -1,5 +1,5 @@
 import click
-from github_utils import GitHubApiUtils, EDX_PLATFORM_REPO_ID
+from github_api_utils import GitHubApiUtils, EDX_PLATFORM_REPO_ID
 
 
 @click.command()
