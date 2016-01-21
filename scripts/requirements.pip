@@ -1,0 +1,3 @@
+git+https://github.com/doctoryes/PyGithub.git@c5573e884e50009306b8c7780c89b66adcf73187#egg=PyGithub
+click
+requests
