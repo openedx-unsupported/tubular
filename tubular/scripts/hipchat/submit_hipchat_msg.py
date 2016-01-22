@@ -17,18 +17,20 @@ AUTH_HEADER = "Authorization: Bearer {}"
               default="release pipeline",
               help="Channel to which the script should post a message.",
               )
-def cli(auth_token_env_var, channel):
+@click.option('--message', '-m',
+              default="Default message.",
+              help="Message to send to HipChat channel.",
+              )
+def cli(auth_token_env_var, channel, message):
     """
     Post a message to a HipChat channel.
     """
-    msg = "Test message from the demo GoCD release pipeline."
-
     headers = {
         "Authorization": "Bearer {}".format(os.environ[auth_token_env_var])
     }
     msg_payload = {
         "color": "green",
-        "message": msg,
+        "message": message,
         "notify": False,
         "message_format": "text"
     }
