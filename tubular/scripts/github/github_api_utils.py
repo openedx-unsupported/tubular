@@ -5,7 +5,8 @@ import os
 import github
 
 
-# GitHub repo ID for https://github.com/edx/edx-platform
+# GitHub repo ID for edx-platform
+# See: https://api.github.com/repos/edx/edx-platform
 EDX_PLATFORM_REPO_ID = 10391073
 
 
@@ -58,3 +59,9 @@ class GitHubApiUtils(object):
         repo_branch_name = 'edx:{}'.format(branch_name)
         return pull_request.base.label == repo_branch_name
 
+    def get_head_commit_from_pr(self, pr_number):
+        """
+        Given a PR number, return the HEAD commit hash.
+        """
+        pull_request = self.repo.get_pull(pr_number)
+        return pull_request.head.sha
