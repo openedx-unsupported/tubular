@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cruise xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="cruise-config.xsd" schemaVersion="75">
+  <server artifactsdir="artifacts" commandRepositoryLocation="default" serverId="a1b19ba4-1d61-4bc3-b36b-d9d98efb2456">
+    <security>
+      <passwordFile path="/home/vagrant/passwd" />
+      <admins>
+        <user>johnsq</user>
+      </admins>
+    </security>
+  </server>
+  <scms>
+    <scm id="2ebf1ff3-1e51-4bf0-932b-728d65cc5571" name="github_pr_creation">
+      <pluginConfiguration id="github.pr" version="1" />
+      <configuration>
+        <property>
+          <key>url</key>
+          <value>https://github.com/edx/dummy-webapp</value>
+        </property>
+        <property>
+          <key>username</key>
+          <value>doctoryes</value>
+        </property>
+        <property>
+          <key>password</key>
+          <encryptedValue>p0hTmdFgdlNkExO/wb1geed1AyX6kuzTtk6OyNd30Vqz4k1OjdMFN/NdmTsna0qe</encryptedValue>
+        </property>
+      </configuration>
+    </scm>
+  </scms>
+  <pipelines group="edx_release_build">
+    <authorization>
+      <view>
+        <user>johnsq</user>
+      </view>
+      <operate>
+        <user>johnsq</user>
+      </operate>
+      <admins>
+        <user>johnsq</user>
+      </admins>
+    </authorization>
+    <pipeline name="edx_release">
+      <environmentvariables>
+        <variable name="HIPCHAT_AUTH_TOKEN" secure="true">
+          <encryptedValue>sr3UUvcX3aaDwQMDPsWYL+pSl4s/u5r3menzr9Ovncf3YI/IGyrTaK7DNu7GshnS</encryptedValue>
+        </variable>
+      </environmentvariables>
+      <materials>
+        <scm ref="2ebf1ff3-1e51-4bf0-932b-728d65cc5571" dest="mat2" />
+      </materials>
+      <stage name="PRAgainstBranchGate">
+        <jobs>
+          <job name="PRGateJob" timeout="5">
+            <tasks>
+              <exec command="/usr/bin/python">
+                <arg>/vagrant/scripts/github/check_pr_against_branch.py</arg>
+                <arg>-r</arg>
+                <arg>49974806</arg>
+                <arg>--pr_env_var</arg>
+                <arg>GO_SCM_GITHUB_PR_CREATION_PR_ID</arg>
+                <arg>-b</arg>
+                <arg>master</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+      <stage name="UpdateCodeToPR">
+        <jobs>
+          <job name="UpdateCodeJob">
+            <tasks>
+              <exec command="/usr/bin/python">
+                <arg>/vagrant/scripts/delay_and_print_vars.py</arg>
+                <arg>GO_PIPELINE_NAME</arg>
+                <arg>GO_JOB_NAME</arg>
+              </exec>
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+      <stage name="NotifyAndTest">
+        <jobs>
+          <job name="SendHipChatMsgJob">
+            <tasks>
+              <exec command="/usr/bin/python">
+                <arg>/vagrant/scripts/submit_hipchat_msg.py</arg>
+                <arg>-a</arg>
+                <arg>HIPCHAT_AUTH_TOKEN</arg>
+                <arg>-c</arg>
+                <arg>Hammer</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+          <job name="RunTest1Job">
+            <tasks>
+              <exec command="/usr/bin/python">
+                <arg>/vagrant/scripts/delay_and_print_vars.py</arg>
+                <arg>GO_SCM_GITHUB_PR_CREATION_PR_ID</arg>
+                <arg>GO_SCM_GITHUB_PR_CREATION_URL</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+          <job name="RunTest2Job">
+            <tasks>
+              <exec command="/usr/bin/python">
+                <arg>/vagrant/scripts/delay_and_print_vars.py</arg>
+                <arg>GO_SCM_GITHUB_PR_CREATION_PR_ID</arg>
+                <arg>GO_SCM_GITHUB_PR_CREATION_URL</arg>
+              </exec>
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+      <stage name="Build">
+        <jobs>
+          <job name="BuildJob">
+            <tasks>
+              <exec command="/usr/bin/python">
+                <arg>/vagrant/scripts/delay_and_print_vars.py</arg>
+                <arg>GO_SCM_GITHUB_PR_CREATION_PR_ID</arg>
+                <arg>GO_SCM_GITHUB_PR_CREATION_URL</arg>
+              </exec>
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+      <stage name="Deploy">
+        <approval type="manual" />
+        <jobs>
+          <job name="DeployToEnvironment">
+            <tasks>
+              <exec command="/usr/bin/python">
+                <arg>/vagrant/scripts/delay_and_print_vars.py</arg>
+                <arg>GO_SCM_GITHUB_PR_CREATION_PR_ID</arg>
+                <arg>GO_SCM_GITHUB_PR_CREATION_URL</arg>
+              </exec>
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+    </pipeline>
+  </pipelines>
+  <pipelines group="edx_deploy" />
+  <templates>
+    <pipeline name="Development">
+      <stage name="Commit">
+        <jobs>
+          <job name="build">
+            <tasks>
+              <rake buildfile="Rakefile" target="build" />
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+      <stage name="Unit_Test">
+        <jobs>
+          <job name="unit_test">
+            <tasks>
+              <rake buildfile="Rakefile" target="unit_test" />
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+      <stage name="Package">
+        <jobs>
+          <job name="package">
+            <tasks>
+              <rake buildfile="Rakefile" target="package" />
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+    </pipeline>
+  </templates>
+  <agents>
+    <agent hostname="vagrant-ubuntu-trusty-64" ipaddress="10.0.2.15" uuid="68e5d48c-753a-4395-a79c-1cb22d77a12f" />
+    <agent hostname="vagrant-ubuntu-trusty-64" ipaddress="10.0.2.15" uuid="964c760d-2803-4dac-a98e-6b3b2b682f3e" />
+    <agent hostname="vagrant-ubuntu-trusty-64" ipaddress="10.0.2.15" uuid="e61706c1-f0ee-4543-9a5d-6dd0984f17d5" />
+  </agents>
+</cruise>
