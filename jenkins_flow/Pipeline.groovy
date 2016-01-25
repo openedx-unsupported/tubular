@@ -1,11 +1,20 @@
 import groovy.json.JsonSlurper
 
+def notify(msg, color = "green") {
+    sh """curl -d '{"color":"${color}","message":"${msg}","notify":false,"message_format":"text"}' -H 'Content-Type: application/json' ${NOTIFICATION_ENDPOINT}"""
+}
+
 node {
     env.REPO_ID = 49974806
     echo "Check to see if the PR is against the correct branch."
     sh "virtualenv venv"
     git url: "https://github.com/edx/tubular.git", branch: "${TUBULAR_BRANCH}"
-    sh ". venv/bin/activate; pip install -r scripts/github/requirements.pip; python scripts/github/check_pr_against_branch.py -r ${env.REPO_ID} -p ${PR_NUMBER} -b ${LIVE_BRANCH}"
+
+    try:
+        sh ". venv/bin/activate; pip install -r scripts/github/requirements.pip; python scripts/github/check_pr_against_branch.py -r ${env.REPO_ID} -p ${PR_NUMBER} -b ${LIVE_BRANCH}"
+    except:
+    	notify("PR not against ${LIVE_BRANCH}", "red")
+        error "PR is not against ${LIVE_BRANCH}"
 
     echo "PR is passing so grabbing the hash."
     def api = new URL("https://api.github.com/repos/edx/dummy-webapp/pulls/${PR_NUMBER}")
@@ -13,7 +22,6 @@ node {
     env.PR_SHA = pr.head.sha
 
 }
-
 
 parallel([
     "foo": {
