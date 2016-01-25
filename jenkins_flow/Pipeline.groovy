@@ -35,7 +35,7 @@ parallel([
 node {
     echo "Build step."
     echo "Collect some artifacts"
-    #    git url: "${DUMMY_WEBAPP_URL}", branch: env.PR_SHA
+    /*    git url: "${DUMMY_WEBAPP_URL}", branch: env.PR_SHA */
     sh "git clone ${DUMMY_WEBAPP_URL} dummy_webapp; cd dummy_webapp; git checkout ${env.PR_SHA}"
     sh "ls -al"
 }
