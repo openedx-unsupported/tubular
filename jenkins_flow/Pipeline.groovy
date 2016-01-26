@@ -1,15 +1,19 @@
 import groovy.json.JsonSlurper
 
-def notify(msg, color = "green", echo = True) {
+def notify(msg, color = "green", also_echo = true) {
     /*sh """curl -d '{"color":"${color}","message":"${msg}","notify":false,"message_format":"text"}' -H 'Content-Type: application/json' ${NOTIFICATION_ENDPOINT}"""*/
-    if(echo){
+    if(also_echo){
         echo msg
     }
 }
 
 def fail(msg, color = "red") {
-    notify(msg, color, echo = False)
+    notify(msg, color, false)
     error(msg)
+}
+
+node {
+    notify("Starting dummy-deploy pipeline to deploy PR #${PR_NUMBER} to dummy-environment")
 }
 
 node {
