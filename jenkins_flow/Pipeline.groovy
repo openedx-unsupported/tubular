@@ -1,35 +1,47 @@
 import groovy.json.JsonSlurper
 
-def notify(msg, color = "green") {
-    sh """curl -d '{"color":"${color}","message":"${msg}","notify":false,"message_format":"text"}' -H 'Content-Type: application/json' ${NOTIFICATION_ENDPOINT}"""
+def notify(msg, color = "green", echo = True) {
+    /*sh """curl -d '{"color":"${color}","message":"${msg}","notify":false,"message_format":"text"}' -H 'Content-Type: application/json' ${NOTIFICATION_ENDPOINT}"""*/
+    if(echo){
+        echo msg
+    }
+}
+
+def fail(msg, color = "red") {
+    notify(msg, color, echo = False)
+    error(msg)
 }
 
 node {
     env.REPO_ID = 49974806
-    echo "Check to see if the PR is against the correct branch."
+    notify("Checking to see if the PR(#${PR_NUMBER}) is against the live branch(${LIVE_BRANCH}).")
     sh "virtualenv venv"
     git url: "https://github.com/edx/tubular.git", branch: "${TUBULAR_BRANCH}"
 
-    try:
+    try {
         sh ". venv/bin/activate; pip install -r scripts/github/requirements.pip; python scripts/github/check_pr_against_branch.py -r ${env.REPO_ID} -p ${PR_NUMBER} -b ${LIVE_BRANCH}"
-    except:
-    	notify("PR not against ${LIVE_BRANCH}", "red")
-        error "PR is not against ${LIVE_BRANCH}"
+    } catch (e) {
+        fail("PR is not against ${LIVE_BRANCH}")
+    }
 
-    echo "PR is passing so grabbing the hash."
+    echo("PR is against ${LIVE_BRANCH}, so grabbing the hash.")
     def api = new URL("https://api.github.com/repos/edx/dummy-webapp/pulls/${PR_NUMBER}")
     def pr = new JsonSlurper().parseText(api.text)
     env.PR_SHA = pr.head.sha
-
 }
 
 parallel([
     "foo": {
         node {
-            echo "Check to make sure commit has passed tests."
+            notify("Check to make sure commit has passed tests.")
             sh "virtualenv venv"
             git url: "https://github.com/edx/tubular.git", branch: "${TUBULAR_BRANCH}"
-            sh ". venv/bin/activate; pip install -r scripts/github/requirements.pip; python scripts/github/check_pr_tests_status.py -c ${env.PR_SHA} -r ${env.REPO_ID}"
+	    try {
+                sh ". venv/bin/activate; pip install -r scripts/github/requirements.pip; python scripts/github/check_pr_tests_status.py -c ${env.PR_SHA} -r ${env.REPO_ID}"
+	    } catch (e) {
+                fail("PR failed some tests.  Please check https://github.com/${DUMMY_WEBAPP_ORG}/${DUMMY_WEBAPP_NAME}/pull/${PR_NUMBER}")
+            }
+            notify("Commit(${env.PR_SHA}) has passed all tests.")
         }
     },
     "bar": {
@@ -42,18 +54,18 @@ parallel([
 
 node {
     echo "Build step."
-    echo "Collect some artifacts"
-    /*    git url: "${DUMMY_WEBAPP_URL}", branch: env.PR_SHA */
-    sh "git clone ${DUMMY_WEBAPP_URL} dummy_webapp; cd dummy_webapp; git checkout ${env.PR_SHA}"
+    notify("Building artifact. Eventually AMI, just an archive for now.")
+    sh "git clone https://github.com/${DUMMY_WEBAPP_ORG}/${DUMMY_WEBAPP_NAME}.git; cd ${DUMMY_WEBAPP_NAME}; git checkout ${env.PR_SHA}"
     sh "ls -al"
 }
 
 node {
     sleep 5
+    notify("Waiting for user input before we deploy (#${PR_NUMBER}:${env.PR_SHA}) to dummy environment.\n${env.BUILD_URL}/console")
     input "Ready to deploy?"
 }
 
 node {
     sleep 10
-    echo "Deploy the dummy app!"
+    notify("Deployed the dummy app!")
 }
