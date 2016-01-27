@@ -1,7 +1,8 @@
 import groovy.json.JsonSlurper
 
 def notify(msg, color = "green", also_echo = true) {
-    /*sh """curl -d '{"color":"${color}","message":"${msg}","notify":false,"message_format":"text"}' -H 'Content-Type: application/json' ${NOTIFICATION_ENDPOINT}"""*/
+    json_friendly = msg.replace("\n","\\n")
+    sh """curl -d '{"color":"${color}","message":"${json_friendly}","notify":false,"message_format":"text"}' -H 'Content-Type: application/json' ${NOTIFICATION_ENDPOINT}"""
     if(also_echo){
         echo msg
     }
