@@ -44,8 +44,8 @@ node {
     }
 
     echo("PR is against ${LIVE_BRANCH}, so grabbing the hash.")
-    def api = new URL("https://api.github.com/repos/edx/dummy-webapp/pulls/${PR_NUMBER}")
-    def pr = new JsonSlurper().parseText(api.text)
+    def api = new URL("https://api.github.com/repos/edx/dummy-webapp/pulls/${PR_NUMBER}").text
+    def pr = new JsonSlurper().parseText(api)
     env.PR_SHA = pr.head.sha
 }
 
