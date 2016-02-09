@@ -43,14 +43,17 @@ def edc_for_ami(ami_id):
     LOG.debug("Got EDC for {}: {}".format(ami_id, edc))
     return edc
 
+
 def asgs_for_edc(edc):
     """
     All AutoScalingGroups that have the tags of this cluster.
 
     A cluster is made up of many auto_scaling groups.
 
-    Input: An EDC Tuple.
-    Returns: An iterable of cluster names that match an EDC.
+    Arguments:
+        EDC Named Tuple: The edc tags for the ASGs you want.
+    Returns:
+        iterable: An iterable of cluster names that match the EDC.
     eg.
 
      [
@@ -69,7 +72,8 @@ def asgs_for_edc(edc):
     for group in all_groups:
         tags = dict_from_tag_list(group.tags)
         LOG.debug("Tags for asg {}: {}".format(group.name, tags))
-        if all([ tag in tags for tag in ['environment', 'deployment', 'cluster']]):
+        edc_keys = ['environment', 'deployment', 'cluster']
+        if all([tag in tags for tag in edc_keys]):
             group_env = tags['environment']
             group_deployment = tags['deployment']
             group_cluster = tags['cluster']
@@ -79,11 +83,18 @@ def asgs_for_edc(edc):
             if group_edc == edc:
                 yield group.name
 
+
 def dict_from_tag_list(tag_list):
     """
     Take a list of tags and convert it to a dict mapping the
     tag names to the tag values.
 
+    Arguments:
+        tag_list(list): A list of Tag objects.
+    Returns:
+        dict: A mapping of tag names to tag values.
+
+    eg.
     Input:
     [
         Tag(Name=ZZZZZTest-edx-ecommerce),
@@ -92,8 +103,7 @@ def dict_from_tag_list(tag_list):
         Tag(environment=zzzzzzzzz),
         Tag(services=ecommerce),
     ]
-
-    Returns: A dictionary mapping tag names to tag values.
+    Output:
     {
         "Name": "ZZZZZTest-edx-ecommerce",
         "cluster": "ecommerce",
@@ -107,4 +117,3 @@ def dict_from_tag_list(tag_list):
         tag_dict[item.key] = item.value
 
     return tag_dict
-
