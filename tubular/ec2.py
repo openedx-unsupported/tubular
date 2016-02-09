@@ -9,21 +9,26 @@ from boto.exception import EC2ResponseError
 
 LOG = logging.getLogger(__name__)
 
+
 class ImageNotFoundException(Exception):
     pass
 
+
 class MissingTagException(Exception):
     pass
+
 
 def edc_for_ami(ami_id):
     """
     Look up the EDC tags for an AMI.
 
-    Input: An AMI Id.
-    Output: An EDC Named Tuple.
-    Exceptions:
-        - ImageNotFoundException
-        - MissingTagException
+    Arguments:
+        ami_id (str): An AMI Id.
+    Returns:
+        EDC Named Tuple: The EDC tags for this AMI.
+    Raises:
+        ImageNotFoundException: No image found with this ami ID.
+        MissingTagException: AMI is missing one or more of the expected tags.
     """
     LOG.debug("Looking up edc for {}".format(ami_id))
     ec2 = boto.connect_ec2()
@@ -35,8 +40,6 @@ def edc_for_ami(ami_id):
 
     tags = ami.tags
 
-    # TODO How do we want to handle these tags not existing?
-    # raise an exception maybe? Right now this is not safe.
     try:
         edc = EDC(tags['environment'], tags['deployment'], tags['cluster'])
     except KeyError as ke:
