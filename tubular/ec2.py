@@ -5,17 +5,10 @@ when we deploy using asgard.
 import boto
 import logging
 from utils import EDC
+from exception import ImageNotFoundException, MissingTagException
 from boto.exception import EC2ResponseError
 
 LOG = logging.getLogger(__name__)
-
-
-class ImageNotFoundException(Exception):
-    pass
-
-
-class MissingTagException(Exception):
-    pass
 
 
 def edc_for_ami(ami_id):

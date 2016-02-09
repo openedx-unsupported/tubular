@@ -2,7 +2,8 @@ import boto
 import unittest
 from moto import mock_ec2
 from moto.ec2.utils import random_ami_id
-from ..ec2 import edc_for_ami, ImageNotFoundException, MissingTagException
+from ..ec2 import edc_for_ami
+from ..exception import ImageNotFoundException, MissingTagException
 from ..utils import EDC
 
 class TestEdcForAmi(unittest.TestCase):
