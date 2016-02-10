@@ -13,12 +13,7 @@ from ..ec2 import *
 from ..exception import ImageNotFoundException, MissingTagException
 from ..utils import EDC
 
-class TestEdcForAmi(unittest.TestCase):
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
+class TestEC2(unittest.TestCase):
 
     @mock_ec2
     def test_edc_for_ami(self):
