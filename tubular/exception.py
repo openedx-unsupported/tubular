@@ -13,3 +13,14 @@ class ImageNotFoundException(Exception):
 class MissingTagException(Exception):
     pass
 
+
+class BackendError(Exception):
+    pass
+
+
+class BackendConnectionError(BackendError):
+    pass
+
+
+class BackendDataError(BackendError):
+    pass

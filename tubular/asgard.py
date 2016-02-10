@@ -3,6 +3,7 @@ import logging
 import requests
 from requests.exceptions import ConnectionError
 from collections import Iterable
+from .exception import *
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091")
 ASGARD_API_TOKEN = os.environ.get("ASGARD_API_TOKEN")
@@ -10,18 +11,6 @@ ASGARD_API_TOKEN = os.environ.get("ASGARD_API_TOKEN")
 CLUSTER_LIST_URL= "{}/cluster/list.json".format(ASGARD_API_ENDPOINT)
 
 LOG = logging.getLogger(__name__)
-
-class BackendError(Exception):
-    pass
-
-
-class BackendConnectionError(BackendError):
-    pass
-
-
-class BackendDataError(BackendError):
-    pass
-
 
 def clusters_for_asgs(asgs):
     """
