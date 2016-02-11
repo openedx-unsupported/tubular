@@ -1,32 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <cruise xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="cruise-config.xsd" schemaVersion="75">
-  <server artifactsdir="artifacts" commandRepositoryLocation="default" serverId="a1b19ba4-1d61-4bc3-b36b-d9d98efb2456">
+  <server artifactsdir="artifacts" commandRepositoryLocation="default" serverId="b037c0eb-c36d-4145-b17e-041c1ec960e0">
     <security>
-      <passwordFile path="/home/vagrant/passwd" />
-      <admins>
-        <user>johnsq</user>
-      </admins>
+      <passwordFile path="/usr/share/go-server/passwd" />
     </security>
   </server>
-  <scms>
-    <scm id="2ebf1ff3-1e51-4bf0-932b-728d65cc5571" name="github_pr_creation">
-      <pluginConfiguration id="github.pr" version="1" />
-      <configuration>
-        <property>
-          <key>url</key>
-          <value>https://github.com/edx/dummy-webapp</value>
-        </property>
-        <property>
-          <key>username</key>
-          <value>doctoryes</value>
-        </property>
-        <property>
-          <key>password</key>
-          <encryptedValue>p0hTmdFgdlNkExO/wb1geed1AyX6kuzTtk6OyNd30Vqz4k1OjdMFN/NdmTsna0qe</encryptedValue>
-        </property>
-      </configuration>
-    </scm>
-  </scms>
   <pipelines group="edx_release_build">
     <authorization>
       <view>
@@ -39,25 +17,32 @@
         <user>johnsq</user>
       </admins>
     </authorization>
-    <pipeline name="edx_release">
+    <pipeline name="edx_release" isLocked="true">
       <environmentvariables>
-        <variable name="HIPCHAT_AUTH_TOKEN" secure="true">
-          <encryptedValue>sr3UUvcX3aaDwQMDPsWYL+pSl4s/u5r3menzr9Ovncf3YI/IGyrTaK7DNu7GshnS</encryptedValue>
+        <variable name="GO_EXTERNAL_TRIGGER_PR_ID">
+          <value />
+        </variable>
+        <variable name="GO_EXTERNAL_TRIGGER_REPO_URL">
+          <value />
+        </variable>
+        <variable name="GO_EXTERNAL_TRIGGER_COMMIT_HASH">
+          <value />
         </variable>
       </environmentvariables>
       <materials>
-        <scm ref="2ebf1ff3-1e51-4bf0-932b-728d65cc5571" dest="mat2" />
+        <git url="https://github.com/edx/dummy-webapp" />
       </materials>
       <stage name="PRAgainstBranchGate">
+        <approval type="manual" />
         <jobs>
           <job name="PRGateJob" timeout="5">
             <tasks>
               <exec command="/usr/bin/python">
-                <arg>/vagrant/scripts/github/check_pr_against_branch.py</arg>
+                <arg>/usr/local/lib/python2.7/dist-packages/tubular/scripts/github/check_pr_against_branch.py</arg>
                 <arg>-r</arg>
                 <arg>49974806</arg>
                 <arg>--pr_env_var</arg>
-                <arg>GO_SCM_GITHUB_PR_CREATION_PR_ID</arg>
+                <arg>GO_EXTERNAL_TRIGGER_PR_ID</arg>
                 <arg>-b</arg>
                 <arg>master</arg>
                 <runif status="passed" />
@@ -71,7 +56,7 @@
           <job name="UpdateCodeJob">
             <tasks>
               <exec command="/usr/bin/python">
-                <arg>/vagrant/scripts/delay_and_print_vars.py</arg>
+                <arg>/usr/local/lib/python2.7/dist-packages/tubular/scripts/delay_and_print_vars.py</arg>
                 <arg>GO_PIPELINE_NAME</arg>
                 <arg>GO_JOB_NAME</arg>
               </exec>
@@ -82,9 +67,14 @@
       <stage name="NotifyAndTest">
         <jobs>
           <job name="SendHipChatMsgJob">
+            <environmentvariables>
+              <variable name="HIPCHAT_AUTH_TOKEN" secure="true">
+                <encryptedValue>Aq8QBzl6p4bseL2/ZkNT6v6XhViqRuDyJVsvjb5CS5eDFmF6iN0I0TtKjeTTp5Ne</encryptedValue>
+              </variable>
+            </environmentvariables>
             <tasks>
               <exec command="/usr/bin/python">
-                <arg>/vagrant/scripts/submit_hipchat_msg.py</arg>
+                <arg>/usr/local/lib/python2.7/dist-packages/tubular/scripts/hipchat/submit_hipchat_msg.py</arg>
                 <arg>-a</arg>
                 <arg>HIPCHAT_AUTH_TOKEN</arg>
                 <arg>-c</arg>
@@ -96,9 +86,10 @@
           <job name="RunTest1Job">
             <tasks>
               <exec command="/usr/bin/python">
-                <arg>/vagrant/scripts/delay_and_print_vars.py</arg>
-                <arg>GO_SCM_GITHUB_PR_CREATION_PR_ID</arg>
-                <arg>GO_SCM_GITHUB_PR_CREATION_URL</arg>
+                <arg>/usr/local/lib/python2.7/dist-packages/tubular/scripts/delay_and_print_vars.py</arg>
+                <arg>GO_EXTERNAL_TRIGGER_PR_ID</arg>
+                <arg>GO_EXTERNAL_TRIGGER_REPO_URL</arg>
+                <arg>GO_EXTERNAL_TRIGGER_COMMIT_HASH</arg>
                 <runif status="passed" />
               </exec>
             </tasks>
@@ -106,9 +97,11 @@
           <job name="RunTest2Job">
             <tasks>
               <exec command="/usr/bin/python">
-                <arg>/vagrant/scripts/delay_and_print_vars.py</arg>
-                <arg>GO_SCM_GITHUB_PR_CREATION_PR_ID</arg>
-                <arg>GO_SCM_GITHUB_PR_CREATION_URL</arg>
+                <arg>/usr/local/lib/python2.7/dist-packages/tubular/scripts/delay_and_print_vars.py</arg>
+                <arg>GO_EXTERNAL_TRIGGER_PR_ID</arg>
+                <arg>GO_EXTERNAL_TRIGGER_REPO_URL</arg>
+                <arg>GO_EXTERNAL_TRIGGER_COMMIT_HASH</arg>
+                <runif status="passed" />
               </exec>
             </tasks>
           </job>
@@ -119,9 +112,11 @@
           <job name="BuildJob">
             <tasks>
               <exec command="/usr/bin/python">
-                <arg>/vagrant/scripts/delay_and_print_vars.py</arg>
-                <arg>GO_SCM_GITHUB_PR_CREATION_PR_ID</arg>
-                <arg>GO_SCM_GITHUB_PR_CREATION_URL</arg>
+                <arg>/usr/local/lib/python2.7/dist-packages/tubular/scripts/delay_and_print_vars.py</arg>
+                <arg>GO_EXTERNAL_TRIGGER_PR_ID</arg>
+                <arg>GO_EXTERNAL_TRIGGER_REPO_URL</arg>
+                <arg>GO_EXTERNAL_TRIGGER_COMMIT_HASH</arg>
+                <runif status="passed" />
               </exec>
             </tasks>
           </job>
@@ -133,9 +128,146 @@
           <job name="DeployToEnvironment">
             <tasks>
               <exec command="/usr/bin/python">
-                <arg>/vagrant/scripts/delay_and_print_vars.py</arg>
-                <arg>GO_SCM_GITHUB_PR_CREATION_PR_ID</arg>
-                <arg>GO_SCM_GITHUB_PR_CREATION_URL</arg>
+                <arg>/usr/local/lib/python2.7/dist-packages/tubular/scripts/delay_and_print_vars.py</arg>
+                <arg>GO_EXTERNAL_TRIGGER_PR_ID</arg>
+                <arg>GO_EXTERNAL_TRIGGER_REPO_URL</arg>
+                <arg>GO_EXTERNAL_TRIGGER_COMMIT_HASH</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+    </pipeline>
+  </pipelines>
+  <pipelines group="edx_release_build_alt">
+    <authorization>
+      <view>
+        <user>johnsq</user>
+      </view>
+      <operate>
+        <user>johnsq</user>
+      </operate>
+      <admins>
+        <user>johnsq</user>
+      </admins>
+    </authorization>
+    <pipeline name="edx_release_alt">
+      <environmentvariables>
+        <variable name="GO_EXTERNAL_TRIGGER_PR_ID">
+          <value />
+        </variable>
+        <variable name="GO_EXTERNAL_TRIGGER_REPO_URL">
+          <value />
+        </variable>
+        <variable name="GO_EXTERNAL_TRIGGER_COMMIT_HASH">
+          <value />
+        </variable>
+      </environmentvariables>
+      <materials>
+        <git url="https://github.com/edx/dummy-webapp" />
+      </materials>
+      <stage name="PRAgainstBranchGate">
+        <jobs>
+          <job name="PRGateJob" timeout="5">
+            <tasks>
+              <exec command="/usr/bin/python">
+                <arg>/usr/local/lib/python2.7/dist-packages/tubular/scripts/github/check_pr_against_branch.py</arg>
+                <arg>-r</arg>
+                <arg>49974806</arg>
+                <arg>--pr_env_var</arg>
+                <arg>GO_EXTERNAL_TRIGGER_PR_ID</arg>
+                <arg>-b</arg>
+                <arg>master</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+      <stage name="UpdateCodeToPR">
+        <jobs>
+          <job name="UpdateCodeJob">
+            <tasks>
+              <exec command="/usr/bin/python">
+                <arg>/usr/local/lib/python2.7/dist-packages/tubular/scripts/delay_and_print_vars.py</arg>
+                <arg>GO_PIPELINE_NAME</arg>
+                <arg>GO_JOB_NAME</arg>
+              </exec>
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+      <stage name="NotifyAndTest">
+        <jobs>
+          <job name="SendHipChatMsgJob">
+            <environmentvariables>
+              <variable name="HIPCHAT_AUTH_TOKEN" secure="true">
+                <encryptedValue>Aq8QBzl6p4bseL2/ZkNT6v6XhViqRuDyJVsvjb5CS5eDFmF6iN0I0TtKjeTTp5Ne</encryptedValue>
+              </variable>
+            </environmentvariables>
+            <tasks>
+              <exec command="/usr/bin/python">
+                <arg>/usr/local/lib/python2.7/dist-packages/tubular/scripts/hipchat/submit_hipchat_msg.py</arg>
+                <arg>-a</arg>
+                <arg>HIPCHAT_AUTH_TOKEN</arg>
+                <arg>-c</arg>
+                <arg>Hammer</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+          <job name="RunTest1Job">
+            <tasks>
+              <exec command="/usr/bin/python">
+                <arg>/usr/local/lib/python2.7/dist-packages/tubular/scripts/delay_and_print_vars.py</arg>
+                <arg>GO_EXTERNAL_TRIGGER_PR_ID</arg>
+                <arg>GO_EXTERNAL_TRIGGER_REPO_URL</arg>
+                <arg>GO_EXTERNAL_TRIGGER_COMMIT_HASH</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+          <job name="RunTest2Job">
+            <tasks>
+              <exec command="/usr/bin/python">
+                <arg>/usr/local/lib/python2.7/dist-packages/tubular/scripts/delay_and_print_vars.py</arg>
+                <arg>GO_EXTERNAL_TRIGGER_PR_ID</arg>
+                <arg>GO_EXTERNAL_TRIGGER_REPO_URL</arg>
+                <arg>GO_EXTERNAL_TRIGGER_COMMIT_HASH</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+    </pipeline>
+    <pipeline name="build_alt">
+      <materials>
+        <pipeline pipelineName="edx_release_alt" stageName="NotifyAndTest" />
+      </materials>
+      <stage name="BuildStage">
+        <jobs>
+          <job name="defaultJob">
+            <tasks>
+              <exec command="/usr/bin/python">
+                <arg>/usr/local/lib/python2.7/dist-packages/tubular/scripts/delay_and_print_vars.py</arg>
+              </exec>
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+    </pipeline>
+    <pipeline name="deploy_alt">
+      <materials>
+        <pipeline pipelineName="build_alt" stageName="BuildStage" />
+      </materials>
+      <stage name="DeployStage">
+        <jobs>
+          <job name="DeployJob">
+            <tasks>
+              <exec command="/usr/bin/python">
+                <arg>/usr/local/lib/python2.7/dist-packages/tubular/scripts/delay_and_print_vars.py</arg>
               </exec>
             </tasks>
           </job>
@@ -176,8 +308,10 @@
     </pipeline>
   </templates>
   <agents>
-    <agent hostname="vagrant-ubuntu-trusty-64" ipaddress="10.0.2.15" uuid="68e5d48c-753a-4395-a79c-1cb22d77a12f" />
-    <agent hostname="vagrant-ubuntu-trusty-64" ipaddress="10.0.2.15" uuid="964c760d-2803-4dac-a98e-6b3b2b682f3e" />
-    <agent hostname="vagrant-ubuntu-trusty-64" ipaddress="10.0.2.15" uuid="e61706c1-f0ee-4543-9a5d-6dd0984f17d5" />
+    <agent hostname="ip-10-0-5-165" ipaddress="10.0.5.165" uuid="f1966082-bb2a-4b4d-bfab-ba96dd44260b">
+      <resources>
+        <resource>tubular</resource>
+      </resources>
+    </agent>
   </agents>
 </cruise>
