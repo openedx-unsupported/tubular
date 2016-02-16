@@ -97,35 +97,6 @@ class TestEC2(unittest.TestCase):
         num_asgs = len(asgs)
         self.assertEqual(num_asgs, 2)
 
-    def test_dict_from_tag_list(self):
-        tag_list = []
-        actual_dict = dict_from_tag_list(tag_list)
-        expected_dict = {}
-        self.assertEqual(expected_dict, actual_dict)
-
-        tag_list = [
-                Tag(key="some_key", value="some_value"),
-                Tag(key="some_key2", value="some_value2"),
-                ]
-
-        expected_dict = {
-            "some_key": "some_value",
-            "some_key2": "some_value2"
-            }
-        actual_dict = dict_from_tag_list(tag_list)
-        self.assertEqual(expected_dict, actual_dict)
-
-        tag_list = [
-                Tag(key="some_key", value="some_value"),
-                Tag(key="some_key", value="some_value2"),
-                ]
-
-        expected_dict = {
-            "some_key": "some_value2",
-            }
-        actual_dict = dict_from_tag_list(tag_list)
-        self.assertEqual(expected_dict, actual_dict)
-
     def _create_asg_with_tags(self, asg_name, tags):
         # Create asgs
         elb_conn = boto.ec2.elb.connect_to_region('us-east-1')

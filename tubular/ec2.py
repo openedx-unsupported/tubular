@@ -70,7 +70,7 @@ def asgs_for_edc(edc):
     all_groups = autoscale.get_all_groups()
     LOG.debug("All groups: {}".format(all_groups))
     for group in all_groups:
-        tags = dict_from_tag_list(group.tags)
+        tags = { tag.key: tag.value for tag in group.tags }
         LOG.debug("Tags for asg {}: {}".format(group.name, tags))
         edc_keys = ['environment', 'deployment', 'cluster']
         if all([tag in tags for tag in edc_keys]):
@@ -82,38 +82,3 @@ def asgs_for_edc(edc):
 
             if group_edc == edc:
                 yield group.name
-
-
-def dict_from_tag_list(tag_list):
-    """
-    Take a list of tags and convert it to a dict mapping the
-    tag names to the tag values.
-
-    Arguments:
-        tag_list(list): A list of Tag objects.
-    Returns:
-        dict: A mapping of tag names to tag values.
-
-    eg.
-    Input:
-    [
-        Tag(Name=ZZZZZTest-edx-ecommerce),
-        Tag(cluster=ecommerce),
-        Tag(deployment=edx),
-        Tag(environment=zzzzzzzzz),
-        Tag(services=ecommerce),
-    ]
-    Output:
-    {
-        "Name": "ZZZZZTest-edx-ecommerce",
-        "cluster": "ecommerce",
-        "deployment": "edx",
-        "environment": "zzzzzzzzz",
-        "services": "ecommerce",
-    }
-    """
-    tag_dict = {}
-    for item in tag_list:
-        tag_dict[item.key] = item.value
-
-    return tag_dict
