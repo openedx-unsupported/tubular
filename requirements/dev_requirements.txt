@@ -1,0 +1,4 @@
+ipython
+
+-r test_requirements.txt
+-r ../requirements.txt
