@@ -4,7 +4,7 @@ import unittest
 import httpretty
 from ..asgard import *
 
-from ddt import ddt, data, file_data, unpack
+from ddt import ddt, data
 from requests.exceptions import ConnectionError
 
 sample_cluster_list = """
