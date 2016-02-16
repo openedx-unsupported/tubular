@@ -4,7 +4,6 @@ import httpretty
 from ..asgard import *
 
 from requests.exceptions import ConnectionError
-from requests.exceptions import RequestException
 
 sample_cluster_list = """
 [
@@ -87,18 +86,7 @@ class TestAsgard(unittest.TestCase):
 
     def test_bad_endpoint(self):
         relevant_asgs = []
-        self.assertRaises(BackendConnectionError, clusters_for_asgs, relevant_asgs)
-
-    @httpretty.activate
-    def test_not_json(self):
-        httpretty.register_uri(
-            httpretty.GET,
-            CLUSTER_LIST_URL,
-            body="not json data",
-            content_type="application/json")
-
-        relevant_asgs = []
-        self.assertRaises(BackendDataError, clusters_for_asgs, relevant_asgs)
+        self.assertRaises(ConnectionError, clusters_for_asgs, relevant_asgs)
 
     @httpretty.activate
     def test_incorrect_json(self):

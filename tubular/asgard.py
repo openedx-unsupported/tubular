@@ -41,20 +41,16 @@ def clusters_for_asgs(asgs):
         ]
     }
 
+    Raises:
+        BackendDataError: We get bad 
+
     """
 
     request = requests.Request('GET', CLUSTER_LIST_URL, params=ASGARD_API_TOKEN)
     url = request.prepare().url
     LOG.debug("Getting Cluster List from: {}".format(url))
-    try:
-        response = requests.get(CLUSTER_LIST_URL, params=ASGARD_API_TOKEN)
-    except ConnectionError as ce:
-        raise BackendConnectionError("Unable to connect to asgard: {}".format(url))
-
-    try:
-        cluster_json = response.json()
-    except ValueError as ve:
-        raise BackendDataError("Invalid Json returned for api request: {}".format(response.text))
+    response = requests.get(CLUSTER_LIST_URL, params=ASGARD_API_TOKEN)
+    cluster_json = response.json()
 
     # need this to be a list so that we can test membership.
     asgs = list(asgs)
