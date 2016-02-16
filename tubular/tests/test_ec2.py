@@ -7,12 +7,14 @@ from boto.ec2.autoscale.launchconfig import LaunchConfiguration
 from boto.ec2.autoscale.group import AutoScalingGroup
 from boto.ec2.autoscale import Tag
 
+from ddt import ddt, data, file_data, unpack
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
 from ..ec2 import *
 from ..exception import ImageNotFoundException, MissingTagException
 from ..utils import EDC
 
+@ddt
 class TestEC2(unittest.TestCase):
 
     @mock_ec2
@@ -40,64 +42,25 @@ class TestEC2(unittest.TestCase):
         self.assertEqual(expected_edc, actual_edc)
 
     @mock_autoscaling
-    def test_asgs_for_edc(self):
+    @file_data("test_asgs_for_edc_data.json")
+    def test_asgs_for_edc(self, params):
+        asgs, expected_returned = params
+
         edc = EDC("foo","bar","baz")
 
-        asgs = asgs_for_edc(edc)
-        self.assertIsInstance(asgs, Iterable)
-
-        asgs = list(asgs)
-        num_asgs = len(asgs)
-        self.assertEqual(num_asgs, 0, "Expected empty list of ASGs, got {}".format(num_asgs))
-
-        self._create_asg_with_tags("untagged_asg", [])
+        for name, tags in asgs.iteritems():
+            self._create_asg_with_tags(name, tags)
 
         asgs = asgs_for_edc(edc)
         self.assertIsInstance(asgs, Iterable)
 
         asgs = list(asgs)
         num_asgs = len(asgs)
-        self.assertEqual(num_asgs, 0, "Expected empty list of ASGs, got {}".format(num_asgs))
-
-        self._create_asg_with_tags("partially_taggeg_asg", [
-            Tag(key="environment", value="foo"),
-            Tag(key="cluster", value="baz"),
-            ])
-
-        asgs = asgs_for_edc(edc)
-        self.assertIsInstance(asgs, Iterable)
-
-        asgs = list(asgs)
-        num_asgs = len(asgs)
-        self.assertEqual(num_asgs, 0, "Number of ASGs expected don't match actual.")
-
-        self._create_asg_with_tags("tagged_asg", [
-            Tag(key="environment", value="foo"),
-            Tag(key="deployment", value="bar"),
-            Tag(key="cluster", value="baz"),
-            ])
-
-        asgs = asgs_for_edc(edc)
-        self.assertIsInstance(asgs, Iterable)
-
-        asgs = list(asgs)
-        num_asgs = len(asgs)
-        self.assertEqual(num_asgs, 1, "Number of ASGs expected don't match actual.")
-
-        self._create_asg_with_tags("tagged_asg2", [
-            Tag(key="environment", value="foo"),
-            Tag(key="deployment", value="bar"),
-            Tag(key="cluster", value="baz"),
-            ])
-
-        asgs = asgs_for_edc(edc)
-        self.assertIsInstance(asgs, Iterable)
-
-        asgs = list(asgs)
-        num_asgs = len(asgs)
-        self.assertEqual(num_asgs, 2)
+        self.assertEquals(num_asgs, expected_returned)
 
     def _create_asg_with_tags(self, asg_name, tags):
+        tag_list = [ Tag(key=k, value=v) for k,v in tags.iteritems() ]
+
         # Create asgs
         elb_conn = boto.ec2.elb.connect_to_region('us-east-1')
 
@@ -122,6 +85,6 @@ class TestEC2(unittest.TestCase):
             placement_group="test_placement",
             vpc_zone_identifier='subnet-1234abcd',
             termination_policies=["OldestInstance", "NewestInstance"],
-            tags=tags,
+            tags=tag_list,
         )
         conn.create_auto_scaling_group(group)
