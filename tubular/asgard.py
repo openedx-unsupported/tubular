@@ -9,7 +9,8 @@ from .exception import *
 
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091")
-ASGARD_API_TOKEN = os.environ.get("ASGARD_API_TOKEN")
+ASGARD_API_TOKEN = {"asgardApiToken": os.environ.get("ASGARD_API_TOKEN", "dummy-token")}
+DEFAULT_WAIT_TIMEOUT = int(os.environ.get("DEFAULT_WAIT_TIMEOUT", 300))
 
 CLUSTER_LIST_URL= "{}/cluster/list.json".format(ASGARD_API_ENDPOINT)
 ASG_ACTIVATE_URL= "{}/cluster/activate".format(ASGARD_API_ENDPOINT)
@@ -52,8 +53,6 @@ def clusters_for_asgs(asgs):
     Raises:
         BackendDataError: We got bad data from the backend. We can't
             get cluster information from it.
-
-
     """
 
     request = requests.Request('GET', CLUSTER_LIST_URL, params=ASGARD_API_TOKEN)
@@ -112,11 +111,11 @@ def wait_for_task_completion(task_url, timeout):
     """
     Input:
         task_url(str): The URL from which to retrieve task status.
-        timeout(int): How many seconds to wait for task completion 
+        timeout(int): How many seconds to wait for task completion
                       before throwing an error.
 
     Returns:
-        (dict): Parsed json of the task completion or failure status.
+        dict: Parsed json of the task completion or failure status.
 
     Raises:
         TimeoutException: When we timeout waiting for the task to finish.
@@ -137,3 +136,37 @@ def wait_for_task_completion(task_url, timeout):
 
     raise TimeoutException("Timedout while waiting for task {}".format(task_url))
 
+def new_asg(cluster, ami_id):
+    """
+    Create a new ASG in the given asgard cluster using the given AMI.
+
+    Input:
+        cluster(str): Name of the cluster.
+        ami_id(str): AWS AMI ID
+
+    Returns:
+        str: The name of the new ASG.
+
+    Raises:
+        TimeoutException: When the task to bring up the new ASG fails.
+    """
+    payload = {
+        "name": cluster,
+        "imageId": ami_id,
+    }
+
+    response = requests.post(NEW_ASG_URL, data=payload, params=ASGARD_API_TOKEN)
+    LOG.debug("Sent request to create new ASG in Cluster({}).".format(cluster))
+
+    #TODO: Make sure response is not an error.
+    response = wait_for_task_completion(response.url, DEFAULT_WAIT_TIMEOUT)
+    if response['status'] == 'failed':
+        msg = "Failure during new ASG creation. Task Log: \n{}".format(response['log'])
+        raise BackendError(msg)
+
+    # Potential Race condition if multiple people are making ASGs for the same cluster
+    # Return the name of the newest asg
+    new_asg = asgs_for_cluster(cluster)[-1]
+    LOG.debug("New ASG({}) created in cluster({}).".format(new_asg, cluster))
+
+    return new_asg

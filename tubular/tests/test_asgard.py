@@ -61,7 +61,7 @@ valid_cluster_info_json = """
 [
   {
     "autoScalingGroupName": "loadtest-edx-edxapp-v058",
-    "availabilityZones": 
+    "availabilityZones":
     [
       "us-east-1b",
       "us-east-1c"
@@ -72,7 +72,7 @@ valid_cluster_info_json = """
   },
   {
     "autoScalingGroupName": "loadtest-edx-edxapp-v059",
-    "availabilityZones": 
+    "availabilityZones":
     [
       "us-east-1b",
       "us-east-1c"
@@ -86,7 +86,7 @@ valid_cluster_info_json = """
 
 failed_sample_task = """
 {
-  "log": 
+  "log":
   [
     "2016-02-11_02:31:18 Started on thread Task:Force Delete Auto Scaling Group 'loadtest-edx-edxapp-v060'.",
     "2016-02-11_02:31:18 Deregistering all instances in 'loadtest-edx-edxapp-v060' from load balancers",
@@ -105,7 +105,7 @@ failed_sample_task = """
 
 completed_sample_task = """
 {
-  "log": 
+  "log":
   [
     "2016-02-11_02:31:11 Started on thread Task:Stopping traffic to instances of loadtest-edx-edxapp-v060.",
     "2016-02-11_02:31:11 Disabling new instance launching for auto scaling group 'loadtest-edx-edxapp-v060'",
@@ -122,7 +122,7 @@ completed_sample_task = """
 
 running_sample_task = """
 {
-  "log": 
+  "log":
   [
     "2016-02-11_19:03:34 Started on thread Task:Creating auto scaling group 'loadtest-edx-edxapp-v059', min 4, max 4, traffic prevented.",
     "2016-02-11_19:03:34 Group 'loadtest-edx-edxapp-v059' will start with 0 instances",
@@ -274,3 +274,82 @@ class TestAsgard(unittest.TestCase):
             content_type="application/json")
 
         self.assertRaises(TimeoutException, wait_for_task_completion, task_url, 1)
+
+    @httpretty.activate
+    def test_new_asg(self):
+        task_url = "http://some.host/task/1234.json"
+        cluster = "loadtest-edx-edxapp"
+        ami_id = "ami-abc1234"
+
+        def post_callback(request, uri, headers):
+            self.assertEqual('POST', request.method)
+            expected_request_body = { "name" : [cluster], "imageId": [ami_id] }
+            expected_querystring = { "asgardApiToken": ['dummy-token'] }
+
+            self.assertEqual(expected_request_body, request.parsed_body)
+            self.assertEqual(expected_querystring, request.querystring)
+            response_headers = { "Location": task_url,
+                    "server": ASGARD_API_ENDPOINT}
+            response_body = ""
+            return (302, response_headers, response_body)
+
+        httpretty.register_uri(
+                httpretty.POST,
+                NEW_ASG_URL,
+                body=post_callback,
+                Location=task_url)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            task_url,
+            body=completed_sample_task,
+            content_type="application/json")
+
+        url = CLUSTER_INFO_URL.format(cluster)
+        httpretty.register_uri(
+            httpretty.GET,
+            url,
+            body=valid_cluster_info_json,
+            content_type="application/json")
+
+        expected_asg = "loadtest-edx-edxapp-v059"
+        self.assertEqual(expected_asg, new_asg(cluster,ami_id))
+
+    @httpretty.activate
+    def test_new_asg_failure(self):
+        task_url = "http://some.host/task/1234.json"
+        cluster = "loadtest-edx-edxapp"
+        ami_id = "ami-abc1234"
+
+        def post_callback(request, uri, headers):
+            self.assertEqual('POST', request.method)
+            expected_request_body = { "name" : [cluster], "imageId": [ami_id] }
+            expected_querystring = { "asgardApiToken": ['dummy-token'] }
+
+            self.assertEqual(expected_request_body, request.parsed_body)
+            self.assertEqual(expected_querystring, request.querystring)
+            response_headers = { "Location": task_url.strip(".json"),
+                    "server": ASGARD_API_ENDPOINT}
+            response_body = ""
+            return (302, response_headers, response_body)
+
+        httpretty.register_uri(
+                httpretty.POST,
+                NEW_ASG_URL,
+                body=post_callback,
+                Location=task_url)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            task_url,
+            body=failed_sample_task,
+            content_type="application/json")
+
+        url = CLUSTER_INFO_URL.format(cluster)
+        httpretty.register_uri(
+            httpretty.GET,
+            url,
+            body=valid_cluster_info_json,
+            content_type="application/json")
+
+        self.assertRaises(BackendError, new_asg,cluster,ami_id)
