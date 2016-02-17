@@ -5,6 +5,7 @@ python:
 # command to install dependencies
 install: "pip install -r requirements/test_requirements.txt"
 
-# command to run tests
-script: nosetests
+# command to run tests, the --process=-1 will run tests in
+# parallel with as many cores as are available.
+script: nosetests --processes=-1
 

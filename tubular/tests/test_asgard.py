@@ -147,6 +147,7 @@ running_sample_task = """
 
 @ddt
 class TestAsgard(unittest.TestCase):
+    _multiprocess_can_split_ = True
 
     def test_bad_endpoint(self):
         relevant_asgs = []

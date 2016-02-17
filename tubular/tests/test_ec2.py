@@ -17,6 +17,7 @@ from ..utils import EDC
 
 @ddt
 class TestEC2(unittest.TestCase):
+    _multiprocess_can_split_ = True
 
     @mock_ec2
     def test_edc_for_ami_bad_id(self):
