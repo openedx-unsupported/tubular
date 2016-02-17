@@ -4,9 +4,13 @@ when we deploy using asgard.
 """
 import boto
 import logging
+import time
 from utils import EDC
-from exception import ImageNotFoundException, MissingTagException
+from exception import ImageNotFoundException
+from exception import MissingTagException
+from exception import TimeoutException
 from boto.exception import EC2ResponseError
+from datetime import datetime, timedelta
 
 LOG = logging.getLogger(__name__)
 
@@ -82,3 +86,48 @@ def asgs_for_edc(edc):
 
             if group_edc == edc:
                 yield group.name
+
+def wait_for_in_service(all_asgs, timeout):
+    """
+    Wait for the ASG and all instances in them to be healthy
+    according to AWS metrics.
+
+    Arguments:
+        all_asgs(list<str>): A list of ASGs we want to be healthy.
+        timeout: The amount of time in seconds to wait for healthy state.
+    [
+        u'test-edx-edxapp-v008',
+        u'test-edx-worker-v005',
+    ]
+
+    Returns: Nothing if healthy, raises a timeout exception if un-healthy.
+    """
+
+    autoscale = boto.connect_autoscale()
+    time_left = timeout
+    asgs_left_to_check = list(all_asgs)
+    LOG.info("Waiting for ASGs to be healthy: {}".format(asgs_left_to_check))
+
+    end_time = datetime.utcnow() + timedelta(seconds=timeout)
+    while end_time > datetime.utcnow():
+        print(type(autoscale))
+        asgs = autoscale.get_all_groups(asgs_left_to_check)
+        for asg in asgs:
+            all_healthy = True
+            for instance in asg.instances:
+                if instance.health_status.lower() != 'healthy' or instance.lifecycle_state.lower() != 'inservice':
+                    # Instance is  not ready.
+                    all_healthy = False
+                    break
+
+            if all_healthy:
+                # Then all are healthy we can stop checking this.
+                LOG.debug("All instances healthy in ASG: {}".format(asg.name))
+                asgs_left_to_check.remove(asg.name)
+
+        if len(asgs_left_to_check) == 0:
+            return
+
+        time.sleep(1)
+
+    raise TimeoutException("Some instances in the following ASGs never became healthy: {}".format(asgs_left_to_check))

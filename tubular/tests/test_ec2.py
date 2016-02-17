@@ -1,8 +1,9 @@
 from collections import Iterable
 
+import boto
+import mock
 import unittest
 
-import boto
 from boto.ec2.autoscale.launchconfig import LaunchConfiguration
 from boto.ec2.autoscale.group import AutoScalingGroup
 from boto.ec2.autoscale import Tag
@@ -11,7 +12,7 @@ from ddt import ddt, data, file_data, unpack
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
 from ..ec2 import *
-from ..exception import ImageNotFoundException, MissingTagException
+from ..exception import *
 from ..utils import EDC
 
 @ddt
@@ -96,3 +97,35 @@ class TestEC2(unittest.TestCase):
             tags=tag_list,
         )
         conn.create_auto_scaling_group(group)
+
+    @mock_autoscaling
+    @mock_ec2
+    def test_wait_for_in_service(self):
+        self._create_asg_with_tags("healthy_asg", {"foo": "bar"})
+        self.assertEqual(None, wait_for_in_service(["healthy_asg"], 2))
+
+    @mock_autoscaling
+    @mock_ec2
+    def test_wait_for_in_service_lifecycle_failure(self):
+        asg_name = "unhealthy_asg"
+        self._create_asg_with_tags(asg_name, {"foo": "bar"})
+        autoscale = boto.connect_autoscale()
+        asgs = autoscale.get_all_groups([asg_name])
+        asg = asgs[0]
+        asg.instances[0].lifecycle_state = "NotInService"
+        with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs) as mock_connection:
+            self.assertRaises(TimeoutException, wait_for_in_service,[asg_name], 2)
+
+
+    @mock_autoscaling
+    @mock_ec2
+    def test_wait_for_in_service_health_failure(self):
+        asg_name = "unhealthy_asg"
+        self._create_asg_with_tags(asg_name, {"foo": "bar"})
+        autoscale = boto.connect_autoscale()
+        asgs = autoscale.get_all_groups([asg_name])
+        asg = asgs[0]
+        asg.instances[0].health_status = "Unhealthy"
+        with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs) as mock_connection:
+            self.assertRaises(TimeoutException, wait_for_in_service,[asg_name], 2)
+
