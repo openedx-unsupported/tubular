@@ -192,3 +192,15 @@ def enable_asg(asg):
     if task_status['status'] == 'failed':
         msg = "Failure while enabling ASG. Task Log: \n{}".format(task_status['log'])
         raise BackendError(msg)
+
+def disable_asg(asg):
+    """
+    curl -d "name=helloworld-example-v004" http://asgardprod/us-east-1/cluster/deactivate
+    """
+    payload = { "name": asg }
+    response = requests.post(ASG_DEACTIVATE_URL, data=payload, params=ASGARD_API_TOKEN)
+    task_url = response.url
+    task_status = wait_for_task_completion(task_url, 300)
+    if task_status['status'] == 'failed':
+        msg = "Failure while disabling ASG. Task Log: \n{}".format(task_status['log'])
+        raise BackendError(msg)

@@ -4,7 +4,7 @@ import unittest
 import httpretty
 from ..asgard import *
 
-from ddt import ddt, data
+from ddt import ddt, data, unpack
 from requests.exceptions import ConnectionError
 
 sample_cluster_list = """
@@ -356,7 +356,9 @@ class TestAsgard(unittest.TestCase):
         self.assertRaises(BackendError, new_asg,cluster,ami_id)
 
     @httpretty.activate
-    def test_enable_asg_success(self):
+    @data((ASG_ACTIVATE_URL, enable_asg), (ASG_DEACTIVATE_URL, disable_asg))
+    @unpack
+    def test_enable_disable_asg_success(self, endpoint_url, test_function):
         task_url = "http://some.host/task/1234.json"
         asg = "loadtest-edx-edxapp-v059"
 
@@ -374,7 +376,7 @@ class TestAsgard(unittest.TestCase):
 
         httpretty.register_uri(
                 httpretty.POST,
-                ASG_ACTIVATE_URL,
+                endpoint_url,
                 body=post_callback)
 
         httpretty.register_uri(
@@ -383,10 +385,12 @@ class TestAsgard(unittest.TestCase):
             body=completed_sample_task,
             content_type="application/json")
 
-        self.assertEquals(None, enable_asg(asg))
+        self.assertEquals(None, test_function(asg))
 
     @httpretty.activate
-    def test_enable_asg_failure(self):
+    @data((ASG_ACTIVATE_URL, enable_asg), (ASG_DEACTIVATE_URL, disable_asg))
+    @unpack
+    def test_enable_disable_asg_failure(self, endpoint_url, test_function):
         task_url = "http://some.host/task/1234.json"
         asg = "loadtest-edx-edxapp-v059"
 
@@ -404,7 +408,7 @@ class TestAsgard(unittest.TestCase):
 
         httpretty.register_uri(
                 httpretty.POST,
-                ASG_ACTIVATE_URL,
+                endpoint_url,
                 body=post_callback)
 
         httpretty.register_uri(
@@ -413,4 +417,4 @@ class TestAsgard(unittest.TestCase):
             body=failed_sample_task,
             content_type="application/json")
 
-        self.assertRaises(BackendError, enable_asg, asg)
+        self.assertRaises(BackendError, test_function, asg)
