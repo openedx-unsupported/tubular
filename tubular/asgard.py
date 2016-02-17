@@ -170,3 +170,25 @@ def new_asg(cluster, ami_id):
     LOG.debug("New ASG({}) created in cluster({}).".format(new_asg, cluster))
 
     return new_asg
+
+def enable_asg(asg):
+    """
+    Enable an ASG in asgard.  This means it will have ELBs routing to it
+    if any are associated and autoscaling will be turned on.
+
+    Arguments:
+        asg(str): The name of the asg to enable.
+
+    Returns:
+        None: When the asg has been enabled.
+
+    Raises:
+        TimeoutException: If the task to enable the ASG fails.
+    """
+    payload = { "name": asg }
+    response = requests.post(ASG_ACTIVATE_URL, data=payload, params=ASGARD_API_TOKEN)
+    task_url = response.url
+    task_status = wait_for_task_completion(task_url, 301)
+    if task_status['status'] == 'failed':
+        msg = "Failure while enabling ASG. Task Log: \n{}".format(task_status['log'])
+        raise BackendError(msg)

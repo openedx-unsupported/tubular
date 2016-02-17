@@ -354,3 +354,63 @@ class TestAsgard(unittest.TestCase):
             content_type="application/json")
 
         self.assertRaises(BackendError, new_asg,cluster,ami_id)
+
+    @httpretty.activate
+    def test_enable_asg_success(self):
+        task_url = "http://some.host/task/1234.json"
+        asg = "loadtest-edx-edxapp-v059"
+
+        def post_callback(request, uri, headers):
+            self.assertEqual('POST', request.method)
+            expected_request_body = { "name" : [asg] }
+            expected_querystring = { "asgardApiToken": ['dummy-token'] }
+
+            self.assertEqual(expected_request_body, request.parsed_body)
+            self.assertEqual(expected_querystring, request.querystring)
+            response_headers = { "Location": task_url.strip(".json"),
+                    "server": ASGARD_API_ENDPOINT}
+            response_body = ""
+            return (302, response_headers, response_body)
+
+        httpretty.register_uri(
+                httpretty.POST,
+                ASG_ACTIVATE_URL,
+                body=post_callback)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            task_url,
+            body=completed_sample_task,
+            content_type="application/json")
+
+        self.assertEquals(None, enable_asg(asg))
+
+    @httpretty.activate
+    def test_enable_asg_failure(self):
+        task_url = "http://some.host/task/1234.json"
+        asg = "loadtest-edx-edxapp-v059"
+
+        def post_callback(request, uri, headers):
+            self.assertEqual('POST', request.method)
+            expected_request_body = { "name" : [asg] }
+            expected_querystring = { "asgardApiToken": ['dummy-token'] }
+
+            self.assertEqual(expected_request_body, request.parsed_body)
+            self.assertEqual(expected_querystring, request.querystring)
+            response_headers = { "Location": task_url.strip(".json"),
+                    "server": ASGARD_API_ENDPOINT}
+            response_body = ""
+            return (302, response_headers, response_body)
+
+        httpretty.register_uri(
+                httpretty.POST,
+                ASG_ACTIVATE_URL,
+                body=post_callback)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            task_url,
+            body=failed_sample_task,
+            content_type="application/json")
+
+        self.assertRaises(BackendError, enable_asg, asg)
