@@ -28,7 +28,7 @@ def clusters_for_asgs(asgs):
     This function finds all asgard clusters for a list of ASGs.
     eg. get all clusters that have the 'edxapp' cluster tag..
 
-    Input:
+    Arguments::
         asgs(iterable): A iterable of ASGs we care about.
     eg.
     [
@@ -84,7 +84,7 @@ def asgs_for_cluster(cluster):
     """
     Given a named cluster, get all ASGs in the cluster.
 
-    Input:
+    Arguments:
         cluster(str): The name of the asgard cluster.
 
     Returns:
@@ -109,7 +109,7 @@ def asgs_for_cluster(cluster):
 
 def wait_for_task_completion(task_url, timeout):
     """
-    Input:
+    Arguments:
         task_url(str): The URL from which to retrieve task status.
         timeout(int): How many seconds to wait for task completion
                       before throwing an error.
@@ -140,7 +140,7 @@ def new_asg(cluster, ami_id):
     """
     Create a new ASG in the given asgard cluster using the given AMI.
 
-    Input:
+    Arguments:
         cluster(str): Name of the cluster.
         ami_id(str): AWS AMI ID
 
