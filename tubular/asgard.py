@@ -42,7 +42,9 @@ def clusters_for_asgs(asgs):
     }
 
     Raises:
-        BackendDataError: We get bad 
+        BackendDataError: We got bad data from the backend. We can't
+            get cluster information from it.
+
 
     """
 
