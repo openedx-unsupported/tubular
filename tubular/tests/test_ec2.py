@@ -130,3 +130,32 @@ class TestEC2(unittest.TestCase):
         with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs) as mock_connection:
             self.assertRaises(TimeoutException, wait_for_in_service,[asg_name], 2)
 
+
+    @mock_elb
+    @mock_ec2
+    def test_wait_for_healthy_elbs(self):
+        elb_name = "healthy-lb"
+        self._create_elb(elb_name)
+        self.assertEqual(None, wait_for_healthy_elbs([elb_name], 2))
+
+    @mock_elb
+    @mock_ec2
+    def test_wait_for_healthy_elbs_failure(self):
+        elb_name = "unhealthy-lb"
+        lb = self._create_elb(elb_name)
+        # Make one of the instances un-healthy.
+        instances = lb.get_instance_health()
+        instances[0].state = "NotInService"
+        print(type(lb))
+        mock_function = "boto.ec2.elb.loadbalancer.LoadBalancer.get_instance_health"
+        with mock.patch(mock_function, return_value=instances) as mock_call:
+            self.assertRaises(TimeoutException, wait_for_healthy_elbs, [elb_name], 2)
+
+    def _create_elb(self, elb_name):
+        boto_elb = boto.connect_elb()
+        zones = ['us-east-1a', 'us-east-1b']
+        ports = [(80, 8080, 'http'), (443, 8443, 'tcp')]
+        lb = boto_elb.create_load_balancer(elb_name, zones, ports)
+        instance_ids = ['i-4f8cf126', 'i-0bb7ca62']
+        lb.register_instances(instance_ids)
+        return lb

@@ -131,3 +131,40 @@ def wait_for_in_service(all_asgs, timeout):
         time.sleep(1)
 
     raise TimeoutException("Some instances in the following ASGs never became healthy: {}".format(asgs_left_to_check))
+
+def wait_for_healthy_elbs(elbs_to_monitor, timeout):
+    """
+    Wait for all instances in all ELBs listed to be healthy. Raise a
+    timeout exception if they don't become healthy.
+
+    Arguments:
+        elbs_to_monitor(list<str>): Names of ELBs that we are monitoring.
+        timeout: Timeout in seconds of how long to wait.
+
+    Returns:
+        None: When all ELBs have only healthy instances in them.
+
+    Raises:
+        TimeoutException: We we have run out of time.
+    """
+    boto_elb = boto.connect_elb()
+    elbs_left = list(elbs_to_monitor)
+    end_time = datetime.utcnow() + timedelta(seconds=timeout)
+    while end_time > datetime.utcnow():
+        print(type(boto_elb))
+        elbs = boto_elb.get_all_load_balancers(elbs_to_monitor)
+        for elb in elbs:
+            all_healthy = True
+            for instance in elb.get_instance_health():
+                if instance.state != 'InService':
+                    all_healthy = False
+                    break
+
+            if all_healthy:
+                elbs_left.remove(elb.name)
+
+        if len(elbs_left) == 0:
+            return
+        time.sleep(1)
+
+    raise TimeoutException("The following ELBs never became healthy: {}".format(elbs_left))
