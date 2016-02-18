@@ -3,6 +3,7 @@ import unittest
 import httpretty
 from ..asgard import *
 
+from ddt import ddt, data, file_data, unpack
 from requests.exceptions import ConnectionError
 
 sample_cluster_list = """
@@ -54,8 +55,12 @@ bad_cluster_json2 = """
   }
 ]"""
 
-
+@ddt
 class TestAsgard(unittest.TestCase):
+
+    def test_bad_endpoint(self):
+        relevant_asgs = []
+        self.assertRaises(ConnectionError, clusters_for_asgs, relevant_asgs)
 
     @httpretty.activate
     def test_clusters_for_asgs(self):
@@ -84,28 +89,14 @@ class TestAsgard(unittest.TestCase):
                 ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059"],
                 cluster_names['loadtest-edx-edxapp'])
 
-    def test_bad_endpoint(self):
-        relevant_asgs = []
-        self.assertRaises(ConnectionError, clusters_for_asgs, relevant_asgs)
-
+    @data(bad_cluster_json1, bad_cluster_json2)
     @httpretty.activate
-    def test_incorrect_json(self):
+    def test_incorrect_json(self, response_json):
         # The json is valid but not the structure we expected.
         httpretty.register_uri(
             httpretty.GET,
             CLUSTER_LIST_URL,
-            body=bad_cluster_json1,
-            content_type="application/json")
-
-        relevant_asgs = []
-        self.assertRaises(BackendDataError, clusters_for_asgs, relevant_asgs)
-
-    @httpretty.activate
-    def test_incorrect_cluster_json(self):
-        httpretty.register_uri(
-            httpretty.GET,
-            CLUSTER_LIST_URL,
-            body=bad_cluster_json2,
+            body=response_json,
             content_type="application/json")
 
         relevant_asgs = []
