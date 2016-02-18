@@ -18,10 +18,12 @@ from ..utils import EDC
 class TestEC2(unittest.TestCase):
 
     @mock_ec2
-    def test_edc_for_ami(self):
+    def test_edc_for_ami_bad_id(self):
         # Bad AMI Id
         self.assertRaises(ImageNotFoundException, edc_for_ami, "ami-fakeid")
 
+    @mock_ec2
+    def test_edc_for_untagged_ami(self):
         ec2 = boto.connect_ec2()
         reservation = ec2.run_instances(random_ami_id())
         instance_id = reservation.instances[0].id
@@ -30,6 +32,12 @@ class TestEC2(unittest.TestCase):
         # AMI Exists but isn't tagged.
         self.assertRaises(MissingTagException, edc_for_ami, ami_id)
 
+    @mock_ec2
+    def test_edc2_for_tagged_ami(self):
+        ec2 = boto.connect_ec2()
+        reservation = ec2.run_instances(random_ami_id())
+        instance_id = reservation.instances[0].id
+        ami_id = ec2.create_image(instance_id, "Existing AMI")
         ami = ec2.get_all_images(ami_id)[0]
         ami.add_tag("environment", "foo")
         ami.add_tag("deployment", "bar")
