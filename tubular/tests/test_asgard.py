@@ -1,11 +1,17 @@
 import json
 import unittest
 
+import boto
+import mock
 import httpretty
 from ..asgard import *
 
 from ddt import ddt, data, unpack
+from moto import mock_ec2, mock_autoscaling, mock_elb
+from moto.ec2.utils import random_ami_id
 from requests.exceptions import ConnectionError
+
+from .test_utils import create_asg_with_tags, create_elb
 
 sample_cluster_list = """
 [
@@ -57,7 +63,6 @@ bad_cluster_json2 = """
 ]"""
 
 valid_cluster_info_json = """
-
 [
   {
     "autoScalingGroupName": "loadtest-edx-edxapp-v058",
@@ -80,6 +85,48 @@ valid_cluster_info_json = """
     "createdTime": "2016-02-10T12:23:10Z",
     "defaultCooldown": 300,
     "desiredCapacity": 4
+  }
+]
+"""
+asgs_for_edxapp_before = """
+[
+  {
+    "autoScalingGroupName": "loadtest-edx-edxapp-v058"
+  },
+  {
+    "autoScalingGroupName": "loadtest-edx-edxapp-v059"
+  }
+]
+"""
+
+asgs_for_edxapp_after = """
+[
+  {
+    "autoScalingGroupName": "loadtest-edx-edxapp-v058"
+  },
+  {
+    "autoScalingGroupName": "loadtest-edx-edxapp-v059"
+  },
+  {
+    "autoScalingGroupName": "loadtest-edx-edxapp-v099"
+  }
+]
+"""
+
+asgs_for_worker_before = """
+[
+  {
+    "autoScalingGroupName": "loadtest-edx-worker-v034"
+  }
+]
+"""
+asgs_for_worker_after = """
+[
+  {
+    "autoScalingGroupName": "loadtest-edx-worker-v034"
+  },
+  {
+    "autoScalingGroupName": "loadtest-edx-worker-v099"
   }
 ]
 """
@@ -142,6 +189,25 @@ running_sample_task = """
   "operation": "Group 'loadtest-edx-edxapp-v059' has 0 instances. Waiting for 4 to exist.",
   "durationString": "16s",
   "updateTime": "2016-02-11 19:03:37 UTC"
+}
+"""
+
+sample_asg_info = """
+{
+  "group": {
+    "loadBalancerNames": 
+    [
+      "app_elb"
+    ]
+  }
+}
+"""
+
+sample_worker_asg_info = """
+{
+  "group": {
+    "loadBalancerNames": []
+  }
 }
 """
 
@@ -418,3 +484,171 @@ class TestAsgard(unittest.TestCase):
             content_type="application/json")
 
         self.assertRaises(BackendError, test_function, asg)
+
+    def _setup_for_deploy(self,
+            new_asg_task_status=completed_sample_task,
+            enable_asg_task_status=completed_sample_task,
+            disable_asg_task_status=completed_sample_task,
+        ):
+        # Make the AMI
+        ec2 = boto.connect_ec2()
+        reservation = ec2.run_instances(random_ami_id())
+        instance_id = reservation.instances[0].id
+        ami_id = ec2.create_image(instance_id, "Existing AMI")
+        ami = ec2.get_all_images(ami_id)[0]
+        ami.add_tag("environment", "foo")
+        ami.add_tag("deployment", "bar")
+        ami.add_tag("cluster", "baz")
+
+        # Make the current ASGs
+        asg_tags = { "environment": "foo",
+            "deployment": "bar",
+            "cluster": "baz",
+        }
+
+        elb_name = "app_elb"
+        create_elb(elb_name)
+
+        create_asg_with_tags("loadtest-edx-edxapp-v058", asg_tags, ami_id, [elb_name])
+        create_asg_with_tags("loadtest-edx-edxapp-v059", asg_tags, ami_id, [elb_name])
+        create_asg_with_tags("loadtest-edx-worker-v034", asg_tags, ami_id, [])
+  
+        httpretty.register_uri(
+            httpretty.GET,
+            CLUSTER_LIST_URL,
+            body=sample_cluster_list,
+            content_type="application/json")
+
+        edxapp_cluster_info_url = CLUSTER_INFO_URL.format("loadtest-edx-edxapp")
+        httpretty.register_uri(
+            httpretty.GET,
+            edxapp_cluster_info_url,
+            responses=[
+#                httpretty.Response(body=asgs_for_edxapp_before),
+                httpretty.Response(body=asgs_for_edxapp_after),
+                ],
+        )
+
+        worker_cluster_info_url = CLUSTER_INFO_URL.format("loadtest-edx-worker")
+        httpretty.register_uri(
+            httpretty.GET,
+            worker_cluster_info_url,
+            responses=[
+#                httpretty.Response(body=asgs_for_worker_before),
+                httpretty.Response(body=asgs_for_worker_after),
+                ],
+        )
+
+        # Mock endpoints for building new ASGs
+        task_url = "http://some.host/task/new_asg_1234.json"
+        def new_asg_post_callback(request, uri, headers):
+            response_headers = { "Location": task_url,
+                    "server": ASGARD_API_ENDPOINT}
+            response_body = ""
+            new_asg_name = "{}-v099".format(request.parsed_body["name"][0])
+            new_ami_id = request.parsed_body["imageId"][0]
+            create_asg_with_tags(new_asg_name, asg_tags, new_ami_id)
+            return (302, response_headers, response_body)
+
+        httpretty.register_uri(
+                httpretty.POST,
+                NEW_ASG_URL,
+                body=new_asg_post_callback,
+                Location=task_url)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            task_url,
+            body=new_asg_task_status,
+            content_type="application/json")
+
+        # Make endpoint for enabling new ASGs
+        enable_asg_task_url = "http://some.host/task/enable_asg_1234.json"
+        def enable_asg_post_callback(request, uri, headers):
+            response_headers = { "Location": enable_asg_task_url,
+                    "server": ASGARD_API_ENDPOINT}
+            response_body = ""
+            return (302, response_headers, response_body)
+
+        disable_asg_task_url = "http://some.host/task/disable_asg_1234.json"
+        def disable_asg_post_callback(request, uri, headers):
+            response_headers = { "Location": disable_asg_task_url,
+                    "server": ASGARD_API_ENDPOINT}
+            response_body = ""
+            return (302, response_headers, response_body)
+
+        httpretty.register_uri(
+                httpretty.POST,
+                ASG_ACTIVATE_URL,
+                body=enable_asg_post_callback)
+
+        httpretty.register_uri(
+                httpretty.POST,
+                ASG_DEACTIVATE_URL,
+                body=disable_asg_post_callback)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            disable_asg_task_url,
+            body=disable_asg_task_status,
+            content_type="application/json")
+
+        httpretty.register_uri(
+            httpretty.GET,
+            enable_asg_task_url,
+            body=enable_asg_task_status,
+            content_type="application/json")
+
+        asg_info_url = ASG_INFO_URL.format("loadtest-edx-edxapp-v099")
+        httpretty.register_uri(
+            httpretty.GET,
+            asg_info_url,
+            body=sample_asg_info,
+            content_type="application/json")
+
+        worker_asg_info_url = ASG_INFO_URL.format("loadtest-edx-worker-v099")
+        httpretty.register_uri(
+            httpretty.GET,
+            worker_asg_info_url,
+            body=sample_worker_asg_info,
+            content_type="application/json")
+
+        return ami_id
+
+    @httpretty.activate
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    def test_deploy_asg_failed(self):
+        ami_id = self._setup_for_deploy(
+                new_asg_task_status=failed_sample_task
+        )
+        self.assertRaises(Exception, deploy, ami_id)
+
+    @httpretty.activate
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    def test_deploy_enable_asg_failed(self):
+        ami_id = self._setup_for_deploy(
+                new_asg_task_status=completed_sample_task,
+                enable_asg_task_status=failed_sample_task)
+        self.assertRaises(Exception, deploy, ami_id)
+
+    @httpretty.activate
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    def test_deploy_elb_health_failed(self):
+        ami_id = self._setup_for_deploy(completed_sample_task, completed_sample_task)
+        mock_function = "tubular.asgard.wait_for_healthy_elbs"
+        with mock.patch(mock_function, side_effect=Exception("Never became healthy.")):
+            self.assertRaises(Exception, deploy, ami_id)
+
+    @httpretty.activate
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    def test_deploy(self):
+        ami_id = self._setup_for_deploy()
+        self.assertEquals(None, deploy(ami_id))
