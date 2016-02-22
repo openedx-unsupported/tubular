@@ -1,0 +1,37 @@
+{
+  "no_asgs": [
+    {},
+    0
+  ],
+  "untagged_asg": [
+    {
+      "untagged_asg": {} 
+    },
+    0
+  ],
+  "multiple_bad_asgs" : [
+    {
+      "untagged_asg": {},
+      "partially_tagged_asg": {
+        "environment": "foo",
+        "cluster": "baz"
+      }
+    },
+    0
+  ],
+  "one_good_asg" : [
+    {
+      "untagged_asg": {},
+      "partially_tagged_asg": {
+        "environment": "foo",
+        "cluster": "baz"
+      },
+      "partially_tagged_asg": {
+        "environment": "foo",
+        "deployment": "bar",
+        "cluster": "baz"
+      }
+    },
+    1
+  ]
+}

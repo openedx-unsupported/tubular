@@ -42,3 +42,43 @@ def edc_for_ami(ami_id):
 
     LOG.debug("Got EDC for {}: {}".format(ami_id, edc))
     return edc
+
+
+def asgs_for_edc(edc):
+    """
+    All AutoScalingGroups that have the tags of this cluster.
+
+    A cluster is made up of many auto_scaling groups.
+
+    Arguments:
+        EDC Named Tuple: The edc tags for the ASGs you want.
+    Returns:
+        iterable: An iterable of cluster names that match the EDC.
+    eg.
+
+     [
+         u'edxapp-v018',
+         u'sandbox-edx-hacking-ASG',
+         u'sandbox-edx-insights-ASG',
+         u'test-edx-ecomapp',
+         u'test-edx-edxapp-v007',
+         u'test2-edx-certificates',
+     ]
+
+    """
+    autoscale = boto.connect_autoscale()
+    all_groups = autoscale.get_all_groups()
+    LOG.debug("All groups: {}".format(all_groups))
+    for group in all_groups:
+        tags = { tag.key: tag.value for tag in group.tags }
+        LOG.debug("Tags for asg {}: {}".format(group.name, tags))
+        edc_keys = ['environment', 'deployment', 'cluster']
+        if all([tag in tags for tag in edc_keys]):
+            group_env = tags['environment']
+            group_deployment = tags['deployment']
+            group_cluster = tags['cluster']
+
+            group_edc = EDC(group_env, group_deployment, group_cluster)
+
+            if group_edc == edc:
+                yield group.name
