@@ -11,6 +11,7 @@ from boto.ec2.autoscale import Tag
 from ddt import ddt, data, file_data, unpack
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
+from .test_utils import create_asg_with_tags, create_elb
 from ..ec2 import *
 from ..exception import *
 from ..utils import EDC
@@ -59,7 +60,7 @@ class TestEC2(unittest.TestCase):
         edc = EDC("foo","bar","baz")
 
         for name, tags in asgs.iteritems():
-            self._create_asg_with_tags(name, tags)
+            create_asg_with_tags(name, tags)
 
         asgs = asgs_for_edc(edc)
         self.assertIsInstance(asgs, Iterable)
@@ -68,48 +69,17 @@ class TestEC2(unittest.TestCase):
         num_asgs = len(asgs)
         self.assertEquals(num_asgs, expected_returned)
 
-    def _create_asg_with_tags(self, asg_name, tags):
-        tag_list = [ Tag(key=k, value=v) for k,v in tags.iteritems() ]
-
-        # Create asgs
-        elb_conn = boto.ec2.elb.connect_to_region('us-east-1')
-
-        conn = boto.ec2.autoscale.connect_to_region('us-east-1')
-        config = LaunchConfiguration(
-            name='{}_lc'.format(asg_name),
-            image_id='ami-abcd1234',
-            instance_type='t2.medium',
-        )
-        conn.create_launch_configuration(config)
-
-        group = AutoScalingGroup(
-            name=asg_name,
-            availability_zones=['us-east-1c', 'us-east-1b'],
-            default_cooldown=60,
-            desired_capacity=2,
-            health_check_period=100,
-            health_check_type="EC2",
-            max_size=2,
-            min_size=2,
-            launch_config=config,
-            placement_group="test_placement",
-            vpc_zone_identifier='subnet-1234abcd',
-            termination_policies=["OldestInstance", "NewestInstance"],
-            tags=tag_list,
-        )
-        conn.create_auto_scaling_group(group)
-
     @mock_autoscaling
     @mock_ec2
     def test_wait_for_in_service(self):
-        self._create_asg_with_tags("healthy_asg", {"foo": "bar"})
+        create_asg_with_tags("healthy_asg", {"foo": "bar"})
         self.assertEqual(None, wait_for_in_service(["healthy_asg"], 2))
 
     @mock_autoscaling
     @mock_ec2
     def test_wait_for_in_service_lifecycle_failure(self):
         asg_name = "unhealthy_asg"
-        self._create_asg_with_tags(asg_name, {"foo": "bar"})
+        create_asg_with_tags(asg_name, {"foo": "bar"})
         autoscale = boto.connect_autoscale()
         asgs = autoscale.get_all_groups([asg_name])
         asg = asgs[0]
@@ -122,7 +92,7 @@ class TestEC2(unittest.TestCase):
     @mock_ec2
     def test_wait_for_in_service_health_failure(self):
         asg_name = "unhealthy_asg"
-        self._create_asg_with_tags(asg_name, {"foo": "bar"})
+        create_asg_with_tags(asg_name, {"foo": "bar"})
         autoscale = boto.connect_autoscale()
         asgs = autoscale.get_all_groups([asg_name])
         asg = asgs[0]
@@ -135,27 +105,17 @@ class TestEC2(unittest.TestCase):
     @mock_ec2
     def test_wait_for_healthy_elbs(self):
         elb_name = "healthy-lb"
-        self._create_elb(elb_name)
+        create_elb(elb_name)
         self.assertEqual(None, wait_for_healthy_elbs([elb_name], 2))
 
     @mock_elb
     @mock_ec2
     def test_wait_for_healthy_elbs_failure(self):
         elb_name = "unhealthy-lb"
-        lb = self._create_elb(elb_name)
+        lb = create_elb(elb_name)
         # Make one of the instances un-healthy.
         instances = lb.get_instance_health()
         instances[0].state = "NotInService"
-        print(type(lb))
         mock_function = "boto.ec2.elb.loadbalancer.LoadBalancer.get_instance_health"
         with mock.patch(mock_function, return_value=instances) as mock_call:
             self.assertRaises(TimeoutException, wait_for_healthy_elbs, [elb_name], 2)
-
-    def _create_elb(self, elb_name):
-        boto_elb = boto.connect_elb()
-        zones = ['us-east-1a', 'us-east-1b']
-        ports = [(80, 8080, 'http'), (443, 8443, 'tcp')]
-        lb = boto_elb.create_load_balancer(elb_name, zones, ports)
-        instance_ids = ['i-4f8cf126', 'i-0bb7ca62']
-        lb.register_instances(instance_ids)
-        return lb
