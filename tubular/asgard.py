@@ -130,7 +130,6 @@ def wait_for_task_completion(task_url, timeout):
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
         response = requests.get(task_url, params=ASGARD_API_TOKEN)
-        print("Wait response: {}".format(response.text))
         status = response.json()['status']
         if status == 'completed' or status == 'failed':
             return response.json()

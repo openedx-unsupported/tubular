@@ -110,7 +110,6 @@ def wait_for_in_service(all_asgs, timeout):
 
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
-        print(type(autoscale))
         asgs = autoscale.get_all_groups(asgs_left_to_check)
         for asg in asgs:
             all_healthy = True
@@ -151,7 +150,6 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     elbs_left = list(elbs_to_monitor)
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
-        print(type(boto_elb))
         elbs = boto_elb.get_all_load_balancers(elbs_to_monitor)
         for elb in elbs:
             all_healthy = True
