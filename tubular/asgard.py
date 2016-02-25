@@ -217,8 +217,6 @@ def deploy(ami_id):
     # Pull the EDC from the AMI ID
     edc = ec2.edc_for_ami(ami_id)
 
-    LOG.info("Looking for which clusters to deploy to.")
-
     # These are all autoscaling groups that match the tags we care about.
     asgs = ec2.asgs_for_edc(edc)
 
@@ -257,6 +255,7 @@ def deploy(ami_id):
 
     LOG.info("All new ASGs are active.  The new instances "
           "will be available when they pass the healthchecks.")
+    LOG.info("New ASGs: {}".format(new_asgs.values()))
 
     # Wait for all instances to be in service in all ELBs
     try:

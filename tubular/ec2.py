@@ -6,9 +6,11 @@ import boto
 import logging
 import time
 from utils import EDC
-from exception import ImageNotFoundException
-from exception import MissingTagException
-from exception import TimeoutException
+from exception import (
+    ImageNotFoundException,
+    MissingTagException,
+    TimeoutException,
+)
 from boto.exception import EC2ResponseError
 from datetime import datetime, timedelta
 
