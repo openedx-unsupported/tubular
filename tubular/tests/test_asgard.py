@@ -5,6 +5,7 @@ import boto
 import mock
 import httpretty
 from ..asgard import *
+from ..exception import *
 
 from ddt import ddt, data, unpack
 from moto import mock_ec2, mock_autoscaling, mock_elb
@@ -641,7 +642,7 @@ class TestAsgard(unittest.TestCase):
     @mock_elb
     def test_deploy_elb_health_failed(self):
         ami_id = self._setup_for_deploy(completed_sample_task, completed_sample_task)
-        mock_function = "tubular.asgard.wait_for_healthy_elbs"
+        mock_function = "tubular.ec2.wait_for_healthy_elbs"
         with mock.patch(mock_function, side_effect=Exception("Never became healthy.")):
             self.assertRaises(Exception, deploy, ami_id)
 

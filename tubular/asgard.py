@@ -6,8 +6,8 @@ import time
 import traceback
 from requests.exceptions import ConnectionError
 from collections import Iterable
-from .exception import *
-from .ec2 import *
+import exception
+import ec2
 
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091")
@@ -70,7 +70,7 @@ def clusters_for_asgs(asgs):
     for cluster in cluster_json:
         if "autoScalingGroups" not in cluster or "cluster" not in cluster:
             msg = "Expected 'cluster' and 'autoScalingGroups' keys in dict: {}".format(cluster)
-            raise BackendDataError(msg)
+            raise exception.BackendDataError(msg)
 
         for asg in cluster['autoScalingGroups']:
             LOG.debug("Membership: {} in {}: {}".format(asg, asgs, asg in asgs))
@@ -105,7 +105,7 @@ def asgs_for_cluster(cluster):
     except (KeyError,TypeError) as e:
         msg = "Expected a list of dicts with an 'autoScalingGroupName' attribute. " \
               "Got: {}".format(asgs)
-        raise BackendDataError(msg)
+        raise exception.BackendDataError(msg)
 
     return asg_names
 
@@ -135,7 +135,7 @@ def wait_for_task_completion(task_url, timeout):
             return response.json()
         time.sleep(1)
 
-    raise TimeoutException("Timedout while waiting for task {}".format(task_url))
+    raise exception.TimeoutException("Timedout while waiting for task {}".format(task_url))
 
 def new_asg(cluster, ami_id):
     """
@@ -149,7 +149,8 @@ def new_asg(cluster, ami_id):
         str: The name of the new ASG.
 
     Raises:
-        TimeoutException: When the task to bring up the new ASG fails.
+        TimeoutException: When the task to bring up the new ASG times out.
+        BackendError: When the task to bring up the new ASG fails.
     """
     payload = {
         "name": cluster,
@@ -163,7 +164,7 @@ def new_asg(cluster, ami_id):
     response = wait_for_task_completion(response.url, DEFAULT_WAIT_TIMEOUT)
     if response['status'] == 'failed':
         msg = "Failure during new ASG creation. Task Log: \n{}".format(response['log'])
-        raise BackendError(msg)
+        raise exception.BackendError(msg)
 
     # Potential Race condition if multiple people are making ASGs for the same cluster
     # Return the name of the newest asg
@@ -192,7 +193,7 @@ def enable_asg(asg):
     task_status = wait_for_task_completion(task_url, 301)
     if task_status['status'] == 'failed':
         msg = "Failure while enabling ASG. Task Log: \n{}".format(task_status['log'])
-        raise BackendError(msg)
+        raise exception.BackendError(msg)
 
 def disable_asg(asg):
     """
@@ -204,18 +205,18 @@ def disable_asg(asg):
     task_status = wait_for_task_completion(task_url, 300)
     if task_status['status'] == 'failed':
         msg = "Failure while disabling ASG. Task Log: \n{}".format(task_status['log'])
-        raise BackendError(msg)
+        raise exception.BackendError(msg)
 
 def deploy(ami_id):
     LOG.info( "Processing request to deploy {}.".format(ami_id))
 
     # Pull the EDC from the AMI ID
-    edc = edc_for_ami(ami_id)
+    edc = ec2.edc_for_ami(ami_id)
 
     LOG.info("Looking for which clusters to deploy to.")
 
     # These are all autoscaling groups that match the tags we care about.
-    asgs = asgs_for_edc(edc)
+    asgs = ec2.asgs_for_edc(edc)
 
     # All the ASGs except for the new one
     # we are about to make.
@@ -233,7 +234,7 @@ def deploy(ami_id):
             raise
 
     LOG.info("New ASGs: {}".format(new_asgs.values()))
-    wait_for_in_service(new_asgs.values(), 300)
+    ec2.wait_for_in_service(new_asgs.values(), 300)
     LOG.info("ASG instances are healthy. Enabling Traffic.")
 
     elbs_to_monitor = []
@@ -254,7 +255,7 @@ def deploy(ami_id):
 
     # Wait for all instances to be in service in all ELBs
     try:
-        wait_for_healthy_elbs(elbs_to_monitor, 600)
+        ec2.wait_for_healthy_elbs(elbs_to_monitor, 600)
     except:
         LOG.info(" Some instances are failing ELB health checks. "
               "Pulling out the new ASG.")
