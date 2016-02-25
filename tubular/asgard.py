@@ -12,7 +12,8 @@ import ec2
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091")
 ASGARD_API_TOKEN = {"asgardApiToken": os.environ.get("ASGARD_API_TOKEN", "dummy-token")}
-DEFAULT_WAIT_TIMEOUT = int(os.environ.get("DEFAULT_WAIT_TIMEOUT", 300))
+ASGARD_WAIT_TIMEOUT = int(os.environ.get("ASGARD_WAIT_TIMEOUT", 300))
+REQUESTS_TIMEOUT = os.environ.get("REQUESTS_TIMEOUT", 1)
 
 CLUSTER_LIST_URL= "{}/cluster/list.json".format(ASGARD_API_ENDPOINT)
 ASG_ACTIVATE_URL= "{}/cluster/activate".format(ASGARD_API_ENDPOINT)
@@ -60,7 +61,7 @@ def clusters_for_asgs(asgs):
     request = requests.Request('GET', CLUSTER_LIST_URL, params=ASGARD_API_TOKEN)
     url = request.prepare().url
     LOG.debug("Getting Cluster List from: {}".format(url))
-    response = requests.get(CLUSTER_LIST_URL, params=ASGARD_API_TOKEN)
+    response = requests.get(CLUSTER_LIST_URL, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
     cluster_json = response.json()
 
     # need this to be a list so that we can test membership.
@@ -95,7 +96,7 @@ def asgs_for_cluster(cluster):
 
     LOG.debug("URL: {}".format(CLUSTER_INFO_URL.format(cluster)))
     url = CLUSTER_INFO_URL.format(cluster)
-    response = requests.get(url, params=ASGARD_API_TOKEN)
+    response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
 
     LOG.debug("ASGs for Cluster: {}".format(response.text))
     asgs = response.json()
@@ -129,7 +130,7 @@ def wait_for_task_completion(task_url, timeout):
     LOG.debug("Task URL: {}".format(task_url))
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
-        response = requests.get(task_url, params=ASGARD_API_TOKEN)
+        response = requests.get(task_url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
         status = response.json()['status']
         if status == 'completed' or status == 'failed':
             return response.json()
@@ -157,11 +158,12 @@ def new_asg(cluster, ami_id):
         "imageId": ami_id,
     }
 
-    response = requests.post(NEW_ASG_URL, data=payload, params=ASGARD_API_TOKEN)
+    response = requests.post(NEW_ASG_URL,
+            data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
     LOG.debug("Sent request to create new ASG in Cluster({}).".format(cluster))
 
     #TODO: Make sure response is not an error.
-    response = wait_for_task_completion(response.url, DEFAULT_WAIT_TIMEOUT)
+    response = wait_for_task_completion(response.url, ASGARD_WAIT_TIMEOUT)
     if response['status'] == 'failed':
         msg = "Failure during new ASG creation. Task Log: \n{}".format(response['log'])
         raise exception.BackendError(msg)
@@ -188,7 +190,8 @@ def enable_asg(asg):
         TimeoutException: If the task to enable the ASG fails.
     """
     payload = { "name": asg }
-    response = requests.post(ASG_ACTIVATE_URL, data=payload, params=ASGARD_API_TOKEN)
+    response = requests.post(ASG_ACTIVATE_URL,
+            data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
     task_url = response.url
     task_status = wait_for_task_completion(task_url, 301)
     if task_status['status'] == 'failed':
@@ -200,7 +203,8 @@ def disable_asg(asg):
     curl -d "name=helloworld-example-v004" http://asgardprod/us-east-1/cluster/deactivate
     """
     payload = { "name": asg }
-    response = requests.post(ASG_DEACTIVATE_URL, data=payload, params=ASGARD_API_TOKEN)
+    response = requests.post(ASG_DEACTIVATE_URL,
+            data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
     task_url = response.url
     task_status = wait_for_task_completion(task_url, 300)
     if task_status['status'] == 'failed':
@@ -241,7 +245,8 @@ def deploy(ami_id):
     for cluster, asg in new_asgs.iteritems():
         try:
             enable_asg(asg)
-            response = requests.get(ASG_INFO_URL.format(asg), params=ASGARD_API_TOKEN)
+            response = requests.get(ASG_INFO_URL.format(asg),
+                    params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
             elbs = response.json()['group']['loadBalancerNames']
             elbs_to_monitor.extend(elbs)
         except:
