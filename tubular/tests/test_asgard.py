@@ -216,7 +216,7 @@ sample_worker_asg_info = """
 class TestAsgard(unittest.TestCase):
     _multiprocess_can_split_ = True
 
-    def test_bad_endpoint(self):
+    def test_bad_clusters_endpoint(self):
         relevant_asgs = []
         self.assertRaises(ConnectionError, clusters_for_asgs, relevant_asgs)
 
@@ -273,7 +273,7 @@ class TestAsgard(unittest.TestCase):
         expected_asgs = [ "loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059" ]
         self.assertEqual(expected_asgs, asgs_for_cluster(cluster))
 
-    def test_bad_endpoint(self):
+    def test_bad_asgs_endpoint(self):
         cluster = "Fake cluster"
         self.assertRaises(ConnectionError, asgs_for_cluster, cluster)
 
@@ -289,6 +289,32 @@ class TestAsgard(unittest.TestCase):
             content_type="application/json")
 
         self.assertRaises(BackendDataError, asgs_for_cluster, cluster)
+
+    @httpretty.activate
+    def test_elbs_for_asg(self):
+        asg_info_url = ASG_INFO_URL.format("test_asg")
+        httpretty.register_uri(
+            httpretty.GET,
+            asg_info_url,
+            body=sample_asg_info,
+            content_type="application/json")
+
+        self.assertEqual( elbs_for_asg("test_asg"), [ "app_elb" ])
+
+    @httpretty.activate
+    def test_elbs_for_asg_bad_data(self):
+        asg_info_url = ASG_INFO_URL.format("test_asg")
+        httpretty.register_uri(
+            httpretty.GET,
+            asg_info_url,
+            body=bad_cluster_json1,
+            content_type="application/json")
+
+        self.assertRaises(BackendDataError, elbs_for_asg, "test_asg")
+
+    def test_bad_asg_info_endpoint(self):
+        asg = "fake_asg"
+        self.assertRaises(ConnectionError, elbs_for_asg, "fake_asg")
 
     @httpretty.activate
     def test_task_completion(self):

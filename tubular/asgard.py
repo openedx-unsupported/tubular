@@ -211,6 +211,19 @@ def disable_asg(asg):
         msg = "Failure while disabling ASG. Task Log: \n{}".format(task_status['log'])
         raise exception.BackendError(msg)
 
+def elbs_for_asg(asg):
+    response = requests.get(ASG_INFO_URL.format(asg),
+        params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
+    try:
+        resp_json = response.json()
+        elbs = resp_json['group']['loadBalancerNames']
+    except (KeyError, TypeError) as e:
+        msg = "Expected a dict with path ['group']['loadbalancerNames']. " \
+            "Got: {}".format(resp_json)
+        raise exception.BackendDataError(msg)
+    return elbs
+
+
 def deploy(ami_id):
     LOG.info( "Processing request to deploy {}.".format(ami_id))
 
@@ -243,13 +256,10 @@ def deploy(ami_id):
     for cluster, asg in new_asgs.iteritems():
         try:
             enable_asg(asg)
-            response = requests.get(ASG_INFO_URL.format(asg),
-                    params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
-            elbs = response.json()['group']['loadBalancerNames']
-            elbs_to_monitor.extend(elbs)
+            elbs_to_monitor.extend(elbs_for_asg(asg))
         except:
-            LOG.error(traceback.format_exc())
             LOG.error("Something went wrong with {}, disabling traffic.".format(asg))
+            LOG.error(traceback.format_exc())
             disable_asg(asg)
             raise
 
