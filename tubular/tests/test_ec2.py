@@ -1,8 +1,9 @@
 from collections import Iterable
 
+import boto
+import mock
 import unittest
 
-import boto
 from boto.ec2.autoscale.launchconfig import LaunchConfiguration
 from boto.ec2.autoscale.group import AutoScalingGroup
 from boto.ec2.autoscale import Tag
@@ -10,12 +11,14 @@ from boto.ec2.autoscale import Tag
 from ddt import ddt, data, file_data, unpack
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
+from .test_utils import create_asg_with_tags, create_elb
 from ..ec2 import *
-from ..exception import ImageNotFoundException, MissingTagException
+from ..exception import *
 from ..utils import EDC
 
 @ddt
 class TestEC2(unittest.TestCase):
+    _multiprocess_can_split_ = True
 
     @mock_ec2
     def test_edc_for_ami_bad_id(self):
@@ -57,7 +60,7 @@ class TestEC2(unittest.TestCase):
         edc = EDC("foo","bar","baz")
 
         for name, tags in asgs.iteritems():
-            self._create_asg_with_tags(name, tags)
+            create_asg_with_tags(name, tags)
 
         asgs = asgs_for_edc(edc)
         self.assertIsInstance(asgs, Iterable)
@@ -66,33 +69,53 @@ class TestEC2(unittest.TestCase):
         num_asgs = len(asgs)
         self.assertEquals(num_asgs, expected_returned)
 
-    def _create_asg_with_tags(self, asg_name, tags):
-        tag_list = [ Tag(key=k, value=v) for k,v in tags.iteritems() ]
+    @mock_autoscaling
+    @mock_ec2
+    def test_wait_for_in_service(self):
+        create_asg_with_tags("healthy_asg", {"foo": "bar"})
+        self.assertEqual(None, wait_for_in_service(["healthy_asg"], 2))
 
-        # Create asgs
-        elb_conn = boto.ec2.elb.connect_to_region('us-east-1')
+    @mock_autoscaling
+    @mock_ec2
+    def test_wait_for_in_service_lifecycle_failure(self):
+        asg_name = "unhealthy_asg"
+        create_asg_with_tags(asg_name, {"foo": "bar"})
+        autoscale = boto.connect_autoscale()
+        asgs = autoscale.get_all_groups([asg_name])
+        asg = asgs[0]
+        asg.instances[0].lifecycle_state = "NotInService"
+        with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs) as mock_connection:
+            self.assertRaises(TimeoutException, wait_for_in_service,[asg_name], 2)
 
-        conn = boto.ec2.autoscale.connect_to_region('us-east-1')
-        config = LaunchConfiguration(
-            name='{}_lc'.format(asg_name),
-            image_id='ami-abcd1234',
-            instance_type='t2.medium',
-        )
-        conn.create_launch_configuration(config)
 
-        group = AutoScalingGroup(
-            name=asg_name,
-            availability_zones=['us-east-1c', 'us-east-1b'],
-            default_cooldown=60,
-            desired_capacity=2,
-            health_check_period=100,
-            health_check_type="EC2",
-            max_size=2,
-            min_size=2,
-            launch_config=config,
-            placement_group="test_placement",
-            vpc_zone_identifier='subnet-1234abcd',
-            termination_policies=["OldestInstance", "NewestInstance"],
-            tags=tag_list,
-        )
-        conn.create_auto_scaling_group(group)
+    @mock_autoscaling
+    @mock_ec2
+    def test_wait_for_in_service_health_failure(self):
+        asg_name = "unhealthy_asg"
+        create_asg_with_tags(asg_name, {"foo": "bar"})
+        autoscale = boto.connect_autoscale()
+        asgs = autoscale.get_all_groups([asg_name])
+        asg = asgs[0]
+        asg.instances[0].health_status = "Unhealthy"
+        with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs) as mock_connection:
+            self.assertRaises(TimeoutException, wait_for_in_service,[asg_name], 2)
+
+
+    @mock_elb
+    @mock_ec2
+    def test_wait_for_healthy_elbs(self):
+        elb_name = "healthy-lb"
+        create_elb(elb_name)
+        self.assertEqual(None, wait_for_healthy_elbs([elb_name], 2))
+
+    @mock_elb
+    @mock_ec2
+    def test_wait_for_healthy_elbs_failure(self):
+        elb_name = "unhealthy-lb"
+        lb = create_elb(elb_name)
+        # Make one of the instances un-healthy.
+        instances = lb.get_instance_health()
+        instances[0].state = "NotInService"
+        mock_function = "boto.ec2.elb.loadbalancer.LoadBalancer.get_instance_health"
+        with mock.patch(mock_function, return_value=instances) as mock_call:
+            self.assertRaises(TimeoutException, wait_for_healthy_elbs, [elb_name], 2)
