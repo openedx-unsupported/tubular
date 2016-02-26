@@ -10,10 +10,11 @@ import exception
 import ec2
 
 
-ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091")
+ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091/us-east-1")
 ASGARD_API_TOKEN = {"asgardApiToken": os.environ.get("ASGARD_API_TOKEN", "dummy-token")}
 ASGARD_WAIT_TIMEOUT = int(os.environ.get("ASGARD_WAIT_TIMEOUT", 300))
-REQUESTS_TIMEOUT = os.environ.get("REQUESTS_TIMEOUT", 1)
+REQUESTS_TIMEOUT = os.environ.get("REQUESTS_TIMEOUT", 10)
+
 
 CLUSTER_LIST_URL= "{}/cluster/list.json".format(ASGARD_API_ENDPOINT)
 ASG_ACTIVATE_URL= "{}/cluster/activate".format(ASGARD_API_ENDPOINT)
@@ -279,7 +280,8 @@ def deploy(ami_id):
 
     LOG.info("New instances have succeeded in passing the healthchecks. "
           "Disabling old ASGs.")
-    for cluster,asg in existing_clusters.iteritems():
-        disable_asg(asg)
+    for cluster,asgs in existing_clusters.iteritems():
+        for asg in asgs:
+            disable_asg(asg)
 
     LOG.info("Woot! Deploy Done!")
