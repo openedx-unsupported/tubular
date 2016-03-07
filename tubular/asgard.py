@@ -226,6 +226,19 @@ def elbs_for_asg(asg):
 
 
 def deploy(ami_id):
+    """
+    Deploys an AMI to AWS EC2
+
+    Arguments:
+        ami_id(str): AWS AMI ID
+
+    Returns:
+        None
+
+    Raises:
+        TimeoutException: When the task to bring up the new instance times out.
+        BackendError: When the task to bring up the new instance fails.
+    """
     LOG.info( "Processing request to deploy {}.".format(ami_id))
 
     # Pull the EDC from the AMI ID
