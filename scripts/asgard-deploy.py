@@ -7,7 +7,7 @@ import tubular.asgard as asgard
 logging.basicConfig(stream=sys.stdout, level=logging.ERROR)
 
 @click.command()
-@click.option('--ami_id', help='The ami-id to deploy', required=True)
+@click.option('--ami_id', envvar='AMI_ID', help='The ami-id to deploy', required=True)
 def deploy(ami_id):
     try:
         asgard.deploy(ami_id)
