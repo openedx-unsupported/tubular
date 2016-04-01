@@ -1,2 +1,2 @@
 # tubular
-A repo for edX release pipeline related scripting.
+A repo for edX release pipeline related scripts.
