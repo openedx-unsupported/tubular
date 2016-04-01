@@ -1,5 +1,7 @@
 from setuptools import setup
+import os
 
+PATH = os.path.dirname(os.path.abspath(__file__)) + "/tubular/scripts/"
 
 setup(
     name='tubular',
@@ -11,5 +13,5 @@ setup(
         'click>=6.2',
         'requests>=2.9',
     ],
-    scripts=['scripts/asgard-deploy.py']
+    scripts=[os.path.join(dp, f) for dp, dn, filenames in os.walk(PATH) for f in filenames if os.path.splitext(f)[1] == '.py' and not f == '__init__.py']
 )
