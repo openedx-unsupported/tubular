@@ -4,7 +4,7 @@ import logging
 import click
 import tubular.asgard as asgard
 
-logging.basicConfig(stream=sys.stdout, level=logging.ERROR)
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 @click.command()
 @click.option('--ami_id', envvar='AMI_ID', help='The ami-id to deploy', required=True)
