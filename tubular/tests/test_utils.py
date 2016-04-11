@@ -1,5 +1,6 @@
 import boto
 
+from copy import copy
 from boto.ec2.autoscale.launchconfig import LaunchConfiguration
 from boto.ec2.autoscale.group import AutoScalingGroup
 from boto.ec2.autoscale import Tag
@@ -58,3 +59,21 @@ def create_elb(elb_name):
     lb.register_instances(instance_ids)
     return lb
 
+
+def clone_elb_instances_with_state(elb, state):
+    """
+        Shallow clone an ELB and gives the instances inside the state provided
+
+        Arguments:
+            elb(iterable): The ELB containing the instances
+            state(string): The state the instances inside the ELB should have. Should be either "OutOfService"
+                            or "InService"
+
+        Returns: an elb object
+    """
+    elb_copy = copy(elb)
+    for idx, instance in enumerate(elb):
+        elb_copy[idx] = copy(instance)
+        elb_copy[idx].state = state
+
+    return elb_copy
