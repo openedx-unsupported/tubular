@@ -14,16 +14,16 @@ TUBULAR_MATERIAL_PATH=/var/lib/go-agent/pipelines/$(GO_PIPELINE_NAME)/tubular
 tubular_install:
 	@echo "Installing tubular requirements..."
 	cd $(TUBULAR_MATERIAL_PATH)
-	ifeq ($(strip $(TUBULAR_HASH)),)
-		# If TUBULAR_HASH is empty, check for a branch.
-		ifneq ($(strip $(TUBULAR_BRANCH)),)
-			# If TUBULAR_BRANCH is non-empty, check out the branch.
-			git checkout -t origin/$(TUBULAR_BRANCH)
-		endif
-	else
-		# TUBULAR_HASH was non-empty, so update repo to that hash.
-		git reset $(TUBULAR_HASH)
-	endif
+ifeq ($(strip $(TUBULAR_HASH)),)
+# If TUBULAR_HASH is empty, check for a branch.
+ifneq ($(strip $(TUBULAR_BRANCH)),)
+# If TUBULAR_BRANCH is non-empty, check out the branch.
+	git checkout -t origin/$(TUBULAR_BRANCH)
+endif
+else
+# TUBULAR_HASH was non-empty, so update repo to that hash.
+	git reset $(TUBULAR_HASH)
+endif
 	pip install -r requirements.txt
 	pip install .
 
@@ -31,11 +31,11 @@ create_venv:
 	@echo "Making virtualenv..."
 	cd ~
 	virtualenv $(VENV_NAME)
-	source $(VENV_NAME)/bin/activate
+	$(shell source $(VENV_NAME)/bin/activate)
 
 destroy_venv:
 	@echo "Destroying virtualenv..."
-	deactivate
+	$(shell deactivate)
 	cd ~
 	rm -rf $(VENV_NAME)
 
