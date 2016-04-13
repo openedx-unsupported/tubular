@@ -27,20 +27,21 @@ endif
 	pip install -r requirements.txt
 	pip install .
 
-create_venv:
-	@echo "Making virtualenv..."
-	cd ~
-	virtualenv $(VENV_NAME)
-	$(shell source $(VENV_NAME)/bin/activate)
-
 destroy_venv:
 	@echo "Destroying virtualenv..."
 	$(shell deactivate)
 	cd ~
 	rm -rf $(VENV_NAME)
 
-install_venv: create_venv tubular_install
-	@echo "make install_venv..."
+ifndef IN_VENV
+install_venv:
+	@echo "Making virtualenv..."
+	cd ~
+	virtualenv $(VENV_NAME)
+	./source_venv.sh $(MAKE) install_venv
+else
+install_venv: tubular_install
+endif
 
 uninstall_venv: destroy_venv
 	@echo "make uninstall_venv..."
