@@ -1,17 +1,12 @@
 from collections import Iterable
 
-import boto
 import mock
 import unittest
-
-from boto.ec2.autoscale.launchconfig import LaunchConfiguration
-from boto.ec2.autoscale.group import AutoScalingGroup
-from boto.ec2.autoscale import Tag
 
 from ddt import ddt, data, file_data, unpack
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
-from .test_utils import create_asg_with_tags, create_elb
+from .test_utils import create_asg_with_tags, create_elb, clone_elb_instances_with_state
 from ..ec2 import *
 from ..exception import *
 from ..utils import EDC
@@ -104,9 +99,31 @@ class TestEC2(unittest.TestCase):
     @mock_elb
     @mock_ec2
     def test_wait_for_healthy_elbs(self):
-        elb_name = "healthy-lb"
-        create_elb(elb_name)
-        self.assertEqual(None, wait_for_healthy_elbs([elb_name], 2))
+        first_elb_name = "healthy-lb-1"
+        second_elb_name = "healthy-lb-2"
+        first_elb = create_elb(first_elb_name)
+        second_elb = create_elb(second_elb_name)
+        mock_function = "boto.ec2.elb.loadbalancer.LoadBalancer.get_instance_health"
+
+        # Setup a side effect to simulate how a instances may come online in the load balancer.
+        # 2 load balancers * 2 instances per * 3 iterations (They way these instances come online in to the load
+        # balancer will ensure that the ELB will be removed from the list on the second iteration, then the second ELB
+        # is removed on the 3rd iteation.
+        first_elb_instances = first_elb.get_instance_health()
+        second_elb_instances = second_elb.get_instance_health()
+
+        return_vals = [
+                clone_elb_instances_with_state(first_elb_instances, "OutOfService"),
+                clone_elb_instances_with_state(second_elb_instances, "OutOfService")
+        ]
+        return_vals += [
+            clone_elb_instances_with_state(first_elb_instances, "InService"),
+            clone_elb_instances_with_state(second_elb_instances, "OutOfService")
+        ]
+        return_vals += [clone_elb_instances_with_state(second_elb_instances, "InService")]
+
+        with mock.patch(mock_function, side_effect=return_vals) as mock_call:
+            self.assertEqual(None, wait_for_healthy_elbs([first_elb_name, second_elb_name], 3))
 
     @mock_elb
     @mock_ec2
@@ -115,7 +132,7 @@ class TestEC2(unittest.TestCase):
         lb = create_elb(elb_name)
         # Make one of the instances un-healthy.
         instances = lb.get_instance_health()
-        instances[0].state = "NotInService"
+        instances[0].state = "OutOfService"
         mock_function = "boto.ec2.elb.loadbalancer.LoadBalancer.get_instance_health"
         with mock.patch(mock_function, return_value=instances) as mock_call:
             self.assertRaises(TimeoutException, wait_for_healthy_elbs, [elb_name], 2)

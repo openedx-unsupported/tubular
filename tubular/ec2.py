@@ -89,6 +89,7 @@ def asgs_for_edc(edc):
             if group_edc == edc:
                 yield group.name
 
+
 def wait_for_in_service(all_asgs, timeout):
     """
     Wait for the ASG and all instances in them to be healthy
@@ -133,6 +134,7 @@ def wait_for_in_service(all_asgs, timeout):
 
     raise TimeoutException("Some instances in the following ASGs never became healthy: {}".format(asgs_left_to_check))
 
+
 def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     """
     Wait for all instances in all ELBs listed to be healthy. Raise a
@@ -152,8 +154,9 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     elbs_left = list(elbs_to_monitor)
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
-        elbs = boto_elb.get_all_load_balancers(elbs_to_monitor)
+        elbs = boto_elb.get_all_load_balancers(elbs_left)
         for elb in elbs:
+            LOG.info("Checking health for ELB: {}".format(elb.name))
             all_healthy = True
             for instance in elb.get_instance_health():
                 if instance.state != 'InService':
@@ -161,9 +164,12 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
                     break
 
             if all_healthy:
+                LOG.info("All instances are healthy, remove {} from list of load balancers {}.".format(elb.name, elbs_left))
                 elbs_left.remove(elb.name)
 
+        LOG.info("Number of load balancers remaining with unhealthy instances: {}".format(len(elbs_left)))
         if len(elbs_left) == 0:
+            LOG.info("All instances in all ELBs are healthy, returning.")
             return
         time.sleep(1)
 
