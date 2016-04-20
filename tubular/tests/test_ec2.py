@@ -39,7 +39,7 @@ class TestEC2(unittest.TestCase):
         ami = ec2.get_all_images(ami_id)[0]
         ami.add_tag("environment", "foo")
         ami.add_tag("deployment", "bar")
-        ami.add_tag("cluster", "baz")
+        ami.add_tag("play", "baz")
 
         actual_edc = edc_for_ami(ami_id)
         expected_edc = EDC("foo", "bar", "baz")

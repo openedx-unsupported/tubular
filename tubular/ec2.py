@@ -40,7 +40,7 @@ def edc_for_ami(ami_id):
     tags = ami.tags
 
     try:
-        edc = EDC(tags['environment'], tags['deployment'], tags['cluster'])
+        edc = EDC(tags['environment'], tags['deployment'], tags['play'])
     except KeyError as ke:
         missing_key = ke.args[0]
         msg = "{} is missing the {} tag.".format(ami_id, missing_key)
@@ -52,14 +52,14 @@ def edc_for_ami(ami_id):
 
 def asgs_for_edc(edc):
     """
-    All AutoScalingGroups that have the tags of this cluster.
+    All AutoScalingGroups that have the tags of this play.
 
-    A cluster is made up of many auto_scaling groups.
+    A play is made up of many auto_scaling groups.
 
     Arguments:
         EDC Named Tuple: The edc tags for the ASGs you want.
     Returns:
-        iterable: An iterable of cluster names that match the EDC.
+        iterable: An iterable of play names that match the EDC.
     eg.
 
      [
@@ -78,13 +78,13 @@ def asgs_for_edc(edc):
     for group in all_groups:
         tags = { tag.key: tag.value for tag in group.tags }
         LOG.debug("Tags for asg {}: {}".format(group.name, tags))
-        edc_keys = ['environment', 'deployment', 'cluster']
+        edc_keys = ['environment', 'deployment', 'play']
         if all([tag in tags for tag in edc_keys]):
             group_env = tags['environment']
             group_deployment = tags['deployment']
-            group_cluster = tags['cluster']
+            group_play = tags['play']
 
-            group_edc = EDC(group_env, group_deployment, group_cluster)
+            group_edc = EDC(group_env, group_deployment, group_play)
 
             if group_edc == edc:
                 yield group.name
