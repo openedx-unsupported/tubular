@@ -525,12 +525,12 @@ class TestAsgard(unittest.TestCase):
         ami = ec2.get_all_images(ami_id)[0]
         ami.add_tag("environment", "foo")
         ami.add_tag("deployment", "bar")
-        ami.add_tag("cluster", "baz")
+        ami.add_tag("play", "baz")
 
         # Make the current ASGs
         asg_tags = { "environment": "foo",
             "deployment": "bar",
-            "cluster": "baz",
+            "play": "baz",
         }
 
         elb_name = "app_elb"

@@ -5,7 +5,7 @@ when we deploy using asgard.
 import boto
 import logging
 import time
-from utils import EDC
+from utils import EDP
 from exception import (
     ImageNotFoundException,
     MissingTagException,
@@ -17,19 +17,19 @@ from datetime import datetime, timedelta
 LOG = logging.getLogger(__name__)
 
 
-def edc_for_ami(ami_id):
+def edp_for_ami(ami_id):
     """
-    Look up the EDC tags for an AMI.
+    Look up the EDP tags for an AMI.
 
     Arguments:
         ami_id (str): An AMI Id.
     Returns:
-        EDC Named Tuple: The EDC tags for this AMI.
+        EDP Named Tuple: The EDP tags for this AMI.
     Raises:
         ImageNotFoundException: No image found with this ami ID.
         MissingTagException: AMI is missing one or more of the expected tags.
     """
-    LOG.debug("Looking up edc for {}".format(ami_id))
+    LOG.debug("Looking up edp for {}".format(ami_id))
     ec2 = boto.connect_ec2()
 
     try:
@@ -40,26 +40,26 @@ def edc_for_ami(ami_id):
     tags = ami.tags
 
     try:
-        edc = EDC(tags['environment'], tags['deployment'], tags['cluster'])
+        edp = EDP(tags['environment'], tags['deployment'], tags['play'])
     except KeyError as ke:
         missing_key = ke.args[0]
         msg = "{} is missing the {} tag.".format(ami_id, missing_key)
         raise MissingTagException(msg)
 
-    LOG.debug("Got EDC for {}: {}".format(ami_id, edc))
-    return edc
+    LOG.debug("Got EDP for {}: {}".format(ami_id, edp))
+    return edp
 
 
-def asgs_for_edc(edc):
+def asgs_for_edp(edp):
     """
-    All AutoScalingGroups that have the tags of this cluster.
+    All AutoScalingGroups that have the tags of this play.
 
-    A cluster is made up of many auto_scaling groups.
+    A play is made up of many auto_scaling groups.
 
     Arguments:
-        EDC Named Tuple: The edc tags for the ASGs you want.
+        EDP Named Tuple: The edp tags for the ASGs you want.
     Returns:
-        iterable: An iterable of cluster names that match the EDC.
+        iterable: An iterable of play names that match the EDP.
     eg.
 
      [
@@ -78,15 +78,15 @@ def asgs_for_edc(edc):
     for group in all_groups:
         tags = { tag.key: tag.value for tag in group.tags }
         LOG.debug("Tags for asg {}: {}".format(group.name, tags))
-        edc_keys = ['environment', 'deployment', 'cluster']
-        if all([tag in tags for tag in edc_keys]):
+        edp_keys = ['environment', 'deployment', 'play']
+        if all([tag in tags for tag in edp_keys]):
             group_env = tags['environment']
             group_deployment = tags['deployment']
-            group_cluster = tags['cluster']
+            group_play = tags['play']
 
-            group_edc = EDC(group_env, group_deployment, group_cluster)
+            group_edp = EDP(group_env, group_deployment, group_play)
 
-            if group_edc == edc:
+            if group_edp == edp:
                 yield group.name
 
 

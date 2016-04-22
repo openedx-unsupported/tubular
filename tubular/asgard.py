@@ -241,11 +241,11 @@ def deploy(ami_id):
     """
     LOG.info( "Processing request to deploy {}.".format(ami_id))
 
-    # Pull the EDC from the AMI ID
-    edc = ec2.edc_for_ami(ami_id)
+    # Pull the EDP from the AMI ID
+    edp = ec2.edp_for_ami(ami_id)
 
     # These are all autoscaling groups that match the tags we care about.
-    asgs = ec2.asgs_for_edc(edc)
+    asgs = ec2.asgs_for_edp(edp)
 
     # All the ASGs except for the new one
     # we are about to make.

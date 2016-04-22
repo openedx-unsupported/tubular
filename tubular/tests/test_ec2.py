@@ -9,29 +9,29 @@ from moto.ec2.utils import random_ami_id
 from .test_utils import create_asg_with_tags, create_elb, clone_elb_instances_with_state
 from ..ec2 import *
 from ..exception import *
-from ..utils import EDC
+from ..utils import EDP
 
 @ddt
 class TestEC2(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @mock_ec2
-    def test_edc_for_ami_bad_id(self):
+    def test_edp_for_ami_bad_id(self):
         # Bad AMI Id
-        self.assertRaises(ImageNotFoundException, edc_for_ami, "ami-fakeid")
+        self.assertRaises(ImageNotFoundException, edp_for_ami, "ami-fakeid")
 
     @mock_ec2
-    def test_edc_for_untagged_ami(self):
+    def test_edp_for_untagged_ami(self):
         ec2 = boto.connect_ec2()
         reservation = ec2.run_instances(random_ami_id())
         instance_id = reservation.instances[0].id
         ami_id = ec2.create_image(instance_id, "Existing AMI")
 
         # AMI Exists but isn't tagged.
-        self.assertRaises(MissingTagException, edc_for_ami, ami_id)
+        self.assertRaises(MissingTagException, edp_for_ami, ami_id)
 
     @mock_ec2
-    def test_edc2_for_tagged_ami(self):
+    def test_edp2_for_tagged_ami(self):
         ec2 = boto.connect_ec2()
         reservation = ec2.run_instances(random_ami_id())
         instance_id = reservation.instances[0].id
@@ -39,25 +39,25 @@ class TestEC2(unittest.TestCase):
         ami = ec2.get_all_images(ami_id)[0]
         ami.add_tag("environment", "foo")
         ami.add_tag("deployment", "bar")
-        ami.add_tag("cluster", "baz")
+        ami.add_tag("play", "baz")
 
-        actual_edc = edc_for_ami(ami_id)
-        expected_edc = EDC("foo", "bar", "baz")
+        actual_edp = edp_for_ami(ami_id)
+        expected_edp = EDP("foo", "bar", "baz")
 
         # Happy Path
-        self.assertEqual(expected_edc, actual_edc)
+        self.assertEqual(expected_edp, actual_edp)
 
     @mock_autoscaling
-    @file_data("test_asgs_for_edc_data.json")
-    def test_asgs_for_edc(self, params):
+    @file_data("test_asgs_for_edp_data.json")
+    def test_asgs_for_edp(self, params):
         asgs, expected_returned = params
 
-        edc = EDC("foo","bar","baz")
+        edp = EDP("foo","bar","baz")
 
         for name, tags in asgs.iteritems():
             create_asg_with_tags(name, tags)
 
-        asgs = asgs_for_edc(edc)
+        asgs = asgs_for_edp(edp)
         self.assertIsInstance(asgs, Iterable)
 
         asgs = list(asgs)

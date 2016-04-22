@@ -14,7 +14,7 @@
       "untagged_asg": {},
       "partially_tagged_asg": {
         "environment": "foo",
-        "cluster": "baz"
+        "play": "baz"
       }
     },
     0
@@ -24,12 +24,12 @@
       "untagged_asg": {},
       "partially_tagged_asg": {
         "environment": "foo",
-        "cluster": "baz"
+        "play": "baz"
       },
       "partially_tagged_asg": {
         "environment": "foo",
         "deployment": "bar",
-        "cluster": "baz"
+        "play": "baz"
       }
     },
     1

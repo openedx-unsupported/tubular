@@ -1,4 +1,4 @@
 from collections import namedtuple
 
-EDC = namedtuple('EDC', ['environment', 'deployment', 'cluster'])
+EDP = namedtuple('EDP', ['environment', 'deployment', 'play'])
 
