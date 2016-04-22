@@ -676,6 +676,13 @@ class TestAsgard(unittest.TestCase):
     @mock_autoscaling
     @mock_ec2
     @mock_elb
+    def test_deploy_asg_being_deleted(self):
+        ami_id = self._setup_for_deploy(
+
+    @httpretty.activate
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
     def test_deploy(self):
         ami_id = self._setup_for_deploy()
         self.assertEquals(None, deploy(ami_id))
