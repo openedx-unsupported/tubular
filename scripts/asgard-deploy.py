@@ -2,7 +2,13 @@
 import sys
 import logging
 import click
-import tubular.asgard as asgard
+from os import path
+
+# Add top-level module path to sys.path before importing tubular code.
+sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+
+from tubular import asgard
+
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
