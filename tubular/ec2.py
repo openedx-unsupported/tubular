@@ -90,6 +90,27 @@ def asgs_for_edp(edp):
                 yield group.name
 
 
+def is_asg_pending_delete(asg):
+    """
+    Checks status of an ASG, specifically if it is pending deletion.
+
+    Argument:
+        asg(str): ASG whose status should be checked.
+
+    Returns:
+        True if the asg is in the "pending delete" status, else return False.
+    """
+    autoscale = boto.connect_autoscale()
+    asg_group = autoscale.get_all_groups(asg)
+    if not asg_group:
+        return False
+    any_pending_delete = False
+    for instance in asg_group[0].instances:
+        if 'terminating' in instance.lifecycle_state.lower():
+            any_pending_delete = True
+    return any_pending_delete
+
+
 def wait_for_in_service(all_asgs, timeout):
     """
     Wait for the ASG and all instances in them to be healthy

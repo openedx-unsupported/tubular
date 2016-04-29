@@ -203,6 +203,9 @@ def disable_asg(asg):
     """
     curl -d "name=helloworld-example-v004" http://asgardprod/us-east-1/cluster/deactivate
     """
+    if ec2.is_asg_pending_delete(asg):
+        LOG.info("Not disabling old ASG {} due to its pending deletion.".format(asg))
+        return
     payload = { "name": asg }
     response = requests.post(ASG_DEACTIVATE_URL,
             data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
