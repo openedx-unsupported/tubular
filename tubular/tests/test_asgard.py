@@ -1,5 +1,6 @@
 import json
 import unittest
+import itertools
 
 import boto
 import mock
@@ -196,7 +197,7 @@ running_sample_task = """
 sample_asg_info = """
 {
   "group": {
-    "loadBalancerNames": 
+    "loadBalancerNames":
     [
       "app_elb"
     ]
@@ -449,41 +450,47 @@ class TestAsgard(unittest.TestCase):
         self.assertRaises(BackendError, new_asg,cluster,ami_id)
 
     @httpretty.activate
-    @data((ASG_ACTIVATE_URL, enable_asg), (ASG_DEACTIVATE_URL, disable_asg))
-    @unpack
-    def test_enable_disable_asg_success(self, endpoint_url, test_function):
-        task_url = "http://some.host/task/1234.json"
-        asg = "loadtest-edx-edxapp-v059"
+    @mock.patch('boto.connect_autoscale')
+    def test_disable_asg_pending_deletion(self, mock_connect_autoscale):
+        """
+        Tests an ASG disable that is cancelled due to the ASG pending deletion.
+        """
+        # Set up the mocking of the boto ASG calls.
+        mock_inst0 = mock.Mock()
+        mock_inst0.lifecycle_state = "InService"
+        mock_inst1 = mock.Mock()
+        mock_inst1.lifecycle_state = "Terminating:Wait"
+        mock_group0 = mock.Mock()
+        mock_group0.instances = [ mock_inst0, mock_inst1 ]
+        mock_get_all_groups = mock.Mock()
+        mock_get_all_groups.get_all_groups.return_value = [ mock_group0, mock.Mock() ]
+        mock_connect_autoscale.return_value = mock_get_all_groups
 
         def post_callback(request, uri, headers):
-            self.assertEqual('POST', request.method)
-            expected_request_body = { "name" : [asg] }
-            expected_querystring = { "asgardApiToken": ['dummy-token'] }
-
-            self.assertEqual(expected_request_body, request.parsed_body)
-            self.assertEqual(expected_querystring, request.querystring)
-            response_headers = { "Location": task_url.strip(".json"),
-                    "server": ASGARD_API_ENDPOINT}
-            response_body = ""
-            return (302, response_headers, response_body)
+            # If this POST callback gets called, test has failed.
+            raise Exception("POST called to disable ASG when it should have been skipped.")
 
         httpretty.register_uri(
-                httpretty.POST,
-                endpoint_url,
-                body=post_callback)
+            httpretty.POST,
+            ASG_DEACTIVATE_URL,
+            body=post_callback
+        )
 
-        httpretty.register_uri(
-            httpretty.GET,
-            task_url,
-            body=completed_sample_task,
-            content_type="application/json")
-
-        self.assertEquals(None, test_function(asg))
+        self.assertEquals(None, disable_asg("loadtest-edx-edxapp-v059"))
 
     @httpretty.activate
-    @data((ASG_ACTIVATE_URL, enable_asg), (ASG_DEACTIVATE_URL, disable_asg))
+    @mock_autoscaling
+    @mock_ec2
+    @data(*itertools.product(
+        ((ASG_ACTIVATE_URL, enable_asg), (ASG_DEACTIVATE_URL, disable_asg)),
+        (True, False)
+    ))
     @unpack
-    def test_enable_disable_asg_failure(self, endpoint_url, test_function):
+    def test_enable_disable_asg(self, url_and_function, success):
+        """
+        Tests enabling and disabling ASGs, with both success and failure.
+        """
+        endpoint_url, test_function = url_and_function
         task_url = "http://some.host/task/1234.json"
         asg = "loadtest-edx-edxapp-v059"
 
@@ -500,17 +507,22 @@ class TestAsgard(unittest.TestCase):
             return (302, response_headers, response_body)
 
         httpretty.register_uri(
-                httpretty.POST,
-                endpoint_url,
-                body=post_callback)
+            httpretty.POST,
+            endpoint_url,
+            body=post_callback
+        )
 
         httpretty.register_uri(
             httpretty.GET,
             task_url,
-            body=failed_sample_task,
-            content_type="application/json")
+            body=completed_sample_task if success else failed_sample_task,
+            content_type="application/json"
+        )
 
-        self.assertRaises(BackendError, test_function, asg)
+        if success:
+            self.assertEquals(None, test_function(asg))
+        else:
+            self.assertRaises(BackendError, test_function, asg)
 
     def _setup_for_deploy(self,
             new_asg_task_status=completed_sample_task,
@@ -539,7 +551,7 @@ class TestAsgard(unittest.TestCase):
         create_asg_with_tags("loadtest-edx-edxapp-v058", asg_tags, ami_id, [elb_name])
         create_asg_with_tags("loadtest-edx-edxapp-v059", asg_tags, ami_id, [elb_name])
         create_asg_with_tags("loadtest-edx-worker-v034", asg_tags, ami_id, [])
-  
+
         httpretty.register_uri(
             httpretty.GET,
             CLUSTER_LIST_URL,
