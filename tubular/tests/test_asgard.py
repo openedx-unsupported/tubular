@@ -477,6 +477,7 @@ class TestAsgard(unittest.TestCase):
         )
 
         self.assertEquals(None, disable_asg("loadtest-edx-edxapp-v059"))
+        mock_get_all_groups.get_all_groups.assert_called_with(["loadtest-edx-edxapp-v059"])
 
     @httpretty.activate
     @mock_autoscaling
