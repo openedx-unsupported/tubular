@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 import logging
+import traceback
 import click
 from os import path
 
@@ -18,6 +19,7 @@ def deploy(ami_id):
     try:
         asgard.deploy(ami_id)
     except Exception, e:
+        traceback.print_exc()
         click.secho("Error Deploying AMI: {0}.\nMessage: {1}".format(ami_id, e.message), fg='red')
         sys.exit(1)
 
