@@ -101,7 +101,7 @@ def is_asg_pending_delete(asg):
         True if the asg is in the "pending delete" status, else return False.
     """
     autoscale = boto.connect_autoscale()
-    asg_group = autoscale.get_all_groups(asg)
+    asg_group = autoscale.get_all_groups([asg])
     if not asg_group:
         return False
     any_pending_delete = False
