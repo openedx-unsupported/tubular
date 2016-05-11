@@ -90,6 +90,7 @@ valid_cluster_info_json = """
   }
 ]
 """
+
 asgs_for_edxapp_before = """
 [
   {
@@ -131,6 +132,57 @@ asgs_for_worker_after = """
     "autoScalingGroupName": "loadtest-edx-worker-v099"
   }
 ]
+"""
+
+deleted_asg_in_progress = """
+{{
+	"group": {{
+		"autoScalingGroupName": "{0}",
+		"loadBalancerNames":
+        [
+          "app_elb"
+        ],
+		"status": "deleted"
+	}}
+}}
+"""
+
+deleted_asg_not_in_progress = """
+{{
+	"group": {{
+		"autoScalingGroupName": "{0}",
+		"loadBalancerNames": [
+			"app_elb"
+		],
+		"status": null
+	}}
+}}
+"""
+
+disabled_asg = """
+{{
+	"group": {{
+		"autoScalingGroupName": "{0}",
+		"loadBalancerNames": [
+			"app_elb"
+		],
+		"status": null,
+		"launchingSuspended": true
+	}}
+}}
+"""
+
+enabled_asg = """
+{{
+	"group": {{
+		"autoScalingGroupName": "{0}",
+		"loadBalancerNames": [
+			"app_elb"
+		],
+		"status": null,
+		"launchingSuspended": false
+	}}
+}}
 """
 
 failed_sample_task = """
@@ -455,17 +507,6 @@ class TestAsgard(unittest.TestCase):
         """
         Tests an ASG disable that is cancelled due to the ASG pending deletion.
         """
-        # Set up the mocking of the boto ASG calls.
-        mock_inst0 = mock.Mock()
-        mock_inst0.lifecycle_state = "InService"
-        mock_inst1 = mock.Mock()
-        mock_inst1.lifecycle_state = "Terminating:Wait"
-        mock_group0 = mock.Mock()
-        mock_group0.instances = [ mock_inst0, mock_inst1 ]
-        mock_get_all_groups = mock.Mock()
-        mock_get_all_groups.get_all_groups.return_value = [ mock_group0, mock.Mock() ]
-        mock_connect_autoscale.return_value = mock_get_all_groups
-
         def post_callback(request, uri, headers):
             # If this POST callback gets called, test has failed.
             raise Exception("POST called to disable ASG when it should have been skipped.")
@@ -476,8 +517,11 @@ class TestAsgard(unittest.TestCase):
             body=post_callback
         )
 
-        self.assertEquals(None, disable_asg("loadtest-edx-edxapp-v059"))
-        mock_get_all_groups.get_all_groups.assert_called_with(["loadtest-edx-edxapp-v059"])
+        # setup the mocking of the is asg pending delete calls
+        asg = 'loadtest-edx-edxapp-v059'
+        self._mock_asgard_pending_delete([asg])
+
+        self.assertEquals(None, disable_asg(asg))
 
     @httpretty.activate
     @mock_autoscaling
@@ -519,6 +563,13 @@ class TestAsgard(unittest.TestCase):
             body=completed_sample_task if success else failed_sample_task,
             content_type="application/json"
         )
+
+        url = ASG_INFO_URL.format(asg)
+        httpretty.register_uri(
+            httpretty.GET,
+            url,
+            body=deleted_asg_not_in_progress.format(asg),
+            content_type="application/json")
 
         if success:
             self.assertEquals(None, test_function(asg))
@@ -639,21 +690,47 @@ class TestAsgard(unittest.TestCase):
             body=enable_asg_task_status,
             content_type="application/json")
 
-        asg_info_url = ASG_INFO_URL.format("loadtest-edx-edxapp-v099")
-        httpretty.register_uri(
-            httpretty.GET,
-            asg_info_url,
-            body=sample_asg_info,
-            content_type="application/json")
-
-        worker_asg_info_url = ASG_INFO_URL.format("loadtest-edx-worker-v099")
-        httpretty.register_uri(
-            httpretty.GET,
-            worker_asg_info_url,
-            body=sample_worker_asg_info,
-            content_type="application/json")
-
         return ami_id
+
+    def _mock_asgard_not_pending_delete(self, asgs, response_code=200):
+        """
+        This helper function will mock calls to the asgard api related to is_asg_pending_delete. The response will be
+        that this ASG is not pending delete.
+
+        Arguments:
+            asgs(list<str>): a list of the ASG names that are being checked
+
+        Returns:
+            None
+        """
+        for asg in asgs:
+            url = ASG_INFO_URL.format(asg)
+            httpretty.register_uri(
+                httpretty.GET,
+                url,
+                body=deleted_asg_not_in_progress.format(asg),
+                content_type="application/json",
+                status=response_code)
+
+    def _mock_asgard_pending_delete(self, asgs, response_code=200):
+        """
+        This helper function will mock calls to the asgard api related to is_asg_pending_delete.  The response will be
+        that this ASG is pending delete.
+
+        Arguments:
+            asgs(list<str>): a list of the ASG names that are being checked
+
+        Returns:
+            None
+        """
+        for asg in asgs:
+            url = ASG_INFO_URL.format(asg)
+            httpretty.register_uri(
+                httpretty.GET,
+                url,
+                body=deleted_asg_in_progress.format(asg),
+                content_type="application/json",
+                status=response_code)
 
     @httpretty.activate
     @mock_autoscaling
@@ -691,4 +768,104 @@ class TestAsgard(unittest.TestCase):
     @mock_elb
     def test_deploy(self):
         ami_id = self._setup_for_deploy()
-        self.assertEquals(None, deploy(ami_id))
+        asgs = ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059", "loadtest-edx-edxapp-v099",
+                "loadtest-edx-worker-v034", "loadtest-edx-worker-v099"]
+        for asg in asgs:
+            url = ASG_INFO_URL.format(asg)
+            httpretty.register_uri(
+                httpretty.GET,
+                url,
+                responses=[
+                    httpretty.Response(body=deleted_asg_not_in_progress.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+                    httpretty.Response(body=deleted_asg_not_in_progress.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+                    httpretty.Response(body=enabled_asg.format(asg),
+                                       content_type="application/json",
+                                       status=200)
+                ])
+        self.assertEqual(None, deploy(ami_id))
+
+    @httpretty.activate
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    def test_deploy_new_asg_disabled(self):
+        ami_id = self._setup_for_deploy()
+        asgs = ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059",
+                "loadtest-edx-edxapp-v099", "loadtest-edx-worker-v099"]
+        for asg in asgs:
+            url = ASG_INFO_URL.format(asg)
+            httpretty.register_uri(
+            httpretty.GET,
+            url,
+            responses=[
+                httpretty.Response(body=deleted_asg_not_in_progress.format(asg),
+                                   content_type="application/json",
+                                   status=200),
+                httpretty.Response(body=deleted_asg_in_progress.format(asg),
+                                   content_type="application/json",
+                                   status=200),
+                httpretty.Response(body=disabled_asg.format(asg),
+                                   content_type="application/json",
+                                   status=200)
+            ])
+        self.assertRaises(BackendError, deploy, ami_id)
+
+    @httpretty.activate
+    def test_is_asg_pending_delete(self):
+        asg = "loadtest-edx-edxapp-v060"
+        self._mock_asgard_pending_delete([asg])
+        self.assertTrue(is_asg_pending_delete(asg))
+
+    @httpretty.activate
+    def test_is_asg_not_pending_delete(self):
+        asg = "loadtest-edx-edxapp-v060"
+        self._mock_asgard_not_pending_delete([asg])
+        self.assertFalse(is_asg_pending_delete(asg))
+
+    @data((disabled_asg, "loadtest-edx-edxapp-v060", False), (enabled_asg, "loadtest-edx-edxapp-v060", True))
+    @httpretty.activate
+    @unpack
+    def test_is_asg_enabled(self, response_body, asg_name, expected_return):
+        url = ASG_INFO_URL.format(asg_name)
+        httpretty.register_uri(
+            httpretty.GET,
+            url,
+            body=response_body.format(asg_name),
+            content_type="application/json")
+        self.assertEqual(is_asg_enabled(asg_name), expected_return)
+
+    @httpretty.activate
+    def test_get_asg_info(self):
+        asg = "loadtest-edx-edxapp-v060"
+        self._mock_asgard_not_pending_delete([asg])
+        self.assertEqual(get_asg_info(asg), json.loads(deleted_asg_not_in_progress.format(asg)))
+
+    @httpretty.activate
+    def test_get_asg_info_404(self):
+        asg = "loadtest-edx-edxapp-v060"
+        self._mock_asgard_pending_delete([asg], 404)
+        with self.assertRaises(ASGDoesNotExistException) as context_manager:
+            get_asg_info(asg)
+        error_message = "Autoscale group {} does not exist".format(asg)
+        self.assertEqual(context_manager.exception.message, error_message)
+
+    @httpretty.activate
+    def test_get_asg_info_500(self):
+        asg = "loadtest-edx-edxapp-v060"
+        self._mock_asgard_pending_delete([asg], 500)
+        with self.assertRaises(BackendError) as context_manager:
+            get_asg_info(asg)
+        self.assertTrue(context_manager.exception.message.startswith("Asgard experienced an error:"))
+
+    @httpretty.activate
+    def test_get_asg_info_403(self):
+        asg = "loadtest-edx-edxapp-v060"
+        self._mock_asgard_pending_delete([asg], 403)
+        with self.assertRaises(BackendError) as context_manager:
+            get_asg_info(asg)
+        error_message = "Call to asgard failed with status code: {}".format(403)
+        self.assertTrue(context_manager.exception.message.startswith(error_message))
