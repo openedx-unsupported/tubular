@@ -9,6 +9,8 @@ from collections import Iterable
 import exception
 import ec2
 
+from exception import BackendError
+
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091/us-east-1")
 ASGARD_API_TOKEN = "asgardApiToken={}".format(os.environ.get("ASGARD_API_TOKEN", "dummy-token"))
@@ -176,6 +178,36 @@ def new_asg(cluster, ami_id):
 
     return new_asg
 
+def is_asg_pending_delete(asg):
+    """
+    Checks status of an ASG, specifically if it is pending deletion.
+
+    Argument:
+        asg(str): ASG whose status should be checked.
+
+    Returns:
+        True if the asg is in the "pending delete" status, else return False.
+    """
+
+    url = ASG_INFO_URL.format(asg)
+    LOG.debug("URL: {}".format(url))
+    response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
+
+    if response.status_code == 404:
+        raise BackendError('Autoscale group {} does not exist'.format(asg))
+    elif response.status_code >= 500:
+        raise BackendError('Asgard experienced an error: {}'.format(response.text))
+    elif response.status_code != 200:
+        raise BackendError('Call to asgard failed with status code: {0}: {1}'
+                           .format(response.status_code, response.text))
+
+    LOG.debug("ASG info: {}".format(response.text))
+    asgs = response.json()
+    if asgs['group']['status'] is None:
+        return False
+    else:
+        return True
+
 def enable_asg(asg):
     """
     Enable an ASG in asgard.  This means it will have ELBs routing to it
@@ -201,9 +233,20 @@ def enable_asg(asg):
 
 def disable_asg(asg):
     """
+    Disable an ASG using asgard.
     curl -d "name=helloworld-example-v004" http://asgardprod/us-east-1/cluster/deactivate
+
+    Arguments:
+        asg(str): The name of the asg to disable.
+
+    Returns:
+        None: When the asg has been enabled.
+
+    Raises:
+        TimeoutException: If the task to enable the ASG fails..
+        BackendError: If asgard was unable to disable the ASG
     """
-    if ec2.is_asg_pending_delete(asg):
+    if is_asg_pending_delete(asg):
         LOG.info("Not disabling old ASG {} due to its pending deletion.".format(asg))
         return
     payload = { "name": asg }
@@ -296,6 +339,11 @@ def deploy(ami_id):
 
     LOG.info("New instances have succeeded in passing the healthchecks. "
           "Disabling old ASGs.")
+    # ensure the new ASG is still healthy and not pending delete before disabling the old ASGs
+    for cluster, asg in new_asgs.iteritems():
+        if is_asg_pending_delete(asg):
+            raise BackendError("New Autoscale Group {} is pending delete, Aborting the disabling of old ASGs.".format(asg))
+
     for cluster,asgs in existing_clusters.iteritems():
         for asg in asgs:
             disable_asg(asg)
