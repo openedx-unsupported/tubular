@@ -178,17 +178,21 @@ def new_asg(cluster, ami_id):
 
     return new_asg
 
-def is_asg_pending_delete(asg):
-    """
-    Checks status of an ASG, specifically if it is pending deletion.
 
-    Argument:
-        asg(str): ASG whose status should be checked.
+def get_asg_info(asg):
+    """
+    Queries Asgard for the status info on an ASG
+
+    Arguments:
+        cluster(str): Name of the cluster.
 
     Returns:
-        True if the asg is in the "pending delete" status, else return False.
-    """
+        dict: a Dictionary with the information about an ASG.
 
+    Raises:
+        TimeoutException: when the request for an ASG times out.
+        BackendError: When a non 200 response code is returned from the Asgard API
+    """
     url = ASG_INFO_URL.format(asg)
     LOG.debug("URL: {}".format(url))
     response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
@@ -202,7 +206,37 @@ def is_asg_pending_delete(asg):
                            .format(response.status_code, response.text))
 
     LOG.debug("ASG info: {}".format(response.text))
-    asgs = response.json()
+    return response.json()
+
+
+def is_asg_enabled(asg):
+    """
+    Checks to see if launching instances of an ASG is enabled.
+
+    Argument:
+        asg(str): ASG whose status should be checked.
+
+    Returns:
+        True if the asg status "launchingSuspended" is False, otherwise returns True
+    """
+    asgs = get_asg_info(asg)
+    if asgs['group']['launchingSuspended'] is True:
+        return False
+    else:
+        return True
+
+
+def is_asg_pending_delete(asg):
+    """
+    Checks status of an ASG, specifically if it is pending deletion.
+
+    Argument:
+        asg(str): ASG whose status should be checked.
+
+    Returns:
+        True if the asg is in the "pending delete" status, else return False.
+    """
+    asgs = get_asg_info(asg)
     if asgs['group']['status'] is None:
         return False
     else:
@@ -341,7 +375,7 @@ def deploy(ami_id):
           "Disabling old ASGs.")
     # ensure the new ASG is still healthy and not pending delete before disabling the old ASGs
     for cluster, asg in new_asgs.iteritems():
-        if is_asg_pending_delete(asg):
+        if is_asg_pending_delete(asg) or not is_asg_enabled(asg):
             raise BackendError("New Autoscale Group {} is pending delete, Aborting the disabling of old ASGs.".format(asg))
 
     for cluster,asgs in existing_clusters.iteritems():

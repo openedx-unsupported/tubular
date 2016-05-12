@@ -134,7 +134,6 @@ def wait_for_in_service(all_asgs, timeout):
 
     raise TimeoutException("Some instances in the following ASGs never became healthy: {}".format(asgs_left_to_check))
 
-
 def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     """
     Wait for all instances in all ELBs listed to be healthy. Raise a

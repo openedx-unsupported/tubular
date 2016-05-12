@@ -159,6 +159,32 @@ deleted_asg_not_in_progress = """
 }}
 """
 
+disabled_asg = """
+{{
+	"group": {{
+		"autoScalingGroupName": "{0}",
+		"loadBalancerNames": [
+			"app_elb"
+		],
+		"status": null,
+		"launchingSuspended": true
+	}}
+}}
+"""
+
+enabled_asg = """
+{{
+	"group": {{
+		"autoScalingGroupName": "{0}",
+		"loadBalancerNames": [
+			"app_elb"
+		],
+		"status": null,
+		"launchingSuspended": false
+	}}
+}}
+"""
+
 failed_sample_task = """
 {
   "log":
@@ -538,14 +564,12 @@ class TestAsgard(unittest.TestCase):
             content_type="application/json"
         )
 
-        asgs = ['loadtest-edx-edxapp-v059']
-        for asg in asgs:
-            url = ASG_INFO_URL.format(asg)
-            httpretty.register_uri(
-                httpretty.GET,
-                url,
-                body=deleted_asg_not_in_progress.format(asg),
-                content_type="application/json")
+        url = ASG_INFO_URL.format(asg)
+        httpretty.register_uri(
+            httpretty.GET,
+            url,
+            body=deleted_asg_not_in_progress.format(asg),
+            content_type="application/json")
 
         if success:
             self.assertEquals(None, test_function(asg))
@@ -757,6 +781,9 @@ class TestAsgard(unittest.TestCase):
                                        status=200),
                     httpretty.Response(body=deleted_asg_not_in_progress.format(asg),
                                        content_type="application/json",
+                                       status=200),
+                    httpretty.Response(body=enabled_asg.format(asg),
+                                       content_type="application/json",
                                        status=200)
                 ])
         self.assertEqual(None, deploy(ami_id))
@@ -780,6 +807,9 @@ class TestAsgard(unittest.TestCase):
                                    status=200),
                 httpretty.Response(body=deleted_asg_in_progress.format(asg),
                                    content_type="application/json",
+                                   status=200),
+                httpretty.Response(body=disabled_asg.format(asg),
+                                   content_type="application/json",
                                    status=200)
             ])
         self.assertRaises(BackendError, deploy, ami_id)
@@ -796,28 +826,46 @@ class TestAsgard(unittest.TestCase):
         self._mock_asgard_not_pending_delete([asg])
         self.assertFalse(is_asg_pending_delete(asg))
 
+    @data((disabled_asg, "loadtest-edx-edxapp-v060", False), (enabled_asg, "loadtest-edx-edxapp-v060", True))
     @httpretty.activate
-    def test_is_asg_pending_delete_404(self):
+    @unpack
+    def test_is_asg_enabled(self, response_body, asg_name, expected_return):
+        url = ASG_INFO_URL.format(asg_name)
+        httpretty.register_uri(
+            httpretty.GET,
+            url,
+            body=response_body.format(asg_name),
+            content_type="application/json")
+        self.assertEqual(is_asg_enabled(asg_name), expected_return)
+
+    @httpretty.activate
+    def test_get_asg_info(self):
+        asg = "loadtest-edx-edxapp-v060"
+        self._mock_asgard_not_pending_delete([asg])
+        self.assertEqual(get_asg_info(asg), json.loads(deleted_asg_not_in_progress.format(asg)))
+
+    @httpretty.activate
+    def test_get_asg_info_404(self):
         asg = "loadtest-edx-edxapp-v060"
         self._mock_asgard_pending_delete([asg], 404)
         with self.assertRaises(BackendError) as context_manager:
-            is_asg_pending_delete(asg)
+            get_asg_info(asg)
         error_message = "Autoscale group {} does not exist".format(asg)
         self.assertEqual(context_manager.exception.message, error_message)
 
     @httpretty.activate
-    def test_is_asg_pending_delete_500(self):
+    def test_get_asg_info_500(self):
         asg = "loadtest-edx-edxapp-v060"
         self._mock_asgard_pending_delete([asg], 500)
         with self.assertRaises(BackendError) as context_manager:
-            is_asg_pending_delete(asg)
+            get_asg_info(asg)
         self.assertTrue(context_manager.exception.message.startswith("Asgard experienced an error:"))
 
     @httpretty.activate
-    def test_is_asg_pending_delete_403(self):
+    def test_get_asg_info_403(self):
         asg = "loadtest-edx-edxapp-v060"
         self._mock_asgard_pending_delete([asg], 403)
         with self.assertRaises(BackendError) as context_manager:
-            is_asg_pending_delete(asg)
+            get_asg_info(asg)
         error_message = "Call to asgard failed with status code: {}".format(403)
         self.assertTrue(context_manager.exception.message.startswith(error_message))
