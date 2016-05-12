@@ -524,6 +524,50 @@ class TestAsgard(unittest.TestCase):
         self.assertEquals(None, disable_asg(asg))
 
     @httpretty.activate
+    @data((completed_sample_task, True), (failed_sample_task, False))
+    @unpack
+    def test_delete_asg(self, task_body, should_succeed):
+        asg = "loadtest-edx-edxapp-v060"
+        self._mock_asgard_not_pending_delete([asg])
+
+        task_url = "http://some.host/task/1234.json"
+        def post_callback(request, uri, headers):
+            self.assertEqual('POST', request.method)
+            expected_request_body = {"name": [asg]}
+            expected_querystring = {"asgardApiToken": ['dummy-token']}
+
+            self.assertEqual(expected_request_body, request.parsed_body)
+            self.assertEqual(expected_querystring, request.querystring)
+            response_headers = {"Location": task_url.strip(".json"),
+                                "server": ASGARD_API_ENDPOINT}
+            response_body = ""
+            return (302, response_headers, response_body)
+
+        httpretty.register_uri(
+            httpretty.POST,
+            ASG_DELETE_URL,
+            body=post_callback
+        )
+
+        httpretty.register_uri(
+            httpretty.GET,
+            task_url,
+            body=task_body,
+            content_type="application/json"
+        )
+
+        if should_succeed:
+            self.assertEqual(None, delete_asg(asg))
+        else:
+            self.assertRaises(BackendError, delete_asg, asg)
+
+    @httpretty.activate
+    def test_delete_asg_pending_delete(self):
+        asg = "loadtest-edx-edxapp-v060"
+        self._mock_asgard_pending_delete([asg])
+        self.assertEqual(None, delete_asg(asg))
+
+    @httpretty.activate
     @mock_autoscaling
     @mock_ec2
     @data(*itertools.product(

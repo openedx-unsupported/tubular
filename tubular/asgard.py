@@ -21,6 +21,7 @@ REQUESTS_TIMEOUT = float(os.environ.get("REQUESTS_TIMEOUT", 10))
 CLUSTER_LIST_URL= "{}/cluster/list.json".format(ASGARD_API_ENDPOINT)
 ASG_ACTIVATE_URL= "{}/cluster/activate".format(ASGARD_API_ENDPOINT)
 ASG_DEACTIVATE_URL= "{}/cluster/deactivate".format(ASGARD_API_ENDPOINT)
+ASG_DELETE_URL= "{}/cluster/delete".format(ASGARD_API_ENDPOINT)
 NEW_ASG_URL= "{}/cluster/createNextGroup".format(ASGARD_API_ENDPOINT)
 ASG_INFO_URL="{}/autoScaling/show/{}.json".format(ASGARD_API_ENDPOINT, "{}")
 CLUSTER_INFO_URL = "{}/cluster/show/{}.json".format(ASGARD_API_ENDPOINT, "{}")
@@ -276,7 +277,7 @@ def disable_asg(asg):
         asg(str): The name of the asg to disable.
 
     Returns:
-        None: When the asg has been enabled.
+        None: When the asg has been disabled.
 
     Raises:
         TimeoutException: If the task to enable the ASG fails..
@@ -292,6 +293,33 @@ def disable_asg(asg):
     task_status = wait_for_task_completion(task_url, 300)
     if task_status['status'] == 'failed':
         msg = "Failure while disabling ASG. Task Log: \n{}".format(task_status['log'])
+        raise exception.BackendError(msg)
+
+def delete_asg(asg):
+    """
+    Delete an ASG using asgard.
+    curl -d "name=helloworld-example-v004" http://asgardprod/us-east-1/cluster/delete
+
+    Arguments:
+        asg(str): The name of the asg to delete.
+
+    Returns:
+        None: When the asg has been deleted.
+
+    Raises:
+        TimeoutException: If the task to enable the ASG fails...
+        BackendError: If asgard was unable to disable the ASG
+    """
+    if is_asg_pending_delete(asg):
+        LOG.info("not deleting ASG {} due to its already pending deletion.".format(asg))
+        return
+    payload = {"name": asg}
+    response = requests.post(ASG_DELETE_URL,
+                             data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
+    task_url = response.url
+    task_status = wait_for_task_completion(task_url, 300)
+    if task_status['status'] == 'failed':
+        msg = "Failure while deleting ASG. Task Log: \n{}".format(task_status['log'])
         raise exception.BackendError(msg)
 
 
