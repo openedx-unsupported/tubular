@@ -20,6 +20,3 @@ class BackendError(Exception):
 
 class BackendDataError(BackendError):
     pass
-
-class ASGDoesNotExistException(Exception):
-    pass
