@@ -9,7 +9,7 @@ from collections import Iterable
 import exception
 import ec2
 
-from exception import BackendError
+from exception import BackendError, ASGDoesNotExistException
 
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091/us-east-1")
@@ -198,7 +198,7 @@ def get_asg_info(asg):
     response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
 
     if response.status_code == 404:
-        raise BackendError('Autoscale group {} does not exist'.format(asg))
+        raise ASGDoesNotExistException('Autoscale group {} does not exist'.format(asg))
     elif response.status_code >= 500:
         raise BackendError('Asgard experienced an error: {}'.format(response.text))
     elif response.status_code != 200:
@@ -242,6 +242,7 @@ def is_asg_pending_delete(asg):
     else:
         return True
 
+
 def enable_asg(asg):
     """
     Enable an ASG in asgard.  This means it will have ELBs routing to it
@@ -264,6 +265,7 @@ def enable_asg(asg):
     if task_status['status'] == 'failed':
         msg = "Failure while enabling ASG. Task Log: \n{}".format(task_status['log'])
         raise exception.BackendError(msg)
+
 
 def disable_asg(asg):
     """
@@ -292,6 +294,7 @@ def disable_asg(asg):
         msg = "Failure while disabling ASG. Task Log: \n{}".format(task_status['log'])
         raise exception.BackendError(msg)
 
+
 def elbs_for_asg(asg):
     response = requests.get(ASG_INFO_URL.format(asg),
         params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
@@ -318,6 +321,7 @@ def deploy(ami_id):
     Raises:
         TimeoutException: When the task to bring up the new instance times out.
         BackendError: When the task to bring up the new instance fails.
+        ASGDoesNotExistException: If the ASG being queried does not exist.
     """
     LOG.info( "Processing request to deploy {}.".format(ami_id))
 

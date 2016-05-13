@@ -848,7 +848,7 @@ class TestAsgard(unittest.TestCase):
     def test_get_asg_info_404(self):
         asg = "loadtest-edx-edxapp-v060"
         self._mock_asgard_pending_delete([asg], 404)
-        with self.assertRaises(BackendError) as context_manager:
+        with self.assertRaises(ASGDoesNotExistException) as context_manager:
             get_asg_info(asg)
         error_message = "Autoscale group {} does not exist".format(asg)
         self.assertEqual(context_manager.exception.message, error_message)
