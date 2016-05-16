@@ -193,6 +193,7 @@ def get_asg_info(asg):
     Raises:
         TimeoutException: when the request for an ASG times out.
         BackendError: When a non 200 response code is returned from the Asgard API
+        ASGDoesNotExistException: When an ASG does not exist
     """
     url = ASG_INFO_URL.format(asg)
     LOG.debug("URL: {}".format(url))
@@ -236,6 +237,11 @@ def is_asg_pending_delete(asg):
 
     Returns:
         True if the asg is in the "pending delete" status, else return False.
+
+    Raises:
+        TimeoutException: when the request for an ASG times out.
+        BackendError: When a non 200 response code is returned from the Asgard API
+        ASGDoesNotExistException: When an ASG does not exist
     """
     asgs = get_asg_info(asg)
     if asgs['group']['status'] is None:
@@ -309,6 +315,7 @@ def delete_asg(asg, fail_if_active=True):
     Raises:
         TimeoutException: If the task to delete the ASG fails...
         BackendError: If asgard was unable to delete the ASG
+        ASGDoesNotExistException: When an ASG does not exist
     """
     if is_asg_pending_delete(asg):
         LOG.info("not deleting ASG {} due to its already pending deletion.".format(asg))
