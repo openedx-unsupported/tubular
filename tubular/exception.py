@@ -23,3 +23,6 @@ class BackendDataError(BackendError):
 
 class ASGDoesNotExistException(Exception):
     pass
+
+class CannotDeleteActiveASG(Exception):
+    pass
