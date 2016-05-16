@@ -9,7 +9,7 @@ from collections import Iterable
 import exception
 import ec2
 
-from exception import BackendError, ASGDoesNotExistException
+from exception import BackendError, ASGDoesNotExistException, CannotDeleteActiveASG
 
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091/us-east-1")
@@ -295,7 +295,7 @@ def disable_asg(asg):
         msg = "Failure while disabling ASG. Task Log: \n{}".format(task_status['log'])
         raise exception.BackendError(msg)
 
-def delete_asg(asg):
+def delete_asg(asg, fail_if_active=True):
     """
     Delete an ASG using asgard.
     curl -d "name=helloworld-example-v004" http://asgardprod/us-east-1/cluster/delete
@@ -307,12 +307,17 @@ def delete_asg(asg):
         None: When the asg has been deleted.
 
     Raises:
-        TimeoutException: If the task to enable the ASG fails...
-        BackendError: If asgard was unable to disable the ASG
+        TimeoutException: If the task to delete the ASG fails...
+        BackendError: If asgard was unable to delete the ASG
     """
     if is_asg_pending_delete(asg):
         LOG.info("not deleting ASG {} due to its already pending deletion.".format(asg))
         return
+    if fail_if_active and is_asg_enabled(asg):
+        msg = "not deleting ASG {} as it is currently active.".format(asg)
+        LOG.warn(msg)
+        raise CannotDeleteActiveASG(msg)
+
     payload = {"name": asg}
     response = requests.post(ASG_DELETE_URL,
                              data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)

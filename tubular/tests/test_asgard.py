@@ -134,6 +134,7 @@ asgs_for_worker_after = """
 ]
 """
 
+
 deleted_asg_in_progress = """
 {{
 	"group": {{
@@ -184,6 +185,7 @@ enabled_asg = """
 	}}
 }}
 """
+
 
 failed_sample_task = """
 {
@@ -557,15 +559,32 @@ class TestAsgard(unittest.TestCase):
         )
 
         if should_succeed:
-            self.assertEqual(None, delete_asg(asg))
+            self.assertEqual(None, delete_asg(asg, False))
         else:
-            self.assertRaises(BackendError, delete_asg, asg)
+            self.assertRaises(BackendError, delete_asg, asg, False)
+
+    @httpretty.activate
+    def test_delete_asg_active(self):
+        asg = "loadtest-edx-edxapp-v060"
+        self._mock_asgard_not_pending_delete([asg], body=enabled_asg)
+
+        task_url = "http://some.host/task/1234.json"
+
+        def post_callback(request, uri, headers):
+            raise Exception("This post should not be called")
+
+        httpretty.register_uri(
+            httpretty.POST,
+            ASG_DELETE_URL,
+            body=post_callback
+        )
+        self.assertRaises(CannotDeleteActiveASG, delete_asg, asg, True)
 
     @httpretty.activate
     def test_delete_asg_pending_delete(self):
         asg = "loadtest-edx-edxapp-v060"
         self._mock_asgard_pending_delete([asg])
-        self.assertEqual(None, delete_asg(asg))
+        self.assertEqual(None, delete_asg(asg, True))
 
     @httpretty.activate
     @mock_autoscaling
@@ -736,7 +755,7 @@ class TestAsgard(unittest.TestCase):
 
         return ami_id
 
-    def _mock_asgard_not_pending_delete(self, asgs, response_code=200):
+    def _mock_asgard_not_pending_delete(self, asgs, response_code=200, body=deleted_asg_not_in_progress):
         """
         This helper function will mock calls to the asgard api related to is_asg_pending_delete. The response will be
         that this ASG is not pending delete.
@@ -752,7 +771,7 @@ class TestAsgard(unittest.TestCase):
             httpretty.register_uri(
                 httpretty.GET,
                 url,
-                body=deleted_asg_not_in_progress.format(asg),
+                body=body.format(asg),
                 content_type="application/json",
                 status=response_code)
 
