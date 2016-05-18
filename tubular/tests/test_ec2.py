@@ -11,6 +11,7 @@ from ..ec2 import *
 from ..exception import *
 from ..utils import EDP
 
+
 @ddt
 class TestEC2(unittest.TestCase):
     _multiprocess_can_split_ = True
@@ -82,7 +83,6 @@ class TestEC2(unittest.TestCase):
         with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs) as mock_connection:
             self.assertRaises(TimeoutException, wait_for_in_service,[asg_name], 2)
 
-
     @mock_autoscaling
     @mock_ec2
     def test_wait_for_in_service_health_failure(self):
@@ -94,7 +94,6 @@ class TestEC2(unittest.TestCase):
         asg.instances[0].health_status = "Unhealthy"
         with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs) as mock_connection:
             self.assertRaises(TimeoutException, wait_for_in_service,[asg_name], 2)
-
 
     @mock_elb
     @mock_ec2
@@ -136,3 +135,59 @@ class TestEC2(unittest.TestCase):
         mock_function = "boto.ec2.elb.loadbalancer.LoadBalancer.get_instance_health"
         with mock.patch(mock_function, return_value=instances) as mock_call:
             self.assertRaises(TimeoutException, wait_for_healthy_elbs, [elb_name], 2)
+
+    # TODO: Currently motto does not support the method create_or_update_tags. When support is added this test should
+    # be updated to test the functioanlity of tag_asg_for_deletion
+    # @mock_autoscaling
+    # @mock_elb
+    # @mock_ec2
+    # def test_create_or_update_tags_on_asg(self):
+    #     asg_name = "test-asg-random-tags"
+    #     tag_name = "some-tag-name"
+    #     tag_value = "some tag value"
+    #     tag = Tag(key=tag_name,
+    #               value=tag_value,
+    #               propagate_at_launch=False,
+    #               resource_id=asg_name)
+    #
+    #     autoscale = boto.connect_autoscale()
+    #     lc = boto.ec2.autoscale.LaunchConfiguration(name='my-launch_config', image_id='my-ami',
+    #                              key_name='my_key_name',
+    #                              security_groups=['my_security_groups'])
+    #     autoscale.create_launch_configuration(lc)
+    #     asg = boto.ec2.autoscale.AutoScalingGroup(group_name=asg_name, load_balancers=['my-lb'],
+    #                           availability_zones=['us-east-1a', 'us-east-1b'],
+    #                           launch_config=lc, min_size=4, max_size=8,
+    #                           connection=autoscale)
+    #     create_elb('my-lb')
+    #     autoscale.create_auto_scaling_group(asg)
+    #
+    #     tag_asg_for_deletion(asg_name, [tag])
+    #
+    #     the_asg = autoscale.get_all_groups(asg_name)
+    #     self.assertTrue(len([tag for tag in the_asg.tags if tag.key==tag_name and tag.value==tag_value]) == 1)
+    #     # more asserts here
+
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    def test_get_asgs_pending_delete(self):
+        asg_name = "test-asg-deletion"
+        deletion_dttm_str = datetime.utcnow().isoformat()
+        create_asg_with_tags(asg_name, {'delete_on_ts':deletion_dttm_str})
+
+        asgs = get_asgs_pending_delete()
+        self.assertTrue(len(asgs) == 1)
+        asg = asgs.pop()
+        self.assertEqual(asg.name, asg_name)
+        self.assertEqual(asg.tags[0].key, "delete_on_ts")
+        self.assertEqual(asg.tags[0].value, deletion_dttm_str)
+
+    def test_create_tag_for_asg_deletion(self):
+        asg_name = "test-asg-tags"
+        tag = create_tag_for_asg_deletion(asg_name)
+
+        self.assertEqual(tag.key, 'delete_on_ts')
+        self.assertEqual(tag.resource_id, asg_name)
+        self.assertFalse(tag.propagate_at_launch)
+        datetime.strptime(tag.value, iso_date_format)

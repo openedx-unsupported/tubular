@@ -12,10 +12,13 @@ from exception import (
     TimeoutException,
 )
 from boto.exception import EC2ResponseError
+from boto.ec2.autoscale.tag import Tag
 from datetime import datetime, timedelta
+from exception import ASGDoesNotExistException
 
 LOG = logging.getLogger(__name__)
 
+iso_date_format = "%Y-%m-%dT%H:%M:%S.%f"
 
 def edp_for_ami(ami_id):
     """
@@ -90,6 +93,58 @@ def asgs_for_edp(edp):
                 yield group.name
 
 
+def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=3600):
+    return Tag(key='delete_on_ts',
+              value=(datetime.utcnow() + timedelta(seconds=seconds_until_delete_delta)).isoformat(),
+              propagate_at_launch=False,
+              resource_id=asg_name)
+
+
+def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=3600):
+    """
+    Tag an asg with a tag named 'delete_on_ts' with a value of the MS since epoch UTC + ms_until_delete_delta
+    that an ASG may be deleted.
+
+    Arguments:
+        asg_name (str): the name of the autoscale group to tag
+
+    Returns:
+        None
+
+    Raises:
+        ASGDoesNotExistException: if the Autoscale group does not exist
+    """
+    tag = create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta)
+    autoscale = boto.connect_autoscale()
+    if len(autoscale.get_all_groups([asg_name])) < 1:
+        raise ASGDoesNotExistException("Could not apply tags to Autoscale group: {0} does not exist.".format(asg_name))
+    autoscale.create_or_update_tags([tag])
+
+
+def get_asgs_pending_delete():
+    """
+    Get a list of all the autoscale groups marked with the 'delete_on_ts'. Return only those groups who's 'delete_on_ts'
+    as past the current time.
+    """
+    current_datetime = datetime.utcnow()
+    autoscale = boto.connect_autoscale()
+    asgs_pending_delete = []
+    for asg in autoscale.get_all_groups():
+        for tag in asg.tags:
+            try:
+                if tag.key == 'delete_on_ts' \
+                 and datetime.strptime(tag.value, iso_date_format) - current_datetime < timedelta(0, 0, 0):
+                    asgs_pending_delete.append(asg)
+                    break
+            except ValueError as e:
+                LOG.warn("ASG {0} has an improperly formatted datetime string for the key {1}. Value: {2} . "
+                         "Format must match {3}"
+                         .format(asg.name, tag.key, tag.value, iso_date_format))
+
+    LOG.info("Number of ASGs pending delete: {0}".format(len(asgs_pending_delete)))
+    return asgs_pending_delete
+
+
 def wait_for_in_service(all_asgs, timeout):
     """
     Wait for the ASG and all instances in them to be healthy
@@ -132,7 +187,8 @@ def wait_for_in_service(all_asgs, timeout):
 
         time.sleep(1)
 
-    raise TimeoutException("Some instances in the following ASGs never became healthy: {}".format(asgs_left_to_check))
+    raise TimeoutException("Some instances in the followFing ASGs never became healthy: {}".format(asgs_left_to_check))
+
 
 def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     """
