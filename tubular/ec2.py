@@ -18,7 +18,8 @@ from exception import ASGDoesNotExistException
 
 LOG = logging.getLogger(__name__)
 
-iso_date_format = "%Y-%m-%dT%H:%M:%S.%f"
+ISO_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+ASG_DELETE_TAG_KEY = 'delete_on_ts'
 
 def edp_for_ami(ami_id):
     """
@@ -94,7 +95,7 @@ def asgs_for_edp(edp):
 
 
 def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=3600):
-    return Tag(key='delete_on_ts',
+    return Tag(key=ASG_DELETE_TAG_KEY,
               value=(datetime.utcnow() + timedelta(seconds=seconds_until_delete_delta)).isoformat(),
               propagate_at_launch=False,
               resource_id=asg_name)
@@ -102,7 +103,7 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=3600):
 
 def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=3600):
     """
-    Tag an asg with a tag named 'delete_on_ts' with a value of the MS since epoch UTC + ms_until_delete_delta
+    Tag an asg with a tag named ASG_DELETE_TAG_KEY with a value of the MS since epoch UTC + ms_until_delete_delta
     that an ASG may be deleted.
 
     Arguments:
@@ -123,7 +124,7 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=3600):
 
 def get_asgs_pending_delete():
     """
-    Get a list of all the autoscale groups marked with the 'delete_on_ts'. Return only those groups who's 'delete_on_ts'
+    Get a list of all the autoscale groups marked with the ASG_DELETE_TAG_KEY. Return only those groups who's ASG_DELETE_TAG_KEY
     as past the current time.
 
     It's intended for this method to be robust and to return as many ASGs that are pending delete as possible even if
@@ -139,19 +140,19 @@ def get_asgs_pending_delete():
 
     LOG.debug("Found {0} autoscale groups".format(len(asgs)))
     for asg in asgs:
-        LOG.debug("Checking for delete_on_ts on asg: {0}".format(asg.name))
+        LOG.debug("Checking for {0} on asg: {1}".format(ASG_DELETE_TAG_KEY, asg.name))
         for tag in asg.tags:
             try:
-                if tag.key == 'delete_on_ts':
-                     LOG.debug("Found delete_on_ts tag, deletion time: {0}".format(tag.value))
-                     if datetime.strptime(tag.value, iso_date_format) - current_datetime < timedelta(0, 0, 0):
+                if tag.key == ASG_DELETE_TAG_KEY:
+                     LOG.debug("Found {0} tag, deletion time: {1}".format(ASG_DELETE_TAG_KEY, tag.value))
+                     if datetime.strptime(tag.value, ISO_DATE_FORMAT) - current_datetime < timedelta(0, 0, 0):
                         LOG.debug("Adding ASG: {0} to the list of ASGs to delete.".format(asg.name))
                         asgs_pending_delete.append(asg)
                         break
             except ValueError as e:
                 LOG.warn("ASG {0} has an improperly formatted datetime string for the key {1}. Value: {2} . "
                          "Format must match {3}"
-                         .format(asg.name, tag.key, tag.value, iso_date_format))
+                         .format(asg.name, tag.key, tag.value, ISO_DATE_FORMAT))
                 continue
             except Exception as e:
                 LOG.warn("Error occured while building a list of ASGs to delete, continuing: {0}".format(e.message))

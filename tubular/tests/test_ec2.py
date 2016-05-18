@@ -174,13 +174,13 @@ class TestEC2(unittest.TestCase):
     def test_get_asgs_pending_delete(self):
         asg_name = "test-asg-deletion"
         deletion_dttm_str = datetime.utcnow().isoformat()
-        create_asg_with_tags(asg_name, {'delete_on_ts':deletion_dttm_str})
+        create_asg_with_tags(asg_name, {ASG_DELETE_TAG_KEY:deletion_dttm_str})
 
         asgs = get_asgs_pending_delete()
         self.assertTrue(len(asgs) == 1)
         asg = asgs.pop()
         self.assertEqual(asg.name, asg_name)
-        self.assertEqual(asg.tags[0].key, "delete_on_ts")
+        self.assertEqual(asg.tags[0].key, ASG_DELETE_TAG_KEY)
         self.assertEqual(asg.tags[0].value, deletion_dttm_str)
 
     @mock_autoscaling
@@ -191,8 +191,8 @@ class TestEC2(unittest.TestCase):
         asg_name2 = "test-asg-deletion-bad-timestamp"
         deletion_dttm_str1 = datetime.utcnow().isoformat()
         deletion_dttm_str2 = "2016-05-18 18:19:46.144884"
-        group1 = create_asg_with_tags(asg_name1, {'delete_on_ts': deletion_dttm_str1})
-        group2 = create_asg_with_tags(asg_name2, {'delete_on_ts': deletion_dttm_str2})
+        group1 = create_asg_with_tags(asg_name1, {ASG_DELETE_TAG_KEY: deletion_dttm_str1})
+        group2 = create_asg_with_tags(asg_name2, {ASG_DELETE_TAG_KEY: deletion_dttm_str2})
 
         asgs = get_asgs_pending_delete()
         self.assertTrue(len(asgs) == 1)
@@ -205,7 +205,7 @@ class TestEC2(unittest.TestCase):
         asg_name = "test-asg-tags"
         tag = create_tag_for_asg_deletion(asg_name)
 
-        self.assertEqual(tag.key, 'delete_on_ts')
+        self.assertEqual(tag.key, ASG_DELETE_TAG_KEY)
         self.assertEqual(tag.resource_id, asg_name)
         self.assertFalse(tag.propagate_at_launch)
-        datetime.strptime(tag.value, iso_date_format)
+        datetime.strptime(tag.value, ISO_DATE_FORMAT)
