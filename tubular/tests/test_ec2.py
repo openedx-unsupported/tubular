@@ -183,6 +183,21 @@ class TestEC2(unittest.TestCase):
         self.assertEqual(asg.tags[0].key, "delete_on_ts")
         self.assertEqual(asg.tags[0].value, deletion_dttm_str)
 
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    def test_get_asgs_pending_delete_incorrectly_formatted_timestamp(self):
+        asg_name1 = "test-asg-deletion"
+        asg_name2 = "test-asg-deletion-bad-timestamp"
+        deletion_dttm_str1 = datetime.utcnow().isoformat()
+        deletion_dttm_str2 = "2016-05-18 18:19:46.144884"
+        group1 = create_asg_with_tags(asg_name1, {'delete_on_ts': deletion_dttm_str1})
+        group2 = create_asg_with_tags(asg_name2, {'delete_on_ts': deletion_dttm_str2})
+
+        asgs = get_asgs_pending_delete()
+        self.assertTrue(len(asgs) == 1)
+        self.assertNotIn(group2, asgs)
+
     def test_create_tag_for_asg_deletion(self):
         asg_name = "test-asg-tags"
         tag = create_tag_for_asg_deletion(asg_name)
