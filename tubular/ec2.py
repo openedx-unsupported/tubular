@@ -125,21 +125,37 @@ def get_asgs_pending_delete():
     """
     Get a list of all the autoscale groups marked with the 'delete_on_ts'. Return only those groups who's 'delete_on_ts'
     as past the current time.
+
+    It's intended for this method to be robust and to return as many ASGs that are pending delete as possible even if
+    an error occurs during the process.
+
+    Returns:
+        List(<boto.ec2.autoscale.group.AutoScalingGroup>)
     """
     current_datetime = datetime.utcnow()
     autoscale = boto.connect_autoscale()
     asgs_pending_delete = []
-    for asg in autoscale.get_all_groups():
+    asgs = autoscale.get_all_groups()
+
+    LOG.debug("Found {0} autoscale groups".format(len(asgs)))
+    for asg in asgs:
+        LOG.debug("Checking for delete_on_ts on asg: {0}".format(asg.name))
         for tag in asg.tags:
             try:
-                if tag.key == 'delete_on_ts' \
-                 and datetime.strptime(tag.value, iso_date_format) - current_datetime < timedelta(0, 0, 0):
-                    asgs_pending_delete.append(asg)
-                    break
+                if tag.key == 'delete_on_ts':
+                     LOG.debug("Found delete_on_ts tag, deletion time: {0}".format(tag.value))
+                     if datetime.strptime(tag.value, iso_date_format) - current_datetime < timedelta(0, 0, 0):
+                        LOG.debug("Adding ASG: {0} to the list of ASGs to delete.".format(asg.name))
+                        asgs_pending_delete.append(asg)
+                        break
             except ValueError as e:
                 LOG.warn("ASG {0} has an improperly formatted datetime string for the key {1}. Value: {2} . "
                          "Format must match {3}"
                          .format(asg.name, tag.key, tag.value, iso_date_format))
+                continue
+            except Exception as e:
+                LOG.warn("Error occured while building a list of ASGs to delete, continuing: {0}".format(e.message))
+                continue
 
     LOG.info("Number of ASGs pending delete: {0}".format(len(asgs_pending_delete)))
     return asgs_pending_delete
