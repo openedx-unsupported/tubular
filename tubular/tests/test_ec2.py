@@ -196,7 +196,10 @@ class TestEC2(unittest.TestCase):
 
         asgs = get_asgs_pending_delete()
         self.assertTrue(len(asgs) == 1)
-        self.assertNotIn(group2, asgs)
+        # boto.ec2.autoscale.group.AutoScalingGroup does not implement __eq__ so we need to iterate the list to see if
+        # the ASGs we are interested in are members
+        self.assertTrue(len([asg for asg in asgs if asg.name == asg_name1]) == 1)
+        self.assertTrue(len([asg for asg in asgs if asg.name == asg_name2]) == 0)
 
     def test_create_tag_for_asg_deletion(self):
         asg_name = "test-asg-tags"
