@@ -409,9 +409,10 @@ class TestAsgard(unittest.TestCase):
                 ],
             content_type="application/json")
 
-        actual_output = wait_for_task_completion(task_url, 2)
-        expected_output = json.loads(failed_sample_task)
-        self.assertEqual(expected_output, actual_output)
+        with mock.patch('tubular.asgard.WAIT_SLEEP_TIME', 1):
+            actual_output = wait_for_task_completion(task_url, 2)
+            expected_output = json.loads(failed_sample_task)
+            self.assertEqual(expected_output, actual_output)
 
     @httpretty.activate
     def test_task_timeout(self):

@@ -16,6 +16,7 @@ ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8
 ASGARD_API_TOKEN = "asgardApiToken={}".format(os.environ.get("ASGARD_API_TOKEN", "dummy-token"))
 ASGARD_WAIT_TIMEOUT = int(os.environ.get("ASGARD_WAIT_TIMEOUT", 600))
 REQUESTS_TIMEOUT = float(os.environ.get("REQUESTS_TIMEOUT", 10))
+WAIT_SLEEP_TIME = int(os.environ.get("WAIT_SLEEP_TIME", 5))
 
 
 CLUSTER_LIST_URL= "{}/cluster/list.json".format(ASGARD_API_ENDPOINT)
@@ -138,7 +139,7 @@ def wait_for_task_completion(task_url, timeout):
         status = response.json()['status']
         if status == 'completed' or status == 'failed':
             return response.json()
-        time.sleep(1)
+        time.sleep(WAIT_SLEEP_TIME)
 
     raise exception.TimeoutException("Timedout while waiting for task {}".format(task_url))
 
