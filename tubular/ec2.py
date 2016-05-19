@@ -96,9 +96,9 @@ def asgs_for_edp(edp):
 
 def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=3600):
     return Tag(key=ASG_DELETE_TAG_KEY,
-              value=(datetime.utcnow() + timedelta(seconds=seconds_until_delete_delta)).isoformat(),
-              propagate_at_launch=False,
-              resource_id=asg_name)
+               value=(datetime.utcnow() + timedelta(seconds=seconds_until_delete_delta)).isoformat(),
+               propagate_at_launch=False,
+               resource_id=asg_name)
 
 
 def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=3600):
@@ -204,7 +204,7 @@ def wait_for_in_service(all_asgs, timeout):
 
         time.sleep(1)
 
-    raise TimeoutException("Some instances in the followFing ASGs never became healthy: {}".format(asgs_left_to_check))
+    raise TimeoutException("Some instances in the following ASGs never became healthy: {}".format(asgs_left_to_check))
 
 
 def wait_for_healthy_elbs(elbs_to_monitor, timeout):
