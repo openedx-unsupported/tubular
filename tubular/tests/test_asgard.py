@@ -753,9 +753,6 @@ class TestAsgard(unittest.TestCase):
             body=enable_asg_task_status,
             content_type="application/json")
 
-        # Moto does not currently implement create_or_update_tags, have the function return now for testing.
-        boto.ec2.autoscale.AutoScaleConnection.create_or_update_tags = lambda *args: None
-
         return ami_id
 
     def _mock_asgard_not_pending_delete(self, asgs, response_code=200, body=deleted_asg_not_in_progress):
@@ -832,6 +829,7 @@ class TestAsgard(unittest.TestCase):
     @mock_autoscaling
     @mock_ec2
     @mock_elb
+    @mock.patch('boto.ec2.autoscale.AutoScaleConnection.create_or_update_tags', lambda *args: None)
     def test_deploy(self):
         ami_id = self._setup_for_deploy()
         asgs = ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059", "loadtest-edx-edxapp-v099",
