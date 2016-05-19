@@ -425,5 +425,6 @@ def deploy(ami_id):
     for cluster,asgs in existing_clusters.iteritems():
         for asg in asgs:
             disable_asg(asg)
+            ec2.tag_asg_for_deletion(asg)
 
     LOG.info("Woot! Deploy Done!")
