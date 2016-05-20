@@ -9,7 +9,7 @@ from os import path
 sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
 
 from tubular import asgard
-from ec2 import get_asgs_pending_delete
+from tubular.ec2 import get_asgs_pending_delete
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
