@@ -15,7 +15,8 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         tags(dict): A dict mapping tag names to tag values.
         ami_id(str): The ID of the AMI that should be deployed.
 
-    Returns: Successfully if tag is created.
+    Returns:
+        boto.ec2.autoscale.group.AutoScalingGroup
     """
 
     tag_list = [ Tag(key=k, value=v) for k,v in tags.iteritems() ]
@@ -49,6 +50,7 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         tags=tag_list,
     )
     conn.create_auto_scaling_group(group)
+    return group
 
 def create_elb(elb_name):
     boto_elb = boto.connect_elb()

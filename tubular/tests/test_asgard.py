@@ -830,6 +830,7 @@ class TestAsgard(unittest.TestCase):
     @mock_autoscaling
     @mock_ec2
     @mock_elb
+    @mock.patch('boto.ec2.autoscale.AutoScaleConnection.create_or_update_tags', lambda *args: None)
     def test_deploy(self):
         ami_id = self._setup_for_deploy()
         asgs = ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059", "loadtest-edx-edxapp-v099",
