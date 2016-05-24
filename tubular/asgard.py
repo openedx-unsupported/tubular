@@ -4,11 +4,10 @@ import logging
 import requests
 import time
 import traceback
-from requests.exceptions import ConnectionError
-from collections import Iterable
 import exception
 import ec2
 
+from utils.retry import retry
 from exception import BackendError, ASGDoesNotExistException, CannotDeleteActiveASG
 
 
@@ -30,6 +29,7 @@ CLUSTER_INFO_URL = "{}/cluster/show/{}.json".format(ASGARD_API_ENDPOINT, "{}")
 LOG = logging.getLogger(__name__)
 
 
+@retry()
 def clusters_for_asgs(asgs):
     """
     An autoscaling group can belong to multiple clusters potentially.
@@ -90,6 +90,7 @@ def clusters_for_asgs(asgs):
     return relevant_clusters
 
 
+@retry()
 def asgs_for_cluster(cluster):
     """
     Given a named cluster, get all ASGs in the cluster.
@@ -147,6 +148,7 @@ def wait_for_task_completion(task_url, timeout):
     raise exception.TimeoutException("Timedout while waiting for task {}".format(task_url))
 
 
+@retry()
 def new_asg(cluster, ami_id):
     """
     Create a new ASG in the given asgard cluster using the given AMI.
@@ -185,6 +187,7 @@ def new_asg(cluster, ami_id):
     return new_asg
 
 
+@retry()
 def get_asg_info(asg):
     """
     Queries Asgard for the status info on an ASG
@@ -255,6 +258,7 @@ def is_asg_pending_delete(asg):
         return True
 
 
+@retry()
 def enable_asg(asg):
     """
     Enable an ASG in asgard.  This means it will have ELBs routing to it
@@ -279,6 +283,7 @@ def enable_asg(asg):
         raise exception.BackendError(msg)
 
 
+@retry()
 def disable_asg(asg):
     """
     Disable an ASG using asgard.
@@ -307,6 +312,7 @@ def disable_asg(asg):
         raise exception.BackendError(msg)
 
 
+@retry()
 def delete_asg(asg, fail_if_active=True):
     """
     Delete an ASG using asgard.
@@ -341,6 +347,7 @@ def delete_asg(asg, fail_if_active=True):
         raise exception.BackendError(msg)
 
 
+@retry()
 def elbs_for_asg(asg):
     response = requests.get(ASG_INFO_URL.format(asg),
         params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
