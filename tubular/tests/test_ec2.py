@@ -1,11 +1,10 @@
-from collections import Iterable
-
 import mock
 import unittest
 import boto
 import datetime
 
 import ddt
+from collections import Iterable
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
 from .test_utils import create_asg_with_tags, create_elb, clone_elb_instances_with_state
@@ -94,7 +93,7 @@ class TestEC2(unittest.TestCase):
 
         edp = EDP("foo", "bar", "baz")
 
-        for name, tags in asgs.iteritems():
+        for name, tags in asgs.viewitems():
             create_asg_with_tags(name, tags)
 
         asgs = ec2.asgs_for_edp(edp)
