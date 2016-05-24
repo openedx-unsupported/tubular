@@ -29,6 +29,7 @@ CLUSTER_INFO_URL = "{}/cluster/show/{}.json".format(ASGARD_API_ENDPOINT, "{}")
 
 LOG = logging.getLogger(__name__)
 
+
 def clusters_for_asgs(asgs):
     """
     An autoscaling group can belong to multiple clusters potentially.
@@ -88,6 +89,7 @@ def clusters_for_asgs(asgs):
 
     return relevant_clusters
 
+
 def asgs_for_cluster(cluster):
     """
     Given a named cluster, get all ASGs in the cluster.
@@ -114,6 +116,7 @@ def asgs_for_cluster(cluster):
         raise exception.BackendDataError(msg)
 
     return asg_names
+
 
 def wait_for_task_completion(task_url, timeout):
     """
@@ -142,6 +145,7 @@ def wait_for_task_completion(task_url, timeout):
         time.sleep(WAIT_SLEEP_TIME)
 
     raise exception.TimeoutException("Timedout while waiting for task {}".format(task_url))
+
 
 def new_asg(cluster, ami_id):
     """
@@ -301,6 +305,7 @@ def disable_asg(asg):
     if task_status['status'] == 'failed':
         msg = "Failure while disabling ASG. Task Log: \n{}".format(task_status['log'])
         raise exception.BackendError(msg)
+
 
 def delete_asg(asg, fail_if_active=True):
     """
