@@ -21,6 +21,7 @@ LOG = logging.getLogger(__name__)
 ISO_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 ASG_DELETE_TAG_KEY = 'delete_on_ts'
 
+
 def edp_for_ami(ami_id):
     """
     Look up the EDP tags for an AMI.
@@ -54,6 +55,45 @@ def edp_for_ami(ami_id):
     return edp
 
 
+def validate_edp(ami_id, environment, deployment, play):
+    """
+    Validate that an AMI is tagged for a specific EDP (environment, deployment, play).
+
+    Arguments:
+        ami_id (str): An AMI Id.
+        environment (str): Environment for AMI, e.g. prod, stage
+        deployment (str): Deployment for AMI, e.g. edx, edge
+        play (str): Play for AMI, e.g. edxapp, insights, discovery
+    Returns:
+        True if AMI EDP matches specified EDP, otherwise False.
+    """
+    edp = edp_for_ami(ami_id)
+    edp_matched = (
+        edp.environment == environment and
+        edp.deployment == deployment and
+        edp.play == play
+    )
+    if not edp_matched:
+        LOG.info("AMI {0} EDP did not match specified: {1} != ({2}, {3}, {4})".format(ami_id, edp, environment, deployment, play))
+    return edp_matched
+
+
+def is_stage_ami(ami_id):
+    """
+    Check if an AMI is intended for stage deployment.
+
+    Arguments:
+        ami_id (str): An AMI Id.
+    Returns:
+        True if AMI environment is "stage", otherwise False.
+    """
+    edp = edp_for_ami(ami_id)
+    ami_for_stage = edp.environment == "stage"
+    if not ami_for_stage:
+        LOG.info("AMI {0} is not intended for stage! - {1}".format(ami_id, edp))
+    return ami_for_stage
+
+
 def asgs_for_edp(edp):
     """
     All AutoScalingGroups that have the tags of this play.
@@ -80,7 +120,7 @@ def asgs_for_edp(edp):
     all_groups = autoscale.get_all_groups()
     LOG.debug("All groups: {}".format(all_groups))
     for group in all_groups:
-        tags = { tag.key: tag.value for tag in group.tags }
+        tags = {tag.key: tag.value for tag in group.tags}
         LOG.debug("Tags for asg {}: {}".format(group.name, tags))
         edp_keys = ['environment', 'deployment', 'play']
         if all([tag in tags for tag in edp_keys]):
@@ -144,8 +184,8 @@ def get_asgs_pending_delete():
         for tag in asg.tags:
             try:
                 if tag.key == ASG_DELETE_TAG_KEY:
-                     LOG.debug("Found {0} tag, deletion time: {1}".format(ASG_DELETE_TAG_KEY, tag.value))
-                     if datetime.strptime(tag.value, ISO_DATE_FORMAT) - current_datetime < timedelta(0, 0, 0):
+                    LOG.debug("Found {0} tag, deletion time: {1}".format(ASG_DELETE_TAG_KEY, tag.value))
+                    if datetime.strptime(tag.value, ISO_DATE_FORMAT) - current_datetime < timedelta(0, 0, 0):
                         LOG.debug("Adding ASG: {0} to the list of ASGs to delete.".format(asg.name))
                         asgs_pending_delete.append(asg)
                         break
