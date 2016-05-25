@@ -7,7 +7,7 @@ import traceback
 import exception
 import ec2
 
-from utils.retry import retry
+from tubular.utils.retry import retry
 from exception import BackendError, ASGDoesNotExistException, CannotDeleteActiveASG
 
 

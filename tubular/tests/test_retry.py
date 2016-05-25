@@ -3,7 +3,7 @@ import unittest
 import mock
 import datetime
 
-from ..utils import retry
+from tubular.utils import retry
 
 sys._is_retry_enabled = True
 

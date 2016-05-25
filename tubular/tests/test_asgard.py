@@ -7,15 +7,15 @@ import itertools
 import boto
 import mock
 import httpretty
-from .. import asgard
-from ..exception import *
+from tubular import asgard
+from tubular.exception import *
 
 from ddt import ddt, data, unpack
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
 from requests.exceptions import ConnectionError
 
-from .test_utils import create_asg_with_tags, create_elb
+from tubular.tests.test_utils import create_asg_with_tags, create_elb
 
 # Disable the retry decorator and reload the asgard module. This will ensure that tests do not fail because asgard
 sys._is_retry_enabled = False

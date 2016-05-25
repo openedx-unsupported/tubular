@@ -7,10 +7,10 @@ from collections import Iterable
 from ddt import ddt, data, file_data, unpack
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
-from .test_utils import create_asg_with_tags, create_elb, clone_elb_instances_with_state
-from .. import ec2
-from ..exception import *
-from ..utils import EDP
+from tubular.tests.test_utils import create_asg_with_tags, create_elb, clone_elb_instances_with_state
+from tubular import ec2
+from tubular.exception import *
+from tubular.utils import EDP
 
 
 @ddt
