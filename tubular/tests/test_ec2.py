@@ -5,7 +5,7 @@ import unittest
 import boto
 import datetime
 
-from ddt import ddt, data, file_data, unpack
+import ddt
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
 from .test_utils import create_asg_with_tags, create_elb, clone_elb_instances_with_state
@@ -14,10 +14,55 @@ from ..exception import *
 from ..utils import EDP
 
 
-
-@ddt
+@ddt.ddt
 class TestEC2(unittest.TestCase):
     _multiprocess_can_split_ = True
+
+    def _make_fake_ami(self, environment='foo', deployment='bar', play='baz'):
+        ec2_connection = boto.connect_ec2()
+        reservation = ec2_connection.run_instances(random_ami_id())
+        instance_id = reservation.instances[0].id
+        ami_id = ec2_connection.create_image(instance_id, "Existing AMI")
+        ami = ec2_connection.get_all_images(ami_id)[0]
+        ami.add_tag("environment", environment)
+        ami.add_tag("deployment", deployment)
+        ami.add_tag("play", play)
+        return ami_id
+
+    @mock_ec2
+    def test_ami_edp_validate_for_bad_id(self):
+        # Bad AMI Id
+        self.assertRaises(
+            ImageNotFoundException,
+            ec2.validate_edp,
+            'ami-fakeid',
+            'fake_e',
+            'fake_d',
+            'fake_p'
+        )
+
+    @ddt.data(
+        (True, ("foo", "bar", "baz")),
+        (False, ("---", "bar", "baz")),
+        (False, ("foo", "---", "baz")),
+        (False, ("foo", "bar", "---")),
+        (False, ("---", "---", "baz")),
+        (False, ("---", "bar", "---")),
+        (False, ("foo", "---", "---")),
+        (False, ("---", "---", "---")),
+        (False, ("baz", "bar", "foo")),
+    )
+    @ddt.unpack
+    @mock_ec2
+    def test_ami_edp_validate_for_bad_id(self, expected_ret, edp):
+        fake_ami_id = self._make_fake_ami()
+        self.assertEqual(ec2.validate_edp(fake_ami_id, *edp), expected_ret)
+
+    @mock_ec2
+    def test_restrict_ami_to_stage(self):
+        self.assertEqual(True, ec2.is_stage_ami(self._make_fake_ami(environment='stage')))
+        self.assertEqual(False, ec2.is_stage_ami(self._make_fake_ami(environment='prod')))
+        self.assertEqual(False, ec2.is_stage_ami(self._make_fake_ami(deployment='stage', play='stage')))
 
     @mock_ec2
     def test_edp_for_ami_bad_id(self):
@@ -36,27 +81,18 @@ class TestEC2(unittest.TestCase):
 
     @mock_ec2
     def test_edp2_for_tagged_ami(self):
-        ec2_connection = boto.connect_ec2()
-        reservation = ec2_connection.run_instances(random_ami_id())
-        instance_id = reservation.instances[0].id
-        ami_id = ec2_connection.create_image(instance_id, "Existing AMI")
-        ami = ec2_connection.get_all_images(ami_id)[0]
-        ami.add_tag("environment", "foo")
-        ami.add_tag("deployment", "bar")
-        ami.add_tag("play", "baz")
-
-        actual_edp = ec2.edp_for_ami(ami_id)
+        actual_edp = ec2.edp_for_ami(self._make_fake_ami())
         expected_edp = EDP("foo", "bar", "baz")
 
         # Happy Path
         self.assertEqual(expected_edp, actual_edp)
 
     @mock_autoscaling
-    @file_data("test_asgs_for_edp_data.json")
+    @ddt.file_data("test_asgs_for_edp_data.json")
     def test_asgs_for_edp(self, params):
         asgs, expected_returned = params
 
-        edp = EDP("foo","bar","baz")
+        edp = EDP("foo", "bar", "baz")
 
         for name, tags in asgs.iteritems():
             create_asg_with_tags(name, tags)
@@ -84,7 +120,7 @@ class TestEC2(unittest.TestCase):
         asg = asgs[0]
         asg.instances[0].lifecycle_state = "NotInService"
         with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs) as mock_connection:
-            self.assertRaises(TimeoutException, ec2.wait_for_in_service,[asg_name], 2)
+            self.assertRaises(TimeoutException, ec2.wait_for_in_service, [asg_name], 2)
 
     @mock_autoscaling
     @mock_ec2
@@ -96,7 +132,7 @@ class TestEC2(unittest.TestCase):
         asg = asgs[0]
         asg.instances[0].health_status = "Unhealthy"
         with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs) as mock_connection:
-            self.assertRaises(TimeoutException, ec2.wait_for_in_service,[asg_name], 2)
+            self.assertRaises(TimeoutException, ec2.wait_for_in_service, [asg_name], 2)
 
     @mock_elb
     @mock_ec2
@@ -115,8 +151,8 @@ class TestEC2(unittest.TestCase):
         second_elb_instances = second_elb.get_instance_health()
 
         return_vals = [
-                clone_elb_instances_with_state(first_elb_instances, "OutOfService"),
-                clone_elb_instances_with_state(second_elb_instances, "OutOfService")
+            clone_elb_instances_with_state(first_elb_instances, "OutOfService"),
+            clone_elb_instances_with_state(second_elb_instances, "OutOfService")
         ]
         return_vals += [
             clone_elb_instances_with_state(first_elb_instances, "InService"),
@@ -177,7 +213,7 @@ class TestEC2(unittest.TestCase):
     def test_get_asgs_pending_delete(self):
         asg_name = "test-asg-deletion"
         deletion_dttm_str = datetime.datetime.utcnow().isoformat()
-        create_asg_with_tags(asg_name, {ec2.ASG_DELETE_TAG_KEY:deletion_dttm_str})
+        create_asg_with_tags(asg_name, {ec2.ASG_DELETE_TAG_KEY: deletion_dttm_str})
 
         asgs = ec2.get_asgs_pending_delete()
         self.assertTrue(len(asgs) == 1)
