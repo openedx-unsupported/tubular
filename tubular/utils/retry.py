@@ -30,7 +30,7 @@ def retry(attempts=MAX_ATTEMPTS, delay_seconds=DELAY_SECONDS, max_time_seconds=M
         The final exception raised by the wrapped function
     """
     def retry_decorator(fn):
-        if not getattr(sys, '_is_retry_enabled', True):
+        if os.environ.get('TUBULAR_RETRY_ENABLED', "true").lower() == "false":
             return fn
 
         @wraps(fn)

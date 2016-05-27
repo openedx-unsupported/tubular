@@ -1,4 +1,4 @@
-import sys
+import os
 import unittest
 import mock
 import datetime
@@ -6,7 +6,8 @@ import datetime
 from ..utils import retry
 from ddt import ddt, data, unpack
 
-sys._is_retry_enabled = True
+os.environ['TUBULAR_RETRY_ENABLED'] = "true"
+reload(retry)
 
 
 class UniqueTestException(Exception):

@@ -1,5 +1,4 @@
-import sys
-
+import os
 import json
 import unittest
 import itertools
@@ -19,7 +18,7 @@ from .test_utils import create_asg_with_tags, create_elb
 
 # Disable the retry decorator and reload the asgard module. This will ensure that tests do not fail because of the retry
 # decorator recalling a method when using httpretty with side effect iterators
-sys._is_retry_enabled = False
+os.environ['TUBULAR_RETRY_ENABLED'] = "false"
 reload(asgard)
 
 
