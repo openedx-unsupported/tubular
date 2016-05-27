@@ -18,7 +18,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 def restrict_ami_to_stage(ami_id):
     try:
         is_stage = is_stage_ami(ami_id)
-    except Exception, e:
+    except Exception as e:
         traceback.print_exc()
         click.secho("Error restricting AMI to stage: {0}.\nMessage: {1}".format(ami_id, e.message), fg='red')
         sys.exit(1)

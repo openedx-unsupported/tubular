@@ -5,16 +5,16 @@ when we deploy using asgard.
 import boto
 import logging
 import time
-from utils import EDP
-from exception import (
+from tubular.utils import EDP
+from tubular.exception import (
     ImageNotFoundException,
     MissingTagException,
     TimeoutException,
+    ASGDoesNotExistException
 )
 from boto.exception import EC2ResponseError
 from boto.ec2.autoscale.tag import Tag
 from datetime import datetime, timedelta
-from exception import ASGDoesNotExistException
 
 LOG = logging.getLogger(__name__)
 

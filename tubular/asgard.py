@@ -5,10 +5,9 @@ import requests
 import time
 import traceback
 import exception
-import ec2
-
-from utils.retry import retry
-from exception import BackendError, ASGDoesNotExistException, CannotDeleteActiveASG
+import tubular.ec2 as ec2
+from tubular.utils.retry import retry
+from tubular.exception import BackendError, ASGDoesNotExistException, CannotDeleteActiveASG
 
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091/us-east-1")

@@ -1,6 +1,5 @@
 import time
 import logging
-import sys
 import os
 
 from functools import wraps
