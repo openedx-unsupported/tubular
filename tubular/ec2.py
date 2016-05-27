@@ -94,7 +94,7 @@ def is_stage_ami(ami_id):
     return ami_for_stage
 
 
-def asgs_for_edp(edp):
+def asgs_for_edp(edp, filter_asgs_pending_delete=True):
     """
     All AutoScalingGroups that have the tags of this play.
 
@@ -103,7 +103,7 @@ def asgs_for_edp(edp):
     Arguments:
         EDP Named Tuple: The edp tags for the ASGs you want.
     Returns:
-        iterable: An iterable of play names that match the EDP.
+        iterable: An iterable of ASG names that match the EDP.
     eg.
 
      [
@@ -122,6 +122,11 @@ def asgs_for_edp(edp):
     for group in all_groups:
         tags = {tag.key: tag.value for tag in group.tags}
         LOG.debug("Tags for asg {}: {}".format(group.name, tags))
+        if filter_asgs_pending_delete and ASG_DELETE_TAG_KEY in tags.keys():
+            LOG.info("filtering ASG: {0} because it is tagged for deletion on: {1}"
+                     .format(group.name, tags[ASG_DELETE_TAG_KEY]))
+            continue
+
         edp_keys = ['environment', 'deployment', 'play']
         if all([tag in tags for tag in edp_keys]):
             group_env = tags['environment']

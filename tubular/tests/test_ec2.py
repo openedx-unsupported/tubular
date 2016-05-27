@@ -90,7 +90,7 @@ class TestEC2(unittest.TestCase):
     @mock_autoscaling
     @ddt.file_data("test_asgs_for_edp_data.json")
     def test_asgs_for_edp(self, params):
-        asgs, expected_returned = params
+        asgs, expected_returned, expected_asg_names_list = params
 
         edp = EDP("foo", "bar", "baz")
 
@@ -101,8 +101,8 @@ class TestEC2(unittest.TestCase):
         self.assertIsInstance(asgs, Iterable)
 
         asgs = list(asgs)
-        num_asgs = len(asgs)
-        self.assertEquals(num_asgs, expected_returned)
+        self.assertEquals(len(asgs), expected_returned)
+        self.assertTrue(all(asg_name in asgs for asg_name in expected_asg_names_list))
 
     @mock_autoscaling
     @mock_ec2
