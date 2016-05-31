@@ -21,7 +21,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 def validate_cli(ami_id, environment, deployment, play):
     try:
         edp_matched = validate_edp(ami_id, environment, deployment, play)
-    except Exception, e:
+    except Exception as e:
         traceback.print_exc()
         click.secho("Error validating AMI: {0}.\nMessage: {1}".format(ami_id, e.message), fg='red')
         sys.exit(1)

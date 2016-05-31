@@ -2,15 +2,15 @@ import mock
 import unittest
 import boto
 import datetime
-
 import ddt
+import tubular.ec2 as ec2
+
 from collections import Iterable
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
-from .test_utils import create_asg_with_tags, create_elb, clone_elb_instances_with_state
-from .. import ec2
-from ..exception import *
-from ..utils import EDP
+from tubular.tests.test_utils import create_asg_with_tags, create_elb, clone_elb_instances_with_state
+from tubular.exception import ImageNotFoundException, TimeoutException, MissingTagException
+from tubular.utils import EDP
 
 
 @ddt.ddt

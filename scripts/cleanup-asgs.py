@@ -22,10 +22,10 @@ def delete_asg():
         for asg in asgs:
             try:
                 asgard.delete_asg(asg)
-            except Exception, e:
+            except Exception as e:
                 click.secho("Unable to delete ASG: {0} - {1}".format(asg, e.message), fg='red')
                 error = True
-    except Exception, e:
+    except Exception as e:
         traceback.print_exc()
         click.secho("An error occured while cleaning up ASGs: {0}".format(e.message), fg='red')
         error = True

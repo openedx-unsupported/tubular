@@ -18,7 +18,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 def delete_asg(asg_name):
     try:
         asgard.delete_asg(asg_name, True)
-    except Exception, e:
+    except Exception as e:
         traceback.print_exc()
         click.secho("Error Deleting ASG: {0}.\nMessage: {1}".format(asg_name, e.message), fg='red')
         sys.exit(1)

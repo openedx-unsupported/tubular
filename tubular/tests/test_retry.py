@@ -3,7 +3,7 @@ import unittest
 import mock
 import datetime
 
-from ..utils import retry
+from tubular.utils import retry
 from ddt import ddt, data, unpack
 
 os.environ['TUBULAR_RETRY_ENABLED'] = "true"
