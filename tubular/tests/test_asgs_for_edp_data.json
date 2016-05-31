@@ -1,13 +1,15 @@
 {
   "no_asgs": [
     {},
-    0
+    0,
+    []
   ],
   "untagged_asg": [
     {
       "untagged_asg": {} 
     },
-    0
+    0,
+    []
   ],
   "multiple_bad_asgs" : [
     {
@@ -17,21 +19,45 @@
         "play": "baz"
       }
     },
-    0
+    0,
+    []
   ],
   "one_good_asg" : [
     {
       "untagged_asg": {},
-      "partially_tagged_asg": {
+      "partially_tagged_asg_1": {
         "environment": "foo",
         "play": "baz"
       },
-      "partially_tagged_asg": {
+      "fully_tagged_asg": {
         "environment": "foo",
         "deployment": "bar",
         "play": "baz"
       }
     },
-    1
+    1,
+    ["fully_tagged_asg"]
+  ],
+  "two_good_one_with_delete_tag" : [
+    {
+      "fully_tagged_asg_1": {
+        "environment": "foo",
+        "deployment": "bar",
+        "play": "baz"
+      },
+      "fully_tagged_asg_2": {
+        "environment": "foo",
+        "deployment": "bar",
+        "play": "baz"
+      },
+      "ASG_with_delete_tag": {
+        "environment": "foo",
+        "deployment": "bar",
+        "play": "baz",
+        "delete_on_ts":"2016-05-27T18:30:16.574222"
+      }
+    },
+    2,
+    ["fully_tagged_asg_1", "fully_tagged_asg_2"]
   ]
 }
