@@ -1,6 +1,7 @@
 boto==2.39.0
 click>=6.0,<7.0
 requests>=2.9.1,<3.0
+pycrypto
 # Replace this line with a PyPI line as soon as a new PyGithub release is published
 # containing the commit 5823ed7, which is already merged upstream.
 git+https://github.com/doctoryes/PyGithub.git@v2.0.0-alpha.4-edx1#egg=PyGithub
