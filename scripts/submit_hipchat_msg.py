@@ -1,4 +1,6 @@
+#!/usr/bin/env python
 import sys
+import logging
 import requests
 import click
 import urllib
@@ -10,6 +12,8 @@ AUTH_HEADER_FIELD = "Authorization"
 AUTH_HEADER_VALUE = "Bearer {}"
 
 
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
 @click.command()
 @click.option('--auth_token', '-a',
               envvar='HIPCHAT_AUTH_TOKEN',
@@ -17,7 +21,7 @@ AUTH_HEADER_VALUE = "Bearer {}"
               )
 @click.option('--channel', '-c',
               envvar='HIPCHAT_CHANNEL',
-              help="Channel to which the script should post a message.",
+              help="Channel to which the script should post a message. Case Sensitive.",
               )
 @click.option('--message', '-m',
               help="Message to send to HipChat channel.",
