@@ -21,7 +21,7 @@ def delete_asg():
         asgs = get_asgs_pending_delete()
         for asg in asgs:
             try:
-                asgard.delete_asg(asg)
+                asgard.delete_asg(asg.name)
             except Exception as e:
                 click.secho("Unable to delete ASG: {0} - {1}".format(asg, e.message), fg='red')
                 error = True
