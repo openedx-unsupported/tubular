@@ -56,10 +56,10 @@ def cli(auth_token, channel, message, color):
     post_url = HIPCHAT_API_URL + NOTIFICATION_POST.format(urllib.quote(channel.strip()))
     r = requests.post(post_url, headers=headers, json=msg_payload)
 
-    # An exit code of 0 means success and non-zero means failure.
     success = r.status_code in (200, 201, 204)
     if not success:
         print "Message send failed: {}".format(r.text)
+    # An exit code of 0 means success and non-zero means failure.
     sys.exit(not success)
 
 

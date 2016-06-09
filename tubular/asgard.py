@@ -153,7 +153,7 @@ def wait_for_task_completion(task_url, timeout):
 
         time.sleep(WAIT_SLEEP_TIME)
 
-    raise exception.TimeoutException("Timedout while waiting for task {}".format(task_url))
+    raise exception.TimeoutException("Timed out while waiting for task {}".format(task_url))
 
 
 def new_asg(cluster, ami_id):
