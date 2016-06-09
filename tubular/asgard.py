@@ -67,7 +67,11 @@ def clusters_for_asgs(asgs):
     url = request.prepare().url
     LOG.debug("Getting Cluster List from: {}".format(url))
     response = requests.get(CLUSTER_LIST_URL, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
-    cluster_json = response.json()
+    try:
+        cluster_json = response.json()
+    except ValueError as e:
+        msg = "Expected json info for asg from {} but got the following:\n{}"
+        raise BackendError(msg.format(url, response.text))
 
     # need this to be a list so that we can test membership.
     asgs = list(asgs)
@@ -141,13 +145,17 @@ def wait_for_task_completion(task_url, timeout):
         response = requests.get(task_url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
         status = response.json()['status']
         if status == 'completed' or status == 'failed':
-            return response.json()
+            try:
+                return response.json()
+            except ValueError as e:
+                msg = "Expected json status for task {} but got the following:\n{}"
+                raise BackendError(msg.format(task_url, response.text))
+
         time.sleep(WAIT_SLEEP_TIME)
 
-    raise exception.TimeoutException("Timedout while waiting for task {}".format(task_url))
+    raise exception.TimeoutException("Timed out while waiting for task {}".format(task_url))
 
 
-@retry()
 def new_asg(cluster, ami_id):
     """
     Create a new ASG in the given asgard cluster using the given AMI.
