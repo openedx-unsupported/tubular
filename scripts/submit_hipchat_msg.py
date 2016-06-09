@@ -27,7 +27,12 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
               help="Message to send to HipChat channel.",
               required=True
               )
-def cli(auth_token, channel, message):
+@click.option('--color',
+              envvar='HIPCHAT_COLOR',
+              default="green",
+              help='The color of the message in HipChat.',
+              )
+def cli(auth_token, channel, message, color):
     """
     Post a message to a HipChat channel.
     """
@@ -43,7 +48,7 @@ def cli(auth_token, channel, message):
         AUTH_HEADER_FIELD: AUTH_HEADER_VALUE.format(auth_token)
     }
     msg_payload = {
-        "color": "green",
+        "color": color,
         "message": message,
         "notify": False,
         "message_format": "text"
