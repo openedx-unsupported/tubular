@@ -156,7 +156,6 @@ def wait_for_task_completion(task_url, timeout):
     raise exception.TimeoutException("Timedout while waiting for task {}".format(task_url))
 
 
-@retry()
 def new_asg(cluster, ami_id):
     """
     Create a new ASG in the given asgard cluster using the given AMI.
