@@ -37,7 +37,7 @@ def cli(auth_token, channels, message, color):
     """
     Post a message to one or more HipChat channels.
     """
-    if not channel:
+    if not channels.strip():
         logging.warning("No HIPCHAT_CHANNELS defined - ignoring message send: {}".format(message))
         sys.exit(0)
 
