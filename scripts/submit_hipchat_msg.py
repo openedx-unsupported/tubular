@@ -57,11 +57,15 @@ def cli(auth_token, channels, message, color):
 
     channel_list = [channel.strip() for channel in channels.split(",")]
     for channel in channel_list:
+        # Empty channel names can happen if people put in double commas or
+        # if there is a trailing comma in the channels list.
+        if not channel:
+            continue
+
         post_url = HIPCHAT_API_URL + NOTIFICATION_POST.format(urllib.quote(channel))
         r = requests.post(post_url, headers=headers, json=msg_payload)
 
-        success = r.status_code in (200, 201, 204)
-        if not success:
+        if not r.status_code in (200, 201, 204):
             print "Message send failed: {}".format(r.text)
             # An exit code of 0 means success and non-zero means failure.
             sys.exit(1)
