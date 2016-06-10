@@ -35,14 +35,23 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
               )
 def cli(auth_token, channels, message, color):
     """
-    Post a message to a HipChat channels.
+    Post a message to one or more HipChat channels.
     """
     if not channel:
-        print "No HIPCHAT_CHANNELS defined - ignoring message send: {}".format(message)
+        logging.warning("No HIPCHAT_CHANNELS defined - ignoring message send: {}".format(message))
+        sys.exit(0)
+
+    # Convert the comma seperate string to a list of names, and remove any empty strings.
+    # This handles the case where there is a trailing comma or multiple commas with no
+    # text in between them.
+    channel_list = [channel.strip() for channel in channels.split(",") if channel.strip()]
+    if len(channel_list) < 1:
+        logging.warning("HIPCHAT_CHANNELS defined a list with no valid channel names - "
+         "ignoring message send: {}".format(message))
         sys.exit(0)
 
     if not auth_token:
-        print "No HIPCHAT_AUTH_TOKEN defined - ignoring message send: {}".format(message)
+        logging.warning("No HIPCHAT_AUTH_TOKEN defined - ignoring message send: {}".format(message))
         sys.exit(0)
 
     headers = {
@@ -55,18 +64,12 @@ def cli(auth_token, channels, message, color):
         "message_format": "text"
     }
 
-    channel_list = [channel.strip() for channel in channels.split(",")]
     for channel in channel_list:
-        # Empty channel names can happen if people put in double commas or
-        # if there is a trailing comma in the channels list.
-        if not channel:
-            continue
-
         post_url = HIPCHAT_API_URL + NOTIFICATION_POST.format(urllib.quote(channel))
         r = requests.post(post_url, headers=headers, json=msg_payload)
 
         if not r.status_code in (200, 201, 204):
-            print "Message send failed: {}".format(r.text)
+            logging.error("Message send failed: {}".format(r.text))
             # An exit code of 0 means success and non-zero means failure.
             sys.exit(1)
 
