@@ -19,9 +19,10 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
               envvar='HIPCHAT_AUTH_TOKEN',
               help="Authentication token to use for HipChat REST API.",
               )
-@click.option('--channel', '-c',
-              envvar='HIPCHAT_CHANNEL',
-              help="Channel to which the script should post a message. Case Sensitive.",
+@click.option('--channels', '-c',
+              envvar='HIPCHAT_CHANNELS',
+              help="Channel to which the script should post a message. Case Sensitive."
+                   "Multiple channels can be provided as a comma separated list.",
               )
 @click.option('--message', '-m',
               help="Message to send to HipChat channel.",
@@ -32,16 +33,25 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
               default="green",
               help='The color of the message in HipChat.',
               )
-def cli(auth_token, channel, message, color):
+def cli(auth_token, channels, message, color):
     """
-    Post a message to a HipChat channel.
+    Post a message to one or more HipChat channels.
     """
-    if not channel:
-        print "No HIPCHAT_CHANNEL defined - ignoring message send: {}".format(message)
+    if not channels.strip():
+        logging.warning("No HIPCHAT_CHANNELS defined - ignoring message send: {}".format(message))
+        sys.exit(0)
+
+    # Convert the comma seperate string to a list of names, and remove any empty strings.
+    # This handles the case where there is a trailing comma or multiple commas with no
+    # text in between them.
+    channel_list = [channel.strip() for channel in channels.split(",") if channel.strip()]
+    if len(channel_list) < 1:
+        logging.warning("HIPCHAT_CHANNELS defined a list with no valid channel names - "
+         "ignoring message send: {}".format(message))
         sys.exit(0)
 
     if not auth_token:
-        print "No HIPCHAT_AUTH_TOKEN defined - ignoring message send: {}".format(message)
+        logging.warning("No HIPCHAT_AUTH_TOKEN defined - ignoring message send: {}".format(message))
         sys.exit(0)
 
     headers = {
@@ -53,14 +63,18 @@ def cli(auth_token, channel, message, color):
         "notify": False,
         "message_format": "text"
     }
-    post_url = HIPCHAT_API_URL + NOTIFICATION_POST.format(urllib.quote(channel.strip()))
-    r = requests.post(post_url, headers=headers, json=msg_payload)
 
-    success = r.status_code in (200, 201, 204)
-    if not success:
-        print "Message send failed: {}".format(r.text)
+    for channel in channel_list:
+        post_url = HIPCHAT_API_URL + NOTIFICATION_POST.format(urllib.quote(channel))
+        r = requests.post(post_url, headers=headers, json=msg_payload)
+
+        if not r.status_code in (200, 201, 204):
+            logging.error("Message send failed: {}".format(r.text))
+            # An exit code of 0 means success and non-zero means failure.
+            sys.exit(1)
+
     # An exit code of 0 means success and non-zero means failure.
-    sys.exit(not success)
+    sys.exit(0)
 
 
 if __name__ == '__main__':
