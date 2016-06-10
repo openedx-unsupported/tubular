@@ -241,7 +241,7 @@ class TestEC2(unittest.TestCase):
 
     def test_create_tag_for_asg_deletion(self):
         asg_name = "test-asg-tags"
-        tag = ec2.create_tag_for_asg_deletion(asg_name)
+        tag = ec2.create_tag_for_asg_deletion(asg_name, 1)
 
         self.assertEqual(tag.key, ec2.ASG_DELETE_TAG_KEY)
         self.assertEqual(tag.resource_id, asg_name)
