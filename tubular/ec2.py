@@ -139,14 +139,14 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
                 yield group.name
 
 
-def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=3600):
+def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta):
     return Tag(key=ASG_DELETE_TAG_KEY,
                value=(datetime.utcnow() + timedelta(seconds=seconds_until_delete_delta)).isoformat(),
                propagate_at_launch=False,
                resource_id=asg_name)
 
 
-def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=3600):
+def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=1800):
     """
     Tag an asg with a tag named ASG_DELETE_TAG_KEY with a value of the MS since epoch UTC + ms_until_delete_delta
     that an ASG may be deleted.
