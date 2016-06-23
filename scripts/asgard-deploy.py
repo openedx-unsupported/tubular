@@ -3,6 +3,7 @@ import sys
 import logging
 import traceback
 import click
+import yaml
 from os import path
 
 # Add top-level module path to sys.path before importing tubular code.
@@ -14,8 +15,17 @@ from tubular import asgard
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 @click.command()
-@click.option('--ami_id', envvar='AMI_ID', help='The ami-id to deploy', required=True)
-def deploy(ami_id):
+@click.option('--ami_id', envvar='AMI_ID', help='The ami-id to deploy')
+@click.option('--config-file', envvar="CONFIG_FILE", help='The config file to to get the ami_id from.')
+def deploy(ami_id, config_file):
+    config = yaml.safe_load(open(config_file, 'r'))
+    if not ami_id:
+        if 'ami_id' in config:
+            ami_id = config['ami_id']
+        else:
+            click.secho("AMI ID not specified in environment, on cli or in config file.", fg='red')
+            sys.exit(1)
+
     try:
         asgard.deploy(ami_id)
     except Exception as e:
