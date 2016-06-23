@@ -17,7 +17,8 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 @click.command()
 @click.option('--ami_id', envvar='AMI_ID', help='The ami-id to deploy')
 @click.option('--config-file', envvar="CONFIG_FILE", help='The config file to to get the ami_id from.')
-def deploy(ami_id, config_file):
+@click.option('--dry-run', envvar="DRY_RUN", help="Don't actually deploy.", is_flag=True, default=False)
+def deploy(ami_id, config_file, dry_run):
     config = yaml.safe_load(open(config_file, 'r'))
     if not ami_id:
         if 'ami_id' in config:
@@ -27,7 +28,10 @@ def deploy(ami_id, config_file):
             sys.exit(1)
 
     try:
-        asgard.deploy(ami_id)
+        if not dry_run:
+            asgard.deploy(ami_id)
+        else:
+            click.echo("Would have triggered a deploy of {}".format(ami_id))
     except Exception as e:
         traceback.print_exc()
         click.secho("Error Deploying AMI: {0}.\nMessage: {1}".format(ami_id, e.message), fg='red')
