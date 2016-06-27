@@ -19,7 +19,8 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 @click.option('--config-file', envvar="CONFIG_FILE", help='The config file to to get the ami_id from.')
 @click.option('--dry-run', envvar="DRY_RUN", help="Don't actually deploy.", is_flag=True, default=False)
 def deploy(ami_id, config_file, dry_run):
-    config = yaml.safe_load(open(config_file, 'r'))
+    if config_file:
+        config = yaml.safe_load(open(config_file, 'r'))
     if not ami_id:
         if 'ami_id' in config:
             ami_id = config['ami_id']
