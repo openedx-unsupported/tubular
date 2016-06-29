@@ -389,7 +389,7 @@ def deploy(ami_id):
     edp = ec2.edp_for_ami(ami_id)
 
     # These are all autoscaling groups that match the tags we care about.
-    asgs = ec2.asgs_for_edp(edp)
+    asgs = ec2.asgs_for_edp(edp, filter_asgs_pending_delete=False)
 
     # All the ASGs except for the new one
     # we are about to make.
