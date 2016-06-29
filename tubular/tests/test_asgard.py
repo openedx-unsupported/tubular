@@ -539,6 +539,23 @@ class TestAsgard(unittest.TestCase):
         self.assertEquals(None, asgard.disable_asg(asg))
 
     @httpretty.activate
+    @mock.patch('boto.connect_autoscale')
+    def test_disable_asg_does_not_exist(self, mock_connect_autoscale):
+        def post_callback(request, uri, headers):
+            # If this POST callback gets called, test has failed.
+            raise Exception("POST called to disable ASG when it should have been skipped.")
+
+        httpretty.register_uri(
+            httpretty.POST,
+            asgard.ASG_DEACTIVATE_URL,
+            body=post_callback
+        )
+
+        asg = 'loadtest-edx-edxapp-v059'
+        self._mock_asgard_pending_delete([asg], 404)
+        self.assertEquals(None, asgard.disable_asg(asg))
+
+    @httpretty.activate
     @data((completed_sample_task, True), (failed_sample_task, False))
     @unpack
     def test_delete_asg(self, task_body, should_succeed):
@@ -915,6 +932,12 @@ class TestAsgard(unittest.TestCase):
             content_type="application/json")
         self.assertEqual(asgard.is_asg_enabled(asg_name), expected_return)
 
+    @httpretty.activate
+    def test_is_asg_enabled_deleted_asg(self):
+        asg = "loadtest-edx-edxapp-v060"
+        self._mock_asgard_not_pending_delete([asg], 404)
+        self.assertEqual(asgard.is_asg_enabled(asg), False)
+    
     @httpretty.activate
     def test_get_asg_info(self):
         asg = "loadtest-edx-edxapp-v060"

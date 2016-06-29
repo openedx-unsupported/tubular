@@ -236,7 +236,12 @@ def is_asg_enabled(asg):
     Returns:
         True if the asg status "launchingSuspended" is False, otherwise returns True
     """
-    asgs = get_asg_info(asg)
+    try:
+        asgs = get_asg_info(asg)
+    except ASGDoesNotExistException as e:
+        # If an asg doesn't exist, it is not enabled.
+        return False
+
     if asgs['group']['launchingSuspended'] is True:
         return False
     else:
@@ -306,9 +311,14 @@ def disable_asg(asg):
         TimeoutException: If the task to enable the ASG fails..
         BackendError: If asgard was unable to disable the ASG
     """
-    if is_asg_pending_delete(asg):
-        LOG.info("Not disabling old ASG {} due to its pending deletion.".format(asg))
+    try:
+        if is_asg_pending_delete(asg):
+            LOG.info("Not disabling old ASG {} due to its pending deletion.".format(asg))
+            return
+    except ASGDoesNotExistException as e:
+        LOG.info("Not disabling ASG {}, it no longer exists.".format(asg))
         return
+
     payload = { "name": asg }
     response = requests.post(ASG_DEACTIVATE_URL,
             data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
