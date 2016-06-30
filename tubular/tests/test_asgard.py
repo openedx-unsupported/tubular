@@ -529,7 +529,7 @@ class TestAsgard(unittest.TestCase):
             httpretty.POST,
             asgard.NEW_ASG_URL,
             body=post_callback,
-            )
+        )
 
         self.assertRaises(BackendError, asgard.new_asg, cluster, ami_id)
 
