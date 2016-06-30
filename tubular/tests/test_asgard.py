@@ -496,10 +496,10 @@ class TestAsgard(unittest.TestCase):
             return (302, response_headers, response_body)
 
         httpretty.register_uri(
-                httpretty.POST,
+            httpretty.POST,
             asgard.NEW_ASG_URL,
-                body=post_callback,
-                Location=task_url)
+            body=post_callback,
+            Location=task_url)
 
         httpretty.register_uri(
             httpretty.GET,
@@ -515,6 +515,23 @@ class TestAsgard(unittest.TestCase):
             content_type="application/json")
 
         self.assertRaises(BackendError, asgard.new_asg,cluster,ami_id)
+
+    @httpretty.activate
+    def test_new_asg_404(self):
+        cluster = "loadtest-edx-edxapp"
+        ami_id = "ami-abc1234"
+
+        def post_callback(request, uri, headers):
+            response_headers = { "server": asgard.ASGARD_API_ENDPOINT }
+            return (404, response_headers, "")
+
+        httpretty.register_uri(
+            httpretty.POST,
+            asgard.NEW_ASG_URL,
+            body=post_callback,
+        )
+
+        self.assertRaises(BackendError, asgard.new_asg, cluster, ami_id)
 
     @httpretty.activate
     @mock.patch('boto.connect_autoscale')

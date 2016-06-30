@@ -180,7 +180,12 @@ def new_asg(cluster, ami_id):
             data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
     LOG.debug("Sent request to create new ASG in Cluster({}).".format(cluster))
 
-    #TODO: Make sure response is not an error.
+    if response.status_code == 404:
+        msg = "Can't create more ASGs for cluster {}. Please either wait " \
+              "until older ASGs have been removed automatically or remove " \
+              "old ASGs manually via Asgard."
+        raise exception.BackendError(msg.format(cluster))
+
     response = wait_for_task_completion(response.url, ASGARD_WAIT_TIMEOUT)
     if response['status'] == 'failed':
         msg = "Failure during new ASG creation. Task Log: \n{}".format(response['log'])
