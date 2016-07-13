@@ -32,3 +32,6 @@ class ClusterDoesNotExistException(ResourceDoesNotExistException):
 
 class CannotDeleteActiveASG(Exception):
     pass
+
+class CannotDisableActiveASG(Exception):
+    pass

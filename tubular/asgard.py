@@ -251,7 +251,29 @@ def get_asg_info(asg):
     return info
 
 
+@retry()
+def get_cluster_info(cluster):
+    """
+    Queries Asgard for the status info of a cluster.
 
+    Arguments:
+        cluster(str): Name of the cluster.
+
+    Returns:
+        dict: a Dictionary with information about the asgard cluster.
+
+    Raises:
+        TimeoutException: when the request for an ASG times out.
+        BackendError: When a non 200 response code is returned from the Asgard API
+        ClusterDoesNotExistException: When an ASG does not exist
+    """
+    url = CLUSTER_INFO_URL.format(culster)
+    try:
+        info = _get_asgard_resource_info(url)
+    except ResourceDoesNotExistException as e:
+        raise ClusterDoesNotExistException('Cluster {} does not exist'.format(cluster))
+
+    return info
 
 def is_asg_enabled(asg):
     """
@@ -296,6 +318,32 @@ def is_asg_pending_delete(asg):
     else:
         return True
 
+@retry()
+def is_last_active_asg(asg):
+    """
+    Check to see if the given ASG is the last active ASG in its cluster.
+
+    Argument:
+        asg(str): The name of the ASG being checked.
+
+    Returns:
+        True if this is the last active ASG, else return False.
+
+    Raises:
+        TimeoutException: when the request for an ASG times out.
+        BackendError: When a non 200 response code is returned from the Asgard API
+        ASGDoesNotExistException: When an ASG does not exist
+        
+    """
+    asgs = get_asg_info(asg)
+    cluster_name = asg['clusterName']
+    cluster = get_cluster_info(cluster_name)
+    active_asg = [ asg['autoScalingGroupName'] for asg in cluster if is_asg_enabled(asg['autoScalingGroupName']) ]
+
+    if len(active_asg) == 1 and active_asg[0] == asg:
+        return True
+
+    return False
 
 @retry()
 def enable_asg(asg):
@@ -346,6 +394,10 @@ def disable_asg(asg):
         LOG.info("Not disabling ASG {}, it no longer exists.".format(asg))
         return
 
+    if is_last_active_asg(asg):
+        msg = "Not disabling ASG {}, it is the last active ASG in this cluster."
+        raise exception.CannotDisableActiveASG(msg)
+
     payload = { "name": asg }
     response = requests.post(ASG_DEACTIVATE_URL,
             data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
@@ -357,7 +409,7 @@ def disable_asg(asg):
 
 
 @retry()
-def delete_asg(asg, fail_if_active=True):
+def delete_asg(asg, fail_if_active=True, fail_if_last=True):
     """
     Delete an ASG using asgard.
     curl -d "name=helloworld-example-v004" http://asgardprod/us-east-1/cluster/delete
@@ -374,12 +426,16 @@ def delete_asg(asg, fail_if_active=True):
         ASGDoesNotExistException: When an ASG does not exist
     """
     if is_asg_pending_delete(asg):
-        LOG.info("not deleting ASG {} due to its already pending deletion.".format(asg))
+        LOG.info("Not deleting ASG {} due to its already pending deletion.".format(asg))
         return
     if fail_if_active and is_asg_enabled(asg):
-        msg = "not deleting ASG {} as it is currently active.".format(asg)
+        msg = "Not deleting ASG {} as it is currently active.".format(asg)
         LOG.warn(msg)
         raise CannotDeleteActiveASG(msg)
+
+    if fail_if_last and is_last_active_asg(asg):
+        LOG.info("Not deleting ASG {} since it is the last ASG in this cluster.")
+        return
 
     payload = {"name": asg}
     response = requests.post(ASG_DELETE_URL,
