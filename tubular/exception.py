@@ -21,7 +21,13 @@ class BackendError(Exception):
 class BackendDataError(BackendError):
     pass
 
-class ASGDoesNotExistException(Exception):
+class ResourceDoesNotExistException(Exception):
+    pass
+
+class ASGDoesNotExistException(ResourceDoesNotExistException):
+    pass
+
+class ClusterDoesNotExistException(ResourceDoesNotExistException):
     pass
 
 class CannotDeleteActiveASG(Exception):

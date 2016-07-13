@@ -200,12 +200,39 @@ def new_asg(cluster, ami_id):
 
 
 @retry()
+def _get_asgard_resource_info(url):
+    """
+    A generic function for querying Asgard for inforamtion about a specific resource,
+    such as an Autoscaling Group, A cluster.
+    """
+
+    LOG.debug("URL: {}".format(url))
+    response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
+
+    if response.status_code == 404:
+        raise ResourceDoesNotExistException('Resource for url {} does not exist'.format(url))
+    elif response.status_code >= 500:
+        raise BackendError('Asgard experienced an error: {}'.format(response.text))
+    elif response.status_code != 200:
+        raise BackendError('Call to asgard failed with status code: {0}: {1}'
+                           .format(response.status_code, response.text))
+
+    LOG.debug("ASG info: {}".format(response.text))
+    try:
+        info = response.json()
+    except ValueError as e:
+        msg = "Could not parse resource info for {} as json.  Text: {}"
+        raise BackendDataError(msg.format(url, response.text)
+    return info
+
+
+@retry()
 def get_asg_info(asg):
     """
     Queries Asgard for the status info on an ASG
 
     Arguments:
-        cluster(str): Name of the cluster.
+        asg(str): Name of the asg.
 
     Returns:
         dict: a Dictionary with the information about an ASG.
@@ -216,19 +243,14 @@ def get_asg_info(asg):
         ASGDoesNotExistException: When an ASG does not exist
     """
     url = ASG_INFO_URL.format(asg)
-    LOG.debug("URL: {}".format(url))
-    response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
-
-    if response.status_code == 404:
+    try:
+        info = _get_asgard_resource_info(url)
+    except ResourceDoesNotExistException as e:
         raise ASGDoesNotExistException('Autoscale group {} does not exist'.format(asg))
-    elif response.status_code >= 500:
-        raise BackendError('Asgard experienced an error: {}'.format(response.text))
-    elif response.status_code != 200:
-        raise BackendError('Call to asgard failed with status code: {0}: {1}'
-                           .format(response.status_code, response.text))
 
-    LOG.debug("ASG info: {}".format(response.text))
-    return response.json()
+    return info
+
+
 
 
 def is_asg_enabled(asg):
