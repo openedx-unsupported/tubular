@@ -319,7 +319,7 @@ def is_asg_pending_delete(asg):
         return True
 
 @retry()
-def is_last_active_asg(asg):
+def is_last_asg(asg):
     """
     Check to see if the given ASG is the last active ASG in its cluster.
 
@@ -333,14 +333,13 @@ def is_last_active_asg(asg):
         TimeoutException: when the request for an ASG times out.
         BackendError: When a non 200 response code is returned from the Asgard API
         ASGDoesNotExistException: When an ASG does not exist
-        
-    """
-    asgs = get_asg_info(asg)
-    cluster_name = asg['clusterName']
-    cluster = get_cluster_info(cluster_name)
-    active_asg = [ asg['autoScalingGroupName'] for asg in cluster if is_asg_enabled(asg['autoScalingGroupName']) ]
 
-    if len(active_asg) == 1 and active_asg[0] == asg:
+    """
+    asg_info = get_asg_info(asg)
+    cluster_name = asg_info['clusterName']
+    cluster = get_cluster_info(cluster_name)
+
+    if len(cluster) == 1: 
         return True
 
     return False
@@ -394,8 +393,8 @@ def disable_asg(asg):
         LOG.info("Not disabling ASG {}, it no longer exists.".format(asg))
         return
 
-    if is_last_active_asg(asg):
-        msg = "Not disabling ASG {}, it is the last active ASG in this cluster."
+    if is_last_asg(asg):
+        msg = "Not disabling ASG {}, it is the last ASG in this cluster."
         raise exception.CannotDisableActiveASG(msg)
 
     payload = { "name": asg }
@@ -433,7 +432,7 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True):
         LOG.warn(msg)
         raise CannotDeleteActiveASG(msg)
 
-    if fail_if_last and is_last_active_asg(asg):
+    if fail_if_last and is_last_asg(asg):
         LOG.info("Not deleting ASG {} since it is the last ASG in this cluster.")
         return
 
