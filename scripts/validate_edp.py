@@ -19,6 +19,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 @click.option('--deployment', '-d', envvar='AMI_DEPLOYMENT', help='Deployment for AMI, e.g. edx, edge', required=True)
 @click.option('--play', '-p', envvar='AMI_PLAY', help='Play for AMI, e.g. edxapp, insights, discovery', required=True)
 def validate_cli(ami_id, environment, deployment, play):
+    ami_id = ami_id.strip()
     try:
         edp_matched = validate_edp(ami_id, environment, deployment, play)
     except Exception as e:

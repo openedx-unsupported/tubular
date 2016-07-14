@@ -28,6 +28,7 @@ def deploy(ami_id, config_file, dry_run):
             click.secho("AMI ID not specified in environment, on cli or in config file.", fg='red')
             sys.exit(1)
 
+    ami_id = ami_id.strip()
     try:
         if not dry_run:
             asgard.deploy(ami_id)

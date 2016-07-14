@@ -16,6 +16,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 @click.command()
 @click.option('--ami_id', '-a', envvar='AMI_ID', help='The ami-id to deploy', required=True)
 def restrict_ami_to_stage(ami_id):
+    ami_id = ami_id.strip()
     try:
         is_stage = is_stage_ami(ami_id)
     except Exception as e:
