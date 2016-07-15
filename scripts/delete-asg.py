@@ -16,6 +16,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 @click.command()
 @click.option('--asg_name', envvar='ASG_NAME', help='the name of the Autoscale Group to delete', required=True)
 def delete_asg(asg_name):
+    asg_name = asg_name.strip()
     try:
         asgard.delete_asg(asg_name, True)
     except Exception as e:
