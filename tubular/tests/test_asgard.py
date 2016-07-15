@@ -155,7 +155,8 @@ deleted_asg_in_progress = """
           "app_elb"
         ],
 		"status": "deleted"
-	}}
+	}},
+        "clusterName": "app_cluster"
 }}
 """
 
@@ -167,7 +168,8 @@ deleted_asg_not_in_progress = """
 			"app_elb"
 		],
 		"status": null
-	}}
+	}},
+        "clusterName": "app_cluster"
 }}
 """
 
@@ -180,7 +182,8 @@ disabled_asg = """
 		],
 		"status": null,
 		"launchingSuspended": true
-	}}
+	}},
+        "clusterName": "app_cluster"
 }}
 """
 
@@ -193,7 +196,8 @@ enabled_asg = """
 		],
 		"status": null,
 		"launchingSuspended": false
-	}}
+	}},
+        "clusterName": "app_cluster"
 }}
 """
 
@@ -577,6 +581,7 @@ class TestAsgard(unittest.TestCase):
     @unpack
     def test_delete_asg(self, task_body, should_succeed):
         asg = "loadtest-edx-edxapp-v060"
+        cluster = "app_cluster"
         self._mock_asgard_not_pending_delete([asg])
 
         task_url = "http://some.host/task/1234.json"
@@ -602,6 +607,13 @@ class TestAsgard(unittest.TestCase):
             httpretty.GET,
             task_url,
             body=task_body,
+            content_type="application/json"
+        )
+
+        httpretty.register_uri(
+            httpretty.GET,
+            asgard.CLUSTER_INFO_URL.format(cluster),
+            body=valid_cluster_info_json,
             content_type="application/json"
         )
 
@@ -648,6 +660,7 @@ class TestAsgard(unittest.TestCase):
         endpoint_url, test_function = url_and_function
         task_url = "http://some.host/task/1234.json"
         asg = "loadtest-edx-edxapp-v059"
+        cluster = "app_cluster"
 
         def post_callback(request, uri, headers):
             self.assertEqual('POST', request.method)
@@ -665,6 +678,20 @@ class TestAsgard(unittest.TestCase):
             httpretty.POST,
             endpoint_url,
             body=post_callback
+        )
+
+        httpretty.register_uri(
+            httpretty.GET,
+            asgard.ASG_INFO_URL.format(asg),
+            body=enabled_asg.format(asg),
+            content_type="application/json"
+        )
+
+        httpretty.register_uri(
+            httpretty.GET,
+            asgard.CLUSTER_INFO_URL.format(cluster),
+            body=valid_cluster_info_json,
+            content_type="application/json"
         )
 
         httpretty.register_uri(
@@ -842,6 +869,20 @@ class TestAsgard(unittest.TestCase):
                 content_type="application/json",
                 status=response_code)
 
+    def _mock_asgard_asg_info(self, asgs, state, response_code=200):
+        """
+        This is a helper function for mocking calls to the asgard API about whether an asg is active.
+        It will setup urls so that requests for getting ASG info work correctly.
+
+        Arguments:
+            asgs(list<str>): a list of the ASG names that we need to setup urls for.
+            state(list<str>): a list of the state of each asg should be one of 'active' or 'inactive'
+
+        Returns:
+            None
+        """
+        pass
+
     @httpretty.activate
     @mock_autoscaling
     @mock_ec2
@@ -881,6 +922,7 @@ class TestAsgard(unittest.TestCase):
         ami_id = self._setup_for_deploy()
         asgs = ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059", "loadtest-edx-edxapp-v099",
                 "loadtest-edx-worker-v034", "loadtest-edx-worker-v099"]
+        cluster = "app_cluster"
         for asg in asgs:
             url = asgard.ASG_INFO_URL.format(asg)
             httpretty.register_uri(
@@ -897,6 +939,15 @@ class TestAsgard(unittest.TestCase):
                                        content_type="application/json",
                                        status=200)
                 ])
+
+
+        httpretty.register_uri(
+            httpretty.GET,
+            asgard.CLUSTER_INFO_URL.format(cluster),
+            body=valid_cluster_info_json,
+            content_type="application/json"
+        )
+
         self.assertEqual(None, asgard.deploy(ami_id))
 
     @httpretty.activate

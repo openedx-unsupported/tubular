@@ -7,7 +7,7 @@ import traceback
 import exception
 import tubular.ec2 as ec2
 from tubular.utils.retry import retry
-from tubular.exception import BackendError, ASGDoesNotExistException, CannotDeleteActiveASG
+from tubular.exception import BackendError, ASGDoesNotExistException, CannotDeleteActiveASG, ResourceDoesNotExistException
 
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091/us-east-1")
@@ -222,7 +222,7 @@ def _get_asgard_resource_info(url):
         info = response.json()
     except ValueError as e:
         msg = "Could not parse resource info for {} as json.  Text: {}"
-        raise BackendDataError(msg.format(url, response.text)
+        raise exception.BackendDataError(msg.format(url, response.text))
     return info
 
 
@@ -267,7 +267,7 @@ def get_cluster_info(cluster):
         BackendError: When a non 200 response code is returned from the Asgard API
         ClusterDoesNotExistException: When an ASG does not exist
     """
-    url = CLUSTER_INFO_URL.format(culster)
+    url = CLUSTER_INFO_URL.format(cluster)
     try:
         info = _get_asgard_resource_info(url)
     except ResourceDoesNotExistException as e:
