@@ -4,15 +4,17 @@ import logging
 import requests
 import time
 import traceback
-import exception
 import tubular.ec2 as ec2
 from tubular.utils.retry import retry
 from tubular.exception import (
         BackendError,
+        BackendDataError,
         ASGDoesNotExistException,
+        CannotDisableActiveASG,
         CannotDeleteActiveASG,
         CannotDeleteLastASG,
-        ResourceDoesNotExistException
+        ResourceDoesNotExistException,
+        TimeoutException,
 )
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091/us-east-1")
@@ -85,7 +87,7 @@ def clusters_for_asgs(asgs):
     for cluster in cluster_json:
         if "autoScalingGroups" not in cluster or "cluster" not in cluster:
             msg = "Expected 'cluster' and 'autoScalingGroups' keys in dict: {}".format(cluster)
-            raise exception.BackendDataError(msg)
+            raise BackendDataError(msg)
 
         for asg in cluster['autoScalingGroups']:
             LOG.debug("Membership: {} in {}: {}".format(asg, asgs, asg in asgs))
@@ -122,7 +124,7 @@ def asgs_for_cluster(cluster):
     except (KeyError,TypeError) as e:
         msg = "Expected a list of dicts with an 'autoScalingGroupName' attribute. " \
               "Got: {}".format(asgs)
-        raise exception.BackendDataError(msg)
+        raise BackendDataError(msg)
 
     return asg_names
 
@@ -158,7 +160,7 @@ def wait_for_task_completion(task_url, timeout):
 
         time.sleep(WAIT_SLEEP_TIME)
 
-    raise exception.TimeoutException("Timed out while waiting for task {}".format(task_url))
+    raise TimeoutException("Timed out while waiting for task {}".format(task_url))
 
 
 def new_asg(cluster, ami_id):
@@ -189,12 +191,12 @@ def new_asg(cluster, ami_id):
         msg = "Can't create more ASGs for cluster {}. Please either wait " \
               "until older ASGs have been removed automatically or remove " \
               "old ASGs manually via Asgard."
-        raise exception.BackendError(msg.format(cluster))
+        raise BackendError(msg.format(cluster))
 
     response = wait_for_task_completion(response.url, ASGARD_WAIT_TIMEOUT)
     if response['status'] == 'failed':
         msg = "Failure during new ASG creation. Task Log: \n{}".format(response['log'])
-        raise exception.BackendError(msg)
+        raise BackendError(msg)
 
     # Potential Race condition if multiple people are making ASGs for the same cluster
     # Return the name of the newest asg
@@ -227,7 +229,7 @@ def _get_asgard_resource_info(url):
         info = response.json()
     except ValueError as e:
         msg = "Could not parse resource info for {} as json.  Text: {}"
-        raise exception.BackendDataError(msg.format(url, response.text))
+        raise BackendDataError(msg.format(url, response.text))
     return info
 
 
@@ -371,7 +373,7 @@ def enable_asg(asg):
     task_status = wait_for_task_completion(task_url, 301)
     if task_status['status'] == 'failed':
         msg = "Failure while enabling ASG. Task Log: \n{}".format(task_status['log'])
-        raise exception.BackendError(msg)
+        raise BackendError(msg)
 
 
 @retry()
@@ -400,7 +402,7 @@ def disable_asg(asg):
 
     if is_last_asg(asg):
         msg = "Not disabling ASG {}, it is the last ASG in this cluster."
-        raise exception.CannotDisableActiveASG(msg)
+        raise CannotDisableActiveASG(msg)
 
     payload = { "name": asg }
     response = requests.post(ASG_DEACTIVATE_URL,
@@ -409,7 +411,7 @@ def disable_asg(asg):
     task_status = wait_for_task_completion(task_url, 300)
     if task_status['status'] == 'failed':
         msg = "Failure while disabling ASG. Task Log: \n{}".format(task_status['log'])
-        raise exception.BackendError(msg)
+        raise BackendError(msg)
 
 
 @retry()
@@ -449,7 +451,7 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True):
     task_status = wait_for_task_completion(task_url, 300)
     if task_status['status'] == 'failed':
         msg = "Failure while deleting ASG. Task Log: \n{}".format(task_status['log'])
-        raise exception.BackendError(msg)
+        raise BackendError(msg)
 
 
 @retry()
@@ -462,7 +464,7 @@ def elbs_for_asg(asg):
     except (KeyError, TypeError) as e:
         msg = "Expected a dict with path ['group']['loadbalancerNames']. " \
             "Got: {}".format(resp_json)
-        raise exception.BackendDataError(msg)
+        raise BackendDataError(msg)
     return elbs
 
 

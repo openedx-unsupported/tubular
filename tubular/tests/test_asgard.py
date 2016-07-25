@@ -910,20 +910,6 @@ class TestAsgard(unittest.TestCase):
                 content_type="application/json",
                 status=response_code)
 
-    def _mock_asgard_asg_info(self, asgs, state, response_code=200):
-        """
-        This is a helper function for mocking calls to the asgard API about whether an asg is active.
-        It will setup urls so that requests for getting ASG info work correctly.
-
-        Arguments:
-            asgs(list<str>): a list of the ASG names that we need to setup urls for.
-            state(list<str>): a list of the state of each asg should be one of 'active' or 'inactive'
-
-        Returns:
-            None
-        """
-        pass
-
     @httpretty.activate
     @mock_autoscaling
     @mock_ec2
