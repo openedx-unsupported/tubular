@@ -16,6 +16,7 @@ from tubular.exception import (
     TimeoutException,
     BackendError,
     CannotDeleteActiveASG,
+    CannotDeleteLastASG,
     ASGDoesNotExistException
 )
 from tubular.tests.test_utils import create_asg_with_tags, create_elb
@@ -102,6 +103,24 @@ valid_cluster_info_json = """
 ]
 """
 
+valid_single_asg_cluster_info_json = """
+[
+  {
+    "autoScalingGroupName": "loadtest-edx-edxapp-v060",
+    "availabilityZones":
+    [
+      "us-east-1b",
+      "us-east-1c"
+    ],
+    "createdTime": "2016-02-10T12:23:10Z",
+    "defaultCooldown": 300,
+    "desiredCapacity": 4
+  }
+]
+
+
+"""
+
 asgs_for_edxapp_before = """
 [
   {
@@ -175,28 +194,28 @@ deleted_asg_not_in_progress = """
 
 disabled_asg = """
 {{
-	"group": {{
-		"autoScalingGroupName": "{0}",
-		"loadBalancerNames": [
-			"app_elb"
-		],
-		"status": null,
-		"launchingSuspended": true
-	}},
+        "group": {{
+                "autoScalingGroupName": "{0}",
+                "loadBalancerNames": [
+                        "app_elb"
+                ],
+                "status": null,
+                "launchingSuspended": true
+        }},
         "clusterName": "app_cluster"
 }}
 """
 
 enabled_asg = """
 {{
-	"group": {{
-		"autoScalingGroupName": "{0}",
-		"loadBalancerNames": [
-			"app_elb"
-		],
-		"status": null,
-		"launchingSuspended": false
-	}},
+        "group": {{
+                "autoScalingGroupName": "{0}",
+                "loadBalancerNames": [
+                        "app_elb"
+                ],
+                "status": null,
+                "launchingSuspended": false
+        }},
         "clusterName": "app_cluster"
 }}
 """
@@ -644,6 +663,28 @@ class TestAsgard(unittest.TestCase):
         asg = "loadtest-edx-edxapp-v060"
         self._mock_asgard_pending_delete([asg])
         self.assertEqual(None, asgard.delete_asg(asg, True))
+
+    @httpretty.activate
+    def test_delete_last_asg(self):
+        asg = "loadtest-edx-edxapp-v060"
+        cluster = "app_cluster"
+        self._mock_asgard_not_pending_delete([asg], body=disabled_asg)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            asgard.ASG_INFO_URL.format(asg),
+            body=disabled_asg.format(asg),
+            content_type="application/json"
+        )
+
+        httpretty.register_uri(
+                httpretty.GET,
+                asgard.CLUSTER_INFO_URL.format(cluster),
+                body=valid_single_asg_cluster_info_json,
+                content_type="application/json"
+                )
+
+        self.assertRaises(CannotDeleteLastASG, asgard.delete_asg, asg)
 
     @httpretty.activate
     @mock_autoscaling

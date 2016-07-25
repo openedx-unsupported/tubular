@@ -35,3 +35,6 @@ class CannotDeleteActiveASG(Exception):
 
 class CannotDisableActiveASG(Exception):
     pass
+
+class CannotDeleteLastASG(Exception):
+    pass

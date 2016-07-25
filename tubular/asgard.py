@@ -7,8 +7,13 @@ import traceback
 import exception
 import tubular.ec2 as ec2
 from tubular.utils.retry import retry
-from tubular.exception import BackendError, ASGDoesNotExistException, CannotDeleteActiveASG, ResourceDoesNotExistException
-
+from tubular.exception import (
+        BackendError,
+        ASGDoesNotExistException,
+        CannotDeleteActiveASG,
+        CannotDeleteLastASG,
+        ResourceDoesNotExistException
+)
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091/us-east-1")
 ASGARD_API_TOKEN = "asgardApiToken={}".format(os.environ.get("ASGARD_API_TOKEN", "dummy-token"))
@@ -433,8 +438,9 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True):
         raise CannotDeleteActiveASG(msg)
 
     if fail_if_last and is_last_asg(asg):
-        LOG.info("Not deleting ASG {} since it is the last ASG in this cluster.")
-        return
+        msg = "Not deleting ASG {} since it is the last ASG in this cluster."
+        LOG.warn(msg)
+        raise CannotDeleteLastASG(msg)
 
     payload = {"name": asg}
     response = requests.post(ASG_DELETE_URL,
