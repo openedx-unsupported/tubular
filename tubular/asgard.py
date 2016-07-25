@@ -233,7 +233,6 @@ def _get_asgard_resource_info(url):
     return info
 
 
-@retry()
 def get_asg_info(asg):
     """
     Queries Asgard for the status info on an ASG
@@ -258,7 +257,6 @@ def get_asg_info(asg):
     return info
 
 
-@retry()
 def get_cluster_info(cluster):
     """
     Queries Asgard for the status info of a cluster.
@@ -325,7 +323,6 @@ def is_asg_pending_delete(asg):
     else:
         return True
 
-@retry()
 def is_last_asg(asg):
     """
     Check to see if the given ASG is the last active ASG in its cluster.
