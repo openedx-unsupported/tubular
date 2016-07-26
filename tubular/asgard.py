@@ -4,11 +4,18 @@ import logging
 import requests
 import time
 import traceback
-import exception
 import tubular.ec2 as ec2
 from tubular.utils.retry import retry
-from tubular.exception import BackendError, ASGDoesNotExistException, CannotDeleteActiveASG
-
+from tubular.exception import (
+        BackendError,
+        BackendDataError,
+        ASGDoesNotExistException,
+        CannotDisableActiveASG,
+        CannotDeleteActiveASG,
+        CannotDeleteLastASG,
+        ResourceDoesNotExistException,
+        TimeoutException,
+)
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091/us-east-1")
 ASGARD_API_TOKEN = "asgardApiToken={}".format(os.environ.get("ASGARD_API_TOKEN", "dummy-token"))
@@ -80,7 +87,7 @@ def clusters_for_asgs(asgs):
     for cluster in cluster_json:
         if "autoScalingGroups" not in cluster or "cluster" not in cluster:
             msg = "Expected 'cluster' and 'autoScalingGroups' keys in dict: {}".format(cluster)
-            raise exception.BackendDataError(msg)
+            raise BackendDataError(msg)
 
         for asg in cluster['autoScalingGroups']:
             LOG.debug("Membership: {} in {}: {}".format(asg, asgs, asg in asgs))
@@ -117,7 +124,7 @@ def asgs_for_cluster(cluster):
     except (KeyError,TypeError) as e:
         msg = "Expected a list of dicts with an 'autoScalingGroupName' attribute. " \
               "Got: {}".format(asgs)
-        raise exception.BackendDataError(msg)
+        raise BackendDataError(msg)
 
     return asg_names
 
@@ -153,7 +160,7 @@ def wait_for_task_completion(task_url, timeout):
 
         time.sleep(WAIT_SLEEP_TIME)
 
-    raise exception.TimeoutException("Timed out while waiting for task {}".format(task_url))
+    raise TimeoutException("Timed out while waiting for task {}".format(task_url))
 
 
 def new_asg(cluster, ami_id):
@@ -184,12 +191,12 @@ def new_asg(cluster, ami_id):
         msg = "Can't create more ASGs for cluster {}. Please either wait " \
               "until older ASGs have been removed automatically or remove " \
               "old ASGs manually via Asgard."
-        raise exception.BackendError(msg.format(cluster))
+        raise BackendError(msg.format(cluster))
 
     response = wait_for_task_completion(response.url, ASGARD_WAIT_TIMEOUT)
     if response['status'] == 'failed':
         msg = "Failure during new ASG creation. Task Log: \n{}".format(response['log'])
-        raise exception.BackendError(msg)
+        raise BackendError(msg)
 
     # Potential Race condition if multiple people are making ASGs for the same cluster
     # Return the name of the newest asg
@@ -200,12 +207,38 @@ def new_asg(cluster, ami_id):
 
 
 @retry()
+def _get_asgard_resource_info(url):
+    """
+    A generic function for querying Asgard for inforamtion about a specific resource,
+    such as an Autoscaling Group, A cluster.
+    """
+
+    LOG.debug("URL: {}".format(url))
+    response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
+
+    if response.status_code == 404:
+        raise ResourceDoesNotExistException('Resource for url {} does not exist'.format(url))
+    elif response.status_code >= 500:
+        raise BackendError('Asgard experienced an error: {}'.format(response.text))
+    elif response.status_code != 200:
+        raise BackendError('Call to asgard failed with status code: {0}: {1}'
+                           .format(response.status_code, response.text))
+
+    LOG.debug("ASG info: {}".format(response.text))
+    try:
+        info = response.json()
+    except ValueError as e:
+        msg = "Could not parse resource info for {} as json.  Text: {}"
+        raise BackendDataError(msg.format(url, response.text))
+    return info
+
+
 def get_asg_info(asg):
     """
     Queries Asgard for the status info on an ASG
 
     Arguments:
-        cluster(str): Name of the cluster.
+        asg(str): Name of the asg.
 
     Returns:
         dict: a Dictionary with the information about an ASG.
@@ -216,20 +249,36 @@ def get_asg_info(asg):
         ASGDoesNotExistException: When an ASG does not exist
     """
     url = ASG_INFO_URL.format(asg)
-    LOG.debug("URL: {}".format(url))
-    response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
-
-    if response.status_code == 404:
+    try:
+        info = _get_asgard_resource_info(url)
+    except ResourceDoesNotExistException as e:
         raise ASGDoesNotExistException('Autoscale group {} does not exist'.format(asg))
-    elif response.status_code >= 500:
-        raise BackendError('Asgard experienced an error: {}'.format(response.text))
-    elif response.status_code != 200:
-        raise BackendError('Call to asgard failed with status code: {0}: {1}'
-                           .format(response.status_code, response.text))
 
-    LOG.debug("ASG info: {}".format(response.text))
-    return response.json()
+    return info
 
+
+def get_cluster_info(cluster):
+    """
+    Queries Asgard for the status info of a cluster.
+
+    Arguments:
+        cluster(str): Name of the cluster.
+
+    Returns:
+        dict: a Dictionary with information about the asgard cluster.
+
+    Raises:
+        TimeoutException: when the request for an ASG times out.
+        BackendError: When a non 200 response code is returned from the Asgard API
+        ClusterDoesNotExistException: When an ASG does not exist
+    """
+    url = CLUSTER_INFO_URL.format(cluster)
+    try:
+        info = _get_asgard_resource_info(url)
+    except ResourceDoesNotExistException as e:
+        raise ClusterDoesNotExistException('Cluster {} does not exist'.format(cluster))
+
+    return info
 
 def is_asg_enabled(asg):
     """
@@ -274,6 +323,30 @@ def is_asg_pending_delete(asg):
     else:
         return True
 
+def is_last_asg(asg):
+    """
+    Check to see if the given ASG is the last active ASG in its cluster.
+
+    Argument:
+        asg(str): The name of the ASG being checked.
+
+    Returns:
+        True if this is the last active ASG, else return False.
+
+    Raises:
+        TimeoutException: when the request for an ASG times out.
+        BackendError: When a non 200 response code is returned from the Asgard API
+        ASGDoesNotExistException: When an ASG does not exist
+
+    """
+    asg_info = get_asg_info(asg)
+    cluster_name = asg_info['clusterName']
+    cluster = get_cluster_info(cluster_name)
+
+    if len(cluster) == 1: 
+        return True
+
+    return False
 
 @retry()
 def enable_asg(asg):
@@ -297,7 +370,7 @@ def enable_asg(asg):
     task_status = wait_for_task_completion(task_url, 301)
     if task_status['status'] == 'failed':
         msg = "Failure while enabling ASG. Task Log: \n{}".format(task_status['log'])
-        raise exception.BackendError(msg)
+        raise BackendError(msg)
 
 
 @retry()
@@ -324,6 +397,10 @@ def disable_asg(asg):
         LOG.info("Not disabling ASG {}, it no longer exists.".format(asg))
         return
 
+    if is_last_asg(asg):
+        msg = "Not disabling ASG {}, it is the last ASG in this cluster."
+        raise CannotDisableActiveASG(msg)
+
     payload = { "name": asg }
     response = requests.post(ASG_DEACTIVATE_URL,
             data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
@@ -331,11 +408,11 @@ def disable_asg(asg):
     task_status = wait_for_task_completion(task_url, 300)
     if task_status['status'] == 'failed':
         msg = "Failure while disabling ASG. Task Log: \n{}".format(task_status['log'])
-        raise exception.BackendError(msg)
+        raise BackendError(msg)
 
 
 @retry()
-def delete_asg(asg, fail_if_active=True):
+def delete_asg(asg, fail_if_active=True, fail_if_last=True):
     """
     Delete an ASG using asgard.
     curl -d "name=helloworld-example-v004" http://asgardprod/us-east-1/cluster/delete
@@ -352,12 +429,17 @@ def delete_asg(asg, fail_if_active=True):
         ASGDoesNotExistException: When an ASG does not exist
     """
     if is_asg_pending_delete(asg):
-        LOG.info("not deleting ASG {} due to its already pending deletion.".format(asg))
+        LOG.info("Not deleting ASG {} due to its already pending deletion.".format(asg))
         return
     if fail_if_active and is_asg_enabled(asg):
-        msg = "not deleting ASG {} as it is currently active.".format(asg)
+        msg = "Not deleting ASG {} as it is currently active.".format(asg)
         LOG.warn(msg)
         raise CannotDeleteActiveASG(msg)
+
+    if fail_if_last and is_last_asg(asg):
+        msg = "Not deleting ASG {} since it is the last ASG in this cluster."
+        LOG.warn(msg)
+        raise CannotDeleteLastASG(msg)
 
     payload = {"name": asg}
     response = requests.post(ASG_DELETE_URL,
@@ -366,7 +448,7 @@ def delete_asg(asg, fail_if_active=True):
     task_status = wait_for_task_completion(task_url, 300)
     if task_status['status'] == 'failed':
         msg = "Failure while deleting ASG. Task Log: \n{}".format(task_status['log'])
-        raise exception.BackendError(msg)
+        raise BackendError(msg)
 
 
 @retry()
@@ -379,7 +461,7 @@ def elbs_for_asg(asg):
     except (KeyError, TypeError) as e:
         msg = "Expected a dict with path ['group']['loadbalancerNames']. " \
             "Got: {}".format(resp_json)
-        raise exception.BackendDataError(msg)
+        raise BackendDataError(msg)
     return elbs
 
 

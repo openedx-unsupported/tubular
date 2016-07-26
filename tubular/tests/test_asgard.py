@@ -16,6 +16,7 @@ from tubular.exception import (
     TimeoutException,
     BackendError,
     CannotDeleteActiveASG,
+    CannotDeleteLastASG,
     ASGDoesNotExistException
 )
 from tubular.tests.test_utils import create_asg_with_tags, create_elb
@@ -102,6 +103,24 @@ valid_cluster_info_json = """
 ]
 """
 
+valid_single_asg_cluster_info_json = """
+[
+  {
+    "autoScalingGroupName": "loadtest-edx-edxapp-v060",
+    "availabilityZones":
+    [
+      "us-east-1b",
+      "us-east-1c"
+    ],
+    "createdTime": "2016-02-10T12:23:10Z",
+    "defaultCooldown": 300,
+    "desiredCapacity": 4
+  }
+]
+
+
+"""
+
 asgs_for_edxapp_before = """
 [
   {
@@ -155,7 +174,8 @@ deleted_asg_in_progress = """
           "app_elb"
         ],
 		"status": "deleted"
-	}}
+	}},
+        "clusterName": "app_cluster"
 }}
 """
 
@@ -167,33 +187,36 @@ deleted_asg_not_in_progress = """
 			"app_elb"
 		],
 		"status": null
-	}}
+	}},
+        "clusterName": "app_cluster"
 }}
 """
 
 disabled_asg = """
 {{
-	"group": {{
-		"autoScalingGroupName": "{0}",
-		"loadBalancerNames": [
-			"app_elb"
-		],
-		"status": null,
-		"launchingSuspended": true
-	}}
+        "group": {{
+                "autoScalingGroupName": "{0}",
+                "loadBalancerNames": [
+                        "app_elb"
+                ],
+                "status": null,
+                "launchingSuspended": true
+        }},
+        "clusterName": "app_cluster"
 }}
 """
 
 enabled_asg = """
 {{
-	"group": {{
-		"autoScalingGroupName": "{0}",
-		"loadBalancerNames": [
-			"app_elb"
-		],
-		"status": null,
-		"launchingSuspended": false
-	}}
+        "group": {{
+                "autoScalingGroupName": "{0}",
+                "loadBalancerNames": [
+                        "app_elb"
+                ],
+                "status": null,
+                "launchingSuspended": false
+        }},
+        "clusterName": "app_cluster"
 }}
 """
 
@@ -577,6 +600,7 @@ class TestAsgard(unittest.TestCase):
     @unpack
     def test_delete_asg(self, task_body, should_succeed):
         asg = "loadtest-edx-edxapp-v060"
+        cluster = "app_cluster"
         self._mock_asgard_not_pending_delete([asg])
 
         task_url = "http://some.host/task/1234.json"
@@ -602,6 +626,13 @@ class TestAsgard(unittest.TestCase):
             httpretty.GET,
             task_url,
             body=task_body,
+            content_type="application/json"
+        )
+
+        httpretty.register_uri(
+            httpretty.GET,
+            asgard.CLUSTER_INFO_URL.format(cluster),
+            body=valid_cluster_info_json,
             content_type="application/json"
         )
 
@@ -634,6 +665,28 @@ class TestAsgard(unittest.TestCase):
         self.assertEqual(None, asgard.delete_asg(asg, True))
 
     @httpretty.activate
+    def test_delete_last_asg(self):
+        asg = "loadtest-edx-edxapp-v060"
+        cluster = "app_cluster"
+        self._mock_asgard_not_pending_delete([asg], body=disabled_asg)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            asgard.ASG_INFO_URL.format(asg),
+            body=disabled_asg.format(asg),
+            content_type="application/json"
+        )
+
+        httpretty.register_uri(
+                httpretty.GET,
+                asgard.CLUSTER_INFO_URL.format(cluster),
+                body=valid_single_asg_cluster_info_json,
+                content_type="application/json"
+                )
+
+        self.assertRaises(CannotDeleteLastASG, asgard.delete_asg, asg)
+
+    @httpretty.activate
     @mock_autoscaling
     @mock_ec2
     @data(*itertools.product(
@@ -648,6 +701,7 @@ class TestAsgard(unittest.TestCase):
         endpoint_url, test_function = url_and_function
         task_url = "http://some.host/task/1234.json"
         asg = "loadtest-edx-edxapp-v059"
+        cluster = "app_cluster"
 
         def post_callback(request, uri, headers):
             self.assertEqual('POST', request.method)
@@ -665,6 +719,20 @@ class TestAsgard(unittest.TestCase):
             httpretty.POST,
             endpoint_url,
             body=post_callback
+        )
+
+        httpretty.register_uri(
+            httpretty.GET,
+            asgard.ASG_INFO_URL.format(asg),
+            body=enabled_asg.format(asg),
+            content_type="application/json"
+        )
+
+        httpretty.register_uri(
+            httpretty.GET,
+            asgard.CLUSTER_INFO_URL.format(cluster),
+            body=valid_cluster_info_json,
+            content_type="application/json"
         )
 
         httpretty.register_uri(
@@ -881,6 +949,7 @@ class TestAsgard(unittest.TestCase):
         ami_id = self._setup_for_deploy()
         asgs = ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059", "loadtest-edx-edxapp-v099",
                 "loadtest-edx-worker-v034", "loadtest-edx-worker-v099"]
+        cluster = "app_cluster"
         for asg in asgs:
             url = asgard.ASG_INFO_URL.format(asg)
             httpretty.register_uri(
@@ -897,6 +966,15 @@ class TestAsgard(unittest.TestCase):
                                        content_type="application/json",
                                        status=200)
                 ])
+
+
+        httpretty.register_uri(
+            httpretty.GET,
+            asgard.CLUSTER_INFO_URL.format(cluster),
+            body=valid_cluster_info_json,
+            content_type="application/json"
+        )
+
         self.assertEqual(None, asgard.deploy(ami_id))
 
     @httpretty.activate
