@@ -9,6 +9,9 @@ ACQUIA_ENDPOINT = "https://cloudapi.acquia.com/v1"
 REALM = "prod"
 SITE = "edx"
 DATABASE = "edx"
+FETCH_TAG_URL = "{root}/sites/{realm}:{site}/envs/{{env}}.json".format(
+    root=ACQUIA_ENDPOINT, realm=REALM, site=SITE
+)
 CLEAR_CACHE_URL = "{root}/sites/{realm}:{site}/envs/{{env}}/domains/{{domain}}/cache.json".format(
     root=ACQUIA_ENDPOINT, realm=REALM, site=SITE
 )
@@ -65,6 +68,29 @@ def parse_response(response, error_message):
         logger.error(msg)
         raise BackendError(msg)
     return response.json()
+
+
+@retry()
+def fetch_deployed_tag(env, username, password):
+    """
+    Fetches the currently deployed tag in the given environment
+
+    Args:
+        env (str): The environment to clear varnish caches in (e.g. test or prod)
+        username (str): The Acquia username necessary to run the command.
+        password (str): The Acquia password necessary to run the command.
+
+    Returns:
+        The name of the tag deployed in the environment.
+
+    Raises:
+        KeyError: Raised if env value is invalid.
+    """
+    VALID_ENVIRONMENTS[env]
+    api_client = get_api_client(username, password)
+    response = api_client.get(FETCH_TAG_URL.format(env=env))
+    response_json = parse_response(response, "Failed to fetch the deployed tag.")
+    return response_json["vcs_path"]
 
 
 @retry()
