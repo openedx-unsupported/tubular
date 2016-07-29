@@ -130,6 +130,18 @@ backup_database_response_done = """
 }
 """
 
+fetch_tag_response = """
+{
+"name":"extra",
+"vcs_path":"foo-bar",
+"ssh_host":"ssh.host",
+"db_clusters":["1725"],
+"default_domain":"default.domain",
+"livedev":"disabled",
+"unix_username":"extra"
+}
+"""
+
 ACQUIA_ENV = "test"
 ACQUIA_DOMAIN = "edxstg.prod.acquia-sites.com"
 TEST_USERNAME = "foo"
@@ -273,6 +285,36 @@ class TestDrupal(unittest.TestCase):
             content_type="application/json"
         )
         self.assertTrue(drupal.backup_database(env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD))
+
+    @httpretty.activate
+    def test_fetch_deployed_tag_success(self):
+        """
+        Tests fetch_deployed_tag returns the expected tag name.
+        """
+        httpretty.register_uri(
+            httpretty.GET,
+            drupal.FETCH_TAG_URL.format(env=ACQUIA_ENV),
+            body=fetch_tag_response,
+            content_type="application/json"
+        )
+        expected = TEST_TAG
+        actual = drupal.fetch_deployed_tag(env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD)
+        self.assertEqual(actual, expected)
+
+    @httpretty.activate
+    def test_fetch_deployed_tag_failure(self):
+        """
+        Tests fetch_deployed_tag raises BackendError when status != 200
+        """
+        httpretty.register_uri(
+            httpretty.GET,
+            drupal.FETCH_TAG_URL.format(env=ACQUIA_ENV),
+            body="{}",
+            content_type="application/json",
+            status=403
+        )
+        with self.assertRaises(BackendError):
+            drupal.fetch_deployed_tag(env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD)
 
     def test_deploy_invalid_environment(self):
         """
