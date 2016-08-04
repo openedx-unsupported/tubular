@@ -160,7 +160,8 @@ class TestEC2(unittest.TestCase):
         return_vals += [clone_elb_instances_with_state(second_elb_instances, "InService")]
 
         with mock.patch(mock_function, side_effect=return_vals) as mock_call:
-            self.assertEqual(None, ec2.wait_for_healthy_elbs([first_elb_name, second_elb_name], 3))
+            with mock.patch('tubular.ec2.WAIT_SLEEP_TIME', 1):
+                self.assertEqual(None, ec2.wait_for_healthy_elbs([first_elb_name, second_elb_name], 3))
 
     @mock_elb
     @mock_ec2

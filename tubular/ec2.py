@@ -15,6 +15,7 @@ from tubular.exception import (
 from boto.exception import EC2ResponseError
 from boto.ec2.autoscale.tag import Tag
 from datetime import datetime, timedelta
+from utils import WAIT_SLEEP_TIME
 
 LOG = logging.getLogger(__name__)
 
@@ -288,6 +289,6 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
         if len(elbs_left) == 0:
             LOG.info("All instances in all ELBs are healthy, returning.")
             return
-        time.sleep(1)
+        time.sleep(WAIT_SLEEP_TIME)
 
     raise TimeoutException("The following ELBs never became healthy: {}".format(elbs_left))
