@@ -1,5 +1,11 @@
 #!/usr/bin/env python
+import sys
+from os import path
 import click
+
+# Add top-level module path to sys.path before importing tubular code.
+sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+
 from tubular import drupal
 
 

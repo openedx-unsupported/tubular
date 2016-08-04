@@ -1,4 +1,5 @@
 import os
+import shutil
 import httpretty
 import unittest
 import tubular.drupal as drupal
@@ -147,6 +148,8 @@ ACQUIA_DOMAIN = "edxstg.prod.acquia-sites.com"
 TEST_USERNAME = "foo"
 TEST_PASSWORD = "bar"
 TEST_TAG = "foo-bar"
+PATH_NAME = "../target/{env}_tag_name.txt"
+DIR_NAME = PATH_NAME[:PATH_NAME.rfind("/")]
 
 
 class TestDrupal(unittest.TestCase):
@@ -297,8 +300,11 @@ class TestDrupal(unittest.TestCase):
             body=fetch_tag_response,
             content_type="application/json"
         )
+        os.makedirs(DIR_NAME)
         expected = TEST_TAG
-        actual = drupal.fetch_deployed_tag(env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD)
+        actual = drupal.fetch_deployed_tag(env=ACQUIA_ENV, username=TEST_USERNAME,
+                                           password=TEST_PASSWORD, path_name=PATH_NAME)
+        shutil.rmtree(DIR_NAME)
         self.assertEqual(actual, expected)
 
     @httpretty.activate
@@ -314,7 +320,8 @@ class TestDrupal(unittest.TestCase):
             status=403
         )
         with self.assertRaises(BackendError):
-            drupal.fetch_deployed_tag(env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD)
+            drupal.fetch_deployed_tag(env=ACQUIA_ENV, username=TEST_USERNAME,
+                                      password=TEST_PASSWORD, path_name=PATH_NAME)
 
     def test_deploy_invalid_environment(self):
         """

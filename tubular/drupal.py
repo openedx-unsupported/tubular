@@ -71,7 +71,7 @@ def parse_response(response, error_message):
 
 
 @retry()
-def fetch_deployed_tag(env, username, password):
+def fetch_deployed_tag(env, username, password, path_name):
     """
     Fetches the currently deployed tag in the given environment
 
@@ -79,9 +79,10 @@ def fetch_deployed_tag(env, username, password):
         env (str): The environment to clear varnish caches in (e.g. test or prod)
         username (str): The Acquia username necessary to run the command.
         password (str): The Acquia password necessary to run the command.
+        path_name (str): The path to write the tag name to.
 
     Returns:
-        The name of the tag deployed in the environment.
+        tag_name (str): The name of the tag deployed in the environment.
 
     Raises:
         KeyError: Raised if env value is invalid.
@@ -90,7 +91,10 @@ def fetch_deployed_tag(env, username, password):
     api_client = get_api_client(username, password)
     response = api_client.get(FETCH_TAG_URL.format(env=env))
     response_json = parse_response(response, "Failed to fetch the deployed tag.")
-    return response_json["vcs_path"]
+    tag_name = response_json["vcs_path"].replace("tags/", "")
+    with open(path_name.format(env=env), "w") as f:
+        f.write(tag_name)
+    return tag_name
 
 
 @retry()
