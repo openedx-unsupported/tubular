@@ -8,14 +8,7 @@ from boto.ec2.autoscale import AutoScaleConnection
 
 
 LOG_FILENAME = 'security_group_change.txt'
-logging.basicConfig(filename=LOG_FILENAME,level=logging.INFO)
-
-# Info for the security group used by the go-agents.
-GO_AGENT_SECURITY_GROUP_NAME = u'prod-tools-goagent-sg'
-# The values below are fake - replace them with the real values.
-GO_AGENT_SECURITY_GROUP_OWNER_ID = 111111111111
-GO_AGENT_SECURITY_GROUP_ID = u'sg-beefbeef'
-
+logging.basicConfig(level=logging.INFO)
 
 @click.command()
 @click.option(
@@ -23,7 +16,20 @@ GO_AGENT_SECURITY_GROUP_ID = u'sg-beefbeef'
     is_flag=True,
     help='Perform a dry run of the rule addition.',
 )
-def add_ingress_rule(dry_run):
+@click.option(
+    '--go-agent-security-group',
+    help='The security group id of the go-agent cluster.',
+)
+@click.option(
+    '--go-agent-security-group-owner',
+    help='The account id for the aws account the go-agent is in.',
+)
+@click.option(
+    '--go-agent-security-group-name',
+    default=u'prod-tools-goagent-sg',
+    help='The security group name for the go-agent cluster.',
+)
+def add_ingress_rule(dry_run, go_agent_security_group, go_agent_security_group_owner, go_agent_security_group_name):
     """
     For each ASG (app) in each VPC, add a rule to each SG associated with the ASG's launch configuration
     that allows SSH ingress from the GoCD agents' SG.
@@ -69,9 +75,9 @@ def add_ingress_rule(dry_run):
     # Construct a fake security group for the prod-tools-goagent-sg security group in the edx-tools account.
     # This group will be used to grant the go-agents ingress into the ASG's VPCs.
     go_agent_security_group = boto.ec2.securitygroup.SecurityGroup(
-        name=GO_AGENT_SECURITY_GROUP_NAME,
-        owner_id=GO_AGENT_SECURITY_GROUP_OWNER_ID,
-        id=GO_AGENT_SECURITY_GROUP_ID
+        name=go_agent_security_group_name,
+        owner_id=go_agent_security_group_owner,
+        id=go_agent_security_group
     )
 
     # For each launch config, check for the security group. Can support multiple security groups
@@ -90,11 +96,13 @@ def add_ingress_rule(dry_run):
             sg = security_groups[sg_name]
         except KeyError:
             logging.error("Security group '{}' for ASG '{}' was not found!.".format(sg_name, group.name))
-        logging.info('BEFORE: Rules for security group {}:'.format(sg_name))
+        logging.info('BEFORE: Rules for security group {}:'.format(sg.name))
         logging.info(sg.rules)
         try:
             # Add the ingress rule to the security group.
-            sg.authorize(src_group=go_agent_security_group, dry_run=dry_run)
+            yes_no = raw_input("Apply the change to this security group? [Yes]")
+            if yes_no in ("", "y", "Y", "yes"):
+                sg.authorize(ip_protocol='tcp', from_port=22, to_port=22, src_group=go_agent_security_group, dry_run=dry_run)
         except boto.exception.EC2ResponseError as exc:
             if exc.status == 412:
                 # If the dry_run flag is set, then each rule addition will raise this exception.
