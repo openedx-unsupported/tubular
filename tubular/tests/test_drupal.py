@@ -134,7 +134,7 @@ backup_database_response_done = """
 fetch_tag_response = """
 {
 "name":"extra",
-"vcs_path":"foo-bar",
+"vcs_path":"tags/foo-bar",
 "ssh_host":"ssh.host",
 "db_clusters":["1725"],
 "default_domain":"default.domain",
@@ -147,7 +147,7 @@ ACQUIA_ENV = "test"
 ACQUIA_DOMAIN = "edxstg.prod.acquia-sites.com"
 TEST_USERNAME = "foo"
 TEST_PASSWORD = "bar"
-TEST_TAG = "foo-bar"
+TEST_TAG = "tags/foo-bar"
 PATH_NAME = "../target/{env}_tag_name.txt"
 DIR_NAME = PATH_NAME[:PATH_NAME.rfind("/")]
 

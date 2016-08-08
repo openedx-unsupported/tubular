@@ -15,7 +15,7 @@ FETCH_TAG_URL = "{root}/sites/{realm}:{site}/envs/{{env}}.json".format(
 CLEAR_CACHE_URL = "{root}/sites/{realm}:{site}/envs/{{env}}/domains/{{domain}}/cache.json".format(
     root=ACQUIA_ENDPOINT, realm=REALM, site=SITE
 )
-DEPLOY_URL = "{root}/sites/{realm}:{site}/envs/{{env}}/code-deploy.json?path=tags%2F{{tag}}".format(
+DEPLOY_URL = "{root}/sites/{realm}:{site}/envs/{{env}}/code-deploy.json?path={{tag}}".format(
     root=ACQUIA_ENDPOINT, realm=REALM, site=SITE
 )
 BACKUP_DATABASE_URL = "{root}/sites/{realm}:{site}/envs/{{env}}/dbs/{database}/backups.json".format(
@@ -91,7 +91,7 @@ def fetch_deployed_tag(env, username, password, path_name):
     api_client = get_api_client(username, password)
     response = api_client.get(FETCH_TAG_URL.format(env=env))
     response_json = parse_response(response, "Failed to fetch the deployed tag.")
-    tag_name = response_json["vcs_path"].replace("tags/", "")
+    tag_name = response_json["vcs_path"]
     with open(path_name.format(env=env), "w") as f:
         f.write(tag_name)
     return tag_name
