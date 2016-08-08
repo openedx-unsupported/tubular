@@ -26,8 +26,8 @@ CHECK_TASKS_URL = "{root}/sites/{realm}:{site}/tasks/{{id}}.json".format(
 )
 # Maps environments to domains.
 VALID_ENVIRONMENTS = {
-    "test": "edxstg.prod.acquia-sites.com",
-    "prod": "edx.prod.acquia-sites.com",
+    "acceptance": "edxacc.prod.acquia-sites.com",
+    "extra": "edxextra.prod.acquia-sites.com",
 }
 logger = logging.getLogger(__name__)
 
