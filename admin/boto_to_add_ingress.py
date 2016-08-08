@@ -108,6 +108,8 @@ def add_ingress_rule(dry_run, go_agent_security_group, go_agent_security_group_o
                 # If the dry_run flag is set, then each rule addition will raise this exception.
                 # Log it and carry on.
                 logging.info('Dry run is True but rule addition would have succeeded for security group {}.'.format(sg_name))
+            elif exc.code == "InvalidPermission.Duplicate":
+                logging.info("Rule already exists for {}.".format(sg_name))
             else:
                 raise
         logging.info('AFTER: Rules for security group {}:'.format(sg_name))
