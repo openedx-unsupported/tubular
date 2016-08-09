@@ -26,8 +26,21 @@ CHECK_TASKS_URL = "{root}/sites/{realm}:{site}/tasks/{{id}}.json".format(
 )
 # Maps environments to domains.
 VALID_ENVIRONMENTS = {
-    "test": "edxstg.prod.acquia-sites.com",
-    "prod": "edx.prod.acquia-sites.com",
+    "test": [
+        "edxstg.prod.acquia-sites.com",
+        "stage-edx-mktg-backend.edx.org",
+        "stage-edx-mktg-edit.edx.org",
+        "stage-webview.edx.org",
+        "stage.edx.org",
+        "www.stage.edx.org",
+    ],
+    "prod": [
+        "edx.prod.acquia-sites.com",
+        "prod-edx-mktg-backend.edx.org",
+        "prod-edx-mktg-edit.edx.org",
+        "webview.edx.org",
+        "www.edx.org",
+    ],
 }
 logger = logging.getLogger(__name__)
 
@@ -100,7 +113,7 @@ def fetch_deployed_tag(env, username, password, path_name):
 @retry()
 def clear_varnish_cache(env, username, password):
     """
-    Clears the Varnish cache from a Drupal domain.
+    Clears the Varnish cache from all domains in a Drupal environment.
 
     Args:
         env (str): The environment to clear varnish caches in (e.g. test or prod)
@@ -108,16 +121,27 @@ def clear_varnish_cache(env, username, password):
         password (str): The Acquia password necessary to run the command.
 
     Returns:
-        True if the Varnish cache is successfully cleared.
+        True if all of the Varnish caches are successfully cleared.
 
     Raises:
         KeyError: Raised if env value is invalid.
+        BackendError: Raised if the varnish cache fails to clear in any of the domains.
     """
     api_client = get_api_client(username, password)
-    domain = VALID_ENVIRONMENTS[env]
-    response = api_client.delete(CLEAR_CACHE_URL.format(env=env, domain=domain))
-    response_json = parse_response(response, "Failed to clear cache.")
-    return check_state(response_json["id"], username, password)
+    domains = VALID_ENVIRONMENTS[env]
+    failure = ""
+    for domain in domains:
+        response = api_client.delete(CLEAR_CACHE_URL.format(env=env, domain=domain))
+        error_message = "Failed to clear cache in {domain}.".format(domain=domain)
+        try:
+            response_json = parse_response(response, error_message)
+        except BackendError:
+            failure = failure + error_message + "\n"
+            continue
+        check_state(response_json["id"], username, password)
+    if failure:
+        raise BackendError(failure)
+    return True
 
 
 @retry()

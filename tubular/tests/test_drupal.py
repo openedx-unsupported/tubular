@@ -144,7 +144,14 @@ fetch_tag_response = """
 """
 
 ACQUIA_ENV = "test"
-ACQUIA_DOMAIN = "edxstg.prod.acquia-sites.com"
+ACQUIA_DOMAINS = [
+        "edxstg.prod.acquia-sites.com",
+        "stage-edx-mktg-backend.edx.org",
+        "stage-edx-mktg-edit.edx.org",
+        "stage-webview.edx.org",
+        "stage.edx.org",
+        "www.stage.edx.org",
+    ]
 TEST_USERNAME = "foo"
 TEST_PASSWORD = "bar"
 TEST_TAG = "tags/foo-bar"
@@ -186,13 +193,14 @@ class TestDrupal(unittest.TestCase):
         """
         Tests clear_varnish_cache raises BackendError when status != 200
         """
-        httpretty.register_uri(
-            httpretty.DELETE,
-            drupal.CLEAR_CACHE_URL.format(env=ACQUIA_ENV, domain=ACQUIA_DOMAIN),
-            body="{}",
-            content_type="application/json",
-            status=401
-        )
+        for domain in ACQUIA_DOMAINS:
+            httpretty.register_uri(
+                httpretty.DELETE,
+                drupal.CLEAR_CACHE_URL.format(env=ACQUIA_ENV, domain=domain),
+                body="{}",
+                content_type="application/json",
+                status=401
+            )
         with self.assertRaises(BackendError):
             drupal.clear_varnish_cache(env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD)
 
@@ -201,12 +209,13 @@ class TestDrupal(unittest.TestCase):
         """
         Tests clear_varnish_cache returns True when there is a valid response.
         """
-        httpretty.register_uri(
-            httpretty.DELETE,
-            drupal.CLEAR_CACHE_URL.format(env=ACQUIA_ENV, domain=ACQUIA_DOMAIN),
-            body=clear_cache_response_waiting,
-            content_type="application/json"
-        )
+        for domain in ACQUIA_DOMAINS:
+            httpretty.register_uri(
+                httpretty.DELETE,
+                drupal.CLEAR_CACHE_URL.format(env=ACQUIA_ENV, domain=domain),
+                body=clear_cache_response_waiting,
+                content_type="application/json"
+            )
         httpretty.register_uri(
             httpretty.GET,
             drupal.CHECK_TASKS_URL.format(id="1"),
