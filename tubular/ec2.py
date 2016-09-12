@@ -157,15 +157,13 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=1800):
 
     Returns:
         None
-
-    Raises:
-        ASGDoesNotExistException: if the Autoscale group does not exist
     """
     tag = create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta)
     autoscale = boto.connect_autoscale()
     if len(autoscale.get_all_groups([asg_name])) < 1:
-        raise ASGDoesNotExistException("Could not apply tags to Autoscale group: {0} does not exist.".format(asg_name))
-    autoscale.create_or_update_tags([tag])
+        LOG.info("ASG {} no longer exists, will not tag".format(asg_name))
+    else:
+        autoscale.create_or_update_tags([tag])
 
 
 def get_asgs_pending_delete():
