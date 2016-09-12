@@ -40,6 +40,8 @@ def edp_for_ami(ami_id):
 
     try:
         ami = ec2.get_all_images(ami_id)[0]
+    except IndexError:
+        raise ImageNotFoundException("ami: {} not found".format(ami_id))
     except EC2ResponseError as error:
         raise ImageNotFoundException(error.message)
 
