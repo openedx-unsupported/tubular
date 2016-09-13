@@ -280,6 +280,7 @@ def get_cluster_info(cluster):
 
     return info
 
+
 def is_asg_enabled(asg):
     """
     Checks to see if launching instances of an ASG is enabled.
@@ -323,6 +324,7 @@ def is_asg_pending_delete(asg):
     else:
         return True
 
+
 def is_last_asg(asg):
     """
     Check to see if the given ASG is the last active ASG in its cluster.
@@ -347,6 +349,7 @@ def is_last_asg(asg):
         return True
 
     return False
+
 
 @retry()
 def enable_asg(asg):
@@ -473,7 +476,7 @@ def deploy(ami_id):
         ami_id(str): AWS AMI ID
 
     Returns:
-        None
+        dict(str, [str]): Returns a dictionary of ne
 
     Raises:
         TimeoutException: When the task to bring up the new instance times out.
