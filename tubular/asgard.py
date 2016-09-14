@@ -5,6 +5,8 @@ import requests
 import time
 import traceback
 import tubular.ec2 as ec2
+
+from collections import defaultdict
 from tubular.utils.retry import retry
 from tubular.exception import (
         BackendError,
@@ -476,7 +478,7 @@ def deploy(ami_id):
         ami_id(str): AWS AMI ID
 
     Returns:
-        dict(str, [str]): Returns a dictionary of ne
+        dict(str, [str]): Returns a dictionary with the keys: 'current_asgs' and 'disabled_asgs'
 
     Raises:
         TimeoutException: When the task to bring up the new instance times out.
@@ -511,10 +513,12 @@ def deploy(ami_id):
     LOG.info("ASG instances are healthy. Enabling Traffic.")
 
     elbs_to_monitor = []
+    current_asgs = defaultdict(list)  # Used to store the return value of what ASG's are currently deployed
     for cluster, asg in new_asgs.iteritems():
         try:
             enable_asg(asg)
             elbs_to_monitor.extend(elbs_for_asg(asg))
+            current_asgs['cluster'].append(asg)
         except:
             LOG.error("Something went wrong with {}, disabling traffic.".format(asg))
             LOG.error(traceback.format_exc())
@@ -542,12 +546,16 @@ def deploy(ami_id):
         if is_asg_pending_delete(asg) or not is_asg_enabled(asg):
             raise BackendError("New Autoscale Group {} is pending delete, Aborting the disabling of old ASGs.".format(asg))
 
+    disabled_asg = defaultdict(list)
     for cluster,asgs in existing_clusters.iteritems():
         for asg in asgs:
-            disable_asg(asg)
+            if is_asg_enabled(asg):
+                disable_asg(asg)
+                disabled_asg[cluster].append(asg)
             try:
                 ec2.tag_asg_for_deletion(asg)
             except ASGDoesNotExistException as e:
                 LOG.info("Unable to tag ASG {} as it no longer exists, skipping".format(asg))
 
     LOG.info("Woot! Deploy Done!")
+    return {'current_asgs': current_asgs, 'disabled_asgs': disabled_asg}
