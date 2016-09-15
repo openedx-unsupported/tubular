@@ -523,6 +523,13 @@ def deploy(ami_id):
             LOG.error("Something went wrong with {}, disabling traffic.".format(asg))
             LOG.error(traceback.format_exc())
             disable_asg(asg)
+            # Also disable any new ASGs that may already be enabled
+            for _, asg_list in current_asgs:
+                for asg_to_disable in asg_list:
+                    try:
+                        disable_asg(asg_to_disable)
+                    except:
+                        continue
             raise
 
     LOG.info("All new ASGs are active.  The new instances "
