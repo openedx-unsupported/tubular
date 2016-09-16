@@ -24,6 +24,7 @@ from utils import WAIT_SLEEP_TIME
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091/us-east-1")
 ASGARD_API_TOKEN = "asgardApiToken={}".format(os.environ.get("ASGARD_API_TOKEN", "dummy-token"))
 ASGARD_WAIT_TIMEOUT = int(os.environ.get("ASGARD_WAIT_TIMEOUT", 600))
+ASGARD_ELB_HEALTH_TIMEOUT = int(os.environ.get("ASGARD_ELB_HEALTH_TIMEOUT", 600))
 REQUESTS_TIMEOUT = float(os.environ.get("REQUESTS_TIMEOUT", 10))
 
 CLUSTER_LIST_URL= "{}/cluster/list.json".format(ASGARD_API_ENDPOINT)
@@ -514,17 +515,47 @@ def deploy(ami_id):
 
     elbs_to_monitor = []
     current_asgs = defaultdict(list)  # Used to store the return value of what ASG's are currently deployed
-    for cluster, asg in new_asgs.iteritems():
+
+    #TODO Genearte current_asgs
+
+
+
+
+
+    return {'current_asgs': current_asgs, 'disabled_asgs': disabled_asg}
+
+
+def _red_black_deploy(new_asgs, baseline_asgs):
+    """
+    Takes 2 lists of autoscale groups.
+
+    Workflow:
+        - Enable new ASGS
+        - Wait for instances to be healthy in the load balancer
+        - ensure the new ASGs are not pending delete or disabled
+        - tag and disable current asgs
+
+    Args:
+        new_asgs (list<str>):  New A
+        baseline_asgs (list<str>):
+
+    Returns:
+        None
+
+    """
+    elbs_to_monitor = []
+    newly_enabled_asgs = []
+    for asg in new_asgs:
         try:
             enable_asg(asg)
             elbs_to_monitor.extend(elbs_for_asg(asg))
-            current_asgs['cluster'].append(asg)
+            newly_enabled_asgs.extend(asg)
         except:
             LOG.error("Something went wrong with {}, disabling traffic.".format(asg))
             LOG.error(traceback.format_exc())
             disable_asg(asg)
             # Also disable any new ASGs that may already be enabled
-            for _, asg_list in current_asgs:
+            for _, asg_list in newly_enabled_asgs:
                 for asg_to_disable in asg_list:
                     try:
                         disable_asg(asg_to_disable)
@@ -533,28 +564,28 @@ def deploy(ami_id):
             raise
 
     LOG.info("All new ASGs are active.  The new instances "
-          "will be available when they pass the healthchecks.")
+             "will be available when they pass the healthchecks.")
     LOG.info("New ASGs: {}".format(new_asgs.values()))
 
     # Wait for all instances to be in service in all ELBs
     try:
-        ec2.wait_for_healthy_elbs(elbs_to_monitor, 600)
+        ec2.wait_for_healthy_elbs(elbs_to_monitor, ASGARD_ELB_HEALTH_TIMEOUT)
     except:
-        LOG.info(" Some instances are failing ELB health checks. "
-              "Pulling out the new ASG.")
+        LOG.info(" Some instances are failing ELB health checks. Pulling out the new ASG.")
         for cluster, asg in new_asgs.iteritems():
             disable_asg(asg)
         raise
 
     LOG.info("New instances have succeeded in passing the healthchecks. "
-          "Disabling old ASGs.")
+             "Disabling old ASGs.")
     # ensure the new ASG is still healthy and not pending delete before disabling the old ASGs
     for cluster, asg in new_asgs.iteritems():
         if is_asg_pending_delete(asg) or not is_asg_enabled(asg):
-            raise BackendError("New Autoscale Group {} is pending delete, Aborting the disabling of old ASGs.".format(asg))
+            raise BackendError(
+                "New Autoscale Group {} is pending delete, Aborting the disabling of old ASGs.".format(asg))
 
     disabled_asg = defaultdict(list)
-    for cluster,asgs in existing_clusters.iteritems():
+    for cluster, asgs in existing_clusters.iteritems():
         for asg in asgs:
             if is_asg_enabled(asg):
                 disable_asg(asg)
@@ -565,4 +596,3 @@ def deploy(ami_id):
                 LOG.info("Unable to tag ASG {} as it no longer exists, skipping".format(asg))
 
     LOG.info("Woot! Deploy Done!")
-    return {'current_asgs': current_asgs, 'disabled_asgs': disabled_asg}
