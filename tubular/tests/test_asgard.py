@@ -173,7 +173,8 @@ deleted_asg_in_progress = """
         [
           "app_elb"
         ],
-		"status": "deleted"
+		"status": "deleted",
+		"launchingSuspended": false
 	}},
         "clusterName": "app_cluster"
 }}
@@ -947,10 +948,16 @@ class TestAsgard(unittest.TestCase):
     @mock.patch('boto.ec2.autoscale.AutoScaleConnection.create_or_update_tags', lambda *args: None)
     def test_deploy(self):
         ami_id = self._setup_for_deploy()
-        asgs = ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059", "loadtest-edx-edxapp-v099",
-                "loadtest-edx-worker-v034", "loadtest-edx-worker-v099"]
+
+        not_in_service_asgs = ["loadtest-edx-edxapp-v058",]
+        in_service_asgs = ["loadtest-edx-edxapp-v059", "loadtest-edx-worker-v034"]
+        new_asgs = ["loadtest-edx-edxapp-v099", "loadtest-edx-worker-v099"]
+
+        self._mock_asgard_not_pending_delete(in_service_asgs, body=enabled_asg)
+        self._mock_asgard_pending_delete(not_in_service_asgs)
+
         cluster = "app_cluster"
-        for asg in asgs:
+        for asg in new_asgs:
             url = asgard.ASG_INFO_URL.format(asg)
             httpretty.register_uri(
                 httpretty.GET,
@@ -960,6 +967,9 @@ class TestAsgard(unittest.TestCase):
                                        content_type="application/json",
                                        status=200),
                     httpretty.Response(body=deleted_asg_not_in_progress.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+                    httpretty.Response(body=enabled_asg.format(asg),
                                        content_type="application/json",
                                        status=200),
                     httpretty.Response(body=enabled_asg.format(asg),
@@ -974,8 +984,23 @@ class TestAsgard(unittest.TestCase):
             body=valid_cluster_info_json,
             content_type="application/json"
         )
+        expected_output = {
+            'current_asgs':
+                {
+                    'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v099'],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v099']
+                },
+            'disabled_asgs':
+                {'loadtest-edx-edxapp':
+                    [
+                        'loadtest-edx-edxapp-v058',
+                        'loadtest-edx-edxapp-v059'
+                    ],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v034']
+                }
+        }
 
-        self.assertEqual(None, asgard.deploy(ami_id))
+        self.assertEqual(cmp(expected_output, asgard.deploy(ami_id)), 0)
 
     @httpretty.activate
     @mock_autoscaling
