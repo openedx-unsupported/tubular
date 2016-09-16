@@ -42,7 +42,7 @@ def deploy(ami_id, out_file, config_file, dry_run):
             with open(out_file, 'w') as stream:
                 yaml.safe_dump(deploy_info, stream, default_flow_style=False, explicit_start=True)
         else:
-            print yaml.dump(deploy_info, default_flow_style=False, explicit_start=True)
+            print yaml.safe_dump(deploy_info, default_flow_style=False, explicit_start=True)
 
     except Exception as e:
         traceback.print_exc()

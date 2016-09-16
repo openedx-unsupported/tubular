@@ -518,7 +518,7 @@ def deploy(ami_id):
         try:
             enable_asg(asg)
             elbs_to_monitor.extend(elbs_for_asg(asg))
-            current_asgs['cluster'].append(asg)
+            current_asgs[cluster].append(asg)
         except:
             LOG.error("Something went wrong with {}, disabling traffic.".format(asg))
             LOG.error(traceback.format_exc())

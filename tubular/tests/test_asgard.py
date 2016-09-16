@@ -986,11 +986,9 @@ class TestAsgard(unittest.TestCase):
         )
         expected_output = {
             'current_asgs':
-                {'cluster':
-                    [
-                        'loadtest-edx-edxapp-v099',
-                        'loadtest-edx-worker-v099'
-                    ]
+                {
+                    'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v099'],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v099']
                 },
             'disabled_asgs':
                 {'loadtest-edx-edxapp':
