@@ -37,6 +37,18 @@ CLUSTER_INFO_URL = "{}/cluster/show/{}.json".format(ASGARD_API_ENDPOINT, "{}")
 LOG = logging.getLogger(__name__)
 
 
+def _parse_json(url, response):
+    """
+    Protect against non-JSON responses that are sometimes returned from Asgard.
+    """
+    try:
+        response_json = response.json()
+    except ValueError as e:
+        msg = "Expected json response from url: '{}' - but got the following:\n{}"
+        raise BackendError(msg.format(url, response.text))
+    return response_json
+
+
 @retry()
 def clusters_for_asgs(asgs):
     """
@@ -76,11 +88,7 @@ def clusters_for_asgs(asgs):
     url = request.prepare().url
     LOG.debug("Getting Cluster List from: {}".format(url))
     response = requests.get(CLUSTER_LIST_URL, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
-    try:
-        cluster_json = response.json()
-    except ValueError as e:
-        msg = "Expected json info for asg from {} but got the following:\n{}"
-        raise BackendError(msg.format(url, response.text))
+    cluster_json = _parse_json(url, response)
 
     # need this to be a list so that we can test membership.
     asgs = list(asgs)
@@ -119,7 +127,7 @@ def asgs_for_cluster(cluster):
     response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
 
     LOG.debug("ASGs for Cluster: {}".format(response.text))
-    asgs = response.json()
+    asgs = _parse_json(url, response)
 
     try:
         asg_names = map(lambda x: x['autoScalingGroupName'], asgs)
@@ -152,13 +160,9 @@ def wait_for_task_completion(task_url, timeout):
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
         response = requests.get(task_url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
-        status = response.json()['status']
-        if status == 'completed' or status == 'failed':
-            try:
-                return response.json()
-            except ValueError as e:
-                msg = "Expected json status for task {} but got the following:\n{}"
-                raise BackendError(msg.format(task_url, response.text))
+        json_response = _parse_json(task_url, response)
+        if json_response['status'] in ('completed', 'failed'):
+            return json_response
 
         time.sleep(WAIT_SLEEP_TIME)
 
@@ -227,12 +231,7 @@ def _get_asgard_resource_info(url):
                            .format(response.status_code, response.text))
 
     LOG.debug("ASG info: {}".format(response.text))
-    try:
-        info = response.json()
-    except ValueError as e:
-        msg = "Could not parse resource info for {} as json.  Text: {}"
-        raise BackendDataError(msg.format(url, response.text))
-    return info
+    return _parse_json(url, response)
 
 
 def get_asg_info(asg):
@@ -347,7 +346,7 @@ def is_last_asg(asg):
     cluster_name = asg_info['clusterName']
     cluster = get_cluster_info(cluster_name)
 
-    if len(cluster) == 1: 
+    if len(cluster) == 1:
         return True
 
     return False
@@ -458,10 +457,10 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True):
 
 @retry()
 def elbs_for_asg(asg):
-    response = requests.get(ASG_INFO_URL.format(asg),
-        params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
+    url = ASG_INFO_URL.format(asg)
+    response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
+    resp_json = _parse_json(url, response)
     try:
-        resp_json = response.json()
         elbs = resp_json['group']['loadBalancerNames']
     except (KeyError, TypeError) as e:
         msg = "Expected a dict with path ['group']['loadbalancerNames']. " \

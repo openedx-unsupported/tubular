@@ -76,6 +76,8 @@ bad_cluster_json2 = """
   }
 ]"""
 
+html_response_body = "<html>This is not JSON...</html>"
+
 valid_cluster_info_json = """
 [
   {
@@ -338,6 +340,18 @@ class TestAsgard(unittest.TestCase):
                 ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059"],
                 cluster_names['loadtest-edx-edxapp'])
 
+    @httpretty.activate
+    def test_clusters_for_asgs_bad_response(self):
+        httpretty.register_uri(
+            httpretty.GET,
+            asgard.CLUSTER_LIST_URL,
+            body=html_response_body,
+            content_type="text/html")
+
+        relevant_asgs = []
+        with self.assertRaises(BackendError):
+            cluster_names = asgard.clusters_for_asgs(relevant_asgs)
+
     @data(bad_cluster_json1, bad_cluster_json2)
     @httpretty.activate
     def test_incorrect_json(self, response_json):
@@ -363,6 +377,20 @@ class TestAsgard(unittest.TestCase):
 
         expected_asgs = [ "loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059" ]
         self.assertEqual(expected_asgs, asgard.asgs_for_cluster(cluster))
+
+    @httpretty.activate
+    def test_asg_for_cluster_bad_response(self):
+        cluster = "prod-edx-edxapp"
+        url = asgard.CLUSTER_INFO_URL.format(cluster)
+        httpretty.register_uri(
+            httpretty.GET,
+            url,
+            body=html_response_body,
+            content_type="text/html")
+
+        expected_asgs = [ "loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059" ]
+        with self.assertRaises(BackendError):
+            self.assertEqual(expected_asgs, asgard.asgs_for_cluster(cluster))
 
     def test_bad_asgs_endpoint(self):
         cluster = "Fake cluster"
@@ -394,6 +422,17 @@ class TestAsgard(unittest.TestCase):
 
     @httpretty.activate
     def test_elbs_for_asg_bad_data(self):
+        asg_info_url = asgard.ASG_INFO_URL.format("test_asg")
+        httpretty.register_uri(
+            httpretty.GET,
+            asg_info_url,
+            body=html_response_body,
+            content_type="text/html")
+
+        self.assertRaises(BackendError, asgard.elbs_for_asg, "test_asg")
+
+    @httpretty.activate
+    def test_elbs_for_asg_bad_response(self):
         asg_info_url = asgard.ASG_INFO_URL.format("test_asg")
         httpretty.register_uri(
             httpretty.GET,
@@ -449,6 +488,18 @@ class TestAsgard(unittest.TestCase):
             actual_output = asgard.wait_for_task_completion(task_url, 2)
             expected_output = json.loads(failed_sample_task)
             self.assertEqual(expected_output, actual_output)
+
+    @httpretty.activate
+    def test_task_completion_bad_response(self):
+        task_url = "http://some.host/task/1234.json"
+        httpretty.register_uri(
+            httpretty.GET,
+            task_url,
+            body=html_response_body,
+            content_type="text/html")
+
+        with self.assertRaises(BackendError):
+            asgard.wait_for_task_completion(task_url, 1)
 
     @httpretty.activate
     def test_task_timeout(self):
@@ -871,24 +922,32 @@ class TestAsgard(unittest.TestCase):
 
         return ami_id
 
-    def _mock_asgard_not_pending_delete(self, asgs, response_code=200, body=deleted_asg_not_in_progress):
+    def _mock_asgard_not_pending_delete(self, asgs, response_code=200, body=deleted_asg_not_in_progress, html_return=False):
         """
         This helper function will mock calls to the asgard api related to is_asg_pending_delete. The response will be
         that this ASG is not pending delete.
 
         Arguments:
             asgs(list<str>): a list of the ASG names that are being checked
+            response_code(int): an HTML response code sent from Asgard
+            body(str): Format string for JSON response
+            html_return(boolean): If True, return HTML instead of JSON
 
         Returns:
             None
         """
         for asg in asgs:
             url = asgard.ASG_INFO_URL.format(asg)
+            response_content_type = "application/json"
+            response_body = body.format(asg)
+            if html_return:
+                response_content_type = "text/html"
+                response_body = html_response_body
             httpretty.register_uri(
                 httpretty.GET,
                 url,
-                body=body.format(asg),
-                content_type="application/json",
+                body=response_body,
+                content_type=response_content_type,
                 status=response_code)
 
     def _mock_asgard_pending_delete(self, asgs, response_code=200):
@@ -898,6 +957,7 @@ class TestAsgard(unittest.TestCase):
 
         Arguments:
             asgs(list<str>): a list of the ASG names that are being checked
+            response_code(int): an HTML response code sent from Asgard
 
         Returns:
             None
@@ -1057,12 +1117,19 @@ class TestAsgard(unittest.TestCase):
         asg = "loadtest-edx-edxapp-v060"
         self._mock_asgard_not_pending_delete([asg], 404)
         self.assertEqual(asgard.is_asg_enabled(asg), False)
-    
+
     @httpretty.activate
     def test_get_asg_info(self):
         asg = "loadtest-edx-edxapp-v060"
         self._mock_asgard_not_pending_delete([asg])
         self.assertEqual(asgard.get_asg_info(asg), json.loads(deleted_asg_not_in_progress.format(asg)))
+
+    @httpretty.activate
+    def test_get_asg_info_html_response(self):
+        asg = "loadtest-edx-edxapp-v060"
+        self._mock_asgard_not_pending_delete([asg], html_return=True)
+        with self.assertRaises(BackendError):
+            asgard.get_asg_info(asg)
 
     @httpretty.activate
     def test_get_asg_info_404(self):
