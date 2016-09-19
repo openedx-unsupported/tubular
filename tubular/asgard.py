@@ -565,4 +565,4 @@ def deploy(ami_id):
                 LOG.info("Unable to tag ASG {} as it no longer exists, skipping".format(asg))
 
     LOG.info("Woot! Deploy Done!")
-    return {'current_asgs': current_asgs, 'disabled_asgs': disabled_asg}
+    return {'current_asgs': dict(current_asgs), 'disabled_asgs': dict(disabled_asg)}
