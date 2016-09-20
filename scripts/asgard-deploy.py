@@ -12,7 +12,7 @@ sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
 from tubular import asgard
 
 
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
 @click.command()
