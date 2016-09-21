@@ -1032,11 +1032,7 @@ class TestAsgard(unittest.TestCase):
                     httpretty.Response(body=enabled_asg.format(asg),
                                        content_type="application/json",
                                        status=200),
-                    httpretty.Response(body=enabled_asg.format(asg),
-                                       content_type="application/json",
-                                       status=200)
                 ])
-
 
         httpretty.register_uri(
             httpretty.GET,
@@ -1073,20 +1069,175 @@ class TestAsgard(unittest.TestCase):
         for asg in asgs:
             url = asgard.ASG_INFO_URL.format(asg)
             httpretty.register_uri(
-            httpretty.GET,
-            url,
-            responses=[
-                httpretty.Response(body=deleted_asg_not_in_progress.format(asg),
-                                   content_type="application/json",
-                                   status=200),
-                httpretty.Response(body=deleted_asg_in_progress.format(asg),
-                                   content_type="application/json",
-                                   status=200),
-                httpretty.Response(body=disabled_asg.format(asg),
-                                   content_type="application/json",
-                                   status=200)
+                httpretty.GET,
+                url,
+                responses=[
+                    httpretty.Response(body=deleted_asg_not_in_progress.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+                    httpretty.Response(body=deleted_asg_in_progress.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+                    httpretty.Response(body=disabled_asg.format(asg),
+                                       content_type="application/json",
+                                       status=200)
             ])
         self.assertRaises(BackendError, asgard.deploy, ami_id)
+
+    @httpretty.activate
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    @mock.patch('boto.ec2.autoscale.AutoScaleConnection.create_or_update_tags', lambda *args: None)
+    def test_rollback(self):
+        ami_id = self._setup_for_deploy()
+
+        in_service_pre_rollback_asgs = ["loadtest-edx-edxapp-v099", "loadtest-edx-worker-v099"]
+        in_service_post_rollback_asgs = ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059", "loadtest-edx-worker-v034"]
+
+        for asg in in_service_pre_rollback_asgs:
+            url = asgard.ASG_INFO_URL.format(asg)
+            httpretty.register_uri(
+                httpretty.GET,
+                url,
+                responses=[
+                    # Start enabled and finish disabled.
+                    httpretty.Response(body=enabled_asg.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+                    httpretty.Response(body=enabled_asg.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+                    httpretty.Response(body=disabled_asg.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+            ])
+        for asg in in_service_post_rollback_asgs:
+            url = asgard.ASG_INFO_URL.format(asg)
+            httpretty.register_uri(
+                httpretty.GET,
+                url,
+                responses=[
+                    # Start disabled and finish enabled.
+                    httpretty.Response(body=disabled_asg.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+                    httpretty.Response(body=disabled_asg.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+                    httpretty.Response(body=enabled_asg.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+            ])
+        cluster = "app_cluster"
+        httpretty.register_uri(
+            httpretty.GET,
+            asgard.CLUSTER_INFO_URL.format(cluster),
+            body=valid_cluster_info_json,
+            content_type="application/json"
+        )
+
+        rollback_input = {
+            'current_asgs':
+                {
+                    'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v099'],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v099']
+                },
+            'disabled_asgs':
+                {'loadtest-edx-edxapp':
+                    [
+                        'loadtest-edx-edxapp-v058',
+                        'loadtest-edx-edxapp-v059'
+                    ],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v034']
+                },
+        }
+        # The expected output is the rollback input with reversed current/disabled asgs.
+        expected_output = {}
+        expected_output['current_asgs'] = rollback_input['disabled_asgs']
+        expected_output['disabled_asgs'] = rollback_input['current_asgs']
+
+        # Rollback and check output.
+        self.assertEqual(asgard.rollback(rollback_input['current_asgs'], rollback_input['disabled_asgs'], ami_id), expected_output)
+
+    @httpretty.activate
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    @mock.patch('boto.ec2.autoscale.AutoScaleConnection.create_or_update_tags', lambda *args: None)
+    def test_rollback_with_failure_and_redeploy(self):
+        ami_id = self._setup_for_deploy()
+
+        not_in_service_asgs = ["loadtest-edx-edxapp-v058",]
+        in_service_pre_rollback_asgs = ["loadtest-edx-edxapp-v059", "loadtest-edx-worker-v034"]
+        rollback_to_asgs = ["loadtest-edx-edxapp-v097", "loadtest-edx-worker-v098"]
+        in_service_post_rollback_asgs = ["loadtest-edx-edxapp-v099", "loadtest-edx-worker-v099"]
+
+        self._mock_asgard_not_pending_delete(in_service_pre_rollback_asgs, body=enabled_asg)
+        self._mock_asgard_pending_delete(not_in_service_asgs)
+
+        # The pending delete of the ASGs to rollback to causes the rollback to fail.
+        self._mock_asgard_pending_delete(rollback_to_asgs)
+
+        for asg in in_service_post_rollback_asgs:
+            url = asgard.ASG_INFO_URL.format(asg)
+            httpretty.register_uri(
+                httpretty.GET,
+                url,
+                responses=[
+                    # Start disabled and end enabled.
+                    httpretty.Response(body=disabled_asg.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+                    httpretty.Response(body=disabled_asg.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+                    httpretty.Response(body=enabled_asg.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+            ])
+
+        cluster = "app_cluster"
+        httpretty.register_uri(
+            httpretty.GET,
+            asgard.CLUSTER_INFO_URL.format(cluster),
+            body=valid_cluster_info_json,
+            content_type="application/json"
+        )
+
+        rollback_input = {
+            'current_asgs':
+                {'loadtest-edx-edxapp':
+                    [
+                        'loadtest-edx-edxapp-v058',
+                        'loadtest-edx-edxapp-v059'
+                    ],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v034']
+                },
+            'rollback_to_asgs':
+                {
+                    'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v097'],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v098']
+                },
+        }
+        expected_output = {
+            'current_asgs':
+                {
+                    'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v099'],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v099']
+                },
+            'disabled_asgs':
+                {'loadtest-edx-edxapp':
+                    [
+                        'loadtest-edx-edxapp-v058',
+                        'loadtest-edx-edxapp-v059'
+                    ],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v034']
+                },
+        }
+
+        # Rollback and check output.
+        self.assertEqual(asgard.rollback(rollback_input['current_asgs'], rollback_input['rollback_to_asgs'], ami_id), expected_output)
 
     @httpretty.activate
     def test_is_asg_pending_delete(self):
