@@ -1,3 +1,8 @@
+"""
+Script to simply delay and then print the specified environment variables.
+"""
+from __future__ import unicode_literals
+
 import os
 import sys
 import time
@@ -6,11 +11,12 @@ import click
 
 
 @click.command()
-@click.option('--success_prob', '-p',
-              default=100,
-              help="Probability percent of successful script completion (0-100).",
-              type=int,
-              )
+@click.option(
+    '--success_prob', '-p',
+    default=100,
+    help="Probability percent of successful script completion (0-100).",
+    type=int,
+)
 @click.argument('env_vars', nargs=-1)
 def cli(success_prob, env_vars):
     """
@@ -35,4 +41,4 @@ def cli(success_prob, env_vars):
 
 
 if __name__ == '__main__':
-    cli()
+    cli()  # pylint: disable=no-value-for-parameter

@@ -1,16 +1,16 @@
-#!/usr/bin/env python
+"""
+Command-line script to properly format an RSA key.
+"""
+from __future__ import unicode_literals
+
 import sys
 import logging
 import traceback
 import click
 from Crypto.PublicKey import RSA
-from os import path
-
-# Add top-level module path to sys.path before importing tubular code.
-sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
-
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
 
 @click.command()
 @click.option('--key', help='The RSA key to format as a string', type=str, required=True)
@@ -21,14 +21,14 @@ def format_rsa_key(key, output_file):
     """
     try:
         key = RSA.importKey(key.decode('unicode_escape'))
-        with open(output_file, 'w') as f:
+        with open(output_file, 'w') as f:  # pylint: disable=open-builtin
             f.write(key.exportKey())
-    except Exception as e:
+    except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho("Error formatting RSA key. \nMessage: {0}".format(e.message), fg='red')
+        click.secho("Error formatting RSA key. \nMessage: {0}".format(err.message), fg='red')
         sys.exit(1)
 
     sys.exit(0)
 
 if __name__ == "__main__":
-    format_rsa_key()
+    format_rsa_key()  # pylint: disable=no-value-for-parameter

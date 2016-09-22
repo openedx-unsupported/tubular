@@ -1,31 +1,39 @@
-#!/usr/bin/env python
+"""
+Command-line script used to delete AWS Auto-Scaling Groups that are tagged for deletion via Asgard.
+"""
+# pylint: disable=invalid-name
+from __future__ import unicode_literals
+
+from os import path
 import sys
 import logging
 import traceback
 import click
-from os import path
 
 # Add top-level module path to sys.path before importing tubular code.
-sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from tubular import asgard
-from tubular.ec2 import get_asgs_pending_delete
-
+from tubular import asgard  # pylint: disable=wrong-import-position
+from tubular.ec2 import get_asgs_pending_delete  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
+
 @click.command()
 def delete_asg():
+    """
+    Method to delete AWS Auto-Scaling Groups via Asgard that are tagged for deletion.
+    """
     error = False
     try:
         asgs = get_asgs_pending_delete()
         for asg in asgs:
             try:
                 asgard.delete_asg(asg.name)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 click.secho("Unable to delete ASG: {0} - {1}".format(asg, e.message), fg='red')
                 error = True
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         traceback.print_exc()
         click.secho("An error occured while cleaning up ASGs: {0}".format(e.message), fg='red')
         error = True

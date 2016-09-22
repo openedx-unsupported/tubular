@@ -1,14 +1,19 @@
+"""
+Tests of the code interacting with the Drupal API.
+"""
+from __future__ import unicode_literals
+
 import os
 import shutil
-import httpretty
 import unittest
+import httpretty
 import tubular.drupal as drupal
 from tubular.exception import BackendError
 
 os.environ["TUBULAR_RETRY_ENABLED"] = "false"
 reload(drupal)
 
-clear_cache_response_waiting = """
+CLEAR_CACHE_RESPONSE_WAITING = """
 {
 "id":"1",
 "queue":"purge-domain",
@@ -27,7 +32,7 @@ clear_cache_response_waiting = """
 }
 """
 
-clear_cache_response_done = """
+CLEAR_CACHE_RESPONSE_DONE = """
 {
 "id":"1",
 "queue":"purge-domain",
@@ -43,7 +48,7 @@ clear_cache_response_done = """
 }
 """
 
-deploy_response_waiting = """
+DEPLOY_RESPONSE_WAITING = """
 {
 "id":"2",
 "queue":"code-push",
@@ -63,7 +68,7 @@ deploy_response_waiting = """
 }
 """
 
-deploy_response_done = """
+DEPLOY_RESPONSE_DONE = """
 {
 "id":"2",
 "queue":"code-push",
@@ -79,7 +84,7 @@ deploy_response_done = """
 }
 """
 
-backup_database_response_waiting = """
+BACKUP_DATABASE_RESPONSE_WAITING = """
 {
 "id":"3",
 "queue":"create-db-backup-ondemand",
@@ -99,7 +104,7 @@ backup_database_response_waiting = """
 }
 """
 
-backup_database_response_started = """
+BACKUP_DATABASE_RESPONSE_STARTED = """
 {
 "id":"3",
 "queue":"create-db-backup-ondemand",
@@ -115,7 +120,7 @@ backup_database_response_started = """
 }
 """
 
-backup_database_response_done = """
+BACKUP_DATABASE_RESPONSE_DONE = """
 {
 "id":"3",
 "queue":"create-db-backup-ondemand",
@@ -131,7 +136,7 @@ backup_database_response_done = """
 }
 """
 
-fetch_tag_response = """
+FETCH_TAG_RESPONSE = """
 {
 "name":"extra",
 "vcs_path":"tags/foo-bar",
@@ -145,13 +150,13 @@ fetch_tag_response = """
 
 ACQUIA_ENV = "test"
 ACQUIA_DOMAINS = [
-        "edxstg.prod.acquia-sites.com",
-        "stage-edx-mktg-backend.edx.org",
-        "stage-edx-mktg-edit.edx.org",
-        "stage-webview.edx.org",
-        "stage.edx.org",
-        "www.stage.edx.org",
-    ]
+    "edxstg.prod.acquia-sites.com",
+    "stage-edx-mktg-backend.edx.org",
+    "stage-edx-mktg-edit.edx.org",
+    "stage-webview.edx.org",
+    "stage.edx.org",
+    "www.stage.edx.org",
+]
 TEST_USERNAME = "foo"
 TEST_PASSWORD = "bar"
 TEST_TAG = "tags/foo-bar"
@@ -160,7 +165,9 @@ DIR_NAME = PATH_NAME[:PATH_NAME.rfind("/")]
 
 
 class TestDrupal(unittest.TestCase):
-
+    """
+    Class containing tests of all code interacting with Drupal.
+    """
     @httpretty.activate
     def test_check_state_waiting(self):
         """
@@ -169,11 +176,11 @@ class TestDrupal(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             drupal.CHECK_TASKS_URL.format(id="1"),
-            body=clear_cache_response_waiting,
+            body=CLEAR_CACHE_RESPONSE_WAITING,
             content_type="application/json"
         )
         with self.assertRaises(BackendError):
-            drupal.check_state(id="1", username=TEST_USERNAME, password=TEST_PASSWORD)
+            drupal.check_state(task_id="1", username=TEST_USERNAME, password=TEST_PASSWORD)
 
     @httpretty.activate
     def test_check_state_done(self):
@@ -183,10 +190,10 @@ class TestDrupal(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             drupal.CHECK_TASKS_URL.format(id="1"),
-            body=clear_cache_response_done,
+            body=CLEAR_CACHE_RESPONSE_DONE,
             content_type="application/json"
         )
-        self.assertTrue(drupal.check_state(id="1", username=TEST_USERNAME, password=TEST_PASSWORD))
+        self.assertTrue(drupal.check_state(task_id="1", username=TEST_USERNAME, password=TEST_PASSWORD))
 
     @httpretty.activate
     def test_clear_varnish_cache_failure(self):
@@ -213,13 +220,13 @@ class TestDrupal(unittest.TestCase):
             httpretty.register_uri(
                 httpretty.DELETE,
                 drupal.CLEAR_CACHE_URL.format(env=ACQUIA_ENV, domain=domain),
-                body=clear_cache_response_waiting,
+                body=CLEAR_CACHE_RESPONSE_WAITING,
                 content_type="application/json"
             )
         httpretty.register_uri(
             httpretty.GET,
             drupal.CHECK_TASKS_URL.format(id="1"),
-            body=clear_cache_response_done,
+            body=CLEAR_CACHE_RESPONSE_DONE,
             content_type="application/json"
         )
         self.assertTrue(drupal.clear_varnish_cache(env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD))
@@ -247,13 +254,13 @@ class TestDrupal(unittest.TestCase):
         httpretty.register_uri(
             httpretty.POST,
             drupal.DEPLOY_URL.format(env=ACQUIA_ENV, tag=TEST_TAG),
-            body=deploy_response_waiting,
+            body=DEPLOY_RESPONSE_WAITING,
             content_type="application/json",
         )
         httpretty.register_uri(
             httpretty.GET,
             drupal.CHECK_TASKS_URL.format(id="2"),
-            body=deploy_response_done,
+            body=DEPLOY_RESPONSE_DONE,
             content_type="application/json"
         )
         self.assertTrue(drupal.deploy(env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD, tag=TEST_TAG))
@@ -281,19 +288,19 @@ class TestDrupal(unittest.TestCase):
         httpretty.register_uri(
             httpretty.POST,
             drupal.BACKUP_DATABASE_URL.format(env=ACQUIA_ENV),
-            body=backup_database_response_waiting,
+            body=BACKUP_DATABASE_RESPONSE_WAITING,
             content_type="application/json",
         )
         httpretty.register_uri(
             httpretty.GET,
             drupal.CHECK_TASKS_URL.format(id="3"),
-            body=backup_database_response_started,
+            body=BACKUP_DATABASE_RESPONSE_STARTED,
             content_type="application/json"
         )
         httpretty.register_uri(
             httpretty.GET,
             drupal.CHECK_TASKS_URL.format(id="3"),
-            body=backup_database_response_done,
+            body=BACKUP_DATABASE_RESPONSE_DONE,
             content_type="application/json"
         )
         self.assertTrue(drupal.backup_database(env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD))
@@ -306,7 +313,7 @@ class TestDrupal(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             drupal.FETCH_TAG_URL.format(env=ACQUIA_ENV),
-            body=fetch_tag_response,
+            body=FETCH_TAG_RESPONSE,
             content_type="application/json"
         )
         os.makedirs(DIR_NAME)

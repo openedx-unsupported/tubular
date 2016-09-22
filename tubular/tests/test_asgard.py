@@ -1,3 +1,8 @@
+"""
+Tests of the code interacting with the Asgard API.
+"""
+from __future__ import unicode_literals
+
 import os
 import json
 import unittest
@@ -5,12 +10,12 @@ import itertools
 import boto
 import mock
 import httpretty
-import tubular.asgard as asgard
 
 from ddt import ddt, data, unpack
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
 from requests.exceptions import ConnectionError
+import tubular.asgard as asgard
 from tubular.exception import (
     BackendDataError,
     TimeoutException,
@@ -28,7 +33,7 @@ os.environ['TUBULAR_RETRY_ENABLED'] = "false"
 reload(asgard)
 
 
-sample_cluster_list = """
+SAMPLE_CLUSTER_LIST = """
 [
   {
     "cluster": "loadtest-edx-edxapp",
@@ -54,7 +59,7 @@ sample_cluster_list = """
   }
 ]"""
 
-bad_cluster_json1 = """
+BAD_CLUSTER_JSON1 = """
 {
   "foo": {
     "cluster": "loadtest-edx-edxapp",
@@ -66,7 +71,7 @@ bad_cluster_json1 = """
   }
 }"""
 
-bad_cluster_json2 = """
+BAD_CLUSTER_JSON2 = """
 [
   {
     "autoScalingGroups":
@@ -77,9 +82,9 @@ bad_cluster_json2 = """
   }
 ]"""
 
-html_response_body = "<html>This is not JSON...</html>"
+HTML_RESPONSE_BODY = "<html>This is not JSON...</html>"
 
-valid_cluster_info_json = """
+VALID_CLUSTER_JSON_INFO = """
 [
   {
     "autoScalingGroupName": "loadtest-edx-edxapp-v058",
@@ -106,7 +111,7 @@ valid_cluster_info_json = """
 ]
 """
 
-valid_single_asg_cluster_info_json = """
+VALID_SINGLE_ASG_CLUSTER_INFO_JSON = """
 [
   {
     "autoScalingGroupName": "loadtest-edx-edxapp-v060",
@@ -124,7 +129,7 @@ valid_single_asg_cluster_info_json = """
 
 """
 
-asgs_for_edxapp_before = """
+ASGS_FOR_EDXAPP_BEFORE = """
 [
   {
     "autoScalingGroupName": "loadtest-edx-edxapp-v058"
@@ -135,7 +140,7 @@ asgs_for_edxapp_before = """
 ]
 """
 
-asgs_for_edxapp_after = """
+ASGS_FOR_EDXAPP_AFTER = """
 [
   {
     "autoScalingGroupName": "loadtest-edx-edxapp-v058"
@@ -149,14 +154,14 @@ asgs_for_edxapp_after = """
 ]
 """
 
-asgs_for_worker_before = """
+ASGS_FOR_WORKER_BEFORE = """
 [
   {
     "autoScalingGroupName": "loadtest-edx-worker-v034"
   }
 ]
 """
-asgs_for_worker_after = """
+ASGS_FOR_WORKER_AFTER = """
 [
   {
     "autoScalingGroupName": "loadtest-edx-worker-v034"
@@ -168,64 +173,64 @@ asgs_for_worker_after = """
 """
 
 
-deleted_asg_in_progress = """
+DELETED_ASG_IN_PROGRESS = """
 {{
-	"group": {{
-		"autoScalingGroupName": "{0}",
-		"loadBalancerNames":
+    "group": {{
+        "autoScalingGroupName": "{0}",
+        "loadBalancerNames":
         [
-          "app_elb"
+            "app_elb"
         ],
-		"status": "deleted",
-		"launchingSuspended": false
-	}},
-        "clusterName": "app_cluster"
+        "status": "deleted",
+        "launchingSuspended": false
+    }},
+    "clusterName": "app_cluster"
 }}
 """
 
-deleted_asg_not_in_progress = """
+DELETED_ASG_NOT_IN_PROGRESS = """
 {{
-	"group": {{
-		"autoScalingGroupName": "{0}",
-		"loadBalancerNames": [
-			"app_elb"
-		],
-		"status": null
-	}},
-        "clusterName": "app_cluster"
+    "group": {{
+        "autoScalingGroupName": "{0}",
+        "loadBalancerNames": [
+            "app_elb"
+        ],
+        "status": null
+    }},
+    "clusterName": "app_cluster"
 }}
 """
 
-disabled_asg = """
+DISABLED_ASG = """
 {{
-        "group": {{
-                "autoScalingGroupName": "{0}",
-                "loadBalancerNames": [
-                        "app_elb"
-                ],
-                "status": null,
-                "launchingSuspended": true
-        }},
-        "clusterName": "app_cluster"
+    "group": {{
+        "autoScalingGroupName": "{0}",
+        "loadBalancerNames": [
+            "app_elb"
+        ],
+        "status": null,
+        "launchingSuspended": true
+    }},
+    "clusterName": "app_cluster"
 }}
 """
 
-enabled_asg = """
+ENABLED_ASG = """
 {{
-        "group": {{
-                "autoScalingGroupName": "{0}",
-                "loadBalancerNames": [
-                        "app_elb"
-                ],
-                "status": null,
-                "launchingSuspended": false
-        }},
-        "clusterName": "app_cluster"
+    "group": {{
+        "autoScalingGroupName": "{0}",
+        "loadBalancerNames": [
+            "app_elb"
+        ],
+        "status": null,
+        "launchingSuspended": false
+    }},
+    "clusterName": "app_cluster"
 }}
 """
 
 
-failed_sample_task = """
+FAILED_SAMPLE_TASK = """
 {
   "log":
   [
@@ -244,7 +249,7 @@ failed_sample_task = """
 }
 """
 
-completed_sample_task = """
+COMPLETED_SAMPLE_TASK = """
 {
   "log":
   [
@@ -261,7 +266,7 @@ completed_sample_task = """
 }
 """
 
-running_sample_task = """
+RUNNING_SAMPLE_TASK = """
 {
   "log":
   [
@@ -286,7 +291,7 @@ running_sample_task = """
 }
 """
 
-sample_asg_info = """
+SAMPLE_ASG_INFO = """
 {
   "group": {
     "loadBalancerNames":
@@ -297,7 +302,7 @@ sample_asg_info = """
 }
 """
 
-sample_worker_asg_info = """
+SAMPLE_WORKER_ASG_INFO = """
 {
   "group": {
     "loadBalancerNames": []
@@ -308,6 +313,9 @@ sample_worker_asg_info = """
 
 @ddt
 class TestAsgard(unittest.TestCase):
+    """
+    Class containing all Asgard tests.
+    """
     _multiprocess_can_split_ = True
 
     def test_bad_clusters_endpoint(self):
@@ -319,7 +327,7 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             asgard.CLUSTER_LIST_URL,
-            body=sample_cluster_list,
+            body=SAMPLE_CLUSTER_LIST,
             content_type="application/json")
 
         relevant_asgs = []
@@ -327,8 +335,9 @@ class TestAsgard(unittest.TestCase):
         self.assertEqual({}, cluster_names)
 
         relevant_asgs = ["loadtest-edx-edxapp-v058"]
-        expected_clusters = { "loadtest-edx-edxapp" :
-                ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059"]}
+        expected_clusters = {
+            "loadtest-edx-edxapp": ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059"]
+        }
         cluster_names = asgard.clusters_for_asgs(relevant_asgs)
         self.assertEqual(expected_clusters, cluster_names)
 
@@ -338,22 +347,23 @@ class TestAsgard(unittest.TestCase):
         self.assertIn("loadtest-edx-worker", cluster_names)
         self.assertEqual(["loadtest-edx-worker-v034"], cluster_names['loadtest-edx-worker'])
         self.assertEqual(
-                ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059"],
-                cluster_names['loadtest-edx-edxapp'])
+            ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059"],
+            cluster_names['loadtest-edx-edxapp']
+        )
 
     @httpretty.activate
     def test_clusters_for_asgs_bad_response(self):
         httpretty.register_uri(
             httpretty.GET,
             asgard.CLUSTER_LIST_URL,
-            body=html_response_body,
+            body=HTML_RESPONSE_BODY,
             content_type="text/html")
 
         relevant_asgs = []
         with self.assertRaises(BackendError):
-            cluster_names = asgard.clusters_for_asgs(relevant_asgs)
+            __ = asgard.clusters_for_asgs(relevant_asgs)
 
-    @data(bad_cluster_json1, bad_cluster_json2)
+    @data(BAD_CLUSTER_JSON1, BAD_CLUSTER_JSON2)
     @httpretty.activate
     def test_incorrect_json(self, response_json):
         # The json is valid but not the structure we expected.
@@ -373,10 +383,10 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             url,
-            body=valid_cluster_info_json,
+            body=VALID_CLUSTER_JSON_INFO,
             content_type="application/json")
 
-        expected_asgs = [ "loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059" ]
+        expected_asgs = ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059"]
         self.assertEqual(expected_asgs, asgard.asgs_for_cluster(cluster))
 
     @httpretty.activate
@@ -386,10 +396,10 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             url,
-            body=html_response_body,
+            body=HTML_RESPONSE_BODY,
             content_type="text/html")
 
-        expected_asgs = [ "loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059" ]
+        expected_asgs = ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059"]
         with self.assertRaises(BackendError):
             self.assertEqual(expected_asgs, asgard.asgs_for_cluster(cluster))
 
@@ -405,7 +415,7 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             url,
-            body=bad_cluster_json1,
+            body=BAD_CLUSTER_JSON1,
             content_type="application/json")
 
         self.assertRaises(BackendDataError, asgard.asgs_for_cluster, cluster)
@@ -416,10 +426,10 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             asg_info_url,
-            body=sample_asg_info,
+            body=SAMPLE_ASG_INFO,
             content_type="application/json")
 
-        self.assertEqual( asgard.elbs_for_asg("test_asg"), [ "app_elb" ])
+        self.assertEqual(asgard.elbs_for_asg("test_asg"), ["app_elb"])
 
     @httpretty.activate
     def test_elbs_for_asg_bad_data(self):
@@ -427,7 +437,7 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             asg_info_url,
-            body=html_response_body,
+            body=HTML_RESPONSE_BODY,
             content_type="text/html")
 
         self.assertRaises(BackendError, asgard.elbs_for_asg, "test_asg")
@@ -438,13 +448,12 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             asg_info_url,
-            body=bad_cluster_json1,
+            body=BAD_CLUSTER_JSON1,
             content_type="application/json")
 
         self.assertRaises(BackendDataError, asgard.elbs_for_asg, "test_asg")
 
     def test_bad_asg_info_endpoint(self):
-        asg = "fake_asg"
         self.assertRaises(ConnectionError, asgard.elbs_for_asg, "fake_asg")
 
     @httpretty.activate
@@ -453,11 +462,11 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             task_url,
-            body=completed_sample_task,
+            body=COMPLETED_SAMPLE_TASK,
             content_type="application/json")
 
         actual_output = asgard.wait_for_task_completion(task_url, 1)
-        expected_output = json.loads(completed_sample_task)
+        expected_output = json.loads(COMPLETED_SAMPLE_TASK)
         self.assertEqual(expected_output, actual_output)
 
     @httpretty.activate
@@ -466,28 +475,28 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             task_url,
-            body=failed_sample_task,
+            body=FAILED_SAMPLE_TASK,
             content_type="application/json")
 
         actual_output = asgard.wait_for_task_completion(task_url, 1)
-        expected_output = json.loads(failed_sample_task)
+        expected_output = json.loads(FAILED_SAMPLE_TASK)
         self.assertEqual(expected_output, actual_output)
 
     @httpretty.activate
-    def test_failed_task_completion(self):
+    def test_running_then_failed_task_completion(self):
         task_url = "http://some.host/task/1234.json"
         httpretty.register_uri(
             httpretty.GET,
             task_url,
             responses=[
-                httpretty.Response(body=running_sample_task),
-                httpretty.Response(failed_sample_task),
-                ],
+                httpretty.Response(body=RUNNING_SAMPLE_TASK),
+                httpretty.Response(FAILED_SAMPLE_TASK),
+            ],
             content_type="application/json")
 
         with mock.patch('tubular.asgard.WAIT_SLEEP_TIME', 1):
             actual_output = asgard.wait_for_task_completion(task_url, 2)
-            expected_output = json.loads(failed_sample_task)
+            expected_output = json.loads(FAILED_SAMPLE_TASK)
             self.assertEqual(expected_output, actual_output)
 
     @httpretty.activate
@@ -496,7 +505,7 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             task_url,
-            body=html_response_body,
+            body=HTML_RESPONSE_BODY,
             content_type="text/html")
 
         with self.assertRaises(BackendError):
@@ -508,7 +517,7 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             task_url,
-            body=running_sample_task,
+            body=RUNNING_SAMPLE_TASK,
             content_type="application/json")
 
         self.assertRaises(TimeoutException, asgard.wait_for_task_completion, task_url, 1)
@@ -519,55 +528,20 @@ class TestAsgard(unittest.TestCase):
         cluster = "loadtest-edx-edxapp"
         ami_id = "ami-abc1234"
 
-        def post_callback(request, uri, headers):
+        def post_callback(request, uri, headers):  # pylint: disable=unused-argument
+            """
+            Callback method for POST.
+            """
             self.assertEqual('POST', request.method)
-            expected_request_body = { "name" : [cluster], "imageId": [ami_id] }
-            expected_querystring = { "asgardApiToken": ['dummy-token'] }
+            expected_request_body = {"name": [cluster], "imageId": [ami_id]}
+            expected_querystring = {"asgardApiToken": ['dummy-token']}
 
             self.assertEqual(expected_request_body, request.parsed_body)
             self.assertEqual(expected_querystring, request.querystring)
-            response_headers = { "Location": task_url,
-                    "server": asgard.ASGARD_API_ENDPOINT}
-            response_body = ""
-            return (302, response_headers, response_body)
-
-        httpretty.register_uri(
-                httpretty.POST,
-                asgard.NEW_ASG_URL,
-                body=post_callback,
-                Location=task_url)
-
-        httpretty.register_uri(
-            httpretty.GET,
-            task_url,
-            body=completed_sample_task,
-            content_type="application/json")
-
-        url = asgard.CLUSTER_INFO_URL.format(cluster)
-        httpretty.register_uri(
-            httpretty.GET,
-            url,
-            body=valid_cluster_info_json,
-            content_type="application/json")
-
-        expected_asg = "loadtest-edx-edxapp-v059"
-        self.assertEqual(expected_asg, asgard.new_asg(cluster,ami_id))
-
-    @httpretty.activate
-    def test_new_asg_failure(self):
-        task_url = "http://some.host/task/1234.json"
-        cluster = "loadtest-edx-edxapp"
-        ami_id = "ami-abc1234"
-
-        def post_callback(request, uri, headers):
-            self.assertEqual('POST', request.method)
-            expected_request_body = { "name" : [cluster], "imageId": [ami_id] }
-            expected_querystring = { "asgardApiToken": ['dummy-token'] }
-
-            self.assertEqual(expected_request_body, request.parsed_body)
-            self.assertEqual(expected_querystring, request.querystring)
-            response_headers = { "Location": task_url.strip(".json"),
-                    "server": asgard.ASGARD_API_ENDPOINT}
+            response_headers = {
+                "Location": task_url,
+                "server": asgard.ASGARD_API_ENDPOINT
+            }
             response_body = ""
             return (302, response_headers, response_body)
 
@@ -580,25 +554,73 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             task_url,
-            body=failed_sample_task,
+            body=COMPLETED_SAMPLE_TASK,
             content_type="application/json")
 
         url = asgard.CLUSTER_INFO_URL.format(cluster)
         httpretty.register_uri(
             httpretty.GET,
             url,
-            body=valid_cluster_info_json,
+            body=VALID_CLUSTER_JSON_INFO,
             content_type="application/json")
 
-        self.assertRaises(BackendError, asgard.new_asg,cluster,ami_id)
+        expected_asg = "loadtest-edx-edxapp-v059"
+        self.assertEqual(expected_asg, asgard.new_asg(cluster, ami_id))
+
+    @httpretty.activate
+    def test_new_asg_failure(self):
+        task_url = "http://some.host/task/1234.json"
+        cluster = "loadtest-edx-edxapp"
+        ami_id = "ami-abc1234"
+
+        def post_callback(request, uri, headers):  # pylint: disable=unused-argument
+            """
+            Callback method for POST.
+            """
+            self.assertEqual('POST', request.method)
+            expected_request_body = {"name": [cluster], "imageId": [ami_id]}
+            expected_querystring = {"asgardApiToken": ['dummy-token']}
+
+            self.assertEqual(expected_request_body, request.parsed_body)
+            self.assertEqual(expected_querystring, request.querystring)
+            response_headers = {
+                "Location": task_url.strip(".json"),
+                "server": asgard.ASGARD_API_ENDPOINT
+            }
+            response_body = ""
+            return (302, response_headers, response_body)
+
+        httpretty.register_uri(
+            httpretty.POST,
+            asgard.NEW_ASG_URL,
+            body=post_callback,
+            Location=task_url)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            task_url,
+            body=FAILED_SAMPLE_TASK,
+            content_type="application/json")
+
+        url = asgard.CLUSTER_INFO_URL.format(cluster)
+        httpretty.register_uri(
+            httpretty.GET,
+            url,
+            body=VALID_CLUSTER_JSON_INFO,
+            content_type="application/json")
+
+        self.assertRaises(BackendError, asgard.new_asg, cluster, ami_id)
 
     @httpretty.activate
     def test_new_asg_404(self):
         cluster = "loadtest-edx-edxapp"
         ami_id = "ami-abc1234"
 
-        def post_callback(request, uri, headers):
-            response_headers = { "server": asgard.ASGARD_API_ENDPOINT }
+        def post_callback(request, uri, headers):  # pylint: disable=unused-argument
+            """
+            Callback method for POST.
+            """
+            response_headers = {"server": asgard.ASGARD_API_ENDPOINT}
             return (404, response_headers, "")
 
         httpretty.register_uri(
@@ -611,11 +633,14 @@ class TestAsgard(unittest.TestCase):
 
     @httpretty.activate
     @mock.patch('boto.connect_autoscale')
-    def test_disable_asg_pending_deletion(self, mock_connect_autoscale):
+    def test_disable_asg_pending_deletion(self, mock_connect_autoscale):  # pylint: disable=unused-argument
         """
         Tests an ASG disable that is cancelled due to the ASG pending deletion.
         """
-        def post_callback(request, uri, headers):
+        def post_callback(request, uri, headers):  # pylint: disable=unused-argument
+            """
+            Callback method for POST.
+            """
             # If this POST callback gets called, test has failed.
             raise Exception("POST called to disable ASG when it should have been skipped.")
 
@@ -633,8 +658,11 @@ class TestAsgard(unittest.TestCase):
 
     @httpretty.activate
     @mock.patch('boto.connect_autoscale')
-    def test_disable_asg_does_not_exist(self, mock_connect_autoscale):
-        def post_callback(request, uri, headers):
+    def test_disable_asg_does_not_exist(self, mock_connect_autoscale):  # pylint: disable=unused-argument
+        def post_callback(request, uri, headers):  # pylint: disable=unused-argument
+            """
+            Callback method for POST.
+            """
             # If this POST callback gets called, test has failed.
             raise Exception("POST called to disable ASG when it should have been skipped.")
 
@@ -649,7 +677,7 @@ class TestAsgard(unittest.TestCase):
         self.assertEquals(None, asgard.disable_asg(asg))
 
     @httpretty.activate
-    @data((completed_sample_task, True), (failed_sample_task, False))
+    @data((COMPLETED_SAMPLE_TASK, True), (FAILED_SAMPLE_TASK, False))
     @unpack
     def test_delete_asg(self, task_body, should_succeed):
         asg = "loadtest-edx-edxapp-v060"
@@ -657,7 +685,11 @@ class TestAsgard(unittest.TestCase):
         self._mock_asgard_not_pending_delete([asg])
 
         task_url = "http://some.host/task/1234.json"
-        def post_callback(request, uri, headers):
+
+        def post_callback(request, uri, headers):  # pylint: disable=unused-argument
+            """
+            Callback method for POST.
+            """
             self.assertEqual('POST', request.method)
             expected_request_body = {"name": [asg]}
             expected_querystring = {"asgardApiToken": ['dummy-token']}
@@ -685,7 +717,7 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             asgard.CLUSTER_INFO_URL.format(cluster),
-            body=valid_cluster_info_json,
+            body=VALID_CLUSTER_JSON_INFO,
             content_type="application/json"
         )
 
@@ -697,11 +729,12 @@ class TestAsgard(unittest.TestCase):
     @httpretty.activate
     def test_delete_asg_active(self):
         asg = "loadtest-edx-edxapp-v060"
-        self._mock_asgard_not_pending_delete([asg], body=enabled_asg)
+        self._mock_asgard_not_pending_delete([asg], body=ENABLED_ASG)
 
-        task_url = "http://some.host/task/1234.json"
-
-        def post_callback(request, uri, headers):
+        def post_callback(request, uri, headers):  # pylint: disable=unused-argument
+            """
+            Callback method for POST.
+            """
             raise Exception("This post should not be called")
 
         httpretty.register_uri(
@@ -721,21 +754,21 @@ class TestAsgard(unittest.TestCase):
     def test_delete_last_asg(self):
         asg = "loadtest-edx-edxapp-v060"
         cluster = "app_cluster"
-        self._mock_asgard_not_pending_delete([asg], body=disabled_asg)
+        self._mock_asgard_not_pending_delete([asg], body=DISABLED_ASG)
 
         httpretty.register_uri(
             httpretty.GET,
             asgard.ASG_INFO_URL.format(asg),
-            body=disabled_asg.format(asg),
+            body=DISABLED_ASG.format(asg),
             content_type="application/json"
         )
 
         httpretty.register_uri(
-                httpretty.GET,
-                asgard.CLUSTER_INFO_URL.format(cluster),
-                body=valid_single_asg_cluster_info_json,
-                content_type="application/json"
-                )
+            httpretty.GET,
+            asgard.CLUSTER_INFO_URL.format(cluster),
+            body=VALID_SINGLE_ASG_CLUSTER_INFO_JSON,
+            content_type="application/json"
+        )
 
         self.assertRaises(CannotDeleteLastASG, asgard.delete_asg, asg)
 
@@ -756,15 +789,20 @@ class TestAsgard(unittest.TestCase):
         asg = "loadtest-edx-edxapp-v059"
         cluster = "app_cluster"
 
-        def post_callback(request, uri, headers):
+        def post_callback(request, uri, headers):  # pylint: disable=unused-argument
+            """
+            Callback method for POST.
+            """
             self.assertEqual('POST', request.method)
-            expected_request_body = { "name" : [asg] }
-            expected_querystring = { "asgardApiToken": ['dummy-token'] }
+            expected_request_body = {"name": [asg]}
+            expected_querystring = {"asgardApiToken": ['dummy-token']}
 
             self.assertEqual(expected_request_body, request.parsed_body)
             self.assertEqual(expected_querystring, request.querystring)
-            response_headers = { "Location": task_url.strip(".json"),
-                    "server": asgard.ASGARD_API_ENDPOINT}
+            response_headers = {
+                "Location": task_url.strip(".json"),
+                "server": asgard.ASGARD_API_ENDPOINT
+            }
             response_body = ""
             return (302, response_headers, response_body)
 
@@ -777,21 +815,21 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             asgard.ASG_INFO_URL.format(asg),
-            body=enabled_asg.format(asg),
+            body=ENABLED_ASG.format(asg),
             content_type="application/json"
         )
 
         httpretty.register_uri(
             httpretty.GET,
             asgard.CLUSTER_INFO_URL.format(cluster),
-            body=valid_cluster_info_json,
+            body=VALID_CLUSTER_JSON_INFO,
             content_type="application/json"
         )
 
         httpretty.register_uri(
             httpretty.GET,
             task_url,
-            body=completed_sample_task if success else failed_sample_task,
+            body=COMPLETED_SAMPLE_TASK if success else FAILED_SAMPLE_TASK,
             content_type="application/json"
         )
 
@@ -799,7 +837,7 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             url,
-            body=deleted_asg_not_in_progress.format(asg),
+            body=DELETED_ASG_NOT_IN_PROGRESS.format(asg),
             content_type="application/json")
 
         if success:
@@ -807,11 +845,15 @@ class TestAsgard(unittest.TestCase):
         else:
             self.assertRaises(BackendError, test_function, asg)
 
-    def _setup_for_deploy(self,
-            new_asg_task_status=completed_sample_task,
-            enable_asg_task_status=completed_sample_task,
-            disable_asg_task_status=completed_sample_task,
-        ):
+    def _setup_for_deploy(
+            self,
+            new_asg_task_status=COMPLETED_SAMPLE_TASK,
+            enable_asg_task_status=COMPLETED_SAMPLE_TASK,
+            disable_asg_task_status=COMPLETED_SAMPLE_TASK,
+    ):
+        """
+        Setup all the variables for an ASG deployment.
+        """
         # Make the AMI
         ec2 = boto.connect_ec2()
         reservation = ec2.run_instances(random_ami_id())
@@ -823,7 +865,9 @@ class TestAsgard(unittest.TestCase):
         ami.add_tag("play", "baz")
 
         # Make the current ASGs
-        self.test_asg_tags = { "environment": "foo",
+        # pylint: disable=attribute-defined-outside-init
+        self.test_asg_tags = {
+            "environment": "foo",
             "deployment": "bar",
             "play": "baz",
         }
@@ -838,7 +882,7 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             asgard.CLUSTER_LIST_URL,
-            body=sample_cluster_list,
+            body=SAMPLE_CLUSTER_LIST,
             content_type="application/json")
 
         edxapp_cluster_info_url = asgard.CLUSTER_INFO_URL.format("loadtest-edx-edxapp")
@@ -846,9 +890,9 @@ class TestAsgard(unittest.TestCase):
             httpretty.GET,
             edxapp_cluster_info_url,
             responses=[
-#                httpretty.Response(body=asgs_for_edxapp_before),
-                httpretty.Response(body=asgs_for_edxapp_after),
-                ],
+                # httpretty.Response(body=ASGS_FOR_EDXAPP_BEFORE),
+                httpretty.Response(body=ASGS_FOR_EDXAPP_AFTER),
+            ],
         )
 
         worker_cluster_info_url = asgard.CLUSTER_INFO_URL.format("loadtest-edx-worker")
@@ -856,16 +900,22 @@ class TestAsgard(unittest.TestCase):
             httpretty.GET,
             worker_cluster_info_url,
             responses=[
-#                httpretty.Response(body=asgs_for_worker_before),
-                httpretty.Response(body=asgs_for_worker_after),
-                ],
+                # httpretty.Response(body=ASGS_FOR_WORKER_BEFORE),
+                httpretty.Response(body=ASGS_FOR_WORKER_AFTER),
+            ],
         )
 
         # Mock endpoints for building new ASGs
         task_url = "http://some.host/task/new_asg_1234.json"
-        def new_asg_post_callback(request, uri, headers):
-            response_headers = { "Location": task_url,
-                    "server": asgard.ASGARD_API_ENDPOINT}
+
+        def new_asg_post_callback(request, uri, headers):  # pylint: disable=unused-argument
+            """
+            Callback method for POST.
+            """
+            response_headers = {
+                "Location": task_url,
+                "server": asgard.ASGARD_API_ENDPOINT
+            }
             response_body = ""
             new_asg_name = "{}-v099".format(request.parsed_body["name"][0])
             new_ami_id = request.parsed_body["imageId"][0]
@@ -873,10 +923,10 @@ class TestAsgard(unittest.TestCase):
             return (302, response_headers, response_body)
 
         httpretty.register_uri(
-                httpretty.POST,
-                asgard.NEW_ASG_URL,
-                body=new_asg_post_callback,
-                Location=task_url)
+            httpretty.POST,
+            asgard.NEW_ASG_URL,
+            body=new_asg_post_callback,
+            Location=task_url)
 
         httpretty.register_uri(
             httpretty.GET,
@@ -886,28 +936,40 @@ class TestAsgard(unittest.TestCase):
 
         # Make endpoint for enabling new ASGs
         enable_asg_task_url = "http://some.host/task/enable_asg_1234.json"
-        def enable_asg_post_callback(request, uri, headers):
-            response_headers = { "Location": enable_asg_task_url,
-                    "server": asgard.ASGARD_API_ENDPOINT}
+
+        def enable_asg_post_callback(request, uri, headers):  # pylint: disable=unused-argument
+            """
+            Callback method for POST.
+            """
+            response_headers = {
+                "Location": enable_asg_task_url,
+                "server": asgard.ASGARD_API_ENDPOINT
+            }
             response_body = ""
             return (302, response_headers, response_body)
 
         disable_asg_task_url = "http://some.host/task/disable_asg_1234.json"
-        def disable_asg_post_callback(request, uri, headers):
-            response_headers = { "Location": disable_asg_task_url,
-                    "server": asgard.ASGARD_API_ENDPOINT}
+
+        def disable_asg_post_callback(request, uri, headers):  # pylint: disable=unused-argument
+            """
+            Callback method for POST.
+            """
+            response_headers = {
+                "Location": disable_asg_task_url,
+                "server": asgard.ASGARD_API_ENDPOINT
+            }
             response_body = ""
             return (302, response_headers, response_body)
 
         httpretty.register_uri(
-                httpretty.POST,
-                asgard.ASG_ACTIVATE_URL,
-                body=enable_asg_post_callback)
+            httpretty.POST,
+            asgard.ASG_ACTIVATE_URL,
+            body=enable_asg_post_callback)
 
         httpretty.register_uri(
-                httpretty.POST,
-                asgard.ASG_DEACTIVATE_URL,
-                body=disable_asg_post_callback)
+            httpretty.POST,
+            asgard.ASG_DEACTIVATE_URL,
+            body=disable_asg_post_callback)
 
         httpretty.register_uri(
             httpretty.GET,
@@ -923,7 +985,9 @@ class TestAsgard(unittest.TestCase):
 
         return ami_id
 
-    def _mock_asgard_not_pending_delete(self, asgs, response_code=200, body=deleted_asg_not_in_progress, html_return=False):
+    def _mock_asgard_not_pending_delete(
+            self, asgs, response_code=200, body=DELETED_ASG_NOT_IN_PROGRESS, html_return=False
+    ):
         """
         This helper function will mock calls to the asgard api related to is_asg_pending_delete. The response will be
         that this ASG is not pending delete.
@@ -943,7 +1007,7 @@ class TestAsgard(unittest.TestCase):
             response_body = body.format(asg)
             if html_return:
                 response_content_type = "text/html"
-                response_body = html_response_body
+                response_body = HTML_RESPONSE_BODY
             httpretty.register_uri(
                 httpretty.GET,
                 url,
@@ -968,7 +1032,7 @@ class TestAsgard(unittest.TestCase):
             httpretty.register_uri(
                 httpretty.GET,
                 url,
-                body=deleted_asg_in_progress.format(asg),
+                body=DELETED_ASG_IN_PROGRESS.format(asg),
                 content_type="application/json",
                 status=response_code)
 
@@ -978,7 +1042,7 @@ class TestAsgard(unittest.TestCase):
     @mock_elb
     def test_deploy_asg_failed(self):
         ami_id = self._setup_for_deploy(
-                new_asg_task_status=failed_sample_task
+            new_asg_task_status=FAILED_SAMPLE_TASK
         )
         self.assertRaises(Exception, asgard.deploy, ami_id)
 
@@ -988,8 +1052,9 @@ class TestAsgard(unittest.TestCase):
     @mock_elb
     def test_deploy_enable_asg_failed(self):
         ami_id = self._setup_for_deploy(
-                new_asg_task_status=completed_sample_task,
-                enable_asg_task_status=failed_sample_task)
+            new_asg_task_status=COMPLETED_SAMPLE_TASK,
+            enable_asg_task_status=FAILED_SAMPLE_TASK
+        )
         self.assertRaises(Exception, asgard.deploy, ami_id)
 
     @httpretty.activate
@@ -997,7 +1062,7 @@ class TestAsgard(unittest.TestCase):
     @mock_ec2
     @mock_elb
     def test_deploy_elb_health_failed(self):
-        ami_id = self._setup_for_deploy(completed_sample_task, completed_sample_task)
+        ami_id = self._setup_for_deploy(COMPLETED_SAMPLE_TASK, COMPLETED_SAMPLE_TASK)
         mock_function = "tubular.ec2.wait_for_healthy_elbs"
         with mock.patch(mock_function, side_effect=Exception("Never became healthy.")):
             self.assertRaises(Exception, asgard.deploy, ami_id)
@@ -1009,11 +1074,11 @@ class TestAsgard(unittest.TestCase):
     def test_deploy(self):
         ami_id = self._setup_for_deploy()
 
-        not_in_service_asgs = ["loadtest-edx-edxapp-v058",]
+        not_in_service_asgs = ["loadtest-edx-edxapp-v058"]
         in_service_asgs = ["loadtest-edx-edxapp-v059", "loadtest-edx-worker-v034"]
         new_asgs = ["loadtest-edx-edxapp-v099", "loadtest-edx-worker-v099"]
 
-        self._mock_asgard_not_pending_delete(in_service_asgs, body=enabled_asg)
+        self._mock_asgard_not_pending_delete(in_service_asgs, body=ENABLED_ASG)
         self._mock_asgard_pending_delete(not_in_service_asgs)
 
         cluster = "app_cluster"
@@ -1023,13 +1088,13 @@ class TestAsgard(unittest.TestCase):
                 httpretty.GET,
                 url,
                 responses=[
-                    httpretty.Response(body=deleted_asg_not_in_progress.format(asg),
+                    httpretty.Response(body=DELETED_ASG_NOT_IN_PROGRESS.format(asg),
                                        content_type="application/json",
                                        status=200),
-                    httpretty.Response(body=deleted_asg_not_in_progress.format(asg),
+                    httpretty.Response(body=DELETED_ASG_NOT_IN_PROGRESS.format(asg),
                                        content_type="application/json",
                                        status=200),
-                    httpretty.Response(body=enabled_asg.format(asg),
+                    httpretty.Response(body=ENABLED_ASG.format(asg),
                                        content_type="application/json",
                                        status=200),
                 ])
@@ -1037,7 +1102,7 @@ class TestAsgard(unittest.TestCase):
         httpretty.register_uri(
             httpretty.GET,
             asgard.CLUSTER_INFO_URL.format(cluster),
-            body=valid_cluster_info_json,
+            body=VALID_CLUSTER_JSON_INFO,
             content_type="application/json"
         )
         expected_output = {
@@ -1048,11 +1113,12 @@ class TestAsgard(unittest.TestCase):
                     'loadtest-edx-worker': ['loadtest-edx-worker-v099']
                 },
             'disabled_asgs':
-                {'loadtest-edx-edxapp':
-                    [
-                        'loadtest-edx-edxapp-v058',
-                        'loadtest-edx-edxapp-v059'
-                    ],
+                {
+                    'loadtest-edx-edxapp':
+                        [
+                            'loadtest-edx-edxapp-v058',
+                            'loadtest-edx-edxapp-v059'
+                        ],
                     'loadtest-edx-worker': ['loadtest-edx-worker-v034']
                 }
         }
@@ -1073,16 +1139,17 @@ class TestAsgard(unittest.TestCase):
                 httpretty.GET,
                 url,
                 responses=[
-                    httpretty.Response(body=deleted_asg_not_in_progress.format(asg),
+                    httpretty.Response(body=DELETED_ASG_NOT_IN_PROGRESS.format(asg),
                                        content_type="application/json",
                                        status=200),
-                    httpretty.Response(body=deleted_asg_in_progress.format(asg),
+                    httpretty.Response(body=DELETED_ASG_IN_PROGRESS.format(asg),
                                        content_type="application/json",
                                        status=200),
-                    httpretty.Response(body=disabled_asg.format(asg),
+                    httpretty.Response(body=DISABLED_ASG.format(asg),
                                        content_type="application/json",
                                        status=200)
-            ])
+                ]
+            )
         self.assertRaises(BackendError, asgard.deploy, ami_id)
 
     @httpretty.activate
@@ -1092,8 +1159,12 @@ class TestAsgard(unittest.TestCase):
     def test_rollback(self):
         ami_id = self._setup_for_deploy()
 
-        in_service_pre_rollback_asgs = ["loadtest-edx-edxapp-v099", "loadtest-edx-worker-v099"]
-        in_service_post_rollback_asgs = ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059", "loadtest-edx-worker-v034"]
+        in_service_pre_rollback_asgs = [
+            "loadtest-edx-edxapp-v099", "loadtest-edx-worker-v099"
+        ]
+        in_service_post_rollback_asgs = [
+            "loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059", "loadtest-edx-worker-v034"
+        ]
 
         for asg in in_service_pre_rollback_asgs:
             url = asgard.ASG_INFO_URL.format(asg)
@@ -1102,16 +1173,17 @@ class TestAsgard(unittest.TestCase):
                 url,
                 responses=[
                     # Start enabled and finish disabled.
-                    httpretty.Response(body=enabled_asg.format(asg),
+                    httpretty.Response(body=ENABLED_ASG.format(asg),
                                        content_type="application/json",
                                        status=200),
-                    httpretty.Response(body=enabled_asg.format(asg),
+                    httpretty.Response(body=ENABLED_ASG.format(asg),
                                        content_type="application/json",
                                        status=200),
-                    httpretty.Response(body=disabled_asg.format(asg),
+                    httpretty.Response(body=DISABLED_ASG.format(asg),
                                        content_type="application/json",
                                        status=200),
-            ])
+                ]
+            )
         for asg in in_service_post_rollback_asgs:
             url = asgard.ASG_INFO_URL.format(asg)
             httpretty.register_uri(
@@ -1119,38 +1191,38 @@ class TestAsgard(unittest.TestCase):
                 url,
                 responses=[
                     # Start disabled and finish enabled.
-                    httpretty.Response(body=disabled_asg.format(asg),
+                    httpretty.Response(body=DISABLED_ASG.format(asg),
                                        content_type="application/json",
                                        status=200),
-                    httpretty.Response(body=disabled_asg.format(asg),
+                    httpretty.Response(body=DISABLED_ASG.format(asg),
                                        content_type="application/json",
                                        status=200),
-                    httpretty.Response(body=enabled_asg.format(asg),
+                    httpretty.Response(body=ENABLED_ASG.format(asg),
                                        content_type="application/json",
                                        status=200),
-            ])
+                ]
+            )
         cluster = "app_cluster"
         httpretty.register_uri(
             httpretty.GET,
             asgard.CLUSTER_INFO_URL.format(cluster),
-            body=valid_cluster_info_json,
+            body=VALID_CLUSTER_JSON_INFO,
             content_type="application/json"
         )
 
         rollback_input = {
-            'current_asgs':
-                {
-                    'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v099'],
-                    'loadtest-edx-worker': ['loadtest-edx-worker-v099']
-                },
-            'disabled_asgs':
-                {'loadtest-edx-edxapp':
+            'current_asgs': {
+                'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v099'],
+                'loadtest-edx-worker': ['loadtest-edx-worker-v099']
+            },
+            'disabled_asgs': {
+                'loadtest-edx-edxapp':
                     [
                         'loadtest-edx-edxapp-v058',
                         'loadtest-edx-edxapp-v059'
                     ],
-                    'loadtest-edx-worker': ['loadtest-edx-worker-v034']
-                },
+                'loadtest-edx-worker': ['loadtest-edx-worker-v034']
+            },
         }
         # The expected output is the rollback input with reversed current/disabled asgs.
         expected_output = {}
@@ -1159,12 +1231,19 @@ class TestAsgard(unittest.TestCase):
         expected_output['ami_id'] = ami_id
 
         # Rollback and check output.
-        self.assertEqual(asgard.rollback(rollback_input['current_asgs'], rollback_input['disabled_asgs'], ami_id), expected_output)
+        self.assertEqual(
+            asgard.rollback(rollback_input['current_asgs'], rollback_input['disabled_asgs'], ami_id),
+            expected_output
+        )
 
     def _setup_rollback(self):
+        """
+        Setup the scenario where an ASG deployment is rolled-back to a previous ASG.
+        """
+        # pylint: disable=attribute-defined-outside-init
         self.test_ami_id = self._setup_for_deploy()
 
-        not_in_service_asgs = ["loadtest-edx-edxapp-v058",]
+        not_in_service_asgs = ["loadtest-edx-edxapp-v058"]
         in_service_pre_rollback_asgs = ["loadtest-edx-edxapp-v059", "loadtest-edx-worker-v034"]
         self.rollback_to_asgs = ["loadtest-edx-edxapp-v097", "loadtest-edx-worker-v098"]
         in_service_post_rollback_asgs = ["loadtest-edx-edxapp-v099", "loadtest-edx-worker-v099"]
@@ -1173,7 +1252,7 @@ class TestAsgard(unittest.TestCase):
         for asg in self.rollback_to_asgs:
             create_asg_with_tags(asg, self.test_asg_tags, self.test_ami_id, [self.test_elb_name])
 
-        self._mock_asgard_not_pending_delete(in_service_pre_rollback_asgs, body=enabled_asg)
+        self._mock_asgard_not_pending_delete(in_service_pre_rollback_asgs, body=ENABLED_ASG)
         self._mock_asgard_pending_delete(not_in_service_asgs)
 
         for asg in in_service_post_rollback_asgs:
@@ -1183,22 +1262,23 @@ class TestAsgard(unittest.TestCase):
                 url,
                 responses=[
                     # Start disabled and end enabled.
-                    httpretty.Response(body=disabled_asg.format(asg),
+                    httpretty.Response(body=DISABLED_ASG.format(asg),
                                        content_type="application/json",
                                        status=200),
-                    httpretty.Response(body=disabled_asg.format(asg),
+                    httpretty.Response(body=DISABLED_ASG.format(asg),
                                        content_type="application/json",
                                        status=200),
-                    httpretty.Response(body=enabled_asg.format(asg),
+                    httpretty.Response(body=ENABLED_ASG.format(asg),
                                        content_type="application/json",
                                        status=200),
-            ])
+                ]
+            )
 
         cluster = "app_cluster"
         httpretty.register_uri(
             httpretty.GET,
             asgard.CLUSTER_INFO_URL.format(cluster),
-            body=valid_cluster_info_json,
+            body=VALID_CLUSTER_JSON_INFO,
             content_type="application/json"
         )
 
@@ -1213,19 +1293,18 @@ class TestAsgard(unittest.TestCase):
         self._mock_asgard_pending_delete(self.rollback_to_asgs)
 
         rollback_input = {
-            'current_asgs':
-                {'loadtest-edx-edxapp':
+            'current_asgs': {
+                'loadtest-edx-edxapp':
                     [
                         'loadtest-edx-edxapp-v058',
                         'loadtest-edx-edxapp-v059'
                     ],
-                    'loadtest-edx-worker': ['loadtest-edx-worker-v034']
-                },
-            'rollback_to_asgs':
-                {
-                    'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v097'],
-                    'loadtest-edx-worker': ['loadtest-edx-worker-v098']
-                },
+                'loadtest-edx-worker': ['loadtest-edx-worker-v034']
+            },
+            'rollback_to_asgs': {
+                'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v097'],
+                'loadtest-edx-worker': ['loadtest-edx-worker-v098']
+            },
         }
         expected_output = {
             'ami_id': self.test_ami_id,
@@ -1235,17 +1314,21 @@ class TestAsgard(unittest.TestCase):
                     'loadtest-edx-worker': ['loadtest-edx-worker-v099']
                 },
             'disabled_asgs':
-                {'loadtest-edx-edxapp':
-                    [
-                        'loadtest-edx-edxapp-v058',
-                        'loadtest-edx-edxapp-v059'
-                    ],
-                    'loadtest-edx-worker': ['loadtest-edx-worker-v034']
+                {
+                    'loadtest-edx-edxapp':
+                        [
+                            'loadtest-edx-edxapp-v058',
+                            'loadtest-edx-edxapp-v059'
+                        ],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v034'],
                 },
         }
 
         # Rollback and check output.
-        self.assertEqual(asgard.rollback(rollback_input['current_asgs'], rollback_input['rollback_to_asgs'], self.test_ami_id), expected_output)
+        self.assertEqual(
+            asgard.rollback(rollback_input['current_asgs'], rollback_input['rollback_to_asgs'], self.test_ami_id),
+            expected_output
+        )
 
     @httpretty.activate
     @mock_autoscaling
@@ -1259,11 +1342,12 @@ class TestAsgard(unittest.TestCase):
 
         rollback_input = {
             'current_asgs':
-                {'loadtest-edx-edxapp':
-                    [
-                        'loadtest-edx-edxapp-v058',
-                        'loadtest-edx-edxapp-v059'
-                    ],
+                {
+                    'loadtest-edx-edxapp':
+                        [
+                            'loadtest-edx-edxapp-v058',
+                            'loadtest-edx-edxapp-v059'
+                        ],
                     'loadtest-edx-worker': ['loadtest-edx-worker-v034']
                 },
             'rollback_to_asgs':
@@ -1275,11 +1359,12 @@ class TestAsgard(unittest.TestCase):
         expected_output = {
             'ami_id': None,
             'current_asgs':
-                {'loadtest-edx-edxapp':
-                    [
-                        'loadtest-edx-edxapp-v058',
-                        'loadtest-edx-edxapp-v059'
-                    ],
+                {
+                    'loadtest-edx-edxapp':
+                        [
+                            'loadtest-edx-edxapp-v058',
+                            'loadtest-edx-edxapp-v059'
+                        ],
                     'loadtest-edx-worker': ['loadtest-edx-worker-v034']
                 },
             'disabled_asgs':
@@ -1291,7 +1376,10 @@ class TestAsgard(unittest.TestCase):
 
         # Rollback and check output.
         # No AMI ID specified - so no deploy occurs after the rollback failure.
-        self.assertEqual(asgard.rollback(rollback_input['current_asgs'], rollback_input['rollback_to_asgs']), expected_output)
+        self.assertEqual(
+            asgard.rollback(rollback_input['current_asgs'], rollback_input['rollback_to_asgs']),
+            expected_output
+        )
 
     @httpretty.activate
     @mock_autoscaling
@@ -1303,15 +1391,16 @@ class TestAsgard(unittest.TestCase):
 
         tag_asg_for_deletion('loadtest-edx-edxapp-v097', -2000)
         tag_asg_for_deletion('loadtest-edx-worker-v098', -2000)
-        self._mock_asgard_not_pending_delete(self.rollback_to_asgs, body=enabled_asg)
+        self._mock_asgard_not_pending_delete(self.rollback_to_asgs, body=ENABLED_ASG)
 
         rollback_input = {
             'current_asgs':
-                {'loadtest-edx-edxapp':
-                    [
-                        'loadtest-edx-edxapp-v058',
-                        'loadtest-edx-edxapp-v059'
-                    ],
+                {
+                    'loadtest-edx-edxapp':
+                        [
+                            'loadtest-edx-edxapp-v058',
+                            'loadtest-edx-edxapp-v059'
+                        ],
                     'loadtest-edx-worker': ['loadtest-edx-worker-v034']
                 },
             'rollback_to_asgs':
@@ -1329,17 +1418,21 @@ class TestAsgard(unittest.TestCase):
                     'loadtest-edx-worker': ['loadtest-edx-worker-v098']
                 },
             'disabled_asgs':
-                {'loadtest-edx-edxapp':
-                    [
-                        'loadtest-edx-edxapp-v058',
-                        'loadtest-edx-edxapp-v059'
-                    ],
+                {
+                    'loadtest-edx-edxapp':
+                        [
+                            'loadtest-edx-edxapp-v058',
+                            'loadtest-edx-edxapp-v059'
+                        ],
                     'loadtest-edx-worker': ['loadtest-edx-worker-v034']
                 },
         }
 
         # Rollback and check output.
-        self.assertEqual(asgard.rollback(rollback_input['current_asgs'], rollback_input['rollback_to_asgs'], self.test_ami_id), expected_output)
+        self.assertEqual(
+            asgard.rollback(rollback_input['current_asgs'], rollback_input['rollback_to_asgs'], self.test_ami_id),
+            expected_output
+        )
 
     @httpretty.activate
     def test_is_asg_pending_delete(self):
@@ -1353,7 +1446,7 @@ class TestAsgard(unittest.TestCase):
         self._mock_asgard_not_pending_delete([asg])
         self.assertFalse(asgard.is_asg_pending_delete(asg))
 
-    @data((disabled_asg, "loadtest-edx-edxapp-v060", False), (enabled_asg, "loadtest-edx-edxapp-v060", True))
+    @data((DISABLED_ASG, "loadtest-edx-edxapp-v060", False), (ENABLED_ASG, "loadtest-edx-edxapp-v060", True))
     @httpretty.activate
     @unpack
     def test_is_asg_enabled(self, response_body, asg_name, expected_return):
@@ -1375,7 +1468,7 @@ class TestAsgard(unittest.TestCase):
     def test_get_asg_info(self):
         asg = "loadtest-edx-edxapp-v060"
         self._mock_asgard_not_pending_delete([asg])
-        self.assertEqual(asgard.get_asg_info(asg), json.loads(deleted_asg_not_in_progress.format(asg)))
+        self.assertEqual(asgard.get_asg_info(asg), json.loads(DELETED_ASG_NOT_IN_PROGRESS.format(asg)))
 
     @httpretty.activate
     def test_get_asg_info_html_response(self):

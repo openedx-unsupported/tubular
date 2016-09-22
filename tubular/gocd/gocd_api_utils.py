@@ -1,6 +1,8 @@
 """
 Utility functions using the GoCD API via the requests module.
 """
+from __future__ import unicode_literals
+
 import os
 import requests
 from tubular.scripts.github.github_api_utils import GitHubApiUtils
@@ -35,8 +37,8 @@ class GoCDApiUtils(object):
             return False
 
         # Using the repository and PR number, find the commit hash to use.
-        g = GitHubApiUtils(repo)
-        commit_hash = g.get_head_commit_from_pr(pr_id)
+        gh_utils = GitHubApiUtils(repo)
+        commit_hash = gh_utils.get_head_commit_from_pr(pr_id)
 
         trigger_payload = {
             "variables[GO_EXTERNAL_TRIGGER_PR_ID]": pr_id,
@@ -44,12 +46,14 @@ class GoCDApiUtils(object):
             "variables[GO_EXTERNAL_TRIGGER_COMMIT_HASH]": commit_hash,
         }
         post_url = GOCD_API_URL + TRIGGER_POST.format(pipeline_name)
-        r = requests.post(
+        response = requests.post(
             post_url,
             auth=(self.gocd_username, self.gocd_password),
             params=trigger_payload,
         )
-        success = r.status_code in (202,)
+        success = response.status_code in (202,)
         if not success:
-            print "Error {}: {}: Pipeline {} failed to trigger.\n{}".format(r.status_code, r.content, pipeline_name, post_url)
+            print "Error {}: {}: Pipeline {} failed to trigger.\n{}".format(
+                response.status_code, response.content, pipeline_name, post_url
+            )
         return success

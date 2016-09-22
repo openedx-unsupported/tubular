@@ -1,9 +1,13 @@
-#!/usr/bin/env python
+"""
+Command-line script to submit a HipChat message to one or more channels.
+"""
+from __future__ import unicode_literals
+
 import sys
 import logging
-import requests
-import click
 import urllib
+import click
+import requests
 
 
 HIPCHAT_API_URL = "http://api.hipchat.com"
@@ -11,28 +15,32 @@ NOTIFICATION_POST = "/v2/room/{}/notification"
 AUTH_HEADER_FIELD = "Authorization"
 AUTH_HEADER_VALUE = "Bearer {}"
 
-
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
+
 @click.command()
-@click.option('--auth_token', '-a',
-              envvar='HIPCHAT_AUTH_TOKEN',
-              help="Authentication token to use for HipChat REST API.",
-              )
-@click.option('--channels', '-c',
-              envvar='HIPCHAT_CHANNELS',
-              help="Channel to which the script should post a message. Case Sensitive."
-                   "Multiple channels can be provided as a comma separated list.",
-              )
-@click.option('--message', '-m',
-              help="Message to send to HipChat channel.",
-              required=True
-              )
-@click.option('--color',
-              envvar='HIPCHAT_COLOR',
-              default="green",
-              help='The color of the message in HipChat.',
-              )
+@click.option(
+    '--auth_token', '-a',
+    envvar='HIPCHAT_AUTH_TOKEN',
+    help="Authentication token to use for HipChat REST API.",
+)
+@click.option(
+    '--channels', '-c',
+    envvar='HIPCHAT_CHANNELS',
+    help="Channel to which the script should post a message. Case Sensitive."
+         "Multiple channels can be provided as a comma separated list.",
+)
+@click.option(
+    '--message', '-m',
+    help="Message to send to HipChat channel.",
+    required=True
+)
+@click.option(
+    '--color',
+    envvar='HIPCHAT_COLOR',
+    default="green",
+    help='The color of the message in HipChat.',
+)
 def cli(auth_token, channels, message, color):
     """
     Post a message to one or more HipChat channels.
@@ -47,7 +55,7 @@ def cli(auth_token, channels, message, color):
     channel_list = [channel.strip() for channel in channels.split(",") if channel.strip()]
     if len(channel_list) < 1:
         logging.warning("HIPCHAT_CHANNELS defined a list with no valid channel names - "
-         "ignoring message send: {}".format(message))
+                        "ignoring message send: {}".format(message))
         sys.exit(0)
 
     if not auth_token:
@@ -66,10 +74,10 @@ def cli(auth_token, channels, message, color):
 
     for channel in channel_list:
         post_url = HIPCHAT_API_URL + NOTIFICATION_POST.format(urllib.quote(channel))
-        r = requests.post(post_url, headers=headers, json=msg_payload)
+        response = requests.post(post_url, headers=headers, json=msg_payload)
 
-        if not r.status_code in (200, 201, 204):
-            logging.error("Message send failed: {}".format(r.text))
+        if response.status_code not in (200, 201, 204):
+            logging.error("Message send failed: {}".format(response.text))
             # An exit code of 0 means success and non-zero means failure.
             sys.exit(1)
 
@@ -78,4 +86,4 @@ def cli(auth_token, channels, message, color):
 
 
 if __name__ == '__main__':
-    cli()
+    cli()  # pylint: disable=no-value-for-parameter

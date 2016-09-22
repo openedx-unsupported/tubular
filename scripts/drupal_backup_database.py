@@ -1,12 +1,16 @@
-#!/usr/bin/env python
+"""
+Command-line script to create a database backup in an environment.
+"""
+from __future__ import unicode_literals
+
 import sys
 from os import path
 import click
 
 # Add top-level module path to sys.path before importing tubular code.
-sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from tubular import drupal
+from tubular import drupal  # pylint: disable=wrong-import-position
 
 
 @click.command()
@@ -25,4 +29,4 @@ def backup_database(env, username, password):
     drupal.backup_database(env, username, password)
 
 if __name__ == "__main__":
-    backup_database()
+    backup_database()  # pylint: disable=no-value-for-parameter

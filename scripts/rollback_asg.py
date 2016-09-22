@@ -1,24 +1,43 @@
-#!/usr/bin/env python
+"""
+Command-line script to allow only AMI deployments to stage - and no other environments.
+"""
+from __future__ import unicode_literals
+
+from os import path
 import sys
 import logging
 import traceback
 import click
 import yaml
-from os import path
 
 # Add top-level module path to sys.path before importing tubular code.
-sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from tubular import asgard
+from tubular import asgard  # pylint: disable=wrong-import-position
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
 @click.command()
-@click.option('--config_file', envvar='CONFIG_FILE', help='The config file from which to get the previous deploy information.')
-@click.option('--dry_run', envvar='DRY_RUN', help='Don\'t actually rollback.', is_flag=True, default=False)
-@click.option('--out_file', envvar='OUT_FILE', help='Output file for the YAML rollback information.', default=None)
+@click.option(
+    '--config_file',
+    envvar='CONFIG_FILE',
+    help='The config file from which to get the previous deploy information.'
+)
+@click.option(
+    '--dry_run',
+    envvar='DRY_RUN',
+    help='Don\'t actually rollback.',
+    is_flag=True,
+    default=False
+)
+@click.option(
+    '--out_file',
+    envvar='OUT_FILE',
+    help='Output file for the YAML rollback information.',
+    default=None
+)
 def rollback(config_file, dry_run, out_file):
     """
     Roll back to an existing ASG. If the desired ASG(s) are not available to roll back (have since been deleted)
@@ -41,7 +60,7 @@ def rollback(config_file, dry_run, out_file):
 
     The disabled_asgs will be enabled and the current_asgs will be disabled.
     """
-    config = yaml.safe_load(open(config_file, 'r'))
+    config = yaml.safe_load(open(config_file, 'r'))  # pylint: disable=open-builtin
     current_asgs = config['current_asgs']
     disabled_asgs = config['disabled_asgs']
     ami_id = config['ami_id']
@@ -54,17 +73,17 @@ def rollback(config_file, dry_run, out_file):
             rollback_info = {}
 
         if out_file:
-            with open(out_file, 'w') as stream:
+            with open(out_file, 'w') as stream:  # pylint: disable=open-builtin
                 yaml.safe_dump(rollback_info, stream, default_flow_style=False, explicit_start=True)
         else:
             print yaml.safe_dump(rollback_info, default_flow_style=False, explicit_start=True)
 
-    except Exception as e:
+    except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho('Error rolling back AMI: {0}.\nMessage: {1}'.format(ami_id, e.message), fg='red')
+        click.secho('Error rolling back AMI: {0}.\nMessage: {1}'.format(ami_id, err.message), fg='red')
         sys.exit(1)
 
     sys.exit(0)
 
 if __name__ == "__main__":
-    rollback()
+    rollback()  # pylint: disable=no-value-for-parameter

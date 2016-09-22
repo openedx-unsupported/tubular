@@ -1,15 +1,18 @@
-import mock
-import unittest
-import boto
-import datetime
-import dateutil.parser
-import ddt
-import tubular.ec2 as ec2
+"""
+Tests of the code interacting with the boto EC2 API.
+"""
+from __future__ import unicode_literals
 
+import unittest
+import datetime
 from collections import Iterable
+
+import ddt
+import mock
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
-from boto.ec2.autoscale.tag import Tag
+import boto
+import tubular.ec2 as ec2
 from tubular.tests.test_utils import create_asg_with_tags, create_elb, clone_elb_instances_with_state
 from tubular.exception import ImageNotFoundException, TimeoutException, MissingTagException
 from tubular.utils import EDP
@@ -17,9 +20,15 @@ from tubular.utils import EDP
 
 @ddt.ddt
 class TestEC2(unittest.TestCase):
+    """
+    Class containing tests of code interacting with EC2.
+    """
     _multiprocess_can_split_ = True
 
     def _make_fake_ami(self, environment='foo', deployment='bar', play='baz'):
+        """
+        Method to make a fake AMI.
+        """
         ec2_connection = boto.connect_ec2()
         reservation = ec2_connection.run_instances(random_ami_id())
         instance_id = reservation.instances[0].id
@@ -55,7 +64,7 @@ class TestEC2(unittest.TestCase):
     )
     @ddt.unpack
     @mock_ec2
-    def test_ami_edp_validate_for_bad_id(self, expected_ret, edp):
+    def test_ami_edp_validate_ami_id(self, expected_ret, edp):
         fake_ami_id = self._make_fake_ami()
         self.assertEqual(ec2.validate_edp(fake_ami_id, *edp), expected_ret)
 
@@ -101,9 +110,9 @@ class TestEC2(unittest.TestCase):
         asgs = ec2.asgs_for_edp(edp)
         self.assertIsInstance(asgs, Iterable)
 
-        asgs = list(asgs)
-        self.assertEquals(len(asgs), expected_returned)
-        self.assertTrue(all(asg_name in asgs for asg_name in expected_asg_names_list))
+        asg_list = list(asgs)
+        self.assertEquals(len(asg_list), expected_returned)
+        self.assertTrue(all(asg_name in asg_list for asg_name in expected_asg_names_list))
 
     @mock_autoscaling
     @mock_ec2
@@ -120,7 +129,7 @@ class TestEC2(unittest.TestCase):
         asgs = autoscale.get_all_groups([asg_name])
         asg = asgs[0]
         asg.instances[0].lifecycle_state = "NotInService"
-        with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs) as mock_connection:
+        with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs):
             self.assertRaises(TimeoutException, ec2.wait_for_in_service, [asg_name], 2)
 
     @mock_autoscaling
@@ -132,7 +141,7 @@ class TestEC2(unittest.TestCase):
         asgs = autoscale.get_all_groups([asg_name])
         asg = asgs[0]
         asg.instances[0].health_status = "Unhealthy"
-        with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs) as mock_connection:
+        with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs):
             self.assertRaises(TimeoutException, ec2.wait_for_in_service, [asg_name], 2)
 
     @mock_elb
@@ -161,7 +170,7 @@ class TestEC2(unittest.TestCase):
         ]
         return_vals += [clone_elb_instances_with_state(second_elb_instances, "InService")]
 
-        with mock.patch(mock_function, side_effect=return_vals) as mock_call:
+        with mock.patch(mock_function, side_effect=return_vals):
             with mock.patch('tubular.ec2.WAIT_SLEEP_TIME', 1):
                 self.assertEqual(None, ec2.wait_for_healthy_elbs([first_elb_name, second_elb_name], 3))
 
@@ -169,29 +178,36 @@ class TestEC2(unittest.TestCase):
     @mock_ec2
     def test_wait_for_healthy_elbs_failure(self):
         elb_name = "unhealthy-lb"
-        lb = create_elb(elb_name)
+        load_balancer = create_elb(elb_name)
         # Make one of the instances un-healthy.
-        instances = lb.get_instance_health()
+        instances = load_balancer.get_instance_health()
         instances[0].state = "OutOfService"
         mock_function = "boto.ec2.elb.loadbalancer.LoadBalancer.get_instance_health"
-        with mock.patch(mock_function, return_value=instances) as mock_call:
+        with mock.patch(mock_function, return_value=instances):
             self.assertRaises(TimeoutException, ec2.wait_for_healthy_elbs, [elb_name], 2)
 
     @mock_autoscaling
     @mock_elb
     @mock_ec2
     def _setup_test_asg_to_be_deleted(self):
+        """
+        Setup a test ASG that is tagged to be deleted.
+        """
+        # pylint: disable=attribute-defined-outside-init
         self.test_asg_name = "test-asg-random-tags"
         self.test_autoscale = boto.connect_autoscale()
-        lc = boto.ec2.autoscale.LaunchConfiguration(name='my-launch_config', image_id='my-ami',
-                                 key_name='my_key_name',
-                                 security_groups=['my_security_groups'])
-        self.test_autoscale.create_launch_configuration(lc)
+        launch_config = boto.ec2.autoscale.LaunchConfiguration(
+            name='my-launch_config',
+            image_id='my-ami',
+            key_name='my_key_name',
+            security_groups=['my_security_groups']
+        )
+        self.test_autoscale.create_launch_configuration(launch_config)
         asg = boto.ec2.autoscale.AutoScalingGroup(
             group_name=self.test_asg_name,
             load_balancers=['my-lb'],
             availability_zones=['us-east-1a', 'us-east-1b'],
-            launch_config=lc,
+            launch_config=launch_config,
             min_size=4,
             max_size=8,
             connection=self.test_autoscale
@@ -209,7 +225,7 @@ class TestEC2(unittest.TestCase):
 
         # Ensure a single delete tag exists.
         delete_tags = [tag for tag in self.test_asg.tags if tag.key == ec2.ASG_DELETE_TAG_KEY]
-        self.assertTrue(len(delete_tags) == 1)
+        self.assertEqual(len(delete_tags), 1)
 
         # Ensure tag value is a parseable datetime.
         delete_tag = delete_tags.pop()
@@ -243,7 +259,7 @@ class TestEC2(unittest.TestCase):
         create_asg_with_tags(asg_name, {ec2.ASG_DELETE_TAG_KEY: deletion_dttm_str})
 
         asgs = ec2.get_asgs_pending_delete()
-        self.assertTrue(len(asgs) == 1)
+        self.assertEqual(len(asgs), 1)
         asg = asgs.pop()
         self.assertEqual(asg.name, asg_name)
         self.assertEqual(asg.tags[0].key, ec2.ASG_DELETE_TAG_KEY)
@@ -257,15 +273,15 @@ class TestEC2(unittest.TestCase):
         asg_name2 = "test-asg-deletion-bad-timestamp"
         deletion_dttm_str1 = datetime.datetime.utcnow().isoformat()
         deletion_dttm_str2 = "2016-05-18 18:19:46.144884"
-        group1 = create_asg_with_tags(asg_name1, {ec2.ASG_DELETE_TAG_KEY: deletion_dttm_str1})
-        group2 = create_asg_with_tags(asg_name2, {ec2.ASG_DELETE_TAG_KEY: deletion_dttm_str2})
+        create_asg_with_tags(asg_name1, {ec2.ASG_DELETE_TAG_KEY: deletion_dttm_str1})
+        create_asg_with_tags(asg_name2, {ec2.ASG_DELETE_TAG_KEY: deletion_dttm_str2})
 
         asgs = ec2.get_asgs_pending_delete()
-        self.assertTrue(len(asgs) == 1)
+        self.assertEqual(len(asgs), 1)
         # boto.ec2.autoscale.group.AutoScalingGroup does not implement __eq__ so we need to iterate the list to see if
         # the ASGs we are interested in are members
-        self.assertTrue(len([asg for asg in asgs if asg.name == asg_name1]) == 1)
-        self.assertTrue(len([asg for asg in asgs if asg.name == asg_name2]) == 0)
+        self.assertEqual(len([asg for asg in asgs if asg.name == asg_name1]), 1)
+        self.assertEqual(len([asg for asg in asgs if asg.name == asg_name2]), 0)
 
     def test_create_tag_for_asg_deletion(self):
         asg_name = "test-asg-tags"
@@ -279,8 +295,14 @@ class TestEC2(unittest.TestCase):
     def test_create_tag_for_asg_deletion_delta_correct(self):
         # Python built-in types are immutable so we can't use @mock.patch
         class NewDateTime(datetime.datetime):
+            """
+            Stub class for mocking datetime.
+            """
             @classmethod
             def utcnow(cls):
+                """
+                Stub method returning a UTC datetime.
+                """
                 return cls(2016, 5, 18, 01, 00, 00, 000000)
         built_in_datetime = ec2.datetime
 

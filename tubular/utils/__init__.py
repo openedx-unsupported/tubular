@@ -1,3 +1,7 @@
+"""
+Initialization code for the utils module.
+"""
+from __future__ import unicode_literals
 import os
 from collections import namedtuple
 
@@ -9,4 +13,3 @@ WAIT_SLEEP_TIME = int(os.environ.get("WAIT_SLEEP_TIME", 5))
 DISABLE_OLD_ASG_WAIT_TIME = int(os.environ.get("DISABLE_OLD_ASG_WAIT_TIME", 0))
 
 EDP = namedtuple('EDP', ['environment', 'deployment', 'play'])
-

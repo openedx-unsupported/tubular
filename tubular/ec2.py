@@ -2,20 +2,20 @@
 Convenience functions built on top of boto that are useful
 when we deploy using asgard.
 """
-import boto
+from __future__ import unicode_literals
+
 import logging
 import time
-from tubular.utils import EDP
+from datetime import datetime, timedelta
+import boto
+from boto.exception import EC2ResponseError
+from boto.ec2.autoscale.tag import Tag
+from tubular.utils import EDP, WAIT_SLEEP_TIME
 from tubular.exception import (
     ImageNotFoundException,
     MissingTagException,
     TimeoutException,
-    ASGDoesNotExistException
 )
-from boto.exception import EC2ResponseError
-from boto.ec2.autoscale.tag import Tag
-from datetime import datetime, timedelta
-from utils import WAIT_SLEEP_TIME
 
 LOG = logging.getLogger(__name__)
 
@@ -49,8 +49,8 @@ def edp_for_ami(ami_id):
 
     try:
         edp = EDP(tags['environment'], tags['deployment'], tags['play'])
-    except KeyError as ke:
-        missing_key = ke.args[0]
+    except KeyError as key_err:
+        missing_key = key_err.args[0]
         msg = "{} is missing the {} tag.".format(ami_id, missing_key)
         raise MissingTagException(msg)
 
@@ -77,7 +77,9 @@ def validate_edp(ami_id, environment, deployment, play):
         edp.play == play
     )
     if not edp_matched:
-        LOG.info("AMI {0} EDP did not match specified: {1} != ({2}, {3}, {4})".format(ami_id, edp, environment, deployment, play))
+        LOG.info("AMI {0} EDP did not match specified: {1} != ({2}, {3}, {4})".format(
+            ami_id, edp, environment, deployment, play
+        ))
     return edp_matched
 
 
@@ -143,6 +145,9 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
 
 
 def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
+    """
+    Create a tag that will be used to mark an ASG for deletion.
+    """
     if seconds_until_delete_delta is None:
         tag_value = None
     else:
@@ -192,11 +197,11 @@ def remove_asg_deletion_tag(asg_name):
 
 def get_asgs_pending_delete():
     """
-    Get a list of all the autoscale groups marked with the ASG_DELETE_TAG_KEY. Return only those groups who's ASG_DELETE_TAG_KEY
-    as past the current time.
+    Get a list of all the autoscale groups marked with the ASG_DELETE_TAG_KEY.
+    Return only those groups who's ASG_DELETE_TAG_KEY as past the current time.
 
-    It's intended for this method to be robust and to return as many ASGs that are pending delete as possible even if
-    an error occurs during the process.
+    It's intended for this method to be robust and to return as many ASGs that
+    are pending delete as possible even if an error occurs during the process.
 
     Returns:
         List(<boto.ec2.autoscale.group.AutoScalingGroup>)
@@ -217,13 +222,13 @@ def get_asgs_pending_delete():
                         LOG.debug("Adding ASG: {0} to the list of ASGs to delete.".format(asg.name))
                         asgs_pending_delete.append(asg)
                         break
-            except ValueError as e:
+            except ValueError:
                 LOG.warn("ASG {0} has an improperly formatted datetime string for the key {1}. Value: {2} . "
                          "Format must match {3}"
                          .format(asg.name, tag.key, tag.value, ISO_DATE_FORMAT))
                 continue
-            except Exception as e:
-                LOG.warn("Error occured while building a list of ASGs to delete, continuing: {0}".format(e.message))
+            except Exception as err:  # pylint: disable=broad-except
+                LOG.warn("Error occured while building a list of ASGs to delete, continuing: {0}".format(err.message))
                 continue
 
     LOG.info("Number of ASGs pending delete: {0}".format(len(asgs_pending_delete)))
@@ -247,7 +252,6 @@ def wait_for_in_service(all_asgs, timeout):
     """
 
     autoscale = boto.connect_autoscale()
-    time_left = timeout
     asgs_left_to_check = list(all_asgs)
     LOG.info("Waiting for ASGs to be healthy: {}".format(asgs_left_to_check))
 
@@ -304,7 +308,9 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
                     break
 
             if all_healthy:
-                LOG.info("All instances are healthy, remove {} from list of load balancers {}.".format(elb.name, elbs_left))
+                LOG.info("All instances are healthy, remove {} from list of load balancers {}.".format(
+                    elb.name, elbs_left
+                ))
                 elbs_left.remove(elb.name)
 
         LOG.info("Number of load balancers remaining with unhealthy instances: {}".format(len(elbs_left)))
