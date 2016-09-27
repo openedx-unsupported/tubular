@@ -2,12 +2,14 @@ import mock
 import unittest
 import boto
 import datetime
+import dateutil.parser
 import ddt
 import tubular.ec2 as ec2
 
 from collections import Iterable
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
+from boto.ec2.autoscale.tag import Tag
 from tubular.tests.test_utils import create_asg_with_tags, create_elb, clone_elb_instances_with_state
 from tubular.exception import ImageNotFoundException, TimeoutException, MissingTagException
 from tubular.utils import EDP
@@ -175,37 +177,62 @@ class TestEC2(unittest.TestCase):
         with mock.patch(mock_function, return_value=instances) as mock_call:
             self.assertRaises(TimeoutException, ec2.wait_for_healthy_elbs, [elb_name], 2)
 
-    # TODO: Currently motto does not support the method create_or_update_tags. When support is added this test should
-    # be updated to test the functioanlity of tag_asg_for_deletion
+    @mock_autoscaling
+    @mock_elb
+    @mock_ec2
+    def _setup_test_asg_to_be_deleted(self):
+        self.test_asg_name = "test-asg-random-tags"
+        self.test_autoscale = boto.connect_autoscale()
+        lc = boto.ec2.autoscale.LaunchConfiguration(name='my-launch_config', image_id='my-ami',
+                                 key_name='my_key_name',
+                                 security_groups=['my_security_groups'])
+        self.test_autoscale.create_launch_configuration(lc)
+        asg = boto.ec2.autoscale.AutoScalingGroup(
+            group_name=self.test_asg_name,
+            load_balancers=['my-lb'],
+            availability_zones=['us-east-1a', 'us-east-1b'],
+            launch_config=lc,
+            min_size=4,
+            max_size=8,
+            connection=self.test_autoscale
+        )
+        create_elb('my-lb')
+        self.test_autoscale.create_auto_scaling_group(asg)
+        ec2.tag_asg_for_deletion(self.test_asg_name, 0)
+        self.test_asg = self.test_autoscale.get_all_groups([self.test_asg_name])[0]
+
+    @mock_autoscaling
+    @mock_elb
+    @mock_ec2
+    def test_create_or_update_tags_on_asg(self):
+        self._setup_test_asg_to_be_deleted()
+
+        # Ensure a single delete tag exists.
+        delete_tags = [tag for tag in self.test_asg.tags if tag.key == ec2.ASG_DELETE_TAG_KEY]
+        self.assertTrue(len(delete_tags) == 1)
+
+        # Ensure tag value is a parseable datetime.
+        delete_tag = delete_tags.pop()
+        self.assertIsInstance(delete_tag.value, basestring)
+        datetime.datetime.strptime(delete_tag.value, ec2.ISO_DATE_FORMAT)
+
+    # Moto does not currently implement delete_tags() - so this test can't complete successfully.
+    # Once moto implements delete_tags(), uncomment this test.
     # @mock_autoscaling
     # @mock_elb
     # @mock_ec2
-    # def test_create_or_update_tags_on_asg(self):
-    #     asg_name = "test-asg-random-tags"
-    #     tag_name = "some-tag-name"
-    #     tag_value = "some tag value"
-    #     tag = Tag(key=tag_name,
-    #               value=tag_value,
-    #               propagate_at_launch=False,
-    #               resource_id=asg_name)
-    #
-    #     autoscale = boto.connect_autoscale()
-    #     lc = boto.ec2.autoscale.LaunchConfiguration(name='my-launch_config', image_id='my-ami',
-    #                              key_name='my_key_name',
-    #                              security_groups=['my_security_groups'])
-    #     autoscale.create_launch_configuration(lc)
-    #     asg = boto.ec2.autoscale.AutoScalingGroup(group_name=asg_name, load_balancers=['my-lb'],
-    #                           availability_zones=['us-east-1a', 'us-east-1b'],
-    #                           launch_config=lc, min_size=4, max_size=8,
-    #                           connection=autoscale)
-    #     create_elb('my-lb')
-    #     autoscale.create_auto_scaling_group(asg)
-    #
-    #     tag_asg_for_deletion(asg_name, [tag])
-    #
-    #     the_asg = autoscale.get_all_groups(asg_name)
-    #     self.assertTrue(len([tag for tag in the_asg.tags if tag.key==tag_name and tag.value==tag_value]) == 1)
-    #     # more asserts here
+    # def test_delete_tags_on_asg(self):
+    #     self._setup_test_asg_to_be_deleted()
+
+    #     # Remove the delete tag from the ASG.
+    #     ec2.remove_asg_deletion_tag(self.test_asg_name)
+
+    #     # Re-fetch the ASG.
+    #     self.test_asg = self.test_autoscale.get_all_groups([self.test_asg_name])[0]
+
+    #     # Ensure no delete tag exists.
+    #     delete_tags = [tag for tag in the_asg.tags if tag.key == ec2.ASG_DELETE_TAG_KEY]
+    #     self.assertTrue(len(delete_tags) == 0)
 
     @mock_autoscaling
     @mock_ec2

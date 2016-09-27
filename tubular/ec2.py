@@ -168,6 +168,24 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=1800):
         autoscale.create_or_update_tags([tag])
 
 
+def remove_asg_deletion_tag(asg_name):
+    """
+    Remove deletion tag from an asg.
+
+    Arguments:
+        asg_name (str): the name of the autoscale group from which to remove the deletion tag
+
+    Returns:
+        None
+    """
+    tag_to_delete = create_tag_for_asg_deletion(asg_name, 0)
+    autoscale = boto.connect_autoscale()
+    if len(autoscale.get_all_groups([asg_name])) < 1:
+        LOG.info("ASG {} no longer exists, will not remove deletion tag.".format(asg_name))
+    else:
+        autoscale.delete_tags([tag_to_delete])
+
+
 def get_asgs_pending_delete():
     """
     Get a list of all the autoscale groups marked with the ASG_DELETE_TAG_KEY. Return only those groups who's ASG_DELETE_TAG_KEY

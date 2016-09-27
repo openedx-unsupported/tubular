@@ -4,6 +4,7 @@ import logging
 import requests
 import time
 import traceback
+import copy
 import tubular.ec2 as ec2
 
 from collections import defaultdict
@@ -477,31 +478,61 @@ def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
         ami_id(str): AWS AMI ID to which to rollback to.
 
     Returns:
-        dict(str, dict): Returns a dictionary with the keys: 'current_asgs' and 'disabled_asgs'
+        dict(str, str, dict): Returns a dictionary with the keys:
+            'ami_id' - AMI id used to deploy the AMI, None if unspecified
+            'current_asgs' - Lists of current active ASGs, keyed by cluster.
+            'disabled_asgs' - Lists of current inactive ASGs, keyed by cluster.
 
     Raises:
         TimeoutException: When the task to bring up the new instance times out.
         BackendError: When the task to bring up the new instance fails.
         ASGDoesNotExistException: If the ASG being queried does not exist.
     """
-    try:
-        _red_black_deploy(rollback_to_clustered_asgs, current_clustered_asgs)
-        return {'current_asgs': rollback_to_clustered_asgs, 'disabled_asgs': current_clustered_asgs }
-    except:
-        LOG.info("Rollback failed for cluster(s) {}.".format(current_clustered_asgs.keys()))
-        if ami_id:
-            LOG.info("Starting rollback via deploy of AMI {}.".format(ami_id))
-            return deploy(ami_id)
+    # First, ensure that the ASGs to which we'll rollback are not tagged for deletion.
+    # Also, ensure that those same ASGs are not in the process of deletion.
+    rollback_ready = True
+    asgs_tagged_for_deletion = [asg.name for asg in ec2.get_asgs_pending_delete()]
+    for cluster, asgs in rollback_to_clustered_asgs.iteritems():
+        for asg in asgs:
+            err_msg = None
+            if asg in asgs_tagged_for_deletion:
+                # ASG is tagged for deletion. Remove the deletion tag.
+                ec2.remove_asg_deletion_tag(asg)
+            if is_asg_pending_delete(asg):
+                # Too late for rollback - this ASG is already pending delete.
+                LOG.info("Rollback ASG '{}' is pending delete. Aborting rollback to ASGs.".format(asg))
+                rollback_ready = False
+                break
+
+    if rollback_ready:
+        # Perform the rollback.
+        success, enabled_asgs, disabled_asgs = _red_black_deploy(rollback_to_clustered_asgs, current_clustered_asgs)
+        if not success:
+            LOG.info("Rollback failed for cluster(s) {}.".format(current_clustered_asgs.keys()))
+        else:
+            LOG.info("Woot! Rollback Done!")
+            return {'ami_id': ami_id, 'current_asgs': enabled_asgs, 'disabled_asgs': disabled_asgs }
+
+    # Rollback failed -or- wasn't attempted. Attempt a deploy.
+    if ami_id:
+        LOG.info("Attempting rollback via deploy of AMI {}.".format(ami_id))
+        return deploy(ami_id)
+    else:
+        LOG.info("No AMI id specified - so no deploy occurred during rollback.")
+        return {'ami_id': None, 'current_asgs': current_clustered_asgs, 'disabled_asgs': rollback_to_clustered_asgs}
 
 def deploy(ami_id):
     """
-    Deploys an AMI to AWS EC2
+    Deploys an AMI as an auto-scaling group (ASG) to AWS.
 
     Arguments:
         ami_id(str): AWS AMI ID
 
     Returns:
-        dict(str, dict): Returns a dictionary with the keys: 'current_asgs' and 'disabled_asgs'
+        dict(str, str, dict): Returns a dictionary with the keys:
+            'ami_id' - AMI id used to deploy the AMI
+            'current_asgs' - Lists of current active ASGs, keyed by cluster.
+            'disabled_asgs' - Lists of current inactive ASGs, keyed by cluster.
 
     Raises:
         TimeoutException: When the task to bring up the new instance times out.
@@ -537,10 +568,13 @@ def deploy(ami_id):
     LOG.info("New ASGs healthy: {}".format(new_asgs))
 
     LOG.info("Enabling traffic to new ASGs for the {} cluster(s).".format(existing_clustered_asgs.keys()))
-    _red_black_deploy(new_clustered_asgs, existing_clustered_asgs)
+    success, enabled_asgs, disabled_asgs = _red_black_deploy(dict(new_clustered_asgs), existing_clustered_asgs)
+    if not success:
+        raise BackendError("Error performing red/black deploy - deploy was unsuccessful. "
+                           "enabled_asgs: {} - disabled_asgs: {}".format(enabled_asgs, disabled_asgs))
 
     LOG.info("Woot! Deploy Done!")
-    return {'current_asgs': dict(new_clustered_asgs), 'disabled_asgs': existing_clustered_asgs}
+    return {'ami_id': ami_id, 'current_asgs': enabled_asgs, 'disabled_asgs': disabled_asgs}
 
 def _red_black_deploy(new_cluster_asgs, baseline_cluster_asgs):
     """
@@ -568,62 +602,93 @@ def _red_black_deploy(new_cluster_asgs, baseline_cluster_asgs):
         baseline_asgs (dict): List of existing ASGs already added to the ELB, keyed by cluster.
 
     Returns:
-        None
+        success (bool): True if red/black operation succeeded, else False.
+        asgs_enabled (dict): List of ASGs that are added to the ELB, keyed by cluster.
+        asgs_disabled (dict): List of ASGs that are removed from the ELB, keyed by cluster.
     """
-    # Extract all new ASGs from the clustered list.
-    new_asgs = []
-    for asgs in new_cluster_asgs.values():
-        new_asgs.extend(asgs)
+    asgs_enabled = copy.deepcopy(baseline_cluster_asgs)
+    asgs_disabled = copy.deepcopy(new_cluster_asgs)
+
+    def enable_cluster_asg(cluster, asg):
+        """
+        Shifts ASG from disabled to enabled.
+        """
+        enable_asg(asg)
+        asgs_disabled[cluster].remove(asg)
+        asgs_enabled[cluster].append(asg)
+
+    def disable_cluster_asg(cluster, asg):
+        """
+        Shifts ASG from enabled to disabled.
+        """
+        disable_asg(asg)
+        asgs_enabled[cluster].remove(asg)
+        asgs_disabled[cluster].append(asg)
 
     elbs_to_monitor = []
-    newly_enabled_asgs = []
-    for asg in new_asgs:
-        try:
-            enable_asg(asg)
-            elbs_to_monitor.extend(elbs_for_asg(asg))
-            newly_enabled_asgs.append(asg)
-        except Exception as enable_fail:
-            LOG.error("Error enabling ASG '{}'. Disabling traffic to all new ASGs.".format(asg))
-            LOG.error(traceback.format_exc())
-            disable_asg(asg)
-            # Also, disable any new ASGs that may already be enabled.
-            for asg_to_disable in newly_enabled_asgs:
-                try:
-                    disable_asg(asg_to_disable)
-                except:
-                    LOG.warning("Unable to disable ASG '{}' after failure.".format(asg_to_disable))
-                    continue
-            raise enable_fail
+    newly_enabled_asgs = defaultdict(list)
+    for cluster, asgs in new_cluster_asgs.iteritems():
+        for asg in asgs:
+            try:
+                enable_cluster_asg(cluster, asg)
+                elbs_to_monitor.extend(elbs_for_asg(asg))
+                newly_enabled_asgs[cluster].append(asg)
+            except Exception:
+                LOG.error("Error enabling ASG '{}'. Disabling traffic to all new ASGs.".format(asg))
+                LOG.error(traceback.format_exc())
+                # Disable the ASG which failed first.
+                disable_cluster_asg(cluster, asg)
+                # Then disable any new other ASGs that have been newly enabled.
+                for cluster, asgs_to_disable in newly_enabled_asgs.iteritems():
+                    for asg in asgs_to_disable:
+                        try:
+                            disable_cluster_asg(cluster, asg)
+                        except:
+                            LOG.warning("Unable to disable ASG '{}' after failure.".format(asg))
+                            continue
+                return (False, asgs_enabled, asgs_disabled)
 
-    LOG.info("New ASGs {} are active and will be available after passing the healthchecks.".format(new_asgs))
+    LOG.info("New ASGs {} are active and will be available after passing the healthchecks.".format(
+        dict(newly_enabled_asgs)
+    ))
 
     # Wait for all instances to be in service in all ELBs.
     try:
         ec2.wait_for_healthy_elbs(elbs_to_monitor, 600)
     except Exception as wait_fail:
         LOG.info("Some ASGs are failing ELB health checks. Disabling traffic to all new ASGs.")
-        for asg in new_asgs:
-            try:
-                disable_asg(asg)
-            except:
-                LOG.warning("Unable to disable ASG '{}' after waiting for healthy ELBs.".format(asg))
-        raise wait_fail
+        for cluster, asgs in newly_enabled_asgs.iteritems():
+            for asg in asgs:
+                try:
+                    disable_cluster_asg(cluster, asg)
+                except:
+                    LOG.warning("Unable to disable ASG '{}' after waiting for healthy ELBs.".format(asg))
+        return (False, asgs_enabled, asgs_disabled)
 
-    # Ensure the new ASG is still healthy and not pending delete before disabling the old ASGs.
-    for asg in new_asgs:
-        if is_asg_pending_delete(asg) or not is_asg_enabled(asg):
-            raise BackendError("New ASG '{}' is pending delete. Aborting old ASGs disabling.".format(asg))
+    # Ensure the new ASGs are still healthy and not pending delete before disabling the old ASGs.
+    for cluster, asgs in newly_enabled_asgs.iteritems():
+        for asg in asgs:
+            err_msg = None
+            if is_asg_pending_delete(asg):
+                err_msg = "New ASG '{}' is pending delete.".format(asg)
+            elif not is_asg_enabled(asg):
+                err_msg = "New ASG '{}' is not enabled.".format(asg)
+            if err_msg:
+                LOG.error("{} Aborting disabling of old ASGs.".format(err_msg))
+                return (False, asgs_enabled, asgs_disabled)
 
     LOG.info("New ASGs have passed the healthchecks. Now disabling old ASGs.")
 
-    for asgs in baseline_cluster_asgs.values():
+    for cluster, asgs in baseline_cluster_asgs.iteritems():
         for asg in asgs:
             if is_asg_enabled(asg):
                 try:
-                    disable_asg(asg)
+                    disable_cluster_asg(cluster, asg)
                 except:
                     LOG.warning("Unable to disable ASG '{}' after enabling new ASGs.".format(asg))
             try:
                 ec2.tag_asg_for_deletion(asg)
             except ASGDoesNotExistException as e:
                 LOG.info("Unable to tag ASG '{}' as it no longer exists, skipping.".format(asg))
+
+    return (True, asgs_enabled, asgs_disabled)

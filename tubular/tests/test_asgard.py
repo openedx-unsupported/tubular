@@ -20,6 +20,7 @@ from tubular.exception import (
     ASGDoesNotExistException
 )
 from tubular.tests.test_utils import create_asg_with_tags, create_elb
+from tubular.ec2 import tag_asg_for_deletion
 
 # Disable the retry decorator and reload the asgard module. This will ensure that tests do not fail because of the retry
 # decorator recalling a method when using httpretty with side effect iterators
@@ -822,17 +823,17 @@ class TestAsgard(unittest.TestCase):
         ami.add_tag("play", "baz")
 
         # Make the current ASGs
-        asg_tags = { "environment": "foo",
+        self.test_asg_tags = { "environment": "foo",
             "deployment": "bar",
             "play": "baz",
         }
 
-        elb_name = "app_elb"
-        create_elb(elb_name)
+        self.test_elb_name = "app_elb"
+        create_elb(self.test_elb_name)
 
-        create_asg_with_tags("loadtest-edx-edxapp-v058", asg_tags, ami_id, [elb_name])
-        create_asg_with_tags("loadtest-edx-edxapp-v059", asg_tags, ami_id, [elb_name])
-        create_asg_with_tags("loadtest-edx-worker-v034", asg_tags, ami_id, [])
+        create_asg_with_tags("loadtest-edx-edxapp-v058", self.test_asg_tags, ami_id, [self.test_elb_name])
+        create_asg_with_tags("loadtest-edx-edxapp-v059", self.test_asg_tags, ami_id, [self.test_elb_name])
+        create_asg_with_tags("loadtest-edx-worker-v034", self.test_asg_tags, ami_id, [])
 
         httpretty.register_uri(
             httpretty.GET,
@@ -868,7 +869,7 @@ class TestAsgard(unittest.TestCase):
             response_body = ""
             new_asg_name = "{}-v099".format(request.parsed_body["name"][0])
             new_ami_id = request.parsed_body["imageId"][0]
-            create_asg_with_tags(new_asg_name, asg_tags, new_ami_id)
+            create_asg_with_tags(new_asg_name, self.test_asg_tags, new_ami_id)
             return (302, response_headers, response_body)
 
         httpretty.register_uri(
@@ -1005,7 +1006,6 @@ class TestAsgard(unittest.TestCase):
     @mock_autoscaling
     @mock_ec2
     @mock_elb
-    @mock.patch('boto.ec2.autoscale.AutoScaleConnection.create_or_update_tags', lambda *args: None)
     def test_deploy(self):
         ami_id = self._setup_for_deploy()
 
@@ -1041,6 +1041,7 @@ class TestAsgard(unittest.TestCase):
             content_type="application/json"
         )
         expected_output = {
+            'ami_id': ami_id,
             'current_asgs':
                 {
                     'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v099'],
@@ -1088,7 +1089,6 @@ class TestAsgard(unittest.TestCase):
     @mock_autoscaling
     @mock_ec2
     @mock_elb
-    @mock.patch('boto.ec2.autoscale.AutoScaleConnection.create_or_update_tags', lambda *args: None)
     def test_rollback(self):
         ami_id = self._setup_for_deploy()
 
@@ -1156,28 +1156,25 @@ class TestAsgard(unittest.TestCase):
         expected_output = {}
         expected_output['current_asgs'] = rollback_input['disabled_asgs']
         expected_output['disabled_asgs'] = rollback_input['current_asgs']
+        expected_output['ami_id'] = ami_id
 
         # Rollback and check output.
         self.assertEqual(asgard.rollback(rollback_input['current_asgs'], rollback_input['disabled_asgs'], ami_id), expected_output)
 
-    @httpretty.activate
-    @mock_autoscaling
-    @mock_ec2
-    @mock_elb
-    @mock.patch('boto.ec2.autoscale.AutoScaleConnection.create_or_update_tags', lambda *args: None)
-    def test_rollback_with_failure_and_redeploy(self):
-        ami_id = self._setup_for_deploy()
+    def _setup_rollback(self):
+        self.test_ami_id = self._setup_for_deploy()
 
         not_in_service_asgs = ["loadtest-edx-edxapp-v058",]
         in_service_pre_rollback_asgs = ["loadtest-edx-edxapp-v059", "loadtest-edx-worker-v034"]
-        rollback_to_asgs = ["loadtest-edx-edxapp-v097", "loadtest-edx-worker-v098"]
+        self.rollback_to_asgs = ["loadtest-edx-edxapp-v097", "loadtest-edx-worker-v098"]
         in_service_post_rollback_asgs = ["loadtest-edx-edxapp-v099", "loadtest-edx-worker-v099"]
+
+        # Create the "rollback-to" ASGs.
+        for asg in self.rollback_to_asgs:
+            create_asg_with_tags(asg, self.test_asg_tags, self.test_ami_id, [self.test_elb_name])
 
         self._mock_asgard_not_pending_delete(in_service_pre_rollback_asgs, body=enabled_asg)
         self._mock_asgard_pending_delete(not_in_service_asgs)
-
-        # The pending delete of the ASGs to rollback to causes the rollback to fail.
-        self._mock_asgard_pending_delete(rollback_to_asgs)
 
         for asg in in_service_post_rollback_asgs:
             url = asgard.ASG_INFO_URL.format(asg)
@@ -1205,6 +1202,16 @@ class TestAsgard(unittest.TestCase):
             content_type="application/json"
         )
 
+    @httpretty.activate
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    def test_rollback_with_failure_and_with_redeploy(self):
+        self._setup_rollback()
+
+        # The pending delete of the ASGs to rollback to causes the rollback to fail.
+        self._mock_asgard_pending_delete(self.rollback_to_asgs)
+
         rollback_input = {
             'current_asgs':
                 {'loadtest-edx-edxapp':
@@ -1221,6 +1228,7 @@ class TestAsgard(unittest.TestCase):
                 },
         }
         expected_output = {
+            'ami_id': self.test_ami_id,
             'current_asgs':
                 {
                     'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v099'],
@@ -1237,7 +1245,101 @@ class TestAsgard(unittest.TestCase):
         }
 
         # Rollback and check output.
-        self.assertEqual(asgard.rollback(rollback_input['current_asgs'], rollback_input['rollback_to_asgs'], ami_id), expected_output)
+        self.assertEqual(asgard.rollback(rollback_input['current_asgs'], rollback_input['rollback_to_asgs'], self.test_ami_id), expected_output)
+
+    @httpretty.activate
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    def test_rollback_with_failure_and_without_redeploy(self):
+        self._setup_rollback()
+
+        # The pending delete of the ASGs to rollback to causes the rollback to fail.
+        self._mock_asgard_pending_delete(self.rollback_to_asgs)
+
+        rollback_input = {
+            'current_asgs':
+                {'loadtest-edx-edxapp':
+                    [
+                        'loadtest-edx-edxapp-v058',
+                        'loadtest-edx-edxapp-v059'
+                    ],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v034']
+                },
+            'rollback_to_asgs':
+                {
+                    'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v097'],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v098']
+                },
+        }
+        expected_output = {
+            'ami_id': None,
+            'current_asgs':
+                {'loadtest-edx-edxapp':
+                    [
+                        'loadtest-edx-edxapp-v058',
+                        'loadtest-edx-edxapp-v059'
+                    ],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v034']
+                },
+            'disabled_asgs':
+                {
+                    'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v097'],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v098']
+                },
+        }
+
+        # Rollback and check output.
+        # No AMI ID specified - so no deploy occurs after the rollback failure.
+        self.assertEqual(asgard.rollback(rollback_input['current_asgs'], rollback_input['rollback_to_asgs']), expected_output)
+
+    @httpretty.activate
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    @mock.patch('boto.ec2.autoscale.AutoScaleConnection.delete_tags', lambda *args: None)
+    def test_rollback_with_failure_and_asgs_tagged_for_deletion(self):
+        self._setup_rollback()
+
+        tag_asg_for_deletion('loadtest-edx-edxapp-v097', -2000)
+        tag_asg_for_deletion('loadtest-edx-worker-v098', -2000)
+        self._mock_asgard_not_pending_delete(self.rollback_to_asgs, body=enabled_asg)
+
+        rollback_input = {
+            'current_asgs':
+                {'loadtest-edx-edxapp':
+                    [
+                        'loadtest-edx-edxapp-v058',
+                        'loadtest-edx-edxapp-v059'
+                    ],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v034']
+                },
+            'rollback_to_asgs':
+                {
+                    'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v097'],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v098']
+                },
+        }
+        # Deletion tags are removed from 97/98 and they're used for the rollback.
+        expected_output = {
+            'ami_id': self.test_ami_id,
+            'current_asgs':
+                {
+                    'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v097'],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v098']
+                },
+            'disabled_asgs':
+                {'loadtest-edx-edxapp':
+                    [
+                        'loadtest-edx-edxapp-v058',
+                        'loadtest-edx-edxapp-v059'
+                    ],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v034']
+                },
+        }
+
+        # Rollback and check output.
+        self.assertEqual(asgard.rollback(rollback_input['current_asgs'], rollback_input['rollback_to_asgs'], self.test_ami_id), expected_output)
 
     @httpretty.activate
     def test_is_asg_pending_delete(self):
