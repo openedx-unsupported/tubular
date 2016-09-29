@@ -16,9 +16,10 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
 @click.command()
-@click.option('--config-file', envvar='CONFIG_FILE', help='The config file to to get the ami_id from.')
-@click.option('--dry-run', envvar='DRY_RUN', help='Don\'t actually deploy.', is_flag=True, default=False)
-def rollback(config_file, dry_run):
+@click.option('--config_file', envvar='CONFIG_FILE', help='The config file from which to get the previous deploy information.')
+@click.option('--dry_run', envvar='DRY_RUN', help='Don\'t actually rollback.', is_flag=True, default=False)
+@click.option('--out_file', envvar='OUT_FILE', help='Output file for the YAML rollback information.', default=None)
+def rollback(config_file, dry_run, out_file):
     """
     Roll back to an existing ASG. If the desired ASG(s) are not available to roll back (have since been deleted)
     and an AMI_ID is specified a new ASG using that AMI ID will be used.
@@ -39,10 +40,6 @@ def rollback(config_file, dry_run):
     ami_id: ami-a1b1c1d0
 
     The disabled_asgs will be enabled and the current_asgs will be disabled.
-
-    Args:
-        config_file:
-        dry_run:
     """
     config = yaml.safe_load(open(config_file, 'r'))
     current_asgs = config['current_asgs']
@@ -51,16 +48,16 @@ def rollback(config_file, dry_run):
 
     try:
         if not dry_run:
-            deploy_info = asgard.rollback(current_asgs, disabled_asgs, ami_id)
+            rollback_info = asgard.rollback(current_asgs, disabled_asgs, ami_id)
         else:
             click.echo('Would have triggered a rollback of {}'.format(ami_id))
-            deploy_info = {}
+            rollback_info = {}
 
         if out_file:
             with open(out_file, 'w') as stream:
-                yaml.safe_dump(deploy_info, stream, default_flow_style=False, explicit_start=True)
+                yaml.safe_dump(rollback_info, stream, default_flow_style=False, explicit_start=True)
         else:
-            print yaml.dump(deploy_info, default_flow_style=False, explicit_start=True)
+            print yaml.safe_dump(rollback_info, default_flow_style=False, explicit_start=True)
 
     except Exception as e:
         traceback.print_exc()

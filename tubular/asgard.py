@@ -20,7 +20,7 @@ from tubular.exception import (
         TimeoutException,
         ClusterDoesNotExistException,
 )
-from utils import WAIT_SLEEP_TIME
+from utils import WAIT_SLEEP_TIME, DISABLE_OLD_ASG_WAIT_TIME
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091/us-east-1")
 ASGARD_API_TOKEN = "asgardApiToken={}".format(os.environ.get("ASGARD_API_TOKEN", "dummy-token"))
@@ -576,7 +576,10 @@ def deploy(ami_id):
     LOG.info("Woot! Deploy Done!")
     return {'ami_id': ami_id, 'current_asgs': enabled_asgs, 'disabled_asgs': disabled_asgs}
 
-def _red_black_deploy(new_cluster_asgs, baseline_cluster_asgs):
+def _red_black_deploy(
+    new_cluster_asgs, baseline_cluster_asgs,
+    secs_before_old_asgs_disabled=DISABLE_OLD_ASG_WAIT_TIME
+):
     """
     Takes two dicts of autoscale groups, new and baseline.
     Each dict key is a cluster name.
@@ -625,6 +628,17 @@ def _red_black_deploy(new_cluster_asgs, baseline_cluster_asgs):
         asgs_enabled[cluster].remove(asg)
         asgs_disabled[cluster].append(asg)
 
+    def disable_clustered_asgs(clustered_asgs, failure_msg):
+        """
+        Disable all the ASGs in the lists, keyed by cluster.
+        """
+        for cluster, asgs in clustered_asgs.iteritems():
+            for asg in asgs:
+                try:
+                    disable_cluster_asg(cluster, asg)
+                except:
+                    LOG.warning(failure_msg.format(asg))
+
     elbs_to_monitor = []
     newly_enabled_asgs = defaultdict(list)
     for cluster, asgs in new_cluster_asgs.iteritems():
@@ -639,13 +653,10 @@ def _red_black_deploy(new_cluster_asgs, baseline_cluster_asgs):
                 # Disable the ASG which failed first.
                 disable_cluster_asg(cluster, asg)
                 # Then disable any new other ASGs that have been newly enabled.
-                for cluster, asgs_to_disable in newly_enabled_asgs.iteritems():
-                    for asg in asgs_to_disable:
-                        try:
-                            disable_cluster_asg(cluster, asg)
-                        except:
-                            LOG.warning("Unable to disable ASG '{}' after failure.".format(asg))
-                            continue
+                disable_clustered_asgs(
+                    newly_enabled_asgs,
+                    "Unable to disable ASG '{}' after failure."
+                )
                 return (False, asgs_enabled, asgs_disabled)
 
     LOG.info("New ASGs {} are active and will be available after passing the healthchecks.".format(
@@ -657,13 +668,16 @@ def _red_black_deploy(new_cluster_asgs, baseline_cluster_asgs):
         ec2.wait_for_healthy_elbs(elbs_to_monitor, 600)
     except Exception as wait_fail:
         LOG.info("Some ASGs are failing ELB health checks. Disabling traffic to all new ASGs.")
-        for cluster, asgs in newly_enabled_asgs.iteritems():
-            for asg in asgs:
-                try:
-                    disable_cluster_asg(cluster, asg)
-                except:
-                    LOG.warning("Unable to disable ASG '{}' after waiting for healthy ELBs.".format(asg))
+        disable_clustered_asgs(
+            newly_enabled_asgs,
+            "Unable to disable ASG '{}' after waiting for healthy ELBs."
+        )
         return (False, asgs_enabled, asgs_disabled)
+
+    # Add a sleep delay here to wait and see how the new ASGs react to traffic.
+    # A flawed release would likely make the new ASGs fail the health checks below
+    # and, if any new ASGs fail the health checks, the old ASGs would *not be disabled.
+    time.sleep(secs_before_old_asgs_disabled)
 
     # Ensure the new ASGs are still healthy and not pending delete before disabling the old ASGs.
     for cluster, asgs in newly_enabled_asgs.iteritems():
