@@ -1,9 +1,14 @@
-import boto
+"""
+Tests of the utility code.
+"""
+from __future__ import unicode_literals
 
 from copy import copy
+import boto
 from boto.ec2.autoscale.launchconfig import LaunchConfiguration
 from boto.ec2.autoscale.group import AutoScalingGroup
 from boto.ec2.autoscale import Tag
+
 
 def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
     """
@@ -19,7 +24,7 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         boto.ec2.autoscale.group.AutoScalingGroup
     """
 
-    tag_list = [ Tag(key=k, value=v) for k,v in tags.iteritems() ]
+    tag_list = [Tag(key=k, value=v) for k, v in tags.iteritems()]
 
     if elbs is None:
         elbs = []
@@ -52,14 +57,18 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
     conn.create_auto_scaling_group(group)
     return group
 
+
 def create_elb(elb_name):
+    """
+    Method to create an Elastic Load Balancer.
+    """
     boto_elb = boto.connect_elb()
     zones = ['us-east-1a', 'us-east-1b']
     ports = [(80, 8080, 'http'), (443, 8443, 'tcp')]
-    lb = boto_elb.create_load_balancer(elb_name, zones, ports)
+    load_balancer = boto_elb.create_load_balancer(elb_name, zones, ports)
     instance_ids = ['i-4f8cf126', 'i-0bb7ca62']
-    lb.register_instances(instance_ids)
-    return lb
+    load_balancer.register_instances(instance_ids)
+    return load_balancer
 
 
 def clone_elb_instances_with_state(elb, state):

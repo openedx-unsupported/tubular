@@ -1,28 +1,32 @@
 """
 Trigger a GoCD pipeline for a particular GitHub repo/PR.
 """
-import os
+from __future__ import unicode_literals
+
 import sys
 import click
-from gocd_api_utils import GoCDApiUtils
+from gocd_api_utils import GoCDApiUtils  # pylint: disable=relative-import
 
 
 @click.command()
-@click.option('--pipeline_name',
-              help="Name of pipeline to trigger.",
-              required=True,
-              )
-@click.option('--repo',
-              default='edx/dummy-webapp',
-              help="GitHub repository - in the form 'org/repo'.",
-              required=True,
-              )
-@click.option('--pr_id',
-              default=None,
-              help="ID of GitHub pull request containing code to merge.",
-              type=int,
-              required=True,
-              )
+@click.option(
+    '--pipeline_name',
+    help="Name of pipeline to trigger.",
+    required=True,
+)
+@click.option(
+    '--repo',
+    default='edx/dummy-webapp',
+    help="GitHub repository - in the form 'org/repo'.",
+    required=True,
+)
+@click.option(
+    '--pr_id',
+    default=None,
+    help="ID of GitHub pull request containing code to merge.",
+    type=int,
+    required=True,
+)
 def cli(pipeline_name, repo, pr_id):
     """
     Trigger a GoCD pipeline using the specified GitHub repo/PR/branch.
@@ -35,4 +39,4 @@ def cli(pipeline_name, repo, pr_id):
 
 
 if __name__ == '__main__':
-    cli()
+    cli()  # pylint: disable=no-value-for-parameter

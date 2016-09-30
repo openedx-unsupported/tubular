@@ -1,5 +1,10 @@
-import requests
+"""
+Methods to interact with the Drupal API to perform various tasks.
+"""
+from __future__ import unicode_literals
+
 import logging
+import requests
 from requests.auth import HTTPBasicAuth
 from tubular.utils.retry import retry
 from tubular.exception import BackendError
@@ -42,7 +47,7 @@ VALID_ENVIRONMENTS = {
         "www.edx.org",
     ],
 }
-logger = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 
 def get_api_client(username, password):
@@ -78,7 +83,7 @@ def parse_response(response, error_message):
     if response.status_code != 200:
         msg = "{specific}\nStatus Code: {status}\nBody: {body}".format(specific=error_message,
                                                                        status=response.status_code, body=response.text)
-        logger.error(msg)
+        LOG.error(msg)
         raise BackendError(msg)
     return response.json()
 
@@ -100,12 +105,12 @@ def fetch_deployed_tag(env, username, password, path_name):
     Raises:
         KeyError: Raised if env value is invalid.
     """
-    VALID_ENVIRONMENTS[env]
+    __ = VALID_ENVIRONMENTS[env]
     api_client = get_api_client(username, password)
     response = api_client.get(FETCH_TAG_URL.format(env=env))
     response_json = parse_response(response, "Failed to fetch the deployed tag.")
     tag_name = response_json["vcs_path"]
-    with open(path_name.format(env=env), "w") as f:
+    with open(path_name.format(env=env), "w") as f:  # pylint: disable=open-builtin
         f.write(tag_name)
     return tag_name
 
@@ -161,7 +166,7 @@ def deploy(env, username, password, tag):
     Raises:
         KeyError: Raised if env value is invalid.
     """
-    VALID_ENVIRONMENTS[env]
+    __ = VALID_ENVIRONMENTS[env]
     api_client = get_api_client(username, password)
     response = api_client.post(DEPLOY_URL.format(env=env, tag=tag))
     response_json = parse_response(response, "Failed to deploy code.")
@@ -184,7 +189,7 @@ def backup_database(env, username, password):
     Raises:
         KeyError: Raised if env value is invalid.
     """
-    VALID_ENVIRONMENTS[env]
+    __ = VALID_ENVIRONMENTS[env]
     api_client = get_api_client(username, password)
     response = api_client.post(BACKUP_DATABASE_URL.format(env=env))
     response_json = parse_response(response, "Failed to backup database.")
@@ -192,12 +197,12 @@ def backup_database(env, username, password):
 
 
 @retry(attempts=10, delay_seconds=10, max_time_seconds=100)
-def check_state(id, username, password):
+def check_state(task_id, username, password):
     """
     Checks the state of the response to verify it is "done"
 
     Args:
-        id (int): The task id to check the state of.
+        task_id (int): The task id to check the state of.
         username (str): The Acquia username necessary to run the command.
         password (str): The Acquia password necessary to run the command.
 
@@ -210,7 +215,7 @@ def check_state(id, username, password):
             the response should return a 200, just not the state wanted.
     """
     api_client = get_api_client(username, password)
-    response = api_client.get(CHECK_TASKS_URL.format(id=id))
+    response = api_client.get(CHECK_TASKS_URL.format(id=task_id))
     response_json = parse_response(response, "Failed to check state of response.")
     if response_json["state"] == "done":
         return True

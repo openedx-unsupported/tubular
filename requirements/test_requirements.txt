@@ -2,5 +2,9 @@ ddt==1.0.1
 nose==1.3.7
 moto==0.4.27
 mock==2.0.0
+pep8==1.7.0
+pylint
+caniusepython3
+edx_lint
 
 -r ../requirements.txt

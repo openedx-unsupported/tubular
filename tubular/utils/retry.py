@@ -1,3 +1,7 @@
+"""
+Code used to retry calls that fail.
+"""
+from __future__ import unicode_literals
 import time
 import logging
 import os
@@ -28,13 +32,19 @@ def retry(attempts=MAX_ATTEMPTS, delay_seconds=DELAY_SECONDS, max_time_seconds=M
     Raises:
         The final exception raised by the wrapped function
     """
-    def retry_decorator(fn):
+    def retry_decorator(func_to_wrap):
+        """
+        Implementation of retry decorator.
+        """
         if os.environ.get('TUBULAR_RETRY_ENABLED', "true").lower() == "false":
-            return fn
+            return func_to_wrap
 
-        @wraps(fn)
+        @wraps(func_to_wrap)
         def function_wrapper(*args, **kwargs):
-            return LifecycleManager(attempts, delay_seconds, max_time_seconds).execute(fn, *args, **kwargs)
+            """
+            Function to wrap the function which is retried.
+            """
+            return LifecycleManager(attempts, delay_seconds, max_time_seconds).execute(func_to_wrap, *args, **kwargs)
         return function_wrapper
     return retry_decorator
 
@@ -113,7 +123,7 @@ class LifecycleManager(object):
         """
         return self.max_attempts_reached() or self.max_time_reached()
 
-    def execute(self, fn, *args, **kwargs):
+    def execute(self, func_to_retry, *args, **kwargs):
         """
         Execute the wrapped function retrying the specified number of attempts.
 
@@ -121,7 +131,7 @@ class LifecycleManager(object):
         If the call ultimately fails with an Exception that exception will be raised
 
         Arguments:
-            fn (function): the function to execute
+            func_to_retry (function): the function to execute
             args(list<any>): Arguments to the wrapped function
             kwargs(dict<str:any>): Keyword arguments to the wrapped function
 
@@ -129,13 +139,16 @@ class LifecycleManager(object):
         while not self.done():
             try:
                 self._current_attempt_number += 1
-                LOG.debug("Attempting function: {0} try number: {1}".format(fn.__name__, self._current_attempt_number))
-                result = fn(*args, **kwargs)
+                LOG.debug("Attempting function: {0} try number: {1}".format(
+                    func_to_retry.__name__,
+                    self._current_attempt_number
+                ))
+                result = func_to_retry(*args, **kwargs)
                 break
-            except Exception as e:
+            except Exception as err:  # pylint: disable=broad-except
                 LOG.warn("Error executing function {0}, Exception type: {1} Message: {2}"
-                         .format(fn.__name__, e.__class__, e.message))
-                result = e
+                         .format(func_to_retry.__name__, err.__class__, err.message))
+                result = err
 
             if not self.max_attempts_reached() and not self.max_time_reached():
                 self.sleep()
@@ -147,4 +160,7 @@ class LifecycleManager(object):
 
 
 class RetryException(Exception):
+    """
+    Exception to use in retry tests.
+    """
     pass

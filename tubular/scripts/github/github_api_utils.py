@@ -1,6 +1,7 @@
 """
 Utility functions using the GitHub API via the PyGithub module.
 """
+from __future__ import unicode_literals
 import os
 import github
 
@@ -22,13 +23,13 @@ class GitHubApiUtils(object):
         username = os.environ.get('GITHUB_USERNAME', '')
         password = os.environ.get('GITHUB_PASSWORD', '')
         if len(token):
-            self.gh = github.Github(login_or_token=token)
+            self.gh_utils = github.Github(login_or_token=token)
         elif len(username) and len(password):
-            self.gh = github.Github(login_or_token=username, password=password)
+            self.gh_utils = github.Github(login_or_token=username, password=password)
         else:
             # No auth available - use the API anonymously.
-            self.gh = github.Github()
-        self.repo = self.gh.get_repo(repo_id)
+            self.gh_utils = github.Github()
+        self.repo = self.gh_utils.get_repo(repo_id)
 
     def check_github_commit_test_status(self, commit_hash):
         """
@@ -36,12 +37,7 @@ class GitHubApiUtils(object):
         """
         commit = self.repo.get_commit(commit_hash)
         pr_combined_status = commit.get_combined_status()
-        if pr_combined_status.state == 'success':
-            # All good!
-            return True
-        else:
-            # All tests did not pass!
-            return False
+        return pr_combined_status.state == 'success'
 
     def check_github_pr_test_status(self, pr_number):
         """

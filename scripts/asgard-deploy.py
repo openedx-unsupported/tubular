@@ -1,15 +1,20 @@
-#!/usr/bin/env python
+"""
+Command-line script used to deploy an AMI.
+"""
+# pylint: disable=invalid-name,open-builtin
+from __future__ import unicode_literals
+
+from os import path
 import sys
 import logging
 import traceback
 import click
 import yaml
-from os import path
 
 # Add top-level module path to sys.path before importing tubular code.
-sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from tubular import asgard
+from tubular import asgard  # pylint: disable=wrong-import-position
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -21,6 +26,9 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 @click.option('--config-file', envvar='CONFIG_FILE', help='The config file to to get the ami_id from.')
 @click.option('--dry-run', envvar='DRY_RUN', help='Don\'t actually deploy.', is_flag=True, default=False)
 def deploy(ami_id, out_file, config_file, dry_run):
+    """
+    Method which deploys an AMI.
+    """
     if config_file:
         config = yaml.safe_load(open(config_file, 'r'))
     if not ami_id:
@@ -44,12 +52,12 @@ def deploy(ami_id, out_file, config_file, dry_run):
         else:
             print yaml.safe_dump(deploy_info, default_flow_style=False, explicit_start=True)
 
-    except Exception as e:
+    except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho('Error Deploying AMI: {0}.\nMessage: {1}'.format(ami_id, e.message), fg='red')
+        click.secho('Error Deploying AMI: {0}.\nMessage: {1}'.format(ami_id, err.message), fg='red')
         sys.exit(1)
 
     sys.exit(0)
 
 if __name__ == "__main__":
-    deploy()
+    deploy()  # pylint: disable=no-value-for-parameter

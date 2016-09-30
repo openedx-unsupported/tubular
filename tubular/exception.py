@@ -1,6 +1,8 @@
 """
 Exceptions used by various utilities.
 """
+# pylint: disable=missing-docstring
+
 
 class TimeoutException(Exception):
     pass
@@ -21,20 +23,26 @@ class BackendError(Exception):
 class BackendDataError(BackendError):
     pass
 
+
 class ResourceDoesNotExistException(Exception):
     pass
+
 
 class ASGDoesNotExistException(ResourceDoesNotExistException):
     pass
 
+
 class ClusterDoesNotExistException(ResourceDoesNotExistException):
     pass
+
 
 class CannotDeleteActiveASG(Exception):
     pass
 
+
 class CannotDisableActiveASG(Exception):
     pass
+
 
 class CannotDeleteLastASG(Exception):
     pass
