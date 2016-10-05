@@ -31,12 +31,12 @@ def deploy(ami_id, out_file, config_file, dry_run):
     """
     if config_file:
         config = yaml.safe_load(open(config_file, 'r'))
+        if config:
+            if not ami_id and 'ami_id' in config:
+                ami_id = config['ami_id']
     if not ami_id:
-        if 'ami_id' in config:
-            ami_id = config['ami_id']
-        else:
-            click.secho('AMI ID not specified in environment, on cli or in config file.', fg='red')
-            sys.exit(1)
+        click.secho('AMI ID not specified in environment, on cli or in config file.', fg='red')
+        sys.exit(1)
 
     ami_id = ami_id.strip()
     try:
