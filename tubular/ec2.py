@@ -121,10 +121,12 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
      ]
 
     """
+    LOG.info("Fetching ASGs for EDP: {}".format(edp))
     autoscale = boto.connect_autoscale()
     all_groups = autoscale.get_all_groups()
-    LOG.debug("All groups: {}".format(all_groups))
+    LOG.info("Found {} ASGs".format(len(all_groups)))
     for group in all_groups:
+        LOG.debug("Checking group {}".format(group))
         tags = {tag.key: tag.value for tag in group.tags}
         LOG.debug("Tags for asg {}: {}".format(group.name, tags))
         if filter_asgs_pending_delete and ASG_DELETE_TAG_KEY in tags.keys():

@@ -90,12 +90,14 @@ def clusters_for_asgs(asgs):
         BackendDataError: We got bad data from the backend. We can't
             get cluster information from it.
     """
-
+    LOG.debug("Fetching clusters for ASGs {}".format(asgs))
     request = requests.Request('GET', CLUSTER_LIST_URL, params=ASGARD_API_TOKEN)
     url = request.prepare().url
     LOG.debug("Getting Cluster List from: {}".format(url))
     response = requests.get(CLUSTER_LIST_URL, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
+    LOG.info(response)
     cluster_json = _parse_json(url, response)
+    LOG.info(cluster_json)
 
     # need this to be a list so that we can test membership.
     asgs = list(asgs)
