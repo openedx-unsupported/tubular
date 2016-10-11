@@ -25,10 +25,14 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 @click.option('--out_file', help='output file for the deploy information yaml', default=None)
 @click.option('--config-file', envvar='CONFIG_FILE', help='The config file to to get the ami_id from.')
 @click.option('--dry-run', envvar='DRY_RUN', help='Don\'t actually deploy.', is_flag=True, default=False)
-def deploy(ami_id, out_file, config_file, dry_run):
+@click.option('--debug', envvar='DEPLOY_DEBUG', help='Turn on debug logging', is_flag=True, default=False)
+def deploy(ami_id, out_file, config_file, dry_run, debug):
     """
     Method which deploys an AMI.
     """
+    if debug:
+        logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+
     if config_file:
         config = yaml.safe_load(open(config_file, 'r'))
     if not ami_id:
