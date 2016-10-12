@@ -125,25 +125,27 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
     autoscale = boto.connect_autoscale()
     all_groups = autoscale.get_all_groups()
     LOG.info("Found {} ASGs".format(len(all_groups)))
-    for group in all_groups:
-        LOG.debug("Checking group {}".format(group))
-        tags = {tag.key: tag.value for tag in group.tags}
-        LOG.debug("Tags for asg {}: {}".format(group.name, tags))
-        if filter_asgs_pending_delete and ASG_DELETE_TAG_KEY in tags.keys():
-            LOG.info("filtering ASG: {0} because it is tagged for deletion on: {1}"
-                     .format(group.name, tags[ASG_DELETE_TAG_KEY]))
-            continue
+    while all_groups.next_token:
+        for group in all_groups:
+            LOG.debug("Checking group {}".format(group))
+            tags = {tag.key: tag.value for tag in group.tags}
+            LOG.debug("Tags for asg {}: {}".format(group.name, tags))
+            if filter_asgs_pending_delete and ASG_DELETE_TAG_KEY in tags.keys():
+                LOG.info("filtering ASG: {0} because it is tagged for deletion on: {1}"
+                         .format(group.name, tags[ASG_DELETE_TAG_KEY]))
+                continue
 
-        edp_keys = ['environment', 'deployment', 'play']
-        if all([tag in tags for tag in edp_keys]):
-            group_env = tags['environment']
-            group_deployment = tags['deployment']
-            group_play = tags['play']
+            edp_keys = ['environment', 'deployment', 'play']
+            if all([tag in tags for tag in edp_keys]):
+                group_env = tags['environment']
+                group_deployment = tags['deployment']
+                group_play = tags['play']
 
-            group_edp = EDP(group_env, group_deployment, group_play)
+                group_edp = EDP(group_env, group_deployment, group_play)
 
-            if group_edp == edp:
-                yield group.name
+                if group_edp == edp:
+                    yield group.name
+        all_groups = autoscale.get_all_groups(next_token=all_groups.next_token)
 
 
 def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
