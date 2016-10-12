@@ -100,7 +100,7 @@ class TestEC2(unittest.TestCase):
     @mock_autoscaling
     @ddt.file_data("test_asgs_for_edp_data.json")
     def test_asgs_for_edp(self, params):
-        asgs, expected_returned, expected_asg_names_list = params
+        asgs, expected_returned_count, expected_asg_names_list = params
 
         edp = EDP("foo", "bar", "baz")
 
@@ -111,8 +111,25 @@ class TestEC2(unittest.TestCase):
         self.assertIsInstance(asgs, Iterable)
 
         asg_list = list(asgs)
-        self.assertEquals(len(asg_list), expected_returned)
+        self.assertEquals(len(asg_list), expected_returned_count)
         self.assertTrue(all(asg_name in asg_list for asg_name in expected_asg_names_list))
+
+    @mock_autoscaling
+    def test_asg_pagination(self):
+        """
+        While I have attempted to test for pagination the moto library does not seem to support this and returns
+        all of the ASGs created on the first get request and not 50 per request. I am leaving this test in place in the
+        hopes that someday moto will support pagination and this test will be valid.
+        """
+        asg_count = 103
+        edp = EDP("foo", "bar", "baz")
+        for i in range(asg_count):
+            create_asg_with_tags("asg_{}".format(i), {"environment": "foo", "deployment": "bar", "play": "baz"})
+        asgs = ec2.asgs_for_edp(edp)
+
+        self.assertIsInstance(asgs, Iterable)
+        asg_list = list(asgs)
+        self.assertEquals(len(asg_list), asg_count)
 
     @mock_autoscaling
     @mock_ec2
