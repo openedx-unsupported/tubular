@@ -110,9 +110,8 @@ class TestEC2(unittest.TestCase):
         asgs = ec2.asgs_for_edp(edp)
         self.assertIsInstance(asgs, Iterable)
 
-        asg_list = list(asgs)
-        self.assertEquals(len(asg_list), expected_returned_count)
-        self.assertTrue(all(asg_name in asg_list for asg_name in expected_asg_names_list))
+        self.assertEquals(len(asgs), expected_returned_count)
+        self.assertTrue(all(asg_name in asgs for asg_name in expected_asg_names_list))
 
     @mock_autoscaling
     def test_asg_pagination(self):
@@ -128,8 +127,7 @@ class TestEC2(unittest.TestCase):
         asgs = ec2.asgs_for_edp(edp)
 
         self.assertIsInstance(asgs, Iterable)
-        asg_list = list(asgs)
-        self.assertEquals(len(asg_list), asg_count)
+        self.assertEquals(len(asgs), asg_count)
 
     @mock_autoscaling
     @mock_ec2
