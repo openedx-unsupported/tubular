@@ -576,9 +576,10 @@ def deploy(ami_id):
     new_clustered_asgs = defaultdict(list)
     for cluster in existing_clustered_asgs:
         try:
-            new_clustered_asgs[cluster].append(new_asg(cluster, ami_id))
+            newest_asg = new_asg(cluster, ami_id)
+            new_clustered_asgs[cluster].append(newest_asg)
         except:
-            msg = "ASG creation failed for cluster {} but succeeded for cluster(s) {}."
+            msg = "ASG creation failed for cluster '{}' but succeeded for cluster(s) {}."
             msg = msg.format(cluster, new_clustered_asgs.keys())
             LOG.error(msg)
             raise
