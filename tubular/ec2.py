@@ -124,8 +124,9 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
     LOG.info("Fetching ASGs for EDP: {}".format(edp))
     autoscale = boto.connect_autoscale()
     all_groups = autoscale.get_all_groups()
-    LOG.info("Found {} ASGs".format(len(all_groups)))
-    while all_groups.next_token:
+    while True:
+        LOG.info("Found {} ASGs".format(len(all_groups)))
+
         for group in all_groups:
             LOG.debug("Checking group {}".format(group))
             tags = {tag.key: tag.value for tag in group.tags}
@@ -145,7 +146,11 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
 
                 if group_edp == edp:
                     yield group.name
-        all_groups = autoscale.get_all_groups(next_token=all_groups.next_token)
+        if all_groups.next_token:
+            all_groups = autoscale.get_all_groups(next_token=all_groups.next_token)
+            continue
+        else:
+            break
 
 
 def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
