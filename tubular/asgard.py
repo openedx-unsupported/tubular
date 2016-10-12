@@ -97,9 +97,6 @@ def clusters_for_asgs(asgs):
     response = requests.get(CLUSTER_LIST_URL, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
     cluster_json = _parse_json(url, response)
 
-    # need this to be a list so that we can test membership.
-    asgs = list(asgs)
-
     relevant_clusters = {}
     for cluster in cluster_json:
         if "autoScalingGroups" not in cluster or "cluster" not in cluster:

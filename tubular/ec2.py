@@ -108,7 +108,7 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
     Arguments:
         EDP Named Tuple: The edp tags for the ASGs you want.
     Returns:
-        iterable: An iterable of ASG names that match the EDP.
+        list: list of ASG names that match the EDP.
     eg.
 
      [
@@ -123,6 +123,7 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
     """
     autoscale = boto.connect_autoscale()
     all_groups = autoscale.get_all_groups()
+    matching_groups = []
     while True:
         LOG.info("Found {} ASGs".format(len(all_groups)))
 
@@ -144,12 +145,14 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
                 group_edp = EDP(group_env, group_deployment, group_play)
 
                 if group_edp == edp:
-                    yield group.name
+                    matching_groups.append(group.name)
         if all_groups.next_token:
             all_groups = autoscale.get_all_groups(next_token=all_groups.next_token)
             continue
         else:
             break
+
+    return matching_groups
 
 
 def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
