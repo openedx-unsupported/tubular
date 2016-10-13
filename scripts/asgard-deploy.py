@@ -5,6 +5,7 @@ Command-line script used to deploy an AMI.
 from __future__ import unicode_literals
 
 from os import path
+import os
 import sys
 import logging
 import traceback
@@ -29,6 +30,14 @@ def deploy(ami_id, out_file, config_file, dry_run):
     """
     Method which deploys an AMI.
     """
+    env_ami_id = os.environ.get('AMI_ID', None)
+    if env_ami_id and ami_id != env_ami_id:
+        click.secho(
+            'Error: Command-line and env var AMI_ID do not match. ({} != {})'.format(ami_id, env_ami_id),
+            fg='red'
+        )
+        sys.exit(1)
+
     if config_file:
         config = yaml.safe_load(open(config_file, 'r'))
         if config:
