@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 
 import unittest
 import datetime
-from collections import Iterable
 
 import ddt
 import mock
@@ -108,26 +107,33 @@ class TestEC2(unittest.TestCase):
             create_asg_with_tags(name, tags)
 
         asgs = ec2.asgs_for_edp(edp)
-        self.assertIsInstance(asgs, Iterable)
+        self.assertIsInstance(asgs, list)
 
         self.assertEquals(len(asgs), expected_returned_count)
         self.assertTrue(all(asg_name in asgs for asg_name in expected_asg_names_list))
 
+    @ddt.data(
+        (103, 103, None),
+        (103, 103, []),
+        (103, 1, ["asg_1"]),
+        (103, 3, ["asg_1", "asg_11", "asg_100"])
+
+    )
+    @ddt.unpack
     @mock_autoscaling
-    def test_asg_pagination(self):
+    def test_get_all_autoscale_groups(self, asg_count, expected_result_count, name_filter):
         """
         While I have attempted to test for pagination the moto library does not seem to support this and returns
-        all of the ASGs created on the first get request and not 50 per request. I am leaving this test in place in the
-        hopes that someday moto will support pagination and this test will be valid.
+        all of the ASGs created on the first get request and not 50 per request.
         """
-        asg_count = 103
-        edp = EDP("foo", "bar", "baz")
         for i in range(asg_count):
             create_asg_with_tags("asg_{}".format(i), {"environment": "foo", "deployment": "bar", "play": "baz"})
-        asgs = ec2.asgs_for_edp(edp)
+        asgs = ec2.get_all_autoscale_groups(name_filter)
 
-        self.assertIsInstance(asgs, Iterable)
-        self.assertEquals(len(asgs), asg_count)
+        self.assertIsInstance(asgs, list)
+        self.assertEquals(len(asgs), expected_result_count)
+        if name_filter:
+            self.assertTrue(all(asg.name in name_filter for asg in asgs))
 
     @mock_autoscaling
     @mock_ec2
@@ -333,3 +339,26 @@ class TestEC2(unittest.TestCase):
 
         # Undo the monkey patch
         ec2.datetime = built_in_datetime
+
+    @ddt.data(
+        (103, 103, None),
+        (103, 103, []),
+        (103, 1, ["elb_1"]),
+        (103, 3, ["elb_1", "elb_11", "elb_100"])
+
+    )
+    @ddt.unpack
+    @mock_elb
+    def test_get_all_load_balancers(self, elb_count, expected_result_count, name_filter):
+        """
+        While I have attempted to test for pagination the moto library does not seem to support this and returns
+        all of the ELBs created on the first get request and not 50 per request.
+        """
+        for i in range(elb_count):
+            create_elb("elb_{}".format(i))
+        elb = ec2.get_all_load_balancers(name_filter)
+
+        self.assertIsInstance(elb, list)
+        self.assertEquals(len(elb), expected_result_count)
+        if name_filter:
+            self.assertTrue(all(asg.name in name_filter for asg in elb))

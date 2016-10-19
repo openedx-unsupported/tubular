@@ -23,6 +23,48 @@ ISO_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 ASG_DELETE_TAG_KEY = 'delete_on_ts'
 
 
+def get_all_autoscale_groups(names=None):
+    """
+    Get all the autoscale groups
+
+    Arguments:
+        names (list) - A list of ASG names as strings
+    Returns:
+        List of :class:`boto.ec2.autoscale.group.AutoScalingGroup` instances.
+    """
+    autoscale_conn = boto.connect_autoscale()
+    fetched_asgs = autoscale_conn.get_all_groups(names=names)
+    total_asgs = []
+    while True:
+        total_asgs.extend([asg for asg in fetched_asgs])
+        if fetched_asgs.next_token:
+            fetched_asgs = autoscale_conn.get_all_groups(names=names, next_token=fetched_asgs.next_token)
+        else:
+            break
+    return total_asgs
+
+
+def get_all_load_balancers(names=None):
+    """
+    Get all the ELBs
+
+    Arguments:
+        names (list) - A list of ELB names as strings
+    Returns:
+        a list of  of :class:`boto.ec2.elb.loadbalancer.LoadBalancer`
+    """
+    elb_conn = boto.connect_elb()
+    fetched_elbs = elb_conn.get_all_load_balancers(names)
+    total_elbs = []
+    while True:
+        total_elbs.extend([elb for elb in fetched_elbs])
+        if fetched_elbs.next_token:
+            fetched_elbs = elb_conn.get_all_load_balancers(names, fetched_elbs.next_token)
+        else:
+            break
+    return total_elbs
+
+
 def edp_for_ami(ami_id):
     """
     Look up the EDP tags for an AMI.
@@ -121,36 +163,29 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
      ]
 
     """
-    autoscale = boto.connect_autoscale()
-    all_groups = autoscale.get_all_groups()
+    all_groups = get_all_autoscale_groups()
     matching_groups = []
-    while True:
-        LOG.info("Found {} ASGs".format(len(all_groups)))
+    LOG.info("Found {} ASGs".format(len(all_groups)))
 
-        for group in all_groups:
-            LOG.debug("Checking group {}".format(group))
-            tags = {tag.key: tag.value for tag in group.tags}
-            LOG.debug("Tags for asg {}: {}".format(group.name, tags))
-            if filter_asgs_pending_delete and ASG_DELETE_TAG_KEY in tags.keys():
-                LOG.info("filtering ASG: {0} because it is tagged for deletion on: {1}"
-                         .format(group.name, tags[ASG_DELETE_TAG_KEY]))
-                continue
-
-            edp_keys = ['environment', 'deployment', 'play']
-            if all([tag in tags for tag in edp_keys]):
-                group_env = tags['environment']
-                group_deployment = tags['deployment']
-                group_play = tags['play']
-
-                group_edp = EDP(group_env, group_deployment, group_play)
-
-                if group_edp == edp:
-                    matching_groups.append(group.name)
-        if all_groups.next_token:
-            all_groups = autoscale.get_all_groups(next_token=all_groups.next_token)
+    for group in all_groups:
+        LOG.debug("Checking group {}".format(group))
+        tags = {tag.key: tag.value for tag in group.tags}
+        LOG.debug("Tags for asg {}: {}".format(group.name, tags))
+        if filter_asgs_pending_delete and ASG_DELETE_TAG_KEY in tags.keys():
+            LOG.info("filtering ASG: {0} because it is tagged for deletion on: {1}"
+                     .format(group.name, tags[ASG_DELETE_TAG_KEY]))
             continue
-        else:
-            break
+
+        edp_keys = ['environment', 'deployment', 'play']
+        if all([tag in tags for tag in edp_keys]):
+            group_env = tags['environment']
+            group_deployment = tags['deployment']
+            group_play = tags['play']
+
+            group_edp = EDP(group_env, group_deployment, group_play)
+
+            if group_edp == edp:
+                matching_groups.append(group.name)
 
     return matching_groups
 
@@ -182,7 +217,7 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=1800):
     """
     tag = create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta)
     autoscale = boto.connect_autoscale()
-    if len(autoscale.get_all_groups([asg_name])) < 1:
+    if len(get_all_autoscale_groups([asg_name])) < 1:
         LOG.info("ASG {} no longer exists, will not tag".format(asg_name))
     else:
         autoscale.create_or_update_tags([tag])
@@ -200,7 +235,7 @@ def remove_asg_deletion_tag(asg_name):
     """
     tag_to_delete = create_tag_for_asg_deletion(asg_name)
     autoscale = boto.connect_autoscale()
-    if len(autoscale.get_all_groups([asg_name])) < 1:
+    if len(get_all_autoscale_groups([asg_name])) < 1:
         LOG.info("ASG {} no longer exists, will not remove deletion tag.".format(asg_name))
     else:
         autoscale.delete_tags([tag_to_delete])
@@ -218,10 +253,9 @@ def get_asgs_pending_delete():
         List(<boto.ec2.autoscale.group.AutoScalingGroup>)
     """
     current_datetime = datetime.utcnow()
-    autoscale = boto.connect_autoscale()
-    asgs_pending_delete = []
-    asgs = autoscale.get_all_groups()
 
+    asgs_pending_delete = []
+    asgs = get_all_autoscale_groups()
     LOG.debug("Found {0} autoscale groups".format(len(asgs)))
     for asg in asgs:
         LOG.debug("Checking for {0} on asg: {1}".format(ASG_DELETE_TAG_KEY, asg.name))
@@ -262,13 +296,12 @@ def wait_for_in_service(all_asgs, timeout):
     Returns: Nothing if healthy, raises a timeout exception if un-healthy.
     """
 
-    autoscale = boto.connect_autoscale()
     asgs_left_to_check = list(all_asgs)
     LOG.info("Waiting for ASGs to be healthy: {}".format(asgs_left_to_check))
 
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
-        asgs = autoscale.get_all_groups(asgs_left_to_check)
+        asgs = get_all_autoscale_groups(asgs_left_to_check)
         for asg in asgs:
             all_healthy = True
             for instance in asg.instances:
@@ -280,6 +313,7 @@ def wait_for_in_service(all_asgs, timeout):
             if all_healthy:
                 # Then all are healthy we can stop checking this.
                 LOG.debug("All instances healthy in ASG: {}".format(asg.name))
+                LOG.debug(asgs_left_to_check)
                 asgs_left_to_check.remove(asg.name)
 
         if len(asgs_left_to_check) == 0:
@@ -305,11 +339,10 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     Raises:
         TimeoutException: We we have run out of time.
     """
-    boto_elb = boto.connect_elb()
     elbs_left = set(elbs_to_monitor)
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
-        elbs = boto_elb.get_all_load_balancers(elbs_left)
+        elbs = get_all_load_balancers(elbs_left)
         for elb in elbs:
             LOG.info("Checking health for ELB: {}".format(elb.name))
             all_healthy = True
