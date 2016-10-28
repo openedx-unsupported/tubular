@@ -17,7 +17,6 @@ from moto.ec2.utils import random_ami_id
 from requests.exceptions import ConnectionError
 import tubular.asgard as asgard
 from tubular.exception import (
-    BackendDataError,
     TimeoutException,
     BackendError,
     CannotDeleteActiveASG,
@@ -60,16 +59,8 @@ SAMPLE_CLUSTER_LIST = """
 ]"""
 
 BAD_CLUSTER_JSON1 = """
-{
-  "foo": {
-    "cluster": "loadtest-edx-edxapp",
-    "autoScalingGroups":
-    [
-      "loadtest-edx-edxapp-v058",
-      "loadtest-edx-edxapp-v059"
-    ]
-  }
-}"""
+<HTML><HEAD>Have some HTML</HEAD></HTML>
+"""
 
 BAD_CLUSTER_JSON2 = """
 [
@@ -95,7 +86,8 @@ VALID_CLUSTER_JSON_INFO = """
     ],
     "createdTime": "2016-02-10T12:23:10Z",
     "defaultCooldown": 300,
-    "desiredCapacity": 4
+    "desiredCapacity": 4,
+    "minSize": 4
   },
   {
     "autoScalingGroupName": "loadtest-edx-edxapp-v059",
@@ -106,7 +98,8 @@ VALID_CLUSTER_JSON_INFO = """
     ],
     "createdTime": "2016-02-10T12:23:10Z",
     "defaultCooldown": 300,
-    "desiredCapacity": 4
+    "desiredCapacity": 4,
+    "minSize": 4
   }
 ]
 """
@@ -132,10 +125,16 @@ VALID_SINGLE_ASG_CLUSTER_INFO_JSON = """
 ASGS_FOR_EDXAPP_BEFORE = """
 [
   {
-    "autoScalingGroupName": "loadtest-edx-edxapp-v058"
+    "autoScalingGroupName": "loadtest-edx-edxapp-v058",
+    "desiredCapacity": 4,
+    "minSize": 4,
+    "maxSize": 4
   },
   {
-    "autoScalingGroupName": "loadtest-edx-edxapp-v059"
+    "autoScalingGroupName": "loadtest-edx-edxapp-v059",
+    "desiredCapacity": 4,
+    "minSize": 4,
+    "maxSize": 4
   }
 ]
 """
@@ -143,13 +142,22 @@ ASGS_FOR_EDXAPP_BEFORE = """
 ASGS_FOR_EDXAPP_AFTER = """
 [
   {
-    "autoScalingGroupName": "loadtest-edx-edxapp-v058"
+    "autoScalingGroupName": "loadtest-edx-edxapp-v058",
+    "desiredCapacity": 0,
+    "minSize": 0,
+    "maxSize": 0
   },
   {
-    "autoScalingGroupName": "loadtest-edx-edxapp-v059"
+    "autoScalingGroupName": "loadtest-edx-edxapp-v059",
+    "desiredCapacity": 4,
+    "minSize": 4,
+    "maxSize": 4
   },
   {
-    "autoScalingGroupName": "loadtest-edx-edxapp-v099"
+    "autoScalingGroupName": "loadtest-edx-edxapp-v099",
+    "desiredCapacity": 4,
+    "minSize": 4,
+    "maxSize": 4
   }
 ]
 """
@@ -157,17 +165,26 @@ ASGS_FOR_EDXAPP_AFTER = """
 ASGS_FOR_WORKER_BEFORE = """
 [
   {
-    "autoScalingGroupName": "loadtest-edx-worker-v034"
+    "autoScalingGroupName": "loadtest-edx-worker-v034",
+    maxSize: 1,
+    minSize: 1,
+    desiredCapacity: 1
   }
 ]
 """
 ASGS_FOR_WORKER_AFTER = """
 [
   {
-    "autoScalingGroupName": "loadtest-edx-worker-v034"
+    "autoScalingGroupName": "loadtest-edx-worker-v034",
+    "desiredCapacity": 0,
+    "minSize": 0,
+    "maxSize": 0
   },
   {
-    "autoScalingGroupName": "loadtest-edx-worker-v099"
+    "autoScalingGroupName": "loadtest-edx-worker-v099",
+    "desiredCapacity": 4,
+    "minSize": 4,
+    "maxSize": 4
   }
 ]
 """
@@ -182,7 +199,9 @@ DELETED_ASG_IN_PROGRESS = """
             "app_elb"
         ],
         "status": "deleted",
-        "launchingSuspended": false
+        "launchingSuspended": false,
+        "desiredCapacity": 4,
+        "minSize": 4
     }},
     "clusterName": "app_cluster"
 }}
@@ -195,7 +214,10 @@ DELETED_ASG_NOT_IN_PROGRESS = """
         "loadBalancerNames": [
             "app_elb"
         ],
-        "status": null
+        "status": null,
+        "desiredCapacity": 4,
+        "minSize": 4,
+        "launchingSuspended": true
     }},
     "clusterName": "app_cluster"
 }}
@@ -208,6 +230,8 @@ DISABLED_ASG = """
         "loadBalancerNames": [
             "app_elb"
         ],
+        "desiredCapacity": 0,
+        "minSize": 0,
         "status": null,
         "launchingSuspended": true
     }},
@@ -222,6 +246,8 @@ ENABLED_ASG = """
         "loadBalancerNames": [
             "app_elb"
         ],
+        "desiredCapacity": 4,
+        "minSize": 4,
         "status": null,
         "launchingSuspended": false
     }},
@@ -297,7 +323,9 @@ SAMPLE_ASG_INFO = """
     "loadBalancerNames":
     [
       "app_elb"
-    ]
+    ],
+    "desiredCapacity": 4,
+    "minSize": 4
   }
 }
 """
@@ -305,7 +333,9 @@ SAMPLE_ASG_INFO = """
 SAMPLE_WORKER_ASG_INFO = """
 {
   "group": {
-    "loadBalancerNames": []
+    "loadBalancerNames": [],
+    "desiredCapacity": 4,
+    "minSize": 4
   }
 }
 """
@@ -374,7 +404,7 @@ class TestAsgard(unittest.TestCase):
             content_type="application/json")
 
         relevant_asgs = []
-        self.assertRaises(BackendDataError, asgard.clusters_for_asgs, relevant_asgs)
+        self.assertRaises(BackendError, asgard.clusters_for_asgs, relevant_asgs)
 
     @httpretty.activate
     def test_asg_for_cluster(self):
@@ -387,7 +417,8 @@ class TestAsgard(unittest.TestCase):
             content_type="application/json")
 
         expected_asgs = ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059"]
-        self.assertEqual(expected_asgs, asgard.asgs_for_cluster(cluster))
+        returned_asgs = [asg['autoScalingGroupName'] for asg in asgard.asgs_for_cluster(cluster)]
+        self.assertEqual(expected_asgs, returned_asgs)
 
     @httpretty.activate
     def test_asg_for_cluster_bad_response(self):
@@ -409,7 +440,6 @@ class TestAsgard(unittest.TestCase):
 
     @httpretty.activate
     def test_asg_for_cluster_incorrect_json(self):
-        # The json is valid but not the structure we expected.
         cluster = "prod-edx-edxapp"
         url = asgard.CLUSTER_INFO_URL.format(cluster)
         httpretty.register_uri(
@@ -418,7 +448,7 @@ class TestAsgard(unittest.TestCase):
             body=BAD_CLUSTER_JSON1,
             content_type="application/json")
 
-        self.assertRaises(BackendDataError, asgard.asgs_for_cluster, cluster)
+        self.assertRaises(BackendError, asgard.asgs_for_cluster, cluster)
 
     @httpretty.activate
     def test_elbs_for_asg(self):
@@ -451,7 +481,7 @@ class TestAsgard(unittest.TestCase):
             body=BAD_CLUSTER_JSON1,
             content_type="application/json")
 
-        self.assertRaises(BackendDataError, asgard.elbs_for_asg, "test_asg")
+        self.assertRaises(BackendError, asgard.elbs_for_asg, "test_asg")
 
     def test_bad_asg_info_endpoint(self):
         self.assertRaises(ConnectionError, asgard.elbs_for_asg, "fake_asg")
@@ -568,8 +598,58 @@ class TestAsgard(unittest.TestCase):
         self.assertEqual(expected_asg, asgard.new_asg(cluster, ami_id))
 
     @httpretty.activate
-    def test_new_asg_failure(self):
-        task_url = "http://some.host/task/1234.json"
+    @data(
+        (  # task to deploy a cluster failed.
+            "http://some.host/task/1234.json",
+            302,
+            {"Location": "http://some.host/task/1234", "server": asgard.ASGARD_API_ENDPOINT},
+            "",
+            FAILED_SAMPLE_TASK,
+            200,
+            VALID_CLUSTER_JSON_INFO,
+            BackendError
+        ),
+        (  # Cluster not found after creation
+            "http://some.host/task/1234.json",
+            302,
+            {"Location": "http://some.host/task/1234", "server": asgard.ASGARD_API_ENDPOINT},
+            "",
+            FAILED_SAMPLE_TASK,
+            404,
+            VALID_CLUSTER_JSON_INFO,
+            BackendError
+        ),
+        (  # Task creation failed
+            "http://some.host/task/1234.json",
+            500,
+            {"Location": "http://some.host/task/1234", "server": asgard.ASGARD_API_ENDPOINT},
+            "",
+            FAILED_SAMPLE_TASK,
+            200,
+            VALID_CLUSTER_JSON_INFO,
+            BackendError
+        ),
+        (  # failed to create ASG
+            "http://some.host/task/1234.json",
+            404,
+            {"Location": "http://some.host/task/1234", "server": asgard.ASGARD_API_ENDPOINT},
+            "",
+            FAILED_SAMPLE_TASK,
+            200,
+            VALID_CLUSTER_JSON_INFO,
+            BackendError
+        ),
+    )
+    @unpack
+    def test_new_asg_failure(self,
+                             task_url,
+                             create_response_code,
+                             create_response_headers,
+                             create_response_body,
+                             task_response_body,
+                             cluster_response_code,
+                             cluster_response_body,
+                             expected_exception):
         cluster = "loadtest-edx-edxapp"
         ami_id = "ami-abc1234"
 
@@ -583,12 +663,7 @@ class TestAsgard(unittest.TestCase):
 
             self.assertEqual(expected_request_body, request.parsed_body)
             self.assertEqual(expected_querystring, request.querystring)
-            response_headers = {
-                "Location": task_url.strip(".json"),
-                "server": asgard.ASGARD_API_ENDPOINT
-            }
-            response_body = ""
-            return (302, response_headers, response_body)
+            return create_response_code, create_response_headers, create_response_body
 
         httpretty.register_uri(
             httpretty.POST,
@@ -596,20 +671,23 @@ class TestAsgard(unittest.TestCase):
             body=post_callback,
             Location=task_url)
 
+        # Mock 'Task' response
         httpretty.register_uri(
             httpretty.GET,
             task_url,
-            body=FAILED_SAMPLE_TASK,
+            body=task_response_body,
             content_type="application/json")
 
+        # Mock 'Cluster' response
         url = asgard.CLUSTER_INFO_URL.format(cluster)
         httpretty.register_uri(
             httpretty.GET,
             url,
-            body=VALID_CLUSTER_JSON_INFO,
+            status=cluster_response_code,
+            body=cluster_response_body,
             content_type="application/json")
 
-        self.assertRaises(BackendError, asgard.new_asg, cluster, ami_id)
+        self.assertRaises(expected_exception, asgard.new_asg, cluster, ami_id)
 
     @httpretty.activate
     def test_new_asg_404(self):
