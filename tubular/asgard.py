@@ -24,6 +24,7 @@ from tubular.exception import (
     ResourceDoesNotExistException,
     TimeoutException,
     ClusterDoesNotExistException,
+    ASGCountZeroException
 )
 from tubular.utils import WAIT_SLEEP_TIME, DISABLE_OLD_ASG_WAIT_TIME
 
@@ -123,7 +124,7 @@ def asgs_for_cluster(cluster):
         cluster(str): The name of the asgard cluster.
 
     Returns:
-        list: List of ASGs.
+        list(dict): List of ASGs.
     """
 
     LOG.debug("URL: {}".format(CLUSTER_INFO_URL.format(cluster)))
@@ -133,14 +134,12 @@ def asgs_for_cluster(cluster):
     LOG.debug("ASGs for Cluster: {}".format(response.text))
     asgs = _parse_json(url, response)
 
-    try:
-        asg_names = [asg['autoScalingGroupName'] for asg in asgs]
-    except (KeyError, TypeError):
+    if len(asgs) < 1:
         msg = "Expected a list of dicts with an 'autoScalingGroupName' attribute. " \
               "Got: {}".format(asgs)
         raise BackendDataError(msg)
 
-    return asg_names
+    return asgs
 
 
 def wait_for_task_completion(task_url, timeout):
@@ -177,6 +176,8 @@ def new_asg(cluster, ami_id):
     """
     Create a new ASG in the given asgard cluster using the given AMI.
 
+    Ensures that the new ASG has a min or desired instance count greater than 0.
+
     Arguments:
         cluster(str): Name of the cluster.
         ami_id(str): AWS AMI ID
@@ -187,6 +188,7 @@ def new_asg(cluster, ami_id):
     Raises:
         TimeoutException: When the task to bring up the new ASG times out.
         BackendError: When the task to bring up the new ASG fails.
+        ASGCountZeroException: When the new ASG brought online has 0 for it's min and desired counts
     """
     payload = {
         "name": cluster,
@@ -204,6 +206,10 @@ def new_asg(cluster, ami_id):
               "until older ASGs have been removed automatically or remove " \
               "old ASGs manually via Asgard."
         raise BackendError(msg.format(cluster))
+    elif response.status_code != 200:
+        # The requests library follows redirects. The 200 comes from the job status page
+        msg = "Error occured attempting to create new ASG for cluster {}.\nResponse: {}"
+        raise BackendError(msg.format(cluster, response.text))
 
     response = wait_for_task_completion(response.url, ASGARD_WAIT_TIMEOUT)
     if response['status'] == 'failed':
@@ -213,9 +219,12 @@ def new_asg(cluster, ami_id):
     # Potential Race condition if multiple people are making ASGs for the same cluster
     # Return the name of the newest asg
     newest_asg = asgs_for_cluster(cluster)[-1]
-    LOG.debug("New ASG({}) created in cluster({}).".format(newest_asg, cluster))
+    LOG.debug("New ASG({}) created in cluster({}).".format(newest_asg['autoScalingGroupName'], cluster))
 
-    return newest_asg
+    if newest_asg['desiredCapacity'] <= 0 or newest_asg['minSize'] <= 0:
+        raise ASGCountZeroException("")
+
+    return newest_asg['autoScalingGroupName']
 
 
 @retry()
