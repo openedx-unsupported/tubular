@@ -1314,6 +1314,60 @@ class TestAsgard(unittest.TestCase):
             expected_output
         )
 
+    def _setup_rollback_deleted(self):
+        """
+        Setup the scenario where an ASG deployment is rolled-back to a previous ASG.
+
+        Args:
+            not_in_service_deleted(bool): if set not_in_service_asgs will return a 404
+        """
+        # pylint: disable=attribute-defined-outside-init
+        self.test_ami_id = self._setup_for_deploy()
+
+        not_in_service_asgs = ["loadtest-edx-edxapp-v058"]
+        in_service_pre_rollback_asgs = ["loadtest-edx-edxapp-v059", "loadtest-edx-worker-v034"]
+        self.rollback_to_asgs = ["loadtest-edx-edxapp-v097", "loadtest-edx-worker-v098"]
+        in_service_post_rollback_asgs = ["loadtest-edx-edxapp-v099", "loadtest-edx-worker-v099"]
+
+        # Create the "rollback-to" ASGs.
+        for asg in self.rollback_to_asgs + not_in_service_asgs:
+            url = asgard.ASG_INFO_URL.format(asg)
+            httpretty.register_uri(
+                httpretty.GET,
+                url,
+                status=404,
+                body=BAD_CLUSTER_JSON1,
+                content_type="text/html")
+
+        self._mock_asgard_not_pending_delete(in_service_pre_rollback_asgs, body=ENABLED_ASG)
+
+        for asg in in_service_post_rollback_asgs:
+            url = asgard.ASG_INFO_URL.format(asg)
+            httpretty.register_uri(
+                httpretty.GET,
+                url,
+                responses=[
+                    # Start disabled and end enabled.
+                    httpretty.Response(body=DISABLED_ASG.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+                    httpretty.Response(body=DISABLED_ASG.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+                    httpretty.Response(body=ENABLED_ASG.format(asg),
+                                       content_type="application/json",
+                                       status=200),
+                ]
+            )
+
+        cluster = "app_cluster"
+        httpretty.register_uri(
+            httpretty.GET,
+            asgard.CLUSTER_INFO_URL.format(cluster),
+            body=VALID_CLUSTER_JSON_INFO,
+            content_type="application/json"
+        )
+
     def _setup_rollback(self):
         """
         Setup the scenario where an ASG deployment is rolled-back to a previous ASG.
@@ -1509,6 +1563,64 @@ class TestAsgard(unittest.TestCase):
         # Rollback and check output.
         self.assertEqual(
             asgard.rollback(rollback_input['current_asgs'], rollback_input['rollback_to_asgs'], self.test_ami_id),
+            expected_output
+        )
+
+    @httpretty.activate
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    @mock.patch('boto.ec2.autoscale.AutoScaleConnection.delete_tags', lambda *args: None)
+    def test_rollback_asg_does_not_exist(self):
+        self._setup_rollback_deleted()
+
+        tag_asg_for_deletion('loadtest-edx-edxapp-v097', -2000)
+        tag_asg_for_deletion('loadtest-edx-worker-v098', -2000)
+
+        rollback_input = {
+            'current_asgs':
+                {
+                    'loadtest-edx-edxapp':
+                        [
+                            'loadtest-edx-edxapp-v058',
+                            'loadtest-edx-edxapp-v059'
+                        ],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v034']
+                },
+            'rollback_to_asgs':
+                {
+                    'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v097'],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v098']
+                },
+        }
+        # Deletion tags are removed from 97/98 and they're used for the rollback.
+        expected_output = {
+            'ami_id': self.test_ami_id,
+            'current_asgs':
+                {
+                    'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v099'],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v099']
+                },
+            'disabled_asgs':
+                {
+                    'loadtest-edx-edxapp':
+                        [
+                            'loadtest-edx-edxapp-v058',
+                            'loadtest-edx-edxapp-v059'
+                        ],
+                    'loadtest-edx-worker': ['loadtest-edx-worker-v034']
+                },
+        }
+
+        # Rollback and check output.
+        rollback_output = asgard.rollback(
+            rollback_input['current_asgs'],
+            rollback_input['rollback_to_asgs'],
+            self.test_ami_id
+        )
+
+        self.assertEqual(
+            rollback_output,
             expected_output
         )
 

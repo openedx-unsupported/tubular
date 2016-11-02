@@ -406,6 +406,8 @@ def disable_asg(asg):
     Raises:
         TimeoutException: If the task to enable the ASG fails..
         BackendError: If asgard was unable to disable the ASG
+        ASGDoesNotExistException: If the ASG does not exist
+        CannotDisableActiveASG: if the current ASG is active
     """
     try:
         if is_asg_pending_delete(asg):
@@ -524,12 +526,17 @@ def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
     asgs_tagged_for_deletion = [asg.name for asg in ec2.get_asgs_pending_delete()]
     for asgs in rollback_to_clustered_asgs.values():
         for asg in asgs:
-            if asg in asgs_tagged_for_deletion:
-                # ASG is tagged for deletion. Remove the deletion tag.
-                ec2.remove_asg_deletion_tag(asg)
-            if is_asg_pending_delete(asg):
-                # Too late for rollback - this ASG is already pending delete.
-                LOG.info("Rollback ASG '{}' is pending delete. Aborting rollback to ASGs.".format(asg))
+            try:
+                if asg in asgs_tagged_for_deletion:
+                    # ASG is tagged for deletion. Remove the deletion tag.
+                    ec2.remove_asg_deletion_tag(asg)
+                if is_asg_pending_delete(asg):
+                    # Too late for rollback - this ASG is already pending delete.
+                    LOG.info("Rollback ASG '{}' is pending delete. Aborting rollback to ASGs.".format(asg))
+                    rollback_ready = False
+                    break
+            except ASGDoesNotExistException:
+                LOG.info("Rollback ASG '{}' has been removed. Aborting rollback to ASGs.".format(asg))
                 rollback_ready = False
                 break
 
@@ -649,14 +656,26 @@ def _red_black_deploy(
         Shifts ASG from disabled to enabled.
         """
         enable_asg(asg)
-        asgs_disabled[cluster].remove(asg)
-        asgs_enabled[cluster].append(asg)
+        _move_asg_from_disabled_to_enabled(cluster, asg)
 
     def _disable_cluster_asg(cluster, asg):
         """
         Shifts ASG from enabled to disabled.
         """
         disable_asg(asg)
+        _move_asg_from_enabled_to_disabled(cluster, asg)
+
+    def _move_asg_from_disabled_to_enabled(cluster, asg):
+        """
+        Shifts ASG from disabled to enabled.
+        """
+        asgs_enabled[cluster].append(asg)
+        asgs_disabled[cluster].remove(asg)
+
+    def _move_asg_from_enabled_to_disabled(cluster, asg):
+        """
+        Shifts ASG from enabled to disabled.
+        """
         asgs_enabled[cluster].remove(asg)
         asgs_disabled[cluster].append(asg)
 
@@ -727,11 +746,23 @@ def _red_black_deploy(
 
     for cluster, asgs in baseline_cluster_asgs.iteritems():
         for asg in asgs:
-            if is_asg_enabled(asg):
-                try:
-                    _disable_cluster_asg(cluster, asg)
-                except:  # pylint: disable=bare-except
-                    LOG.warning("Unable to disable ASG '{}' after enabling new ASGs.".format(asg))
+            try:
+                if is_asg_enabled(asg):
+                    try:
+                        _disable_cluster_asg(cluster, asg)
+                    except:  # pylint: disable=bare-except
+                        LOG.warning("Unable to disable ASG '{}' after enabling new ASGs.".format(asg))
+                elif asg in asgs_enabled[cluster]:
+                    # If the asg is not enabled, but we have it in the enabled list remove it. This may occur by
+                    # pulling from 2 different sources of truth at different intervals. The asg could have been disabled
+                    # in the intervening time.
+                    _move_asg_from_enabled_to_disabled(cluster, asg)
+            except ASGDoesNotExistException:
+                # This operation should not fail if one of the baseline ASGs was removed during the deployment process
+                LOG.info("ASG {asg} in cluster {cluster} no longer exists, removing it from the enabled cluster list"
+                         .format(asg=asg, cluster=cluster))
+                _move_asg_from_enabled_to_disabled(cluster, asg)
+
             try:
                 ec2.tag_asg_for_deletion(asg)
             except ASGDoesNotExistException:
