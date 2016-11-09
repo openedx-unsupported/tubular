@@ -222,7 +222,10 @@ def new_asg(cluster, ami_id):
     LOG.debug("New ASG({}) created in cluster({}).".format(newest_asg['autoScalingGroupName'], cluster))
 
     if newest_asg['desiredCapacity'] <= 0 or newest_asg['minSize'] <= 0:
-        raise ASGCountZeroException("")
+        raise ASGCountZeroException(
+            "New ASG {asg_name} created with 0 instances, aborting. Please check Asgard for more information"
+            .format(asg_name=newest_asg['autoScalingGroupName'])
+        )
 
     return newest_asg['autoScalingGroupName']
 
