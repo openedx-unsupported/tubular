@@ -30,7 +30,8 @@ from tubular.utils import WAIT_SLEEP_TIME, DISABLE_OLD_ASG_WAIT_TIME
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091/us-east-1")
 ASGARD_API_TOKEN = "asgardApiToken={}".format(os.environ.get("ASGARD_API_TOKEN", "dummy-token"))
-ASGARD_WAIT_TIMEOUT = int(os.environ.get("ASGARD_WAIT_TIMEOUT", 600))
+# Asgard's ASG creation times out at 25 minutes - set tubular's timeout to 26 minutes (1560 seconds).
+ASGARD_NEW_ASG_CREATION_TIMEOUT = int(os.environ.get("ASGARD_NEW_ASG_CREATION_TIMEOUT", 1560))
 ASGARD_ELB_HEALTH_TIMEOUT = int(os.environ.get("ASGARD_ELB_HEALTH_TIMEOUT", 600))
 REQUESTS_TIMEOUT = float(os.environ.get("REQUESTS_TIMEOUT", 10))
 
@@ -211,7 +212,7 @@ def new_asg(cluster, ami_id):
         msg = "Error occured attempting to create new ASG for cluster {}.\nResponse: {}"
         raise BackendError(msg.format(cluster, response.text))
 
-    response = wait_for_task_completion(response.url, ASGARD_WAIT_TIMEOUT)
+    response = wait_for_task_completion(response.url, ASGARD_NEW_ASG_CREATION_TIMEOUT)
     if response['status'] == 'failed':
         msg = "Failure during new ASG creation. Task Log: \n{}".format(response['log'])
         raise BackendError(msg)
