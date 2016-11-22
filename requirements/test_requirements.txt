@@ -6,5 +6,6 @@ pep8==1.7.0
 pylint
 caniusepython3
 edx_lint
+responses==0.5.0
 
 -r ../requirements.txt
