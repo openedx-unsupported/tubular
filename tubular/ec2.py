@@ -13,6 +13,7 @@ from boto.ec2.autoscale.tag import Tag
 from tubular.utils import EDP, WAIT_SLEEP_TIME
 from tubular.exception import (
     ImageNotFoundException,
+    MultipleImagesFoundException,
     MissingTagException,
     TimeoutException,
 )
@@ -49,9 +50,10 @@ def get_all_load_balancers(names=None):
     Get all the ELBs
 
     Arguments:
-        names (list) - A list of ELB names as strings
+        names (list): A list of ELB names as strings
+
     Returns:
-        a list of  of :class:`boto.ec2.elb.loadbalancer.LoadBalancer`
+        a list of :class:`boto.ec2.elb.loadbalancer.LoadBalancer`
     """
     elb_conn = boto.connect_elb()
     fetched_elbs = elb_conn.get_all_load_balancers(names)
@@ -63,6 +65,72 @@ def get_all_load_balancers(names=None):
         else:
             break
     return total_elbs
+
+
+def _instance_elbs(instance_id, elbs):
+    """
+    Given an EC2 instance and ELBs, return the ELB(s) in which it is active.
+
+    Arguments:
+        instance_id (:obj:`boto.ec2.instance.Reservation`): Instance used to find out which ELB it is active in.
+        elbs (:obj:`list` of :obj:`boto.ec2.elb.loadbalancer.LoadBalancer`): List of ELBs to us in checking.
+    Returns:
+        :obj:`list` of :obj:`boto.ec2.elb.loadbalancer.LoadBalancer`:
+                One or more ELBs used by the passed-in instance -or- None.
+    """
+    instance_elbs = []
+    for elb in elbs:
+        elb_instance_ids = [inst.id for inst in elb.instances]
+        if instance_id in elb_instance_ids:
+            instance_elbs.append(elb)
+    return instance_elbs
+
+
+def active_ami_for_edp(env, dep, play):
+    """
+    Given an environment, deployment, and play, find the base AMI id used for the active deployment.
+
+    Arguments:
+        env (str): Environment to check (stage, prod, loadtest, etc.)
+        dep (str): Deployment to check (edx, edge, mckinsey, etc.)
+        play (str): Play to check (edxapp, discovery, ecommerce, etc.)
+    Returns:
+        str: Base AMI id of current active deployment for the EDP.
+    Raises:
+        MultipleImagesFoundException: If multiple AMI IDs are found within the EDP's ELB.
+        ImageNotFoundException: If no AMI IDs are found for the EDP.
+    """
+    LOG.info("Looking up AMI for {}-{}-{}...".format(env, dep, play))
+    ec2_conn = boto.connect_ec2()
+    all_elbs = get_all_load_balancers()
+    LOG.info("Found {} load balancers.".format(len(all_elbs)))
+
+    edp_filter = {
+        "tag:environment": env,
+        "tag:deployment": dep,
+        "tag:play": play,
+    }
+    reservations = ec2_conn.get_all_reservations(filters=edp_filter)
+    LOG.info("{} reservations found for EDP {}-{}-{}".format(len(reservations), env, dep, play))
+    amis = set()
+    for reservation in reservations:
+        for instance in reservation.instances:
+            elbs = _instance_elbs(instance.id, all_elbs)
+            if instance.state == 'running' and len(elbs) > 0:
+                amis.add(instance.image_id)
+                LOG.info("AMI found for {}-{}-{}: {}".format(env, dep, play, instance.image_id))
+            else:
+                LOG.info("Instance {} state: {} - elbs in: {}".format(instance.id, instance.state, len(elbs)))
+
+    if len(amis) > 1:
+        msg = "Multiple AMIs found for {}-{}-{}, should have only one.".format(env, dep, play)
+        raise MultipleImagesFoundException(msg)
+
+    if len(amis) == 0:
+        msg = "No AMIs found for {}-{}-{}.".format(env, dep, play)
+        raise ImageNotFoundException(msg)
+
+    return amis.pop()
 
 
 def edp_for_ami(ami_id):

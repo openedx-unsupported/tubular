@@ -12,6 +12,10 @@ class ImageNotFoundException(Exception):
     pass
 
 
+class MultipleImagesFoundException(Exception):
+    pass
+
+
 class MissingTagException(Exception):
     pass
 
