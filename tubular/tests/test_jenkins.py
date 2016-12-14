@@ -3,6 +3,7 @@ Tests for triggering a Jenkins job.
 """
 from __future__ import unicode_literals
 
+import json
 import re
 import unittest
 
@@ -17,6 +18,32 @@ USER_ID = u'foo'
 USER_TOKEN = u'12345678901234567890123456789012'
 JOB = u'test-job'
 TOKEN = u'asdf'
+BUILD_NUM = 456
+JOBS_URL = u'{}/job/{}/'.format(BASE_URL, JOB)
+JOB_URL = u'{}{}'.format(JOBS_URL, BUILD_NUM)
+MOCK_BUILD = {u'number': BUILD_NUM, u'url': JOB_URL}
+MOCK_JENKINS_DATA = {'jobs': [{'name': JOB, 'url': JOBS_URL, 'color': 'blue'}]}
+MOCK_BUILDS_DATA = {
+    'actions': [
+        {'parameterDefinitions': [
+            {'defaultParameterValue': {'value': '0'}, 'name': 'EXIT_CODE', 'type': 'StringParameterDefinition'}
+        ]}
+    ],
+    'builds': [MOCK_BUILD],
+    'lastBuild': MOCK_BUILD
+}
+MOCK_QUEUE_DATA = {
+    'id': 123,
+    'task': {'name': JOB, 'url': JOBS_URL},
+    'executable': {'number': BUILD_NUM, 'url': JOB_URL}
+}
+MOCK_BUILD_DATA = {
+    'actions': [{}],
+    'fullDisplayName': 'foo',
+    'number': BUILD_NUM,
+    'result': 'SUCCESS',
+    'url': JOB_URL,
+}
 
 
 @ddt.ddt
@@ -40,50 +67,53 @@ class TestJenkinsAPI(unittest.TestCase):
             jenkins.trigger_build(BASE_URL, USER_ID, USER_TOKEN, JOB, TOKEN, None, ())
 
     @ddt.data(
-        (None, (), None),
-        ('my cause', (), [u'cause=my+cause']),
-        (None, ((u'FOO', u'bar'),), [u'FOO=bar']),
-        (None, ((u'FOO', u'bar'), (u'BAZ', u'biz')), [u'FOO=bar', u'BAZ=biz']),
-        ('my cause', ((u'FOO', u'bar'),), [u'cause=my+cause', u'FOO=bar']),
+        (None, ()),
+        ('my cause', ()),
+        (None, ((u'FOO', u'bar'),)),
+        (None, ((u'FOO', u'bar'), (u'BAZ', u'biz'))),
+        ('my cause', ((u'FOO', u'bar'),)),
     )
     @ddt.unpack
     @httpretty.activate
-    def test_success(self, cause, param, expected_query):
-        """
+    def test_success(self, cause, param):
+        u"""
         Test triggering a jenkins job
         """
+        def request_callback(_request, uri, headers):
+            u""" What to return from the mock. """
+            # This is the initial call that jenkinsapi uses to
+            # establish connectivity to Jenkins
+            # https://test-jenkins/api/python?tree=jobs[name,color,url]
+            code = 200
+            if uri.startswith(u'https://test-jenkins/api/python'):
+                response = json.dumps(MOCK_JENKINS_DATA)
+            elif uri.startswith(u'https://test-jenkins/job/test-job/456'):
+                response = json.dumps(MOCK_BUILD_DATA)
+            elif uri.startswith(u'https://test-jenkins/job/test-job'):
+                response = json.dumps(MOCK_BUILDS_DATA)
+            elif uri.startswith(u'https://test-jenkins/queue/item/123/api/python'):
+                response = json.dumps(MOCK_QUEUE_DATA)
+            else:
+                # We should never get here, unless the jenkinsapi implementation changes.
+                # This response will catch that condition.
+                code = 500
+                response = None
+            return (code, headers, response)
+
         # Mock all network interactions
         httpretty.HTTPretty.allow_net_connect = False
         httpretty.register_uri(
             httpretty.GET,
-            re.compile(".*"),
+            re.compile('.*'),
+            body=request_callback
+        )
+        httpretty.register_uri(
+            httpretty.POST,
+            '{}/job/test-job/buildWithParameters'.format(BASE_URL),
             status=201,  # Jenkins responds with a 201 Created on success
+            adding_headers={'location': '{}/queue/item/123'.format(BASE_URL)}
         )
 
-        if param:
-            expected_path = u'/job/{}/buildWithParameters'.format(JOB)
-        else:
-            expected_path = u'/job/{}/build'.format(JOB)
-
         # Make the call to the Jenkins API
-        response = jenkins.trigger_build(BASE_URL, USER_ID, USER_TOKEN, JOB, TOKEN, cause, param)
-
-        # We will check that the path and the query params were added correctly
-        path_url = response.request.path_url
-        url_parts = path_url.split('?')
-        path = url_parts[0]
-        query_string = url_parts[1]
-
-        # Verify the URL path
-        self.assertEqual(path, expected_path)
-
-        # The token should always be passed to the job, as it is required
-        actual_params = query_string.split('&')
-        token_param = u'token={}'.format(TOKEN)
-        self.assertIn(token_param, actual_params)
-        actual_params.remove(token_param)
-
-        # If you passed in a cause or some params, verify those
-        if expected_query:
-            for query in expected_query:
-                self.assertIn(query, actual_params)
+        result = jenkins.trigger_build(BASE_URL, USER_ID, USER_TOKEN, JOB, TOKEN, cause, param)
+        self.assertEqual(result, 'SUCCESS')
