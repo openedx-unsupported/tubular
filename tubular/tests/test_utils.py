@@ -24,7 +24,14 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         boto.ec2.autoscale.group.AutoScalingGroup
     """
 
-    tag_list = [Tag(key=k, value=v) for k, v in tags.iteritems()]
+    tag_list = [
+        Tag(
+            key=k,
+            value=v,
+            resource_id=asg_name,
+            propagate_at_launch=True
+        ) for k, v in tags.iteritems()
+    ]
 
     if elbs is None:
         elbs = []
@@ -55,6 +62,17 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         tags=tag_list,
     )
     conn.create_auto_scaling_group(group)
+
+    # Each ASG tag that has 'propagate_at_launch' set to True is *supposed* to be set on the instances.
+    # However, it seems that moto (as of 0.4.30) does not properly set the tags on the instances created by the ASG.
+    # So set the tags on the ASG instances manually instead.
+    ec2_conn = boto.connect_ec2()
+    for asg in conn.get_all_groups():
+        if asg.name == asg_name:
+            asg_instance_ids = [instance.instance_id for instance in asg.instances]
+            for instance_id in asg_instance_ids:
+                ec2_conn.create_tags(instance_id, tags)
+
     return group
 
 

@@ -13,7 +13,12 @@ from moto.ec2.utils import random_ami_id
 import boto
 import tubular.ec2 as ec2
 from tubular.tests.test_utils import create_asg_with_tags, create_elb, clone_elb_instances_with_state
-from tubular.exception import ImageNotFoundException, TimeoutException, MissingTagException
+from tubular.exception import (
+    ImageNotFoundException,
+    TimeoutException,
+    MissingTagException,
+    MultipleImagesFoundException
+)
 from tubular.utils import EDP
 
 
@@ -73,6 +78,65 @@ class TestEC2(unittest.TestCase):
         self.assertEqual(False, ec2.is_stage_ami(self._make_fake_ami(environment='prod')))
         self.assertEqual(False, ec2.is_stage_ami(self._make_fake_ami(deployment='stage', play='stage')))
 
+    @mock_elb
+    @mock_ec2
+    def test_ami_for_edp_missing_edp(self):
+        # Non-existent EDP
+        with self.assertRaises(ImageNotFoundException):
+            ec2.active_ami_for_edp('One', 'Two', 'Three')
+
+    @mock_autoscaling
+    @mock_elb
+    @mock_ec2
+    def test_ami_for_edp_success(self):
+        fake_ami_id = self._make_fake_ami()
+        fake_elb_name = "healthy-lb-1"
+        fake_elb = create_elb(fake_elb_name)
+        fake_asg_name = "fully_tagged_asg"
+        fake_asg_tags = {
+            "environment": "foo",
+            "deployment": "bar",
+            "play": "baz"
+        }
+        create_asg_with_tags(
+            fake_asg_name,
+            fake_asg_tags,
+            ami_id=fake_ami_id,
+            elbs=[fake_elb]
+        )
+        self.assertEqual(ec2.active_ami_for_edp('foo', 'bar', 'baz'), fake_ami_id)
+
+    @unittest.skip("Test always fails due to not successfuly creating two different AMI IDs in single ELB.")
+    @mock_autoscaling
+    @mock_elb
+    @mock_ec2
+    def test_ami_for_edp_multiple_amis(self):
+        fake_ami_id1 = self._make_fake_ami()
+        fake_ami_id2 = self._make_fake_ami()
+        fake_elb_name = "healthy-lb-1"
+        fake_elb = create_elb(fake_elb_name)
+        fake_asg_name1 = "fully_tagged_asg1"
+        fake_asg_name2 = "fully_tagged_asg2"
+        fake_asg_tags = {
+            "environment": "foo",
+            "deployment": "bar",
+            "play": "baz"
+        }
+        create_asg_with_tags(
+            fake_asg_name1,
+            fake_asg_tags,
+            ami_id=fake_ami_id1,
+            elbs=[fake_elb]
+        )
+        create_asg_with_tags(
+            fake_asg_name2,
+            fake_asg_tags,
+            ami_id=fake_ami_id2,
+            elbs=[fake_elb]
+        )
+        with self.assertRaises(MultipleImagesFoundException):
+            ec2.active_ami_for_edp('foo', 'bar', 'baz')
+
     @mock_ec2
     def test_edp_for_ami_bad_id(self):
         # Bad AMI Id
@@ -97,6 +161,7 @@ class TestEC2(unittest.TestCase):
         self.assertEqual(expected_edp, actual_edp)
 
     @mock_autoscaling
+    @mock_ec2
     @ddt.file_data("test_asgs_for_edp_data.json")
     def test_asgs_for_edp(self, params):
         asgs, expected_returned_count, expected_asg_names_list = params
@@ -121,6 +186,7 @@ class TestEC2(unittest.TestCase):
     )
     @ddt.unpack
     @mock_autoscaling
+    @mock_ec2
     def test_get_all_autoscale_groups(self, asg_count, expected_result_count, name_filter):
         """
         While I have attempted to test for pagination the moto library does not seem to support this and returns
