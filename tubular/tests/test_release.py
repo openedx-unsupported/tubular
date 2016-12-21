@@ -118,7 +118,7 @@ class GitHubApiTestCase(TestCase):
 
     @ddt.data(
         ('blah-candidate', 'release', 'test', 'test_pr'),
-        ('catnip', 'release', 'My meowsome PR', 'this PR has lots of catnap inside, go crazy!'),
+        ('catnip', 'release', 'My meowsome PR', 'this PR has lots of catnip inside, go crazy!'),
     )
     @ddt.unpack
     def test_create_pull_request(self, head, base, title, body):

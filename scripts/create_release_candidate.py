@@ -36,16 +36,16 @@ EXPECTED_RELEASE_DATE = GitRelease.default_expected_release_date()
 @click.command()
 @click.option(
     '--org',
-    help='The github repository URL',
+    help='Org from the GitHub repository URL of https://github.com/<org>/<repo>',
     default='edx'
 )
 @click.option(
     '--repo',
-    help='name of the repository'
+    help='Repo name from the GitHub repository URL of https://github.com/<org>/<repo>'
 )
 @click.option(
     '--source_branch',
-    help='the source branch who from which to create the target branch',
+    help='Source branch whose HEAD is used to create the target branch',
     default='master'
 )
 @click.option(
@@ -66,6 +66,7 @@ EXPECTED_RELEASE_DATE = GitRelease.default_expected_release_date()
         next upcoming Tuesday, which is currently {date}.
         '''.format(date=EXPECTED_RELEASE_DATE.date().isoformat()),
     callback=valid_date,
+    envvar='RELEASE_DATE',
     default=EXPECTED_RELEASE_DATE.date().isoformat()
 )
 @click.option(
@@ -89,7 +90,7 @@ EXPECTED_RELEASE_DATE = GitRelease.default_expected_release_date()
 )
 @click.option(
     '--output_file',
-    help='File to write the output of the job',
+    help="File in which to write the script's YAML output",
     default='target/pull_request.yml'
 )
 def create_release_candidate(org,
