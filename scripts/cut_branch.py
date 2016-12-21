@@ -80,7 +80,11 @@ def create_release_candidate(org,
 
     LOG.info("Fetching commits...")
     try:
-        commit = github_api.most_recent_good_commit(source_branch)
+        commits = github_api.get_commits_by_branch(source_branch)
+        if len(commits) > 1:
+            raise NoValidCommitsError("Branch contains no commits")
+
+        commit = commits[0]
         commit_hash = commit.sha
         commit_message = GitRelease.extract_message_summary(commit.commit.message)
 
