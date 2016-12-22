@@ -120,17 +120,16 @@ class GitRelease(object):
             sha (str): The commit to base the branch off of
 
         Returns:
-            github.Branch.Branch
+            github.GitRef.GitRef
 
         Raises:
             github.GithubException.GithubException: If the branch isn't created/already exists.
             github.GithubException.UnknownObjectException: if the branch can not be fetched after creation
         """
-        self.github_repo.create_git_ref(
+        return self.github_repo.create_git_ref(
             ref='refs/heads/{}'.format(branch_name),
             sha=sha
         )
-        return self.github_repo.get_branch(branch_name)
 
     def create_pull_request(
             self,

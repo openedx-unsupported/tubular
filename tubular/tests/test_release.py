@@ -114,7 +114,6 @@ class GitHubApiTestCase(TestCase):
         self.api.create_branch(branch_name, sha)
 
         create_git_ref_mock.assert_called_with(ref='refs/heads/{}'.format(branch_name), sha=sha)
-        self.repo_mock.get_branch.assert_called_with(branch_name)
 
     @ddt.data(
         ('blah-candidate', 'release', 'test', 'test_pr'),
