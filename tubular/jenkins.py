@@ -101,12 +101,15 @@ def trigger_build(base_url, user_name, user_token, job_name, job_token, job_caus
     # This will start the job and will return a QueueItem object which can be used to get build results
     job = jenkins[job_name]
     queue_item = job.invoke(securitytoken=job_token, build_params=request_params, cause=job_cause)
-    LOG.info(queue_item)
+    LOG.info(u'Added item to jenkins. Server: {} Job: {} '.format(
+        jenkins.base_server_url(), queue_item
+    ))
 
     # Block this script until we are through the queue and the job has begun to build.
     queue_item.block_until_building()
     build = queue_item.get_build()
-    LOG.info(build)
+    LOG.info(u'Created build {}'.format(build))
+    LOG.info(u'See {}'.format(build.baseurl))
 
     # Now block until you get a result back from the build.
     poll_build_for_result(build)

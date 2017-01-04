@@ -3,8 +3,10 @@ Command-line script to trigger a jenkins job
 """
 from __future__ import unicode_literals
 
-import sys
+import logging
 from os import path
+import sys
+
 import click
 
 # Add top-level module path to sys.path before importing tubular code.
@@ -67,4 +69,7 @@ def trigger(url, user_name, user_token, job, token, cause, param):
     jenkins.trigger_build(url, user_name, user_token, job, token, cause, param)
 
 if __name__ == "__main__":
+    # Configure logging so that the tubular module methods will
+    # output to stdout of the console that called this script.
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
     trigger()  # pylint: disable=no-value-for-parameter
