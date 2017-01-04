@@ -25,35 +25,37 @@ from tubular import jenkins  # pylint: disable=wrong-import-position
     "--user_name",
     help="The Jenkins username for triggering the job.",
     type=str,
-    required=True
+    required=True,
 )
 @click.option(
     "--user_token",
     help="API token for the user. Available at {url}/user/{user_name)/configure",
     type=str,
-    required=True
+    required=True,
+    envvar='JENKINS_USER_TOKEN'
 )
 @click.option(
     "--job",
     help="The name of the jenkins job. E.g. test-project",
     type=str,
-    required=True
+    required=True,
 )
 @click.option(
     "--token",
     help="The authorization token for the job. Must match that configured in the job definition.",
     type=str,
-    required=True
+    required=True,
+    envvar='JENKINS_JOB_TOKEN'
 )
 @click.option(
     "--cause",
     help="Text that will be included in the recorded build cause.",
     type=str,
-    required=False
+    required=False,
 )
 @click.option(
     '--param',
-    help='Key/value pairs to pass to the job as parameters. E.g. --param FOO bar --param BAZ biz',
+    help=u'Key/value pairs to pass to the job as parameters. E.g. --param FOO bar --param BAZ biz',
     multiple=True,
     required=False,
     type=(str, str)
