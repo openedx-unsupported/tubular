@@ -15,10 +15,19 @@ from gocd_api_utils import GoCDApiUtils  # pylint: disable=relative-import
     required=True,
 )
 @click.option(
+    '--org',
+    help='Org from the GitHub repository URL of https://github.com/<org>/<repo>',
+    default='edx'
+)
+@click.option(
     '--repo',
-    default='edx/dummy-webapp',
-    help="GitHub repository - in the form 'org/repo'.",
-    required=True,
+    help='Repo name from the GitHub repository URL of https://github.com/<org>/<repo>',
+    required=True
+)
+@click.option(
+    '--token',
+    envvar='GIT_TOKEN',
+    help='The github access token, see https://help.github.com/articles/creating-an-access-token-for-command-line-use/'
 )
 @click.option(
     '--pr_id',
@@ -27,11 +36,11 @@ from gocd_api_utils import GoCDApiUtils  # pylint: disable=relative-import
     type=int,
     required=True,
 )
-def cli(pipeline_name, repo, pr_id):
+def cli(pipeline_name, org, repo, token, pr_id):
     """
     Trigger a GoCD pipeline using the specified GitHub repo/PR/branch.
     """
-    success = GoCDApiUtils().trigger_pipeline(pipeline_name, repo, pr_id)
+    success = GoCDApiUtils().trigger_pipeline(pipeline_name, org, repo, token, pr_id)
     if success:
         print "Schedule of pipeline {} for repo {} and PR {}: success.".format(pipeline_name, repo, pr_id)
     # An exit code of 0 means success and non-zero means failure.
