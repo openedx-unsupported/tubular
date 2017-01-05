@@ -196,7 +196,7 @@ def backup_database(env, username, password):
     return check_state(response_json["id"], username, password)
 
 
-@retry(attempts=10, delay_seconds=10, max_time_seconds=100)
+@retry(attempts=10, delay_seconds=10, max_time_seconds=300)
 def check_state(task_id, username, password):
     """
     Checks the state of the response to verify it is "done"
