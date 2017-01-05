@@ -13,7 +13,6 @@ import yaml
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.release import GitRelease, NoValidCommitsError  # pylint: disable=wrong-import-position
-from github.GithubException import GithubException  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -100,14 +99,14 @@ def create_release_candidate(org,
     )
     try:
         github_api.delete_branch(target_branch)
-    except GithubException:
+    except Exception:  # pylint: disable=broad-except
         LOG.error(
             "Unable to delete branch {branch_name}. ".format(branch_name=target_branch)
         )
 
     try:
         github_api.create_branch(target_branch, commit_hash)
-    except GithubException:
+    except Exception:  # pylint: disable=broad-except
         LOG.error("Unable to create branch {branch_name}. Aborting"
                   .format(branch_name=target_branch))
         raise
