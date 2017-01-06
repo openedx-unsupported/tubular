@@ -16,3 +16,5 @@ Scripts for integrating pipelines with Asgard and ec2 to facilitate Continuous d
 | RETRY_DELAY_SECONDS  | 5                               | How long in seconds to wait between retries to asgard                                         |
 | RETRY_MAX_TIME_SECONDS | None                          | How long in seconds to keep retrying asgard before giving up.                                 |
 | ASGARD_ELB_HEALTH_TIMEOUT | 600                        | How long in seconds to wait for an instanced to become haelthy in an ELB.                     |
+| SHA_LENGTH           | 10                              | Length of the commit SHA to use when querying for a PR by commit.                             |
+| BATCH_SIZE           | 18                              | Number of commits to batch together when querying a PR by commit.                             |
