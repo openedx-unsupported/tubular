@@ -69,8 +69,7 @@ class GitHubAPI(object):
             github.GithubException.GithubException: If the response fails.
             github.GithubException.UnknownObjectException: If the branch does not exist
         """
-        pull_request = self.github_repo.get_pull(pr_number)
-        return pull_request.head.sha
+        return self.get_pull_request(pr_number).head.sha
 
     def check_pull_request_test_status(self, pr_number):
         """
@@ -104,7 +103,7 @@ class GitHubAPI(object):
             github.GithubException.GithubException: If the response fails.
             github.GithubException.UnknownObjectException: If the branch does not exist
         """
-        pull_request = self.github_repo.get_pull(pr_number)
+        pull_request = self.get_pull_request(pr_number)
         repo_branch_name = '{}:{}'.format(self.org, branch_name)
         return pull_request.base.label == repo_branch_name
 
@@ -210,6 +209,36 @@ class GitHubAPI(object):
             head=head,
             base=base
         )
+
+    def get_pull_request(self, pr_number):
+        """
+        Given a PR number, return the PR object.
+
+        Arguments:
+            pr_number (int): Number of PR to get.
+
+        Returns:
+            github.PullRequest.PullRequest
+
+        Raises:
+            github.GithubException.GithubException: If the response fails.
+            github.GithubException.UnknownObjectException: If the PR ID does not exist
+        """
+        return self.github_repo.get_pull(pr_number)
+
+    def merge_pull_request(self, pr_number):
+        """
+        Given a PR number, merge the pull request (if possible).
+
+        Arguments:
+            pr_number (int): Number of PR to merge.
+
+        Raises:
+            github.GithubException.GithubException: If the PR merge fails.
+            github.GithubException.UnknownObjectException: If the PR ID does not exist.
+        """
+        pull_request = self.get_pull_request(pr_number)
+        pull_request.merge()
 
     def is_commit_successful(self, sha):
         """
