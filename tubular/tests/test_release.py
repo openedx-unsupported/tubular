@@ -4,6 +4,7 @@ Tests for tubular.release.GitRelease
 from __future__ import unicode_literals
 
 from datetime import datetime, timedelta
+from hashlib import sha1
 from unittest import TestCase
 
 import ddt
@@ -11,16 +12,30 @@ from github import GithubException, Github
 from github import UnknownObjectException
 from github.Branch import Branch
 from github.Commit import Commit
+from github.Comparison import Comparison
 from github.CommitCombinedStatus import CommitCombinedStatus
 from github.GitCommit import GitCommit
 from github.GitRef import GitRef
+from github.Issue import Issue
 from github.NamedUser import NamedUser
 from github.Organization import Organization
+from github.PullRequest import PullRequest
 from github.Repository import Repository
 from mock import patch, Mock
 
 from tubular import release
 from tubular.release import NoValidCommitsError, GitRelease
+
+
+# SHA1 is hash function designed to be difficult to reverse.
+# This dictionary will help us map SHAs back to the hashed values.
+SHA_MAP = {sha1(str(i)).hexdigest(): i for i in range(37)}
+# These will be used as test data to feed test methods below which
+# require SHAs.
+SHAS = list(SHA_MAP.keys())
+# This dictionary is used to convert trimmed SHAs back into the
+# originally hashed values.
+TRIMMED_SHA_MAP = {sha[:10]: i for sha, i in SHA_MAP.items()}
 
 
 @ddt.ddt
@@ -185,6 +200,48 @@ class GitHubApiTestCase(TestCase):
 
         self.api.is_commit_successful = Mock(return_value=False)
         self.assertRaises(NoValidCommitsError, self.api.most_recent_good_commit, 'release-candidate')
+
+    @ddt.data(
+        # 1 unique SHA should result in 1 search query and 1 PR.
+        (SHAS[:1], 1, 1),
+        # 18 unique SHAs should result in 1 search query and 18 PRs.
+        (SHAS[:18], 1, 18),
+        # 36 unique SHAs should result in 2 search queries and 36 PRs.
+        (SHAS[:36], 2, 36),
+        # 37 unique SHAs should result in 3 search queries and 37 PRs.
+        (SHAS[:37], 3, 37),
+        # 20 unique SHAs, each appearing twice, should result in 3 search queries and 20 PRs.
+        (SHAS[:20] * 2, 3, 20),
+    )
+    @ddt.unpack
+    @patch('github.Github.search_issues')
+    def test_get_pr_range(self, shas, expected_search_count, expected_pull_count, mock_search_issues):
+        commits = [Mock(spec=Commit, sha=sha) for sha in shas]
+        self.repo_mock.compare.return_value = Mock(spec=Comparison, commits=commits)
+
+        def search_issues_side_effect(shas, **kwargs):  # pylint: disable=unused-argument
+            """
+            Stub implementation of GitHub issue search.
+            """
+            return [Mock(spec=Issue, number=TRIMMED_SHA_MAP[sha]) for sha in shas.split()]
+
+        mock_search_issues.side_effect = search_issues_side_effect
+
+        self.repo_mock.get_pull = lambda number: Mock(spec=PullRequest, number=number)
+
+        start_sha, end_sha = 'abc', '123'
+        pulls = self.api.get_pr_range(start_sha, end_sha)
+
+        self.repo_mock.compare.assert_called_with(start_sha, end_sha)
+
+        self.assertEqual(mock_search_issues.call_count, expected_search_count)
+        for call_args in mock_search_issues.call_args_list:
+            # Verify that the batched SHAs have been trimmed.
+            self.assertLess(len(call_args[0]), 200)
+
+        self.assertEqual(len(pulls), expected_pull_count)
+        for pull in pulls:
+            self.assertIsInstance(pull, PullRequest)
 
 
 @ddt.ddt
