@@ -28,24 +28,31 @@ from tubular.github_api import GitHubAPI  # pylint: disable=wrong-import-positio
     help=u'The github access token, see https://help.github.com/articles/creating-an-access-token-for-command-line-use/'
 )
 @click.option(
-    u'--pr_number', u'-p',
+    u'--pr_number',
     default=None,
     help=u'Pull request number to check.',
     type=int,
 )
 @click.option(
-    u'--commit_hash', u'-c',
+    u'--commit_hash',
     help=u'Commit hash to check.',
 )
 def cli(org, repo, token, pr_number, commit_hash):
     u"""
     Check the combined status of a GitHub PR/commit in a repo.
+
+    If tests have passed for the PR/commit, return a success.
+    If any other status besides success (such as in-progress/pending), return a failure.
+    If both PR number -and- commit hash is specified, return a failure.
     """
     # github.enable_console_debug_logging()
     gh_utils = GitHubAPI(org, repo, token)
 
     status_success = False
-    if pr_number:
+    if pr_number and commit_hash:
+        print u"Both PR number and commit hash are specified. Only one of the two should be specified - failing."
+        sys.exit(1)
+    elif pr_number:
         status_success = gh_utils.check_pull_request_test_status(pr_number)
         print u"{}: Combined status of PR #{} is {}.".format(
             sys.argv[0], pr_number, u"success" if status_success else u"failed"
