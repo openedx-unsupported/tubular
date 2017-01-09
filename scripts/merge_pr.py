@@ -33,7 +33,7 @@ LOG = logging.getLogger(__name__)
     help=u'The github access token, see https://help.github.com/articles/creating-an-access-token-for-command-line-use/'
 )
 @click.option(
-    u'--pr_number', u'-p',
+    u'--pr_number',
     default=None,
     help=u'Pull request number to check.',
     type=int,
