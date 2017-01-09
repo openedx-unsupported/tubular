@@ -28,14 +28,14 @@ from tubular.github_api import GitHubAPI  # pylint: disable=wrong-import-positio
     help=u'The github access token, see https://help.github.com/articles/creating-an-access-token-for-command-line-use/'
 )
 @click.option(
-    u'--pr_number', u'-p',
+    u'--pr_number',
     default=None,
     help=u'Pull request number to check.',
     type=int,
     required=True
 )
 @click.option(
-    u'--branch_name', u'-b',
+    u'--branch_name',
     help=u'Branch to check if the base of the PR.',
     required=True
 )
