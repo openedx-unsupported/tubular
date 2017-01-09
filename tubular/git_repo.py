@@ -147,7 +147,7 @@ def _change_dir(repo):
 def merge_branch(repo_url,
                  source_branch,
                  target_branch,
-                 ff_only):
+                 ff_only=True):
     """
     Merge a source branch into a target branch, optionally forcing a fast-forward merge.
 
