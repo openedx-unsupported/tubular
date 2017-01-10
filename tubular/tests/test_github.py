@@ -19,6 +19,7 @@ from github.CommitCombinedStatus import CommitCombinedStatus
 from github.GitCommit import GitCommit
 from github.GitRef import GitRef
 from github.Issue import Issue
+from github.IssueComment import IssueComment
 from github.NamedUser import NamedUser
 from github.Organization import Organization
 from github.PullRequest import PullRequest
@@ -28,11 +29,11 @@ from tubular import github_api
 from tubular.github_api import (
     GitHubAPI,
     NoValidCommitsError,
+    InvalidPullRequestError,
     default_expected_release_date,
     extract_message_summary,
     rc_branch_name_for_date
 )
-
 
 # SHA1 is hash function designed to be difficult to reverse.
 # This dictionary will help us map SHAs back to the hashed values.
@@ -249,6 +250,51 @@ class GitHubApiTestCase(TestCase):
         self.assertEqual(len(pulls), expected_pull_count)
         for pull in pulls:
             self.assertIsInstance(pull, PullRequest)
+
+    @ddt.data(
+        ('macdiesel', 'Deployed to PROD', [':+1:', ':+1:', ':ship: :it:'], False, IssueComment),
+        ('macdiesel', 'Deployed to stage', ['wahoo', 'want BLT', 'Deployed, to PROD, JK'], False, IssueComment),
+        ('macdiesel', 'Deployed to PROD', [':+1:', 'law school man', '@macdiesel Deployed to PROD'], False, None),
+        ('macdiesel', 'Deployed to stage', [':+1:', ':+1:', '@macdiesel dEpLoYeD tO stage'], False, None),
+        ('macdiesel', 'Deployed to stage', ['@macdiesel dEpLoYeD tO stage', ':+1:', ':+1:'], False, None),
+        ('macdiesel', 'Deployed to PROD', [':+1:', ':+1:', '@macdiesel Deployed to PROD'], True, IssueComment),
+    )
+    @ddt.unpack
+    def test_message_pull_request(self, user, new_message, existing_messages, force_message, expected_result):
+        comments = [Mock(spec=IssueComment, body=message) for message in existing_messages]
+        self.repo_mock.get_pull.return_value = \
+            Mock(spec=PullRequest,
+                 get_issue_comments=Mock(return_value=comments),
+                 create_issue_comment=lambda message: Mock(spec=IssueComment, body=message),
+                 **{'user.login': user})
+
+        result = self.api.message_pull_request(1, new_message, force_message)
+
+        self.repo_mock.get_pull.assert_called()
+        if expected_result:
+            self.assertIsInstance(result, IssueComment)
+            self.assertEqual(result.body, ''.join(['@', user, ' ', new_message]))
+        else:
+            self.assertEqual(result, expected_result)
+
+    def test_message_pr_does_not_exist(self):
+        with patch.object(self.repo_mock, 'get_pull', side_effect=UnknownObjectException(404, '')):
+            self.assertRaises(InvalidPullRequestError, self.api.message_pull_request, 3, 'test')
+
+    def test_message_pr_deployed_stage(self):
+        with patch.object(self.api, 'message_pull_request') as mock:
+            self.api.message_pr_deployed_stage(1)
+            mock.assert_called_with(1, github_api.PR_ON_STAGE_MESSAGE, False)
+
+    def test_message_pr_deployed_prod(self):
+        with patch.object(self.api, 'message_pull_request') as mock:
+            self.api.message_pr_deployed_prod(1)
+            mock.assert_called_with(1, github_api.PR_ON_PROD_MESSAGE, False)
+
+    def test_message_pr_release_canceled(self):
+        with patch.object(self.api, 'message_pull_request') as mock:
+            self.api.message_pr_release_canceled(1)
+            mock.assert_called_with(1, github_api.PR_RELEASE_CANCELED_MESSAGE, False)
 
 
 @ddt.ddt

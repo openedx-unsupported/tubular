@@ -14,6 +14,10 @@ from github.GithubException import UnknownObjectException
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
+PR_ON_STAGE_MESSAGE = 'This PR has been deployed to the staging environment.'
+PR_ON_PROD_MESSAGE = 'This PR has been deployed to the production environment.'
+PR_RELEASE_CANCELED_MESSAGE = 'This PR has been rolled back from the production environment.'
+
 
 # Day of week constant
 _TUESDAY = 1
@@ -23,6 +27,13 @@ _NORMAL_RELEASE_WEEKDAY = _TUESDAY
 class NoValidCommitsError(Exception):
     """
     Error indicating that there are no commits with valid statuses
+    """
+    pass
+
+
+class InvalidPullRequestError(Exception):
+    """
+    Error indicating that a PR could not be found
     """
     pass
 
@@ -393,3 +404,97 @@ class GitHubAPI(object):
                 pulls[issue.number] = self.github_repo.get_pull(issue.number)
 
         return list(pulls.values())
+
+    def message_pull_request(self, pr_number, message, force_message=False):
+        """
+        Messages a pull request. Will only message the PR if the message has not already been posted to the discussion
+
+        Args:
+            pr_number (int): the number of the pull request
+            message (str): the message to post to the pull request
+            force_message (bool): if set true the message will be posted without duplicate checking
+
+        Returns:
+            github.IssueComment.IssueComment
+
+        Raises:
+            github.GithubException.GithubException:
+            InvalidPullRequestError: When the PR does not exist
+
+        """
+        def _not_duplicate(pr_messages, new_message):
+            """
+            Returns True if the comment does not exist on the PR
+            Returns False if the comment exists on the PR
+
+            Args:
+                pr_messages (list<str>)
+                new_message (str):
+                existing_messages (str):
+
+            Returns:
+                bool
+
+            """
+            new_message = new_message.lower()
+            result = False
+            for comment in pr_messages:
+                if new_message in comment.body.lower():
+                    break
+            else:
+                result = True
+            return result
+
+        try:
+            pull_request = self.github_repo.get_pull(pr_number)
+        except UnknownObjectException:
+            raise InvalidPullRequestError('PR #{pr_number} does not exist'.format(pr_number=pr_number))
+
+        message = '@{user} '.format(user=pull_request.user.login) + message
+
+        if force_message or _not_duplicate(pull_request.get_issue_comments(), message):
+            return pull_request.create_issue_comment(message)
+        else:
+            return None
+
+    def message_pr_deployed_stage(self, pr_number, force_message=False):
+        """
+        Sends a message that this PRs commits have been deployed to the staging environment
+
+        Args:
+            pr_number (int): The number of the pull request
+            force_message (bool): if set true the message will be posted without duplicate checking
+
+        Returns:
+            github.IssueComment.IssueComment
+
+        """
+        return self.message_pull_request(pr_number, PR_ON_STAGE_MESSAGE, force_message)
+
+    def message_pr_deployed_prod(self, pr_number, force_message=False):
+        """
+        sends a message that this PRs commits have been deployed to the production environment
+
+        Args:
+            pr_number (int): The number of the pull request
+            force_message (bool): if set true the message will be posted without duplicate checking
+
+        Returns:
+            github.IssueComment.IssueComment
+
+        """
+        return self.message_pull_request(pr_number, PR_ON_PROD_MESSAGE, force_message)
+
+    def message_pr_release_canceled(self, pr_number, force_message=False):
+        """
+        Sends a message that this PRs commits have not made it to production as the release was canceled
+
+        Args:
+            pr_number (int): The number of the pull request
+            force_message (bool): if set true the message will be posted without duplicate checking
+
+        Returns:
+            github.IssueComment.IssueComment
+
+        """
+        return self.message_pull_request(pr_number, PR_RELEASE_CANCELED_MESSAGE, force_message)
