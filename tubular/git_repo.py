@@ -21,6 +21,13 @@ class GitMergeFailed(Exception):
     pass
 
 
+class InvalidGitRepoURL(Exception):
+    """
+    Raised when repo URL can't be parsed.
+    """
+    pass
+
+
 class GitRepo(object):
     """
     Performs direct git commands for a given GitHub repository.
@@ -36,6 +43,8 @@ class GitRepo(object):
 
         # Parse out the repository name.
         match = re.match(r'.*edx/(?P<name>.*).git', self.clone_url)
+        if not match:
+            raise InvalidGitRepoURL()
         self.name = match.group('name')
 
     def _exec_cmd(self, cmd_args):
