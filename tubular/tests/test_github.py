@@ -156,6 +156,29 @@ class GitHubApiTestCase(TestCase):
             body=body
         )
 
+    def test_create_tag(self):
+        mock_user = Mock(spec=NamedUser)
+        mock_user.email = 'testemail@edx.org'
+        mock_user.name = 'test_name'
+        with patch.object(Github, 'get_user', return_value=mock_user):
+            create_tag_mock = Mock()
+            create_ref_mock = Mock()
+            self.repo_mock.create_git_tag = create_tag_mock
+            self.repo_mock.create_git_ref = create_ref_mock
+
+            test_tag = 'test_tag'
+            test_sha = 'abc'
+            self.api.create_tag(test_sha, test_tag)
+            _, kwargs = create_tag_mock.call_args  # pylint: disable=unpacking-non-sequence
+            self.assertEqual(kwargs['tag'], test_tag)
+            self.assertEqual(kwargs['message'], '')
+            self.assertEqual(kwargs['type'], 'commit')
+            self.assertEqual(kwargs['object'], test_sha)
+            create_ref_mock.assert_called_with(
+                ref='refs/tags/{}'.format(test_tag),
+                sha=test_sha
+            )
+
     @ddt.data(
         ('123', range(10), 'SuCcEsS', True),
         ('123', range(10), 'success', True),
