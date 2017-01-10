@@ -1,13 +1,15 @@
 """
-Tests for tubular.release.GitRelease
+Tests for tubular.github_api.GitHubAPI
 """
 from __future__ import unicode_literals
 
 from datetime import datetime, timedelta
 from hashlib import sha1
-from unittest import TestCase
 
+from unittest import TestCase
 import ddt
+from mock import patch, Mock
+
 from github import GithubException, Github
 from github import UnknownObjectException
 from github.Branch import Branch
@@ -21,10 +23,15 @@ from github.NamedUser import NamedUser
 from github.Organization import Organization
 from github.PullRequest import PullRequest
 from github.Repository import Repository
-from mock import patch, Mock
 
-from tubular import release
-from tubular.release import NoValidCommitsError, GitRelease
+from tubular import github_api
+from tubular.github_api import (
+    GitHubAPI,
+    NoValidCommitsError,
+    default_expected_release_date,
+    extract_message_summary,
+    rc_branch_name_for_date
+)
 
 
 # SHA1 is hash function designed to be difficult to reverse.
@@ -49,7 +56,7 @@ class GitHubApiTestCase(TestCase):
             with patch.object(Github, 'get_repo', return_value=Mock(spec=Repository)) as repo_mock:
                 self.org_mock = org_mock.return_value = Mock(spec=Organization)
                 self.repo_mock = repo_mock.return_value = Mock(spec=Repository)
-                self.api = GitRelease('test-org', 'test-repo', token='abc123')
+                self.api = GitHubAPI('test-org', 'test-repo', token='abc123')
         super(GitHubApiTestCase, self).setUp()
 
     @patch('github.Github.get_user')
@@ -255,7 +262,7 @@ class ReleaseUtilsTestCase(TestCase):
         Tests that rc branch names are properly formatted
         """
         date = datetime(year=1983, month=12, day=7, hour=6)
-        name = GitRelease.rc_branch_name_for_date(date.date())
+        name = rc_branch_name_for_date(date.date())
         self.assertEqual(name, 'rc/1983-12-07')
 
     @ddt.data(
@@ -278,7 +285,7 @@ class ReleaseUtilsTestCase(TestCase):
         """
         Tests that commit messages are properly summarized
         """
-        summary = GitRelease.extract_message_summary(message)
+        summary = extract_message_summary(message)
         self.assertEqual(summary, expected)
 
     def mock_now(self, now=datetime(year=1983, month=12, day=7, hour=6)):
@@ -288,7 +295,7 @@ class ReleaseUtilsTestCase(TestCase):
         # datetime.now can't be patched directly
         # so we have to go through this indirect route
         datetime_patcher = patch.object(
-            release, 'datetime',
+            github_api, 'datetime',
             Mock(wraps=datetime)
         )
         mocked_datetime = datetime_patcher.start()
@@ -301,7 +308,7 @@ class ReleaseUtilsTestCase(TestCase):
         Tests that we don't start on the current day
         """
         now = self.mock_now()
-        date = GitRelease.default_expected_release_date(now.weekday())
+        date = default_expected_release_date(now.weekday())
         self.assertEqual(date.weekday(), now.weekday())
         self.assertLess(now, date)
 
@@ -310,7 +317,7 @@ class ReleaseUtilsTestCase(TestCase):
         Tests that the next day is within the next week
         """
         now = self.mock_now()
-        date = GitRelease.default_expected_release_date(now.weekday())
+        date = default_expected_release_date(now.weekday())
         self.assertEqual(date.weekday(), now.weekday())
         next_week = date + timedelta(weeks=1)
         self.assertLess(date, next_week)

@@ -1,10 +1,47 @@
 # tubular
 
-Scripts for integrating pipelines with Asgard and ec2 to facilitate Continuous delivery for edx.org
+## Overview
+Python scripts for integrating pipelines with various services/tools such as:
+* Asgard
+* Amazon Web Services EC2
+* GitHub
+* Jenkins
+* Drupal
+
+The scripts perform work to enable continuous delivery (CD) for https://edx.org. These scripts are called from various tasks/jobs/stages in GoCD pipelines - but could be called from any automation/CD framework.
 
 ## Configuration
+```
+pip install -r requirements.txt
+```
 
-### Environment variables
+## Testing
+```
+pip install -r requirements/test_requirements.txt
+make test
+```
+
+## License
+
+The code in this repository is licensed under the AGPL 3.0 unless
+otherwise noted.
+
+Please see ``LICENSE.txt`` for details.
+
+## How To Contribute
+
+Contributions are very welcome.
+
+Please read [How To Contribute](https://github.com/edx/edx-platform/blob/master/CONTRIBUTING.rst) for details.
+
+Even though they were written with ```edx-platform``` in mind, the guidelines
+should be followed for Open edX code in general.
+
+## Reporting Security Issues
+
+Please do not report security issues in public. Please email security@edx.org.
+
+## Environment variables
 
 |     Variable Name    | Default                         | Description                                                                                   |
 |:--------------------:|---------------------------------|-----------------------------------------------------------------------------------------------|
@@ -15,6 +52,6 @@ Scripts for integrating pipelines with Asgard and ec2 to facilitate Continuous d
 | RETRY_MAX_ATTEMPTS   | 5                               | Maximum number attempts to be made when asgard returns a 400 or 500 response.            |
 | RETRY_DELAY_SECONDS  | 5                               | How long in seconds to wait between retries to asgard                                         |
 | RETRY_MAX_TIME_SECONDS | None                          | How long in seconds to keep retrying asgard before giving up.                                 |
-| ASGARD_ELB_HEALTH_TIMEOUT | 600                        | How long in seconds to wait for an instanced to become haelthy in an ELB.                     |
+| ASGARD_ELB_HEALTH_TIMEOUT | 600                        | How long in seconds to wait for an instanced to become healthy in an ELB.                     |
 | SHA_LENGTH           | 10                              | Length of the commit SHA to use when querying for a PR by commit.                             |
 | BATCH_SIZE           | 18                              | Number of commits to batch together when querying a PR by commit.                             |

@@ -1,11 +1,10 @@
-# pylint: disable=too-few-public-methods
 """ Provides Access to the GitHub API """
 from __future__ import print_function, unicode_literals
 
+from datetime import datetime, timedelta
 import logging
 import os
 import string
-from datetime import datetime, timedelta
 
 from github import Github
 from github.Commit import Commit
@@ -16,6 +15,11 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
 
+# Day of week constant
+_TUESDAY = 1
+_NORMAL_RELEASE_WEEKDAY = _TUESDAY
+
+
 class NoValidCommitsError(Exception):
     """
     Error indicating that there are no commits with valid statuses
@@ -23,7 +27,36 @@ class NoValidCommitsError(Exception):
     pass
 
 
-class GitRelease(object):
+def extract_message_summary(message, max_length=50):
+    """
+    Take a commit message and return the first part of it.
+    """
+    title = string.split(message, '\n')[0] or ''
+    if len(title) < max_length:
+        return title
+    else:
+        return title[0:max_length] + '...'
+
+
+def default_expected_release_date(release_day=_NORMAL_RELEASE_WEEKDAY):
+    """
+    Returns the default expected release date given the current date.
+    Currently the nearest Tuesday in the future (can't be today)
+    """
+    proposal = datetime.now() + timedelta(days=1)
+    while proposal.weekday() is not release_day:
+        proposal = proposal + timedelta(days=1)
+    return proposal
+
+
+def rc_branch_name_for_date(date):
+    """
+    Returns the standard release candidate branch name
+    """
+    return 'rc/{date}'.format(date=date.isoformat())
+
+
+class GitHubAPI(object):
     """
     Manages requests to the GitHub api for a given org/repo
     """
@@ -57,6 +90,58 @@ class GitRelease(object):
             RequestFailed: If the response fails validation.
         """
         return self.github_connection.get_user()
+
+    def get_head_commit_from_pull_request(self, pr_number):
+        """
+        Given a PR number, return the HEAD commit hash.
+
+        Arguments:
+            pr_number (int): Number of PR to check.
+
+        Returns:
+            Commit SHA of the PR HEAD.
+
+        Raises:
+            github.GithubException.GithubException: If the response fails.
+            github.GithubException.UnknownObjectException: If the branch does not exist
+        """
+        return self.get_pull_request(pr_number).head.sha
+
+    def check_pull_request_test_status(self, pr_number):
+        """
+        Given a PR number, query the combined status of the PR's tests.
+
+        Arguments:
+            pr_number (int): Number of PR to check.
+
+        Returns:
+            True if all tests have passed successfully, else False.
+
+        Raises:
+            github.GithubException.GithubException: If the response fails.
+            github.GithubException.UnknownObjectException: If the branch does not exist
+        """
+        return self.commit_combined_statuses(self.get_head_commit_from_pull_request(pr_number)).state == 'success'
+
+    def is_branch_base_of_pull_request(self, pr_number, branch_name):
+        """
+        Check if the PR is against the specified branch,
+        i.e. if the base of the PR is the specified branch.
+
+        Arguments:
+            pr_number (int): Number of PR to check.
+            branch_name (str): Name of branch to check.
+
+        Returns:
+            True if PR is opened against the branch, else False.
+
+        Raises:
+            github.GithubException.GithubException: If the response fails.
+            github.GithubException.UnknownObjectException: If the branch does not exist
+        """
+        pull_request = self.get_pull_request(pr_number)
+        repo_branch_name = '{}:{}'.format(self.org, branch_name)
+        return pull_request.base.label == repo_branch_name
 
     def commit_combined_statuses(self, commit):
         """
@@ -160,6 +245,36 @@ class GitRelease(object):
             head=head,
             base=base
         )
+
+    def get_pull_request(self, pr_number):
+        """
+        Given a PR number, return the PR object.
+
+        Arguments:
+            pr_number (int): Number of PR to get.
+
+        Returns:
+            github.PullRequest.PullRequest
+
+        Raises:
+            github.GithubException.GithubException: If the response fails.
+            github.GithubException.UnknownObjectException: If the PR ID does not exist
+        """
+        return self.github_repo.get_pull(pr_number)
+
+    def merge_pull_request(self, pr_number):
+        """
+        Given a PR number, merge the pull request (if possible).
+
+        Arguments:
+            pr_number (int): Number of PR to merge.
+
+        Raises:
+            github.GithubException.GithubException: If the PR merge fails.
+            github.GithubException.UnknownObjectException: If the PR ID does not exist.
+        """
+        pull_request = self.get_pull_request(pr_number)
+        pull_request.merge()
 
     def is_commit_successful(self, sha):
         """
@@ -278,36 +393,3 @@ class GitRelease(object):
                 pulls[issue.number] = self.github_repo.get_pull(issue.number)
 
         return list(pulls.values())
-
-    # Day of week constant
-    _TUESDAY = 1
-    _NORMAL_RELEASE_WEEKDAY = _TUESDAY
-
-    @staticmethod
-    def extract_message_summary(message, max_length=50):
-        """
-        Take a commit message and return the first part of it.
-        """
-        title = string.split(message, '\n')[0] or ''
-        if len(title) < max_length:
-            return title
-        else:
-            return title[0:max_length] + '...'
-
-    @staticmethod
-    def default_expected_release_date(release_day=_NORMAL_RELEASE_WEEKDAY):
-        """
-        Returns the default expected release date given the current date.
-        Currently the nearest Tuesday in the future (can't be today)
-        """
-        proposal = datetime.now() + timedelta(days=1)
-        while proposal.weekday() is not release_day:
-            proposal = proposal + timedelta(days=1)
-        return proposal
-
-    @staticmethod
-    def rc_branch_name_for_date(date):
-        """
-        Returns the standard release candidate branch name
-        """
-        return 'rc/{date}'.format(date=date.isoformat())

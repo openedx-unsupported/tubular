@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 
 import os
 import requests
-from tubular.scripts.github.github_api_utils import GitHubApiUtils
+from tubular.github_api import GitHubAPI
 
 
 GOCD_API_URL = "http://localhost:8153"
@@ -24,7 +24,7 @@ class GoCDApiUtils(object):
         self.gocd_username = os.environ.get('GOCD_USERNAME', '')
         self.gocd_password = os.environ.get('GOCD_PASSWORD', '')
 
-    def trigger_pipeline(self, pipeline_name, repo, pr_id):
+    def trigger_pipeline(self, pipeline_name, org, repo, token, pr_id):
         """
         Given a pipeline_name and GitHub repo/PR, trigger a pipeline run for a build/deploy.
         """
@@ -37,8 +37,8 @@ class GoCDApiUtils(object):
             return False
 
         # Using the repository and PR number, find the commit hash to use.
-        gh_utils = GitHubApiUtils(repo)
-        commit_hash = gh_utils.get_head_commit_from_pr(pr_id)
+        gh_utils = GitHubAPI(org, repo, token)
+        commit_hash = gh_utils.get_head_commit_from_pull_request(pr_id)
 
         trigger_payload = {
             "variables[GO_EXTERNAL_TRIGGER_PR_ID]": pr_id,

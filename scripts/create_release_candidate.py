@@ -14,7 +14,13 @@ import yaml
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from tubular.release import GitRelease, NoValidCommitsError  # pylint: disable=wrong-import-position
+from tubular.github_api import (  # pylint: disable=wrong-import-position
+    GitHubAPI,
+    NoValidCommitsError,
+    default_expected_release_date,
+    extract_message_summary,
+    rc_branch_name_for_date
+)
 from github.GithubException import GithubException  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -30,7 +36,7 @@ def valid_date(_, __, date_str):
     except ValueError:
         click.BadParameter("Not a valid date: '{0}'.".format(date_str))
 
-EXPECTED_RELEASE_DATE = GitRelease.default_expected_release_date()
+EXPECTED_RELEASE_DATE = default_expected_release_date()
 
 
 @click.command()
@@ -133,7 +139,7 @@ def create_release_candidate(org,
 
     """
     LOG.info("Getting GitHub token...")
-    github_api = GitRelease(org, repo, token)
+    github_api = GitHubAPI(org, repo, token)
 
     if force_commit:
         commit_hash = force_commit
@@ -143,7 +149,7 @@ def create_release_candidate(org,
         try:
             commit = github_api.most_recent_good_commit(source_branch)
             commit_hash = commit.sha
-            commit_message = GitRelease.extract_message_summary(commit.commit.message)
+            commit_message = extract_message_summary(commit.commit.message)
 
         except NoValidCommitsError:
             LOG.error(
@@ -191,7 +197,7 @@ def create_release_candidate(org,
 
     try:
         pr_title = "Release Candidate {rc}" .format(
-            rc=GitRelease.rc_branch_name_for_date(release_date.date())
+            rc=rc_branch_name_for_date(release_date.date())
         )
         pull_request = github_api.create_pull_request(
             head=target_branch,

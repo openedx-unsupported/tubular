@@ -12,7 +12,11 @@ import yaml
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from tubular.release import GitRelease, NoValidCommitsError  # pylint: disable=wrong-import-position
+from tubular.github_api import (  # pylint: disable=wrong-import-position
+    GitHubAPI,
+    NoValidCommitsError,
+    extract_message_summary
+)
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -75,14 +79,14 @@ def create_release_candidate(org,
     sha: af538da6b229cf1dfa33d0171e75fbff6de4c283
     """
     LOG.info("Getting GitHub token...")
-    github_api = GitRelease(org, repo, token)
+    github_api = GitHubAPI(org, repo, token)
 
     LOG.info("Fetching commits...")
     try:
         commits = github_api.get_commits_by_branch(source_branch)
         commit = commits[0]
         commit_hash = commit.sha
-        commit_message = GitRelease.extract_message_summary(commit.commit.message)
+        commit_message = extract_message_summary(commit.commit.message)
 
     except NoValidCommitsError:
         LOG.error(
