@@ -3,10 +3,13 @@ Tests for tubular.github_api.GitHubAPI
 """
 from __future__ import unicode_literals
 
-from unittest import TestCase
+from datetime import datetime, timedelta
 from hashlib import sha1
 
+from unittest import TestCase
 import ddt
+from mock import patch, Mock
+
 from github import GithubException, Github
 from github import UnknownObjectException
 from github.Branch import Branch
@@ -20,9 +23,15 @@ from github.NamedUser import NamedUser
 from github.Organization import Organization
 from github.PullRequest import PullRequest
 from github.Repository import Repository
-from mock import patch, Mock
 
-from tubular.github_api import GitHubAPI, NoValidCommitsError
+from tubular import github_api
+from tubular.github_api import (
+    GitHubAPI,
+    NoValidCommitsError,
+    default_expected_release_date,
+    extract_message_summary,
+    rc_branch_name_for_date
+)
 
 
 # SHA1 is hash function designed to be difficult to reverse.
@@ -240,3 +249,75 @@ class GitHubApiTestCase(TestCase):
         self.assertEqual(len(pulls), expected_pull_count)
         for pull in pulls:
             self.assertIsInstance(pull, PullRequest)
+
+
+@ddt.ddt
+class ReleaseUtilsTestCase(TestCase):
+    """
+    Test Cases for release utility functions
+    """
+
+    def test_rc_formatting(self):
+        """
+        Tests that rc branch names are properly formatted
+        """
+        date = datetime(year=1983, month=12, day=7, hour=6)
+        name = rc_branch_name_for_date(date.date())
+        self.assertEqual(name, 'rc/1983-12-07')
+
+    @ddt.data(
+        ('some title', 'some title'),
+        (
+            'some incredibly long title that will eventually be cut off',
+            'some incredibly long title that will eventually be...'
+        ),
+        (
+            'some title with\na new line in it',
+            'some title with'
+        ),
+        (
+            'some incredibly long title that will eventually be cut \noff',
+            'some incredibly long title that will eventually be...'
+        )
+    )
+    @ddt.unpack
+    def test_extract_short(self, message, expected):
+        """
+        Tests that commit messages are properly summarized
+        """
+        summary = extract_message_summary(message)
+        self.assertEqual(summary, expected)
+
+    def mock_now(self, now=datetime(year=1983, month=12, day=7, hour=6)):
+        """
+        Patches datetime.now to provide the given date
+        """
+        # datetime.now can't be patched directly
+        # so we have to go through this indirect route
+        datetime_patcher = patch.object(
+            github_api, 'datetime',
+            Mock(wraps=datetime)
+        )
+        mocked_datetime = datetime_patcher.start()
+        mocked_datetime.now.return_value = now  # pylint: disable=no-member
+        self.addCleanup(datetime_patcher.stop)
+        return now
+
+    def test_start_after_current_day(self):
+        """
+        Tests that we don't start on the current day
+        """
+        now = self.mock_now()
+        date = default_expected_release_date(now.weekday())
+        self.assertEqual(date.weekday(), now.weekday())
+        self.assertLess(now, date)
+
+    def test_start_soon(self):
+        """
+        Tests that the next day is within the next week
+        """
+        now = self.mock_now()
+        date = default_expected_release_date(now.weekday())
+        self.assertEqual(date.weekday(), now.weekday())
+        next_week = date + timedelta(weeks=1)
+        self.assertLess(date, next_week)
