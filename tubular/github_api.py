@@ -10,6 +10,7 @@ from github import Github
 from github.Commit import Commit
 from github.GitCommit import GitCommit
 from github.GithubException import UnknownObjectException
+from github.InputGitAuthor import InputGitAuthor
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
@@ -286,6 +287,47 @@ class GitHubAPI(object):
         """
         pull_request = self.get_pull_request(pr_number)
         pull_request.merge()
+
+    def create_tag(
+            self,
+            sha,
+            tag_name,
+            message='',
+            tag_type='commit'):
+        """
+        Creates a tag associated with the sha provided
+
+        Arguments:
+            sha (str): The commit we references by the newly created tag
+            tag_name (str): The name of the tag
+            message (str): The optional description of the tag
+            tag_type (str): The type of the tag. Could be 'tree' or 'blob'. Default is 'commit'.
+
+        Returns:
+            github.GitTag.GitTag
+
+        Raises:
+            github.GithubException.GithubException:
+        """
+        tag_user = self.user()
+        tagger = InputGitAuthor(
+            name=tag_user.name,
+            email=tag_user.email,
+            date=datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ')
+        )
+
+        created_tag = self.github_repo.create_git_tag(
+            tag=tag_name,
+            message=message,
+            object=sha,
+            type=tag_type,
+            tagger=tagger
+        )
+
+        # We need to create a reference based on the tag
+        self.github_repo.create_git_ref(ref='refs/tags/{}'.format(tag_name), sha=sha)
+
+        return created_tag
 
     def is_commit_successful(self, sha):
         """
