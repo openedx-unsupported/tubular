@@ -4,6 +4,7 @@ Command-line script to merge a branch.
 from os import path
 import sys
 import logging
+import yaml
 import click
 
 # Add top-level module path to sys.path before importing tubular code.
@@ -41,11 +42,17 @@ LOG = logging.getLogger(__name__)
     default=False,
     is_flag=True
 )
+@click.option(
+    u'--output_file',
+    help=u'File in which to write the script\'s YAML output',
+    default=u'target/merge_branch_sha.yml'
+)
 def merge_branch(org,
                  repo,
                  source_branch,
                  target_branch,
-                 fast_forward_only):
+                 fast_forward_only,
+                 output_file):
     u"""
     Merges the source branch into the target branch without creating a pull request for the merge.
     Clones the repo in order to perform the proper git commands locally.
@@ -58,8 +65,23 @@ def merge_branch(org,
         fast_forward_only (bool): If True, the branch merge will be performed as a fast-forward merge.
           If the merge cannot be performed as a fast-forward merge, the merge will fail.
     """
-    github_url = u'https://github.com/{}/{}.git'.format(org, repo)
-    merge_repo_branch(github_url, source_branch, target_branch, fast_forward_only)
+    github_url = u'git@github.com:{}/{}.git'.format(org, repo)
+    merge_sha = merge_repo_branch(github_url, source_branch, target_branch, fast_forward_only)
+
+    with open(output_file, u'w') as stream:  # pylint: disable=open-builtin
+        yaml.safe_dump(
+            {
+                u'org_name': org,
+                u'repo_name': repo,
+                u'source_branch_name': source_branch,
+                u'target_branch_name': target_branch,
+                u'fast_forward_only': fast_forward_only,
+                u'sha': merge_sha
+            },
+            stream,
+            default_flow_style=False,
+            explicit_start=True
+        )
 
 if __name__ == u"__main__":
     merge_branch()  # pylint: disable=no-value-for-parameter

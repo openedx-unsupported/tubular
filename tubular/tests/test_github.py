@@ -76,26 +76,26 @@ class GitHubApiTestCase(TestCase):
         (Mock(spec=GitCommit, **{'sha': '123'}), 'failure')
     )
     @ddt.unpack
-    def test_commit_combined_statuses(self, sha, state):
+    def test_get_commit_combined_statuses(self, sha, state):
         combined_status = Mock(spec=CommitCombinedStatus, state=state)
         attrs = {'get_combined_status.return_value': combined_status}
         commit_mock = Mock(spec=Commit, **attrs)
         self.repo_mock.get_commit = lambda sha: commit_mock
 
-        status = self.api.commit_combined_statuses(sha)
+        status = self.api.get_commit_combined_statuses(sha)
         self.assertEqual(status.state, state)
 
-    def test_commit_combined_statuses_passing_commit_obj(self):
+    def test_get_commit_combined_statuses_passing_commit_obj(self):
         combined_status = Mock(spec=CommitCombinedStatus, **{'state': 'success'})
         attrs = {'get_combined_status.return_value': combined_status}
         commit_mock = Mock(spec=Commit, **attrs)
         self.repo_mock.get_commit = lambda sha: commit_mock
 
-        status = self.api.commit_combined_statuses(commit_mock)
+        status = self.api.get_commit_combined_statuses(commit_mock)
         self.assertEqual(status.state, 'success')
 
-    def test_commit_combined_statuses_bad_object(self):
-        self.assertRaises(UnknownObjectException, self.api.commit_combined_statuses, object())
+    def test_get_commit_combined_statuses_bad_object(self):
+        self.assertRaises(UnknownObjectException, self.api.get_commit_combined_statuses, object())
 
     def test_get_commits_by_branch(self):
         self.repo_mock.get_branch.return_value = Mock(spec=Branch, **{'commit.sha': '123'})
@@ -169,9 +169,10 @@ class GitHubApiTestCase(TestCase):
             body=body
         )
 
-    def test_create_tag(self):
+    @ddt.data('test.user@edx.org', None)
+    def test_create_tag(self, user_email):
         mock_user = Mock(spec=NamedUser)
-        mock_user.email = 'testemail@edx.org'
+        mock_user.email = user_email
         mock_user.name = 'test_name'
         with patch.object(Github, 'get_user', return_value=mock_user):
             create_tag_mock = Mock()
