@@ -15,9 +15,9 @@ from github.InputGitAuthor import InputGitAuthor
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
-PR_ON_STAGE_MESSAGE = 'This PR has been deployed to the staging environment.'
-PR_ON_PROD_MESSAGE = 'This PR has been deployed to the production environment.'
-PR_RELEASE_CANCELED_MESSAGE = 'This PR has been rolled back from the production environment.'
+PR_ON_STAGE_MESSAGE = '**EdX Release Notice**: This PR has been deployed to the staging environment.'
+PR_ON_PROD_MESSAGE = '**EdX Release Notice**: This PR has been deployed to the production environment.'
+PR_RELEASE_CANCELED_MESSAGE = '**EdX Release Notice**: This PR has been rolled back from the production environment.'
 
 
 # Day of week constant
