@@ -15,14 +15,16 @@ from github.InputGitAuthor import InputGitAuthor
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
-PR_ON_STAGE_MESSAGE = 'This PR has been deployed to the staging environment.'
-PR_ON_PROD_MESSAGE = 'This PR has been deployed to the production environment.'
-PR_RELEASE_CANCELED_MESSAGE = 'This PR has been rolled back from the production environment.'
+PR_ON_STAGE_MESSAGE = ('**EdX Release Notice**: This PR has been deployed to the staging environment '
+                       'in preparation for a release to production on {date:%A, %B %d, %Y}.')
+PR_ON_PROD_MESSAGE = '**EdX Release Notice**: This PR has been deployed to the production environment.'
+PR_RELEASE_CANCELED_MESSAGE = '**EdX Release Notice**: This PR has been rolled back from the production environment.'
 
 
 # Day of week constant
-_TUESDAY = 1
-_NORMAL_RELEASE_WEEKDAY = _TUESDAY
+_MONDAY = 0
+_FRIDAY = 4
+_NORMAL_RELEASE_WEEKDAYS = range(_MONDAY, _FRIDAY + 1)
 
 
 class NoValidCommitsError(Exception):
@@ -50,13 +52,13 @@ def extract_message_summary(message, max_length=50):
         return title[0:max_length] + '...'
 
 
-def default_expected_release_date(release_day=_NORMAL_RELEASE_WEEKDAY):
+def default_expected_release_date(release_days=_NORMAL_RELEASE_WEEKDAYS):
     """
     Returns the default expected release date given the current date.
-    Currently the nearest Tuesday in the future (can't be today)
+    Currently the nearest weekday in the future (can't be today).
     """
     proposal = datetime.now() + timedelta(days=1)
-    while proposal.weekday() is not release_day:
+    while proposal.weekday() not in release_days:
         proposal = proposal + timedelta(days=1)
     return proposal
 
@@ -499,7 +501,7 @@ class GitHubAPI(object):
         else:
             return None
 
-    def message_pr_deployed_stage(self, pr_number, force_message=False):
+    def message_pr_deployed_stage(self, pr_number, deploy_date=None, force_message=False):
         """
         Sends a message that this PRs commits have been deployed to the staging environment
 
@@ -511,7 +513,14 @@ class GitHubAPI(object):
             github.IssueComment.IssueComment
 
         """
-        return self.message_pull_request(pr_number, PR_ON_STAGE_MESSAGE, force_message)
+        if deploy_date is None:
+            deploy_date = default_expected_release_date()
+
+        return self.message_pull_request(
+            pr_number,
+            PR_ON_STAGE_MESSAGE.format(date=deploy_date),
+            force_message,
+        )
 
     def message_pr_deployed_prod(self, pr_number, force_message=False):
         """

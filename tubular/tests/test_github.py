@@ -306,8 +306,20 @@ class GitHubApiTestCase(TestCase):
 
     def test_message_pr_deployed_stage(self):
         with patch.object(self.api, 'message_pull_request') as mock:
-            self.api.message_pr_deployed_stage(1)
-            mock.assert_called_with(1, github_api.PR_ON_STAGE_MESSAGE, False)
+            self.api.message_pr_deployed_stage(1, deploy_date=datetime(2017, 1, 10))
+            mock.assert_called_with(1, github_api.PR_ON_STAGE_MESSAGE.format(date=datetime(2017, 1, 10)), False)
+
+    @ddt.data(
+        (datetime(2017, 1, 9), datetime(2017, 1, 10)),
+        (datetime(2017, 1, 13), datetime(2017, 1, 16)),
+    )
+    @ddt.unpack
+    def test_message_pr_deployed_stage_weekend(self, message_date, deploy_date):
+        with patch.object(self.api, 'message_pull_request') as mock:
+            with patch.object(github_api, 'datetime', Mock(wraps=datetime)) as mock_datetime:
+                mock_datetime.now.return_value = message_date
+                self.api.message_pr_deployed_stage(1)
+                mock.assert_called_with(1, github_api.PR_ON_STAGE_MESSAGE.format(date=deploy_date), False)
 
     def test_message_pr_deployed_prod(self):
         with patch.object(self.api, 'message_pull_request') as mock:
@@ -377,7 +389,7 @@ class ReleaseUtilsTestCase(TestCase):
         Tests that we don't start on the current day
         """
         now = self.mock_now()
-        date = default_expected_release_date(now.weekday())
+        date = default_expected_release_date([now.weekday()])
         self.assertEqual(date.weekday(), now.weekday())
         self.assertLess(now, date)
 
@@ -386,7 +398,7 @@ class ReleaseUtilsTestCase(TestCase):
         Tests that the next day is within the next week
         """
         now = self.mock_now()
-        date = default_expected_release_date(now.weekday())
+        date = default_expected_release_date([now.weekday()])
         self.assertEqual(date.weekday(), now.weekday())
         next_week = date + timedelta(weeks=1)
         self.assertLess(date, next_week)
