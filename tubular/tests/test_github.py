@@ -275,28 +275,27 @@ class GitHubApiTestCase(TestCase):
             self.assertIsInstance(pull, PullRequest)
 
     @ddt.data(
-        ('macdiesel', 'Deployed to PROD', [':+1:', ':+1:', ':ship: :it:'], False, IssueComment),
-        ('macdiesel', 'Deployed to stage', ['wahoo', 'want BLT', 'Deployed, to PROD, JK'], False, IssueComment),
-        ('macdiesel', 'Deployed to PROD', [':+1:', 'law school man', '@macdiesel Deployed to PROD'], False, None),
-        ('macdiesel', 'Deployed to stage', [':+1:', ':+1:', '@macdiesel dEpLoYeD tO stage'], False, None),
-        ('macdiesel', 'Deployed to stage', ['@macdiesel dEpLoYeD tO stage', ':+1:', ':+1:'], False, None),
-        ('macdiesel', 'Deployed to PROD', [':+1:', ':+1:', '@macdiesel Deployed to PROD'], True, IssueComment),
+        ('Deployed to PROD', [':+1:', ':+1:', ':ship: :it:'], False, IssueComment),
+        ('Deployed to stage', ['wahoo', 'want BLT', 'Deployed, to PROD, JK'], False, IssueComment),
+        ('Deployed to PROD', [':+1:', 'law school man', '@macdiesel Deployed to PROD'], False, None),
+        ('Deployed to stage', [':+1:', ':+1:', '@macdiesel dEpLoYeD tO stage'], False, None),
+        ('Deployed to stage', ['@macdiesel dEpLoYeD tO stage', ':+1:', ':+1:'], False, None),
+        ('Deployed to PROD', [':+1:', ':+1:', '@macdiesel Deployed to PROD'], True, IssueComment),
     )
     @ddt.unpack
-    def test_message_pull_request(self, user, new_message, existing_messages, force_message, expected_result):
+    def test_message_pull_request(self, new_message, existing_messages, force_message, expected_result):
         comments = [Mock(spec=IssueComment, body=message) for message in existing_messages]
         self.repo_mock.get_pull.return_value = \
             Mock(spec=PullRequest,
                  get_issue_comments=Mock(return_value=comments),
-                 create_issue_comment=lambda message: Mock(spec=IssueComment, body=message),
-                 **{'user.login': user})
+                 create_issue_comment=lambda message: Mock(spec=IssueComment, body=message))
 
         result = self.api.message_pull_request(1, new_message, force_message)
 
         self.repo_mock.get_pull.assert_called()
         if expected_result:
             self.assertIsInstance(result, IssueComment)
-            self.assertEqual(result.body, ''.join(['@', user, ' ', new_message]))
+            self.assertEqual(result.body, new_message)
         else:
             self.assertEqual(result, expected_result)
 
