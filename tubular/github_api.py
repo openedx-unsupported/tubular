@@ -494,8 +494,6 @@ class GitHubAPI(object):
         except UnknownObjectException:
             raise InvalidPullRequestError('PR #{pr_number} does not exist'.format(pr_number=pr_number))
 
-        message = '@{user} '.format(user=pull_request.user.login) + message
-
         if force_message or _not_duplicate(pull_request.get_issue_comments(), message):
             return pull_request.create_issue_comment(message)
         else:
