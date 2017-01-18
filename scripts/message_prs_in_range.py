@@ -84,6 +84,7 @@ def message_pull_requests(org,
 
     api = GitHubAPI(org, repo, token)
     for pull_request in api.get_pr_range(base_sha, head_sha):
+        LOG.info(u"Posting message type %r to %d.", message_type, pull_request.number)
         getattr(api, methods[message_type])(pull_request.number)
 
 
