@@ -15,8 +15,8 @@ from github.InputGitAuthor import InputGitAuthor
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
-PR_ON_STAGE_MESSAGE = ('**EdX Release Notice**: This PR has been deployed to the staging environment '
-                       'in preparation for a release to production on {date:%A, %B %d, %Y}.')
+PR_ON_STAGE_BASE_MESSAGE = '**EdX Release Notice**: This PR has been deployed to the staging environment '
+PR_ON_STAGE_DATE_MESSAGE = 'in preparation for a release to production on {date:%A, %B %d, %Y}.'
 PR_ON_PROD_MESSAGE = '**EdX Release Notice**: This PR has been deployed to the production environment.'
 PR_RELEASE_CANCELED_MESSAGE = '**EdX Release Notice**: This PR has been rolled back from the production environment.'
 
@@ -449,13 +449,14 @@ class GitHubAPI(object):
 
         return list(pulls.values())
 
-    def message_pull_request(self, pr_number, message, force_message=False):
+    def message_pull_request(self, pr_number, message, message_filter, force_message=False):
         """
         Messages a pull request. Will only message the PR if the message has not already been posted to the discussion
 
         Args:
             pr_number (int): the number of the pull request
             message (str): the message to post to the pull request
+            message_filter (str): the message filter used to avoid duplicate messages
             force_message (bool): if set true the message will be posted without duplicate checking
 
         Returns:
@@ -494,7 +495,7 @@ class GitHubAPI(object):
         except UnknownObjectException:
             raise InvalidPullRequestError('PR #{pr_number} does not exist'.format(pr_number=pr_number))
 
-        if force_message or _not_duplicate(pull_request.get_issue_comments(), message):
+        if force_message or _not_duplicate(pull_request.get_issue_comments(), message_filter):
             return pull_request.create_issue_comment(message)
         else:
             return None
@@ -516,7 +517,8 @@ class GitHubAPI(object):
 
         return self.message_pull_request(
             pr_number,
-            PR_ON_STAGE_MESSAGE.format(date=deploy_date),
+            (PR_ON_STAGE_BASE_MESSAGE + PR_ON_STAGE_DATE_MESSAGE).format(date=deploy_date),
+            PR_ON_STAGE_BASE_MESSAGE,
             force_message,
         )
 
@@ -532,7 +534,12 @@ class GitHubAPI(object):
             github.IssueComment.IssueComment
 
         """
-        return self.message_pull_request(pr_number, PR_ON_PROD_MESSAGE, force_message)
+        return self.message_pull_request(
+            pr_number,
+            PR_ON_PROD_MESSAGE,
+            PR_ON_PROD_MESSAGE,
+            force_message
+        )
 
     def message_pr_release_canceled(self, pr_number, force_message=False):
         """
@@ -546,4 +553,9 @@ class GitHubAPI(object):
             github.IssueComment.IssueComment
 
         """
-        return self.message_pull_request(pr_number, PR_RELEASE_CANCELED_MESSAGE, force_message)
+        return self.message_pull_request(
+            pr_number,
+            PR_RELEASE_CANCELED_MESSAGE,
+            PR_RELEASE_CANCELED_MESSAGE,
+            force_message
+        )
