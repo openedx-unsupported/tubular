@@ -290,7 +290,7 @@ class GitHubApiTestCase(TestCase):
                  get_issue_comments=Mock(return_value=comments),
                  create_issue_comment=lambda message: Mock(spec=IssueComment, body=message))
 
-        result = self.api.message_pull_request(1, new_message, force_message)
+        result = self.api.message_pull_request(1, new_message, new_message, force_message)
 
         self.repo_mock.get_pull.assert_called()
         if expected_result:
@@ -301,12 +301,19 @@ class GitHubApiTestCase(TestCase):
 
     def test_message_pr_does_not_exist(self):
         with patch.object(self.repo_mock, 'get_pull', side_effect=UnknownObjectException(404, '')):
-            self.assertRaises(InvalidPullRequestError, self.api.message_pull_request, 3, 'test')
+            self.assertRaises(InvalidPullRequestError, self.api.message_pull_request, 3, 'test', 'test')
 
     def test_message_pr_deployed_stage(self):
         with patch.object(self.api, 'message_pull_request') as mock:
             self.api.message_pr_deployed_stage(1, deploy_date=datetime(2017, 1, 10))
-            mock.assert_called_with(1, github_api.PR_ON_STAGE_MESSAGE.format(date=datetime(2017, 1, 10)), False)
+            mock.assert_called_with(
+                1,
+                (github_api.PR_ON_STAGE_BASE_MESSAGE + github_api.PR_ON_STAGE_DATE_MESSAGE).format(
+                    date=datetime(2017, 1, 10)
+                ),
+                github_api.PR_ON_STAGE_BASE_MESSAGE,
+                False
+            )
 
     @ddt.data(
         (datetime(2017, 1, 9), datetime(2017, 1, 10)),
@@ -318,17 +325,34 @@ class GitHubApiTestCase(TestCase):
             with patch.object(github_api, 'datetime', Mock(wraps=datetime)) as mock_datetime:
                 mock_datetime.now.return_value = message_date
                 self.api.message_pr_deployed_stage(1)
-                mock.assert_called_with(1, github_api.PR_ON_STAGE_MESSAGE.format(date=deploy_date), False)
+                mock.assert_called_with(
+                    1,
+                    (github_api.PR_ON_STAGE_BASE_MESSAGE + github_api.PR_ON_STAGE_DATE_MESSAGE).format(
+                        date=deploy_date
+                    ),
+                    github_api.PR_ON_STAGE_BASE_MESSAGE,
+                    False
+                )
 
     def test_message_pr_deployed_prod(self):
         with patch.object(self.api, 'message_pull_request') as mock:
             self.api.message_pr_deployed_prod(1)
-            mock.assert_called_with(1, github_api.PR_ON_PROD_MESSAGE, False)
+            mock.assert_called_with(
+                1,
+                github_api.PR_ON_PROD_MESSAGE,
+                github_api.PR_ON_PROD_MESSAGE,
+                False
+            )
 
     def test_message_pr_release_canceled(self):
         with patch.object(self.api, 'message_pull_request') as mock:
             self.api.message_pr_release_canceled(1)
-            mock.assert_called_with(1, github_api.PR_RELEASE_CANCELED_MESSAGE, False)
+            mock.assert_called_with(
+                1,
+                github_api.PR_RELEASE_CANCELED_MESSAGE,
+                github_api.PR_RELEASE_CANCELED_MESSAGE,
+                False
+            )
 
 
 @ddt.ddt
