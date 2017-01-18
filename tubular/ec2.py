@@ -133,14 +133,14 @@ def active_ami_for_edp(env, dep, play):
     return amis.pop()
 
 
-def edp_for_ami(ami_id):
+def tags_for_ami(ami_id):
     """
-    Look up the EDP tags for an AMI.
+    Look up the tags for an AMI.
 
     Arguments:
         ami_id (str): An AMI Id.
     Returns:
-        EDP Named Tuple: The EDP tags for this AMI.
+        dict: The tags for this AMI.
     Raises:
         ImageNotFoundException: No image found with this ami ID.
         MissingTagException: AMI is missing one or more of the expected tags.
@@ -155,7 +155,22 @@ def edp_for_ami(ami_id):
     except EC2ResponseError as error:
         raise ImageNotFoundException(error.message)
 
-    tags = ami.tags
+    return ami.tags
+
+
+def edp_for_ami(ami_id):
+    """
+    Look up the EDP tags for an AMI.
+
+    Arguments:
+        ami_id (str): An AMI Id.
+    Returns:
+        EDP Named Tuple: The EDP tags for this AMI.
+    Raises:
+        ImageNotFoundException: No image found with this ami ID.
+        MissingTagException: AMI is missing one or more of the expected tags.
+    """
+    tags = tags_for_ami(ami_id)
 
     try:
         edp = EDP(tags['environment'], tags['deployment'], tags['play'])
