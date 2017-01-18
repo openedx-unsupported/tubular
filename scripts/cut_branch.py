@@ -1,3 +1,4 @@
+#! /bin/
 """
 Command-line script to create a release candidate for an application
 """
@@ -35,7 +36,10 @@ LOG = logging.getLogger(__name__)
 @click.option(
     '--source_branch',
     help='Source branch whose HEAD is used to create the target branch',
-    default='master'
+)
+@click.option(
+    '--sha',
+    help='SHA to cut the branch from',
 )
 @click.option(
     '--target_branch',
@@ -55,6 +59,7 @@ LOG = logging.getLogger(__name__)
 def create_release_candidate(org,
                              repo,
                              source_branch,
+                             sha,
                              target_branch,
                              token,
                              output_file):
@@ -65,6 +70,7 @@ def create_release_candidate(org,
         org (str):
         repo (str):
         source_branch (str):
+        sha (str):
         target_branch (str):
         token (str):
         output_file (str):
@@ -78,29 +84,46 @@ def create_release_candidate(org,
     target_branch_name: release-candidate
     sha: af538da6b229cf1dfa33d0171e75fbff6de4c283
     """
+    if source_branch is not None and sha is not None:
+        LOG.error("Please specify either --source_branch or --sha, but not both.")
+        sys.exit(1)
+
+    if source_branch is None and sha is None:
+        LOG.error("Please specify at least one of --source_branch or --sha.")
+        sys.exit(1)
+
     LOG.info("Getting GitHub token...")
     github_api = GitHubAPI(org, repo, token)
 
-    LOG.info("Fetching commits...")
-    try:
-        commits = github_api.get_commits_by_branch(source_branch)
-        commit = commits[0]
-        commit_hash = commit.sha
-        commit_message = extract_message_summary(commit.commit.message)
+    if sha is None:
+        LOG.info("Fetching commits...")
+        try:
+            commits = github_api.get_commits_by_branch(source_branch)
+            commit = commits[0]
+            sha = commit.sha
+            commit_message = extract_message_summary(commit.commit.message)
 
-    except NoValidCommitsError:
-        LOG.error(
-            "Couldn't find a recent commit without test failures. Aborting"
-        )
-        raise
+        except NoValidCommitsError:
+            LOG.error(
+                "Couldn't find a recent commit without test failures. Aborting"
+            )
+            raise
 
-    LOG.info(
-        "Branching {rc} off {sha}. ({msg})".format(
-            rc=target_branch,
-            sha=commit_hash,
-            msg=commit_message
+        LOG.info(
+            "Branching {rc} off {sha}. ({msg})".format(
+                rc=target_branch,
+                sha=sha,
+                msg=commit_message
+            )
         )
-    )
+    else:
+        LOG.info(
+            "Branching {rc} off {sha} (explicitly provided).".format(
+                rc=target_branch,
+                sha=sha,
+            )
+        )
+
     try:
         github_api.delete_branch(target_branch)
     except Exception:  # pylint: disable=broad-except
@@ -109,7 +132,7 @@ def create_release_candidate(org,
         )
 
     try:
-        github_api.create_branch(target_branch, commit_hash)
+        github_api.create_branch(target_branch, sha)
     except Exception:  # pylint: disable=broad-except
         LOG.error("Unable to create branch {branch_name}. Aborting"
                   .format(branch_name=target_branch))
@@ -122,7 +145,7 @@ def create_release_candidate(org,
                 'org_name': org,
                 'source_branch_name': source_branch,
                 'target_branch_name': target_branch,
-                'sha': commit_hash,
+                'sha': sha,
             },
             stream,
             default_flow_style=False,
