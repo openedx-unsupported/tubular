@@ -54,3 +54,7 @@ class CannotDeleteLastASG(Exception):
 
 class ASGCountZeroException(Exception):
     pass
+
+
+class InvalidUrlException(Exception):
+    pass

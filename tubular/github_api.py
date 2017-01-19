@@ -6,11 +6,13 @@ import logging
 import os
 import string
 
+from tubular.exception import InvalidUrlException
 from github import Github
 from github.Commit import Commit
 from github.GitCommit import GitCommit
 from github.GithubException import UnknownObjectException
 from github.InputGitAuthor import InputGitAuthor
+from validators import url as url_validator
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
@@ -120,6 +122,31 @@ class GitHubAPI(object):
             github.GithubException.UnknownObjectException: If the branch does not exist
         """
         return self.get_pull_request(pr_number).head.sha
+
+    def get_diff_url(self, organization, repository, base_sha, head_sha):
+        """
+        Given the organization and repository, generate a github URL that will compare the provided SHAs.
+
+        Arguments:
+            organization (str): An organization name as it will appear in github
+            repository (str): The organization's repository name
+            base_sha (str): The base commit's SHA
+            head_sha (str): Compare the base SHA with this commit
+
+        Returns:
+            A string constaining the URL
+
+        Raises:
+            InvalidUrlException: If the basic validator does not believe this to be a valid URL
+        """
+        calculated_url = 'https://github.com/{}/{}/compare/{}...{}'.format(
+            organization, repository, base_sha, head_sha
+        )
+
+        if not url_validator(calculated_url):
+            raise InvalidUrlException(calculated_url)
+
+        return calculated_url
 
     def check_pull_request_test_status(self, pr_number):
         """
