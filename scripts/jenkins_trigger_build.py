@@ -60,9 +60,16 @@ from tubular import jenkins  # pylint: disable=wrong-import-position
     required=False,
     type=(str, str)
 )
-def trigger(url, user_name, user_token, job, token, cause, param):
+@click.option(
+    u"--timeout",
+    help=u"Maximum duration to wait for the jenkins job to complete (measured from "
+         u"the time the job is triggered), in seconds.",
+    type=float,
+    required=False,
+)
+def trigger(url, user_name, user_token, job, token, cause, param, timeout):
     u"""Trigger a jenkins job. """
-    jenkins.trigger_build(url, user_name, user_token, job, token, cause, param)
+    jenkins.trigger_build(url, user_name, user_token, job, token, cause, param, timeout)
 
 if __name__ == u"__main__":
     # Configure logging for the tubular module methods to
