@@ -26,6 +26,7 @@ from github.PullRequest import PullRequest
 from github.Repository import Repository
 
 from tubular import github_api
+from tubular.exception import InvalidUrlException
 from tubular.github_api import (
     GitHubAPI,
     NoValidCommitsError,
@@ -105,6 +106,17 @@ class GitHubApiTestCase(TestCase):
         self.repo_mock.get_branch.assert_called_with('test')
         self.repo_mock.get_commits.assert_called_with('123')
         self.assertEqual(len(commits), 10)
+
+    def test_get_diff_url(self):
+        def _check_url(org, repo, base_sha, head_sha):
+            """ private method to do the comparison of the expected URL and the one we get back """
+            url = self.api.get_diff_url(org, repo, base_sha, head_sha)
+            expected = 'https://github.com/{}/{}/compare/{}...{}'.format(org, repo, base_sha, head_sha)
+            self.assertEqual(url, expected)
+
+        _check_url('org', 'repo', 'base-sha', 'head-sha')
+        with self.assertRaises(InvalidUrlException):
+            _check_url('org', 'repo', 'abc def', 'head-sha')
 
     def test_get_commits_by_branch_branch_not_found(self):
         self.repo_mock.get_branch.side_effect = GithubException(

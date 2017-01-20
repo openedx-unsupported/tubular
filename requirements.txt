@@ -6,3 +6,4 @@ pycrypto
 pyyaml==3.12
 PyGithub==1.29
 requests>=2.9.1,<3.0
+validators
