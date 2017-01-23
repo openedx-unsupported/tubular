@@ -74,16 +74,22 @@ def create_tag(org,
     """
     github_api = GitHubAPI(org, repo, token)
 
+    def _exactly_one_set(param_list):
+        """
+        Guarantees that only one of the cmd-line params list have a value set.
+        """
+        return sum(int(bool(param)) for param in param_list) == 1
+
     # Check for one and only one of the mutually-exclusive params.
-    if (commit_sha, input_file, branch_name).count(True) != 1:
-        LOG.error(
-            "Exactly one of commit_sha ({commit_sha}), input_file ({input_file}),"
-            " and branch_name ({branch_name}) should be specified.".format(
-                commit_sha=commit_sha,
-                input_file=input_file,
-                branch_name=branch_name
+    if not _exactly_one_set((commit_sha, input_file, branch_name)):
+        err_msg = \
+            "Exactly one of commit_sha ({!r}), input_file ({!r})," \
+            " and branch_name ({!r}) should be specified.".format(
+                commit_sha,
+                input_file,
+                branch_name
             )
-        )
+        raise Exception(err_msg)
 
     if input_file:
         input_vars = yaml.safe_load(open(input_file, 'r'))  # pylint: disable=open-builtin
