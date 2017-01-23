@@ -48,17 +48,18 @@ LOG = logging.getLogger(__name__)
     '--commit_hash',
     help='Commit hash to check.',
 )
-def check_tests(org,
-                repo,
-                token,
-                input_file,
-                pr_number,
-                commit_hash):
+def poll_tests(org,
+               repo,
+               token,
+               input_file,
+               pr_number,
+               commit_hash):
     """
-    Check the current combined status of a GitHub PR/commit in a repo once.
+    Poll the combined status of a GitHub PR/commit in a repo several times.
 
-    If tests have passed for the PR/commit, return a success.
-    If any other status besides success (such as in-progress/pending), return a failure.
+    If tests pass for the PR/commit during a poll, return a success.
+    If tests fail for the PR/commit during a poll, return a failure.
+    If the maximum polls have occurred -or- a timeout, return a failure.
 
     If an input YAML file is specified, read the PR number from the file to check.
     Else if both PR number -and- commit hash is specified, return a failure.
@@ -74,14 +75,14 @@ def check_tests(org,
     if input_file:
         input_vars = yaml.safe_load(open(input_file, 'r'))  # pylint: disable=open-builtin
         pr_number = input_vars['pr_number']
-        status_success = gh_utils.check_pull_request_test_status(pr_number)
         git_obj = 'PR #{}'.format(pr_number)
+        status_success = gh_utils.poll_pull_request_test_status(pr_number)
     elif pr_number:
-        status_success = gh_utils.check_pull_request_test_status(pr_number)
         git_obj = 'PR #{}'.format(pr_number)
+        status_success = gh_utils.poll_pull_request_test_status(pr_number)
     elif commit_hash:
-        status_success = gh_utils.is_commit_successful(commit_hash)
         git_obj = 'commit hash {}'.format(commit_hash)
+        status_success = gh_utils.poll_for_commit_successful(commit_hash)
 
     LOG.info("{}: Combined status of {} is {}.".format(
         sys.argv[0], git_obj, "success" if status_success else "failed"
@@ -92,4 +93,4 @@ def check_tests(org,
 
 
 if __name__ == '__main__':
-    check_tests()  # pylint: disable=no-value-for-parameter
+    poll_tests()  # pylint: disable=no-value-for-parameter

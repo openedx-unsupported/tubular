@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import logging
 import os
 import string
+import backoff
 
 from tubular.exception import InvalidUrlException
 from github import Github
@@ -22,11 +23,18 @@ PR_ON_STAGE_DATE_MESSAGE = 'in preparation for a release to production on {date:
 PR_ON_PROD_MESSAGE = '**EdX Release Notice**: This PR has been deployed to the production environment.'
 PR_RELEASE_CANCELED_MESSAGE = '**EdX Release Notice**: This PR has been rolled back from the production environment.'
 
+DEFAULT_TAG_USERNAME = 'no_user'
+DEFAULT_TAG_EMAIL_ADDRESS = 'no.public.email@edx.org'
 
 # Day of week constant
 _MONDAY = 0
 _FRIDAY = 4
 _NORMAL_RELEASE_WEEKDAYS = range(_MONDAY, _FRIDAY + 1)
+
+# Defaults for the polling of a PR's tests.
+MAX_PR_TEST_TRIES_DEFAULT = 5
+PR_TEST_INITIAL_WAIT_INTERVAL_DEFAULT = 10
+PR_TEST_POLL_INTERVAL_DEFAULT = 10
 
 
 class NoValidCommitsError(Exception):
@@ -70,6 +78,39 @@ def rc_branch_name_for_date(date):
     Returns the standard release candidate branch name
     """
     return 'rc/{date}'.format(date=date.isoformat())
+
+
+def _backoff_handler(details):
+    """
+    Simple logging handler for when polling backoff occurs.
+    """
+    LOGGER.info('Trying again in {wait:0.1f} seconds after {tries} tries calling {target}'.format(**details))
+
+
+def _envvar_get_int(var_name, default):
+    """
+    Grab an environment variable and return it as an integer.
+    If the environment variable does not exist, return the default.
+    """
+    return int(os.environ.get(var_name, default))
+
+
+def _constant_with_initial_wait(initial_wait=0, interval=1):
+    """
+    Generator with initial wait (after the first request) built-in.
+    The first request is made immediately.
+    The second request is made after "initial_wait" seconds.
+    All remaining requests made after "interval" seconds.
+
+    Useful for polling processes expected to not have results for a substantial interval from process start.
+
+    Arguments:
+        initial_wait: Number of seconds to wait between the first and second requests.
+        interval: Constant value in seconds to yield after second request.
+    """
+    yield initial_wait
+    while True:
+        yield interval
 
 
 class GitHubAPI(object):
@@ -148,9 +189,45 @@ class GitHubAPI(object):
 
         return calculated_url
 
+    def get_head_commit_from_branch_name(self, branch_name):
+        """
+        Given a branch name, return the HEAD commit hash.
+
+        Arguments:
+            branch_name (str): Name of branch from which to extract HEAD commit hash.
+
+        Returns:
+            Commit SHA of the branch HEAD.
+
+        Raises:
+            github.GithubException.GithubException: If the response fails.
+            github.GithubException.UnknownObjectException: If the branch does not exist
+        """
+        return self.get_commits_by_branch(branch_name)[0].sha
+
+    def get_commit_combined_statuses(self, commit):
+        """
+        Calls GitHub's '<commit>/statuses' endpoint for a given commit. See
+        https://developer.github.com/v3/repos/statuses/#get-the-combined-status-for-a-specific-ref
+
+        Returns:
+            github.CommitCombinedStatus.CommitCombinedStatus
+
+        Raises:
+            RequestFailed: If the response fails validation.
+        """
+        if isinstance(commit, (str, unicode)):
+            commit = self.github_repo.get_commit(commit)
+        elif isinstance(commit, GitCommit):
+            commit = self.github_repo.get_commit(commit.sha)
+        elif not isinstance(commit, Commit):
+            raise UnknownObjectException(500, 'commit is neither a valid sha nor github.Commit.Commit object.')
+
+        return commit.get_combined_status()
+
     def check_pull_request_test_status(self, pr_number):
         """
-        Given a PR number, query the combined status of the PR's tests.
+        Given a PR number, query the current combined status of the PR's tests.
 
         Arguments:
             pr_number (int): Number of PR to check.
@@ -162,7 +239,67 @@ class GitHubAPI(object):
             github.GithubException.GithubException: If the response fails.
             github.GithubException.UnknownObjectException: If the branch does not exist
         """
-        return self.commit_combined_statuses(self.get_head_commit_from_pull_request(pr_number)).state == 'success'
+        return self.get_commit_combined_statuses(
+            self.get_head_commit_from_pull_request(pr_number)
+        ).state.lower() == 'success'
+
+    @backoff.on_predicate(
+        _constant_with_initial_wait,
+        lambda x: x not in ('success', 'failure'),
+        max_tries=_envvar_get_int("MAX_PR_TEST_POLL_TRIES", MAX_PR_TEST_TRIES_DEFAULT),
+        initial_wait=_envvar_get_int("PR_TEST_INITIAL_WAIT_INTERVAL", PR_TEST_INITIAL_WAIT_INTERVAL_DEFAULT),
+        interval=_envvar_get_int("PR_TEST_POLL_INTERVAL", PR_TEST_POLL_INTERVAL_DEFAULT),
+        jitter=None,
+        on_backoff=_backoff_handler
+    )
+    def _poll_commit(self, sha):
+        """
+        Poll whether the passed commit has passed all its tests.
+        Ensures there is at least one status update so that
+        commits whose tests haven't started yet are not valid.
+
+        Arguments:
+            sha (str): The SHA of which to get the status.
+
+        Returns:
+            bool: true when the combined state equals 'success'
+        """
+        commit_status = self.get_commit_combined_statuses(sha)
+
+        # Ensure that at least one status update exists to guard against commits whose tests haven't started yet.
+        if len(commit_status.statuses) < 1 or commit_status.state is None:
+            return 'not_started'
+
+        return commit_status.state.lower()
+
+    def poll_pull_request_test_status(self, pr_number):
+        """
+        Given a PR number, poll the combined status of the PR's tests.
+
+        Arguments:
+            pr_number (int): Number of PR to check.
+
+        Returns:
+            True if all tests have passed successfully, else False.
+
+        Raises:
+            github.GithubException.GithubException: If the response fails.
+            github.GithubException.UnknownObjectException: If the branch does not exist
+        """
+        commit_sha = self.get_head_commit_from_pull_request(pr_number)
+        return self._poll_commit(commit_sha) == 'success'
+
+    def poll_for_commit_successful(self, sha):
+        """
+        Poll whether the passed commit has passed all its tests.
+
+        Arguments:
+            sha (str): The SHA of which to get the status.
+
+        Returns:
+            True when the commit's combined state equals 'success', else False.
+        """
+        return self._poll_commit(sha) == 'success'
 
     def is_branch_base_of_pull_request(self, pr_number, branch_name):
         """
@@ -183,26 +320,6 @@ class GitHubAPI(object):
         pull_request = self.get_pull_request(pr_number)
         repo_branch_name = '{}:{}'.format(self.org, branch_name)
         return pull_request.base.label == repo_branch_name
-
-    def commit_combined_statuses(self, commit):
-        """
-        Calls GitHub's '<commit>/statuses' endpoint for a given commit. See
-        https://developer.github.com/v3/repos/statuses/#get-the-combined-status-for-a-specific-ref
-
-        Returns:
-            github.CommitCombinedStatus.CommitCombinedStatus
-
-        Raises:
-            RequestFailed: If the response fails validation.
-        """
-        if isinstance(commit, (str, unicode)):
-            commit = self.github_repo.get_commit(commit)
-        elif isinstance(commit, GitCommit):
-            commit = self.github_repo.get_commit(commit.sha)
-        elif not isinstance(commit, Commit):
-            raise UnknownObjectException(500, 'commit is neither a valid sha nor github.Commit.Commit object.')
-
-        return commit.get_combined_status()
 
     def get_commits_by_branch(self, branch):
         """
@@ -340,8 +457,9 @@ class GitHubAPI(object):
         """
         tag_user = self.user()
         tagger = InputGitAuthor(
-            name=tag_user.name,
-            email=tag_user.email,
+            name=tag_user.name or DEFAULT_TAG_USERNAME,
+            # GitHub users without a public email address will use a default address.
+            email=tag_user.email or DEFAULT_TAG_EMAIL_ADDRESS,
             date=datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ')
         )
 
@@ -370,7 +488,7 @@ class GitHubAPI(object):
         Returns:
             bool: true when the combined state equals 'success'
         """
-        commit_status = self.commit_combined_statuses(sha)
+        commit_status = self.get_commit_combined_statuses(sha)
 
         # Determine if the commit has passed all checks
         if len(commit_status.statuses) < 1 or commit_status.state is None:

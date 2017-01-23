@@ -87,6 +87,7 @@ def create_pull_request(org,
     e.g.
      ---
     pr_id: 96786312
+    pr_number: 3
     pr_url: https://api.github.com/repos/macdiesel412/Rainer/pulls/3
     pr_repo_url: /repos/macdiesel412/Rainer
     pr_head: af538da6b229cf1dfa33d0171e75fbff6de4c283
@@ -123,6 +124,7 @@ def create_pull_request(org,
             yaml.safe_dump(
                 {
                     'pr_id': pull_request.id,
+                    'pr_number': pull_request.number,
                     'pr_url': pull_request.url,
                     'pr_repo_url': github_api.github_repo.url,
                     'pr_head': pull_request.head.sha,

@@ -18,23 +18,27 @@ class GitRepoTestCase(TestCase):
     All network calls are mocked out.
     """
     @patch('subprocess.check_call')
-    def test_merge_branch_success(self, mock_check_call):
+    @patch('subprocess.check_output')
+    def test_merge_branch_success(self, mock_check_output, mock_check_call):
         """
         Tests merging a branch successfully.
         """
         merge_branch('git@github.com:edx/tubular.git', 'foo', 'bar')
         self.assertEqual(mock_check_call.call_count, 5)
+        self.assertEqual(mock_check_output.call_count, 1)
 
     @patch('subprocess.check_call')
+    @patch('subprocess.check_output')
     @ddt.data(
         (('git', 'clone'), 1),
         (('git', 'checkout'), 2),
         (('git', 'merge'), 3),
         (('git', 'push'), 4),
-        (('rm', '-rf'), 5),
+        (('git', 'rev-parse'), 5),
+        (('rm', '-rf'), 6),
     )
     @ddt.unpack
-    def test_merge_branch_failure(self, call_args, times_called, mock_check_call):
+    def test_merge_branch_failure(self, call_args, times_called, mock_check_output, mock_check_call):
         """
         Tests failing to merge a branch.
         """
@@ -46,6 +50,7 @@ class GitRepoTestCase(TestCase):
                 raise subprocess.CalledProcessError([], 0)
 
         mock_check_call.side_effect = side_effect
+        mock_check_output.side_effect = side_effect
         if call_args in (('git', 'clone'), ('rm', '-rf')):
             exception_to_expect = subprocess.CalledProcessError
         else:

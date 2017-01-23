@@ -131,6 +131,7 @@ def create_release_candidate(org,
     pr_diff_url: https://github.com/macdiesel412/Rainer/pull/3.diff
     pr_head: af538da6b229cf1dfa33d0171e75fbff6de4c283
     pr_id: 96786312
+    pr_number: 3
     pr_mergable: null
     pr_mergable_state: unknown
     pr_repo_url: /repos/macdiesel412/Rainer
@@ -209,6 +210,7 @@ def create_release_candidate(org,
             yaml.safe_dump(
                 {
                     'pr_id': pull_request.id,
+                    'pr_number': pull_request.number,
                     'pr_url': pull_request.url,
                     'pr_repo_url': github_api.github_repo.url,
                     'pr_head': pull_request.head.sha,

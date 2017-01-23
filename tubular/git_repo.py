@@ -35,11 +35,7 @@ class GitRepo(object):
     def __init__(self, clone_url):
         # Verify and save the clone URL.
         parsed = urlparse(clone_url)
-        self.clone_url = '{scheme}://{netloc}{path}'.format(
-            scheme=parsed.scheme,
-            netloc=parsed.netloc,
-            path=parsed.path
-        )
+        self.clone_url = parsed.geturl()
 
         # Parse out the repository name.
         match = re.match(r'.*edx/(?P<name>.*).git', self.clone_url)
@@ -50,9 +46,18 @@ class GitRepo(object):
     def _exec_cmd(self, cmd_args):
         """
         Utility method for executing a command.
+        Returns the exit code of the command.
         """
         LOGGER.info("Executing: {}".format(subprocess.list2cmdline(cmd_args)))
         return subprocess.check_call(cmd_args, stderr=subprocess.STDOUT)
+
+    def _exec_cmd_output(self, cmd_args):
+        """
+        Utility method for executing a command.
+        Returns the output of the command.
+        """
+        LOGGER.info("Executing: {}".format(subprocess.list2cmdline(cmd_args)))
+        return subprocess.check_output(cmd_args, stderr=subprocess.STDOUT).strip()
 
     def clone(self, branch_name=None):
         """
@@ -128,6 +133,19 @@ class GitRepo(object):
         cmd_args = ['git', 'push', '-u', 'origin', branch_name]
         self._exec_cmd(cmd_args)
 
+    def get_head_sha(self, branch_name):
+        """
+        Returns commit SHA of specified branch's HEAD.
+
+        Arguments:
+            branch_name (str): Branch name to use.
+
+        Raises:
+            subprocess.CalledProcessError: if the cmd fails
+        """
+        cmd_args = ['git', 'rev-parse', branch_name]
+        return self._exec_cmd_output(cmd_args)
+
     def cleanup(self):
         """
         Delete the local clone of the repo.
@@ -165,6 +183,9 @@ def merge_branch(repo_url,
         source_branch (str): Branch name containing commits to merge.
         target_branch (str): Branch name into which the source branch will be merged.
         ff_only(bool): If True, force a fast-forward merge.
+
+    Returns:
+        Commit SHA of the merge commit where the branch was merged.
     """
     repo = GitRepo(repo_url)
     repo.clone(source_branch)
@@ -173,7 +194,9 @@ def merge_branch(repo_url,
             repo.track_branch(target_branch)
             repo.merge(source_branch, ff_only)
             repo.push(target_branch)
+            merge_sha = repo.get_head_sha(target_branch)
     except subprocess.CalledProcessError as exc:
         raise GitMergeFailed(repr(exc.cmd))
     finally:
         repo.cleanup()
+    return merge_sha
