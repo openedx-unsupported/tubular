@@ -8,6 +8,7 @@ from os import path
 import os
 import sys
 import logging
+import time
 import traceback
 import click
 import yaml
@@ -54,6 +55,9 @@ def deploy(ami_id, out_file, config_file, dry_run):
         else:
             click.echo('Would have triggered a deploy of {}'.format(ami_id))
             deploy_info = {}
+
+        # Record the time of deployment in epoch seconds.
+        deploy_info['deploy_time'] = time.time()
 
         if out_file:
             with open(out_file, 'w') as stream:
