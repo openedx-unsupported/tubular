@@ -188,10 +188,9 @@ def merge_branch(repo_url,
         Commit SHA of the merge commit where the branch was merged.
     """
     repo = GitRepo(repo_url)
-    repo.clone(source_branch)
+    repo.clone(target_branch)
     try:
         with _change_dir(repo):
-            repo.track_branch(target_branch)
             repo.merge(source_branch, ff_only)
             repo.push(target_branch)
             merge_sha = repo.get_head_sha(target_branch)
