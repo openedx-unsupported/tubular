@@ -130,7 +130,7 @@ class GitRepo(object):
         Raises:
             subprocess.CalledProcessError: if the cmd fails
         """
-        cmd_args = ['git', 'push', '-u', 'origin', branch_name]
+        cmd_args = ['git', 'push', 'origin', 'refs/heads/{0}:refs/heads/{0}'.format(branch_name)]
         self._exec_cmd(cmd_args)
 
     def get_head_sha(self, branch_name):
