@@ -21,6 +21,8 @@ from github.GithubException import GithubException  # pylint: disable=wrong-impo
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
+EST = timezone('US/Eastern')
+
 
 @click.command()
 @click.option(
@@ -50,6 +52,10 @@ LOG = logging.getLogger(__name__)
     help='Branch name whose HEAD commit SHA will be tagged.',
 )
 @click.option(
+    '--deploy_artifact',
+    help='File from which to read the AMI deployment time with key "deploy_time".',
+)
+@click.option(
     '--tag_name',
     help='Name of the tag to use.',
 )
@@ -63,6 +69,7 @@ def create_tag(org,
                commit_sha,
                input_file,
                branch_name,
+               deploy_artifact,
                tag_name,
                tag_message):
     """
@@ -97,17 +104,22 @@ def create_tag(org,
     elif branch_name:
         commit_sha = github_api.get_head_commit_from_branch_name(branch_name)
 
+    if deploy_artifact:
+        deploy_vars = yaml.safe_load(open(deploy_artifact, 'r'))  # pylint: disable=open-builtin
+        deploy_time = datetime.datetime.fromtimestamp(deploy_vars['deploy_time'], EST)
+    else:
+        # If no deploy artifact was given from which to extract a deploy time, use the current time.
+        deploy_time = datetime.datetime.now(EST)
     # If no tag name was given, generate one using the date/time.
-    time_now = datetime.datetime.now(timezone('US/Eastern'))
     if not tag_name:
         tag_name = 'release-{}'.format(
-            time_now.strftime("%Y-%m-%d-%H.%M")
+            deploy_time.strftime("%Y-%m-%d-%H.%M")
         )
 
     # If no tag message was given, generate one using the date/time.
     if not tag_message:
         tag_message = 'Release for {}'.format(
-            time_now.strftime("%b %d, %Y %H:%M EST")
+            deploy_time.strftime("%b %d, %Y %H:%M EST")
         )
 
     LOG.info(
