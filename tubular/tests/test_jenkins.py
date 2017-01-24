@@ -3,6 +3,7 @@ Tests for triggering a Jenkins job.
 """
 from __future__ import unicode_literals
 
+from itertools import islice
 import json
 import re
 import unittest
@@ -44,6 +45,32 @@ MOCK_BUILD_DATA = {
     'result': 'SUCCESS',
     'url': JOB_URL,
 }
+
+
+@ddt.ddt
+class TestBackoff(unittest.TestCase):
+    u"""
+    Test of custom backoff code (wait time generator and max_tries)
+    """
+    @ddt.data(
+        (2, 1, 1, 2, [1]),
+        (2, 1, 2, 3, [1, 1]),
+        (2, 1, 3, 3, [1, 2]),
+        (2, 100, 90, 2, [90]),
+        (2, 1, 90, 8, [1, 2, 4, 8, 16, 32, 27]),
+        (3, 5, 1000, 7, [5, 15, 45, 135, 405, 395]),
+    )
+    @ddt.unpack
+    def test_max_timeout(self, base, factor, timeout, expected_max_tries, expected_waits):
+        # pylint: disable=protected-access
+        wait_gen, max_tries = jenkins._backoff_timeout(timeout, base, factor)
+        self.assertEqual(expected_max_tries, max_tries)
+
+        # Use max_tries-1, because we only wait that many times
+        waits = list(islice(wait_gen(), max_tries - 1))
+        self.assertEqual(expected_waits, waits)
+
+        self.assertEquals(timeout, sum(waits))
 
 
 @ddt.ddt

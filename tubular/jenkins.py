@@ -2,6 +2,7 @@
 Methods to interact with the Jenkins API to perform various tasks.
 """
 import logging
+import math
 
 import backoff
 from jenkinsapi.jenkins import Jenkins
@@ -12,10 +13,72 @@ from tubular.exception import BackendError
 
 LOG = logging.getLogger(__name__)
 
-MAX_TRIES = 12
+
+def _poll_giveup(data):
+    u""" Raise an error when the polling tries are exceeded."""
+    orig_args = data.get(u'args')
+    # The Build object was the only parameter to the original method call,
+    # and so it's the first and only item in the args.
+    build = orig_args[0]
+    msg = u'Timed out waiting for build {} to finish.'.format(build.name)
+    raise BackendError(msg)
 
 
-def trigger_build(base_url, user_name, user_token, job_name, job_token, job_cause=None, job_params=None):
+def _backoff_timeout(timeout, base=2, factor=1):
+    u"""
+    Return a tuple of (wait_gen, max_tries) so that backoff will only try up to `timeout` seconds.
+
+    |timeout|wait x sec|make attempt #|total time (sec)|total time (min)|
+    |----:|----:|---:|----:|-----:|
+    |0    |0    |1   |0    | 0    |
+    |0.1  |1    |2   |1    |0.02  |
+    |0.5  |2    |3   |3    |0.05  |
+    |4    |4   |7    |0.12  |
+    |8    |5   |15   |0.25  |
+    |16   |6   |31   |0.52  |
+    |32   |7   |63   |1.05  |
+    |64   |8   |127  |2.12  |
+    |128  |9   |255  |4.25  |
+    |256  |10  |511  |8.52  |
+    |512  |11  |1023 |17.05 |
+    |1024 |12  |2047 |34.12 |
+    |2048 |13  |4095 |68.25 |
+
+    """
+    # Total duration of sum(factor * base ** n for n in range(K)) = factor*(base**K - 1)/(base - 1),
+    # where K is the number of retries, or max_tries - 1 (since the first try doesn't require a wait)
+    #
+    # Solving for K, K = log(timeout * (base - 1) / factor + 1, base)
+    #
+    # Using the next smallest integer K will give us a number of elements from
+    # the exponential sequence to take and still be less than the timeout.
+    tries = int(math.log(timeout * (base - 1) / factor + 1, base))
+
+    remainder = timeout - (factor * (base ** tries - 1)) / (base - 1)
+
+    def expo():
+        u"""Compute an exponential backoff wait period, but capped to an expected max timeout"""
+        # pylint: disable=invalid-name
+        n = 0
+        while True:
+            a = factor * base ** n
+            if n >= tries:
+                yield remainder
+            else:
+                yield a
+                n += 1
+
+    # tries tells us the largest standard wait using the standard progression (before being capped)
+    # tries + 1 because backoff waits one fewer times than max_tries (the first attempt has no wait time).
+    # If a remainder, then we need to make one last attempt to get the target timeout (so tries + 2)
+    if remainder == 0:
+        return expo, tries + 1
+    else:
+        return expo, tries + 2
+
+
+def trigger_build(base_url, user_name, user_token, job_name, job_token,
+                  job_cause=None, job_params=None, timeout=60 * 30):
     u"""
     Trigger a jenkins job/project (note that jenkins uses these terms interchangeably)
 
@@ -30,6 +93,8 @@ def trigger_build(base_url, user_name, user_token, job_name, job_token, job_caus
             trigger this project's builds.
         job_cause (str): Text that will be included in the recorded build cause
         job_params (set of tuples): Parameter names and their values to pass to the job
+        timeout (int): The maximum number of seconds to wait for the jenkins build to complete (measured
+            from when the job is triggered.)
 
     Returns:
         A the status of the build that was triggered
@@ -37,45 +102,18 @@ def trigger_build(base_url, user_name, user_token, job_name, job_token, job_caus
     Raises:
         BackendError: if the Jenkins job could not be triggered successfully
     """
-    def poll_giveup(data):
-        u""" Raise an error when the polling tries are exceeded."""
-        orig_args = data.get(u'args')
-        # The Build object was the only parameter to the original method call,
-        # and so it's the first and only item in the args.
-        build = orig_args[0]
-        msg = u'Timed out waiting for build {} to finish.'.format(build.name)
-        raise BackendError(msg)
+    wait_gen, max_tries = _backoff_timeout(timeout)
 
     @backoff.on_predicate(
-        backoff.expo,
-        max_tries=MAX_TRIES,
-        on_giveup=poll_giveup
+        wait_gen,
+        max_tries=max_tries,
+        on_giveup=_poll_giveup
     )
     def poll_build_for_result(build):
         u"""
-        Poll for the build running, with exponential backoff.
+        Poll for the build running, with exponential backoff, capped to ``timeout`` seconds.
         The on_predicate decorator is used to retry when the return value
         of the target function is True.
-
-        Warning: setting MAX_TRIES to 0 will loop infinitely.
-        Here is a chart to help you decide on a good value to use, showing
-        exponential backoff with a base of 2 and factor of 1 (defaults for backoff.expo)
-
-        |wait x sec|make attempt #|total time (sec)|total time (min)|
-        |----:|---:|----:|-----:|
-        |0    |1   |0    | 0    |
-        |1    |2   |1    |0.02  |
-        |2    |3   |3    |0.05  |
-        |4    |4   |7    |0.12  |
-        |8    |5   |15   |0.25  |
-        |16   |6   |31   |0.52  |
-        |32   |7   |63   |1.05  |
-        |64   |8   |127  |2.12  |
-        |128  |9   |255  |4.25  |
-        |256  |10  |511  |8.52  |
-        |512  |11  |1023 |17.05 |
-        |1024 |12  |2047 |34.12 |
-        |2048 |13  |4095 |68.25 |
         """
         return not build.is_running()
 
