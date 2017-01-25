@@ -4,15 +4,9 @@
 unittest:
 # command to run tests, the -n auto will run tests in
 # parallel with as many cores as are available.
-	tox
+	tox -e py{27,34,35}-test
 
 quality:
-	pep8 --config=.pep8 tubular scripts admin
-	pylint --py3k tubular
-	pylint --py3k scripts
-	pylint --py3k admin
-	pylint tubular
-	pylint scripts
-	pylint admin
+	tox -e py{27,34,35}-quality
 
 test: unittest quality

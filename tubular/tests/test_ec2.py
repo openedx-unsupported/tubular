@@ -176,7 +176,7 @@ class TestEC2(unittest.TestCase):
         asgs = ec2.asgs_for_edp(edp)
         self.assertIsInstance(asgs, list)
 
-        self.assertEquals(len(asgs), expected_returned_count)
+        self.assertEqual(len(asgs), expected_returned_count)
         self.assertTrue(all(asg_name in asgs for asg_name in expected_asg_names_list))
 
     @ddt.data(
@@ -199,7 +199,7 @@ class TestEC2(unittest.TestCase):
         asgs = ec2.get_all_autoscale_groups(name_filter)
 
         self.assertIsInstance(asgs, list)
-        self.assertEquals(len(asgs), expected_result_count)
+        self.assertEqual(len(asgs), expected_result_count)
         if name_filter:
             self.assertTrue(all(asg.name in name_filter for asg in asgs))
 
@@ -427,6 +427,6 @@ class TestEC2(unittest.TestCase):
         elb = ec2.get_all_load_balancers(name_filter)
 
         self.assertIsInstance(elb, list)
-        self.assertEquals(len(elb), expected_result_count)
+        self.assertEqual(len(elb), expected_result_count)
         if name_filter:
             self.assertTrue(all(asg.name in name_filter for asg in elb))

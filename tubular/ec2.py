@@ -352,12 +352,15 @@ def get_asgs_pending_delete():
                         asgs_pending_delete.append(asg)
                         break
             except ValueError:
-                LOG.warn("ASG {0} has an improperly formatted datetime string for the key {1}. Value: {2} . "
-                         "Format must match {3}"
-                         .format(asg.name, tag.key, tag.value, ISO_DATE_FORMAT))
+                LOG.warning(
+                    "ASG {0} has an improperly formatted datetime string for the key {1}. Value: {2} . "
+                    "Format must match {3}".format(
+                        asg.name, tag.key, tag.value, ISO_DATE_FORMAT
+                    )
+                )
                 continue
             except Exception as err:  # pylint: disable=broad-except
-                LOG.warn("Error occured while building a list of ASGs to delete, continuing: {0}".format(err))
+                LOG.warning("Error occured while building a list of ASGs to delete, continuing: {0}".format(err))
                 continue
 
     LOG.info("Number of ASGs pending delete: {0}".format(len(asgs_pending_delete)))

@@ -683,7 +683,7 @@ class TestAsgard(unittest.TestCase):
         self._mock_asgard_pending_delete(req_mock, [asg])
         self.assertTrue(asgard.is_asg_pending_delete(asg))
 
-        self.assertEquals(None, asgard.disable_asg(asg))
+        self.assertEqual(None, asgard.disable_asg(asg))
 
     def test_disable_asg_does_not_exist(self, req_mock):  # pylint: disable=unused-argument
         def post_callback(request, context):  # pylint: disable=unused-argument
@@ -700,7 +700,7 @@ class TestAsgard(unittest.TestCase):
 
         asg = 'loadtest-edx-edxapp-v059'
         self._mock_asgard_pending_delete(req_mock, [asg], 404)
-        self.assertEquals(None, asgard.disable_asg(asg))
+        self.assertEqual(None, asgard.disable_asg(asg))
 
     @data((COMPLETED_SAMPLE_TASK, True), (FAILED_SAMPLE_TASK, False))
     @unpack
@@ -852,7 +852,7 @@ class TestAsgard(unittest.TestCase):
             json=deleted_asg_not_in_progress(asg))
 
         if success:
-            self.assertEquals(None, test_function(asg))
+            self.assertEqual(None, test_function(asg))
         else:
             self.assertRaises(BackendError, test_function, asg)
 

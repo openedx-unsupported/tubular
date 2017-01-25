@@ -71,7 +71,7 @@ class TestBackoff(unittest.TestCase):
         waits = list(islice(wait_gen(), max_tries - 1))
         self.assertEqual(expected_waits, waits)
 
-        self.assertEquals(timeout, sum(waits))
+        self.assertEqual(timeout, sum(waits))
 
 
 @ddt.ddt

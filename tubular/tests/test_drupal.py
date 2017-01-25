@@ -15,6 +15,7 @@ from tubular.exception import BackendError
 os.environ["TUBULAR_RETRY_ENABLED"] = "false"
 reload_module(drupal)  # pylint: disable=too-many-function-args
 
+
 CLEAR_CACHE_RESPONSE_WAITING = {
     "id": "1",
     "queue": "purge-domain",

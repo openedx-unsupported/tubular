@@ -7,7 +7,6 @@ python:
 # command to install dependencies
 install:
   - pip install tox-travis
-  - pip install -r requirements/test_requirements.txt
 
 script:
-  - make test
+  - tox

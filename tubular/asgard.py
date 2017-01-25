@@ -461,12 +461,12 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True):
         return
     if fail_if_active and is_asg_enabled(asg):
         msg = "Not deleting ASG {} as it is currently active.".format(asg)
-        LOG.warn(msg)
+        LOG.warning(msg)
         raise CannotDeleteActiveASG(msg)
 
     if fail_if_last and is_last_asg(asg):
         msg = "Not deleting ASG {} since it is the last ASG in this cluster."
-        LOG.warn(msg)
+        LOG.warning(msg)
         raise CannotDeleteLastASG(msg)
 
     payload = {"name": asg}
