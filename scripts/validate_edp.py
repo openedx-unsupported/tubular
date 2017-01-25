@@ -51,7 +51,7 @@ def validate_cli(ami_id, environment, deployment, play):
         edp_matched = validate_edp(ami_id, environment, deployment, play)
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho("Error validating AMI: {0}.\nMessage: {1}".format(ami_id, err.message), fg='red')
+        click.secho("Error validating AMI: {0}.\nMessage: {1}".format(ami_id, err), fg='red')
         sys.exit(1)
 
     sys.exit(0 if edp_matched else 1)

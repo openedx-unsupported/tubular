@@ -8,6 +8,7 @@ import boto
 from boto.ec2.autoscale.launchconfig import LaunchConfiguration
 from boto.ec2.autoscale.group import AutoScalingGroup
 from boto.ec2.autoscale import Tag
+import six
 
 
 def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
@@ -30,7 +31,7 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
             value=v,
             resource_id=asg_name,
             propagate_at_launch=True
-        ) for k, v in tags.iteritems()
+        ) for k, v in six.iteritems(tags)
     ]
 
     if elbs is None:

@@ -8,7 +8,8 @@ import logging
 import os
 import re
 import subprocess
-from urlparse import urlparse
+
+from six.moves import urllib
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
@@ -34,7 +35,7 @@ class GitRepo(object):
     """
     def __init__(self, clone_url):
         # Verify and save the clone URL.
-        parsed = urlparse(clone_url)
+        parsed = urllib.parse.urlparse(clone_url)
         self.clone_url = parsed.geturl()
 
         # Parse out the repository name.

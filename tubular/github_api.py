@@ -4,7 +4,6 @@ from __future__ import print_function, unicode_literals
 from datetime import datetime, timedelta
 import logging
 import os
-import string
 import backoff
 
 from tubular.exception import InvalidUrlException
@@ -13,6 +12,7 @@ from github.Commit import Commit
 from github.GitCommit import GitCommit
 from github.GithubException import UnknownObjectException
 from github.InputGitAuthor import InputGitAuthor
+import six
 from validators import url as url_validator
 
 LOGGER = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ def extract_message_summary(message, max_length=50):
     """
     Take a commit message and return the first part of it.
     """
-    title = string.split(message, '\n')[0] or ''
+    title = message.split('\n')[0] or ''
     if len(title) < max_length:
         return title
     else:
@@ -216,7 +216,7 @@ class GitHubAPI(object):
         Raises:
             RequestFailed: If the response fails validation.
         """
-        if isinstance(commit, (str, unicode)):
+        if isinstance(commit, six.string_types):
             commit = self.github_repo.get_commit(commit)
         elif isinstance(commit, GitCommit):
             commit = self.github_repo.get_commit(commit.sha)

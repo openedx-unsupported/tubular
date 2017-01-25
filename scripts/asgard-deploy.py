@@ -67,7 +67,7 @@ def deploy(ami_id, out_file, config_file, dry_run):
 
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho('Error Deploying AMI: {0}.\nMessage: {1}'.format(ami_id, err.message), fg='red')
+        click.secho('Error Deploying AMI: {0}.\nMessage: {1}'.format(ami_id, err), fg='red')
         sys.exit(1)
 
     sys.exit(0)

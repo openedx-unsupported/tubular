@@ -28,7 +28,7 @@ def restrict_ami_to_stage(ami_id):
         is_stage = is_stage_ami(ami_id)
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho("Error restricting AMI to stage: {0}.\nMessage: {1}".format(ami_id, err.message), fg='red')
+        click.secho("Error restricting AMI to stage: {0}.\nMessage: {1}".format(ami_id, err), fg='red')
         sys.exit(1)
 
     sys.exit(0 if is_stage else 1)

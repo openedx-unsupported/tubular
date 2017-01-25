@@ -75,7 +75,7 @@ def retrieve_base_ami(environment, deployment, play, override, out_file):
 
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho('Error finding base AMI ID.\nMessage: {}'.format(err.message), fg='red')
+        click.secho('Error finding base AMI ID.\nMessage: {}'.format(err), fg='red')
         sys.exit(1)
 
     sys.exit(0)

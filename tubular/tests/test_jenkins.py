@@ -9,7 +9,7 @@ import re
 import unittest
 
 import ddt
-import httpretty
+import requests_mock
 
 from tubular.exception import BackendError
 import tubular.jenkins as jenkins
@@ -78,17 +78,15 @@ class TestJenkinsAPI(unittest.TestCase):
     """
     Tests for interacting with the Jenkins API
     """
-    @httpretty.activate
-    def test_failure(self):
+    @requests_mock.Mocker()
+    def test_failure(self, mock):
         """
         Test the failure condition when triggering a jenkins job
         """
         # Mock all network interactions
-        httpretty.HTTPretty.allow_net_connect = False
-        httpretty.register_uri(
-            httpretty.GET,
+        mock.get(
             re.compile(".*"),
-            status=404,
+            status_code=404,
         )
         with self.assertRaises(BackendError):
             jenkins.trigger_build(BASE_URL, USER_ID, USER_TOKEN, JOB, TOKEN, None, ())
@@ -101,44 +99,40 @@ class TestJenkinsAPI(unittest.TestCase):
         ('my cause', ((u'FOO', u'bar'),)),
     )
     @ddt.unpack
-    @httpretty.activate
-    def test_success(self, cause, param):
+    @requests_mock.Mocker()
+    def test_success(self, cause, param, mock):
         u"""
         Test triggering a jenkins job
         """
-        def request_callback(_request, uri, headers):
+        def text_callback(request, context):
             u""" What to return from the mock. """
             # This is the initial call that jenkinsapi uses to
             # establish connectivity to Jenkins
             # https://test-jenkins/api/python?tree=jobs[name,color,url]
-            code = 200
-            if uri.startswith(u'https://test-jenkins/api/python'):
-                response = json.dumps(MOCK_JENKINS_DATA)
-            elif uri.startswith(u'https://test-jenkins/job/test-job/456'):
-                response = json.dumps(MOCK_BUILD_DATA)
-            elif uri.startswith(u'https://test-jenkins/job/test-job'):
-                response = json.dumps(MOCK_BUILDS_DATA)
-            elif uri.startswith(u'https://test-jenkins/queue/item/123/api/python'):
-                response = json.dumps(MOCK_QUEUE_DATA)
+            context.status_code = 200
+            if request.url.startswith(u'https://test-jenkins/api/python'):
+                return json.dumps(MOCK_JENKINS_DATA)
+            elif request.url.startswith(u'https://test-jenkins/job/test-job/456'):
+                return json.dumps(MOCK_BUILD_DATA)
+            elif request.url.startswith(u'https://test-jenkins/job/test-job'):
+                return json.dumps(MOCK_BUILDS_DATA)
+            elif request.url.startswith(u'https://test-jenkins/queue/item/123/api/python'):
+                return json.dumps(MOCK_QUEUE_DATA)
             else:
                 # We should never get here, unless the jenkinsapi implementation changes.
                 # This response will catch that condition.
-                code = 500
-                response = None
-            return (code, headers, response)
+                context.status_code = 500
+                return None
 
         # Mock all network interactions
-        httpretty.HTTPretty.allow_net_connect = False
-        httpretty.register_uri(
-            httpretty.GET,
+        mock.get(
             re.compile('.*'),
-            body=request_callback
+            text=text_callback
         )
-        httpretty.register_uri(
-            httpretty.POST,
+        mock.post(
             '{}/job/test-job/buildWithParameters'.format(BASE_URL),
-            status=201,  # Jenkins responds with a 201 Created on success
-            adding_headers={'location': '{}/queue/item/123'.format(BASE_URL)}
+            status_code=201,  # Jenkins responds with a 201 Created on success
+            headers={'location': '{}/queue/item/123'.format(BASE_URL)}
         )
 
         # Make the call to the Jenkins API

@@ -129,7 +129,7 @@ def trigger_build(base_url, user_name, user_token, job_name, job_token,
     try:
         jenkins = Jenkins(base_url, username=user_name, password=user_token)
     except (JenkinsAPIException, HTTPError) as err:
-        raise BackendError(err.message)
+        raise BackendError(str(err))
 
     if not jenkins.has_job(job_name):
         msg = u'Job not found: {}.'.format(job_name)

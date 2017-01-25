@@ -25,7 +25,7 @@ def format_rsa_key(key, output_file):
             f.write(key.exportKey())
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho("Error formatting RSA key. \nMessage: {0}".format(err.message), fg='red')
+        click.secho("Error formatting RSA key. \nMessage: {0}".format(err), fg='red')
         sys.exit(1)
 
     sys.exit(0)

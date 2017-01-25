@@ -11,6 +11,7 @@ import traceback
 import copy
 from collections import defaultdict
 import requests
+import six
 import tubular.ec2 as ec2
 
 from tubular.utils.retry import retry
@@ -687,7 +688,7 @@ def _red_black_deploy(
         """
         Disable all the ASGs in the lists, keyed by cluster.
         """
-        for cluster, asgs in clustered_asgs.iteritems():
+        for cluster, asgs in six.iteritems(clustered_asgs):
             for asg in asgs:
                 try:
                     _disable_cluster_asg(cluster, asg)
@@ -696,7 +697,7 @@ def _red_black_deploy(
 
     elbs_to_monitor = []
     newly_enabled_asgs = defaultdict(list)
-    for cluster, asgs in new_cluster_asgs.iteritems():
+    for cluster, asgs in six.iteritems(new_cluster_asgs):
         for asg in asgs:
             try:
                 _enable_cluster_asg(cluster, asg)
@@ -735,7 +736,7 @@ def _red_black_deploy(
     time.sleep(secs_before_old_asgs_disabled)
 
     # Ensure the new ASGs are still healthy and not pending delete before disabling the old ASGs.
-    for cluster, asgs in newly_enabled_asgs.iteritems():
+    for cluster, asgs in six.iteritems(newly_enabled_asgs):
         for asg in asgs:
             err_msg = None
             if is_asg_pending_delete(asg):
@@ -748,7 +749,7 @@ def _red_black_deploy(
 
     LOG.info("New ASGs have passed the healthchecks. Now disabling old ASGs.")
 
-    for cluster, asgs in baseline_cluster_asgs.iteritems():
+    for cluster, asgs in six.iteritems(baseline_cluster_asgs):
         for asg in asgs:
             try:
                 if is_asg_enabled(asg):

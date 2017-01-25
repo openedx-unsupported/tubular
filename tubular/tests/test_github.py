@@ -25,6 +25,7 @@ from github.Organization import Organization
 from github.PullRequest import PullRequest
 from github.Repository import Repository
 
+import six
 from tubular import github_api
 from tubular.exception import InvalidUrlException
 from tubular.github_api import (
@@ -38,10 +39,10 @@ from tubular.github_api import (
 
 # SHA1 is hash function designed to be difficult to reverse.
 # This dictionary will help us map SHAs back to the hashed values.
-SHA_MAP = {sha1(str(i)).hexdigest(): i for i in range(37)}
+SHA_MAP = {sha1(six.text_type(i).encode('utf-8')).hexdigest(): i for i in range(37)}
 # These will be used as test data to feed test methods below which
 # require SHAs.
-SHAS = list(SHA_MAP.keys())
+SHAS = sorted(SHA_MAP.keys())
 # This dictionary is used to convert trimmed SHAs back into the
 # originally hashed values.
 TRIMMED_SHA_MAP = {sha[:10]: i for sha, i in SHA_MAP.items()}

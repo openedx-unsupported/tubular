@@ -80,7 +80,7 @@ def rollback(config_file, dry_run, out_file):
 
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho('Error rolling back AMI: {0}.\nMessage: {1}'.format(ami_id, err.message), fg='red')
+        click.secho('Error rolling back AMI: {0}.\nMessage: {1}'.format(ami_id, err), fg='red')
         sys.exit(1)
 
     sys.exit(0)
