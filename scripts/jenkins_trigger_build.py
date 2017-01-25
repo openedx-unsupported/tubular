@@ -66,6 +66,7 @@ from tubular import jenkins  # pylint: disable=wrong-import-position
          u"the time the job is triggered), in seconds.",
     type=float,
     required=False,
+    default=30 * 60,
 )
 def trigger(url, user_name, user_token, job, token, cause, param, timeout):
     u"""Trigger a jenkins job. """
