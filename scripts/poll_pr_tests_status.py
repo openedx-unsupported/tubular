@@ -13,6 +13,7 @@ import yaml
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.github_api import GitHubAPI  # pylint: disable=wrong-import-position
+from tubular.utils import exactly_one_set  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ def poll_tests(org,
     """
     Poll the combined status of a GitHub PR/commit in a repo several times.
 
-    If tests pass for the PR/commit during a poll, return a success.
+    If tests pass for the PR/commit during a poll -or- no PR tests to check, return a success.
     If tests fail for the PR/commit during a poll, return a failure.
     If the maximum polls have occurred -or- a timeout, return a failure.
 
@@ -67,13 +68,23 @@ def poll_tests(org,
     """
     gh_utils = GitHubAPI(org, repo, token)
 
-    if pr_number and commit_hash:
-        LOG.info("Both PR number and commit hash are specified. Only one of the two should be specified - failing.")
+    if not exactly_one_set((input_file, pr_number, commit_hash)):
+        err_msg = \
+            "Exactly one of commit_hash ({!r}), input_file ({!r})," \
+            " and pr_number ({!r}) should be specified.".format(
+                commit_hash,
+                input_file,
+                pr_number
+            )
+        LOG.error(err_msg)
         sys.exit(1)
 
-    status_success = False
     if input_file:
         input_vars = yaml.safe_load(open(input_file, 'r'))  # pylint: disable=open-builtin
+        if not input_vars['pr_created']:
+            # The input file indicates that no PR was created, so no PR tests to check here.
+            LOG.info("No PR created - so no PR tests require polling.")
+            sys.exit(0)
         pr_number = input_vars['pr_number']
         git_obj = 'PR #{}'.format(pr_number)
         status_success = gh_utils.poll_pull_request_test_status(pr_number)
@@ -84,8 +95,12 @@ def poll_tests(org,
         git_obj = 'commit hash {}'.format(commit_hash)
         status_success = gh_utils.poll_for_commit_successful(commit_hash)
 
-    LOG.info("{}: Combined status of {} is {}.".format(
-        sys.argv[0], git_obj, "success" if status_success else "failed"
+    LOG.info("{cmd}: Combined status of {obj} for org '{org}' & repo '{repo}' is {status}.".format(
+        cmd=sys.argv[0],
+        obj=git_obj,
+        org=org,
+        repo=repo,
+        status="success" if status_success else "failed"
     ))
 
     # An exit code of 0 means success and non-zero means failure.

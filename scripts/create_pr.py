@@ -70,7 +70,7 @@ def create_pull_request(org,
                         body,
                         output_file):
     """
-    Creates a pull request to merge a source branch into a target branch.
+    Creates a pull request to merge a source branch into a target branch, if needed.
     Both the source and target branches are assumed to already exist.
 
     Args:
@@ -83,9 +83,9 @@ def create_pull_request(org,
         body (str):
         output_file (str):
 
-    Outputs a yaml file with information about the newly created PR.
-    e.g.
+    Outputs a yaml file with information about the newly created PR:
      ---
+    pr_created: true
     pr_id: 96786312
     pr_number: 3
     pr_url: https://api.github.com/repos/macdiesel412/Rainer/pulls/3
@@ -96,52 +96,74 @@ def create_pull_request(org,
     pr_mergable: null
     pr_state: open
     pr_mergable_state: unknown
+
+    -or-
+     ---
+    pr_created: false
+
+    if no PR is required.
     """
-    LOG.info("Getting GitHub token...")
     github_api = GitHubAPI(org, repo, token)
 
-    LOG.info(
-        "Creating Pull Request for merging {source} into {target}".format(
-            source=source_branch,
-            target=target_branch
+    # First, check to see that there are commits to merge from the source branch to
+    # the target branch. If the target branch already contains all the commits from the
+    # source branch, then there's no need to create a PR as there's nothing to merge.
+    if not github_api.have_branches_diverged(source_branch, target_branch):
+        LOG.info(
+            "No Pull Request for merging {source} into {target} created - nothing to merge.".format(
+                source=source_branch,
+                target=target_branch
+            )
         )
-    )
+        output_yaml = {
+            'pr_created': False,
+        }
+    else:
+        LOG.info(
+            "Creating Pull Request for merging {source} into {target}".format(
+                source=source_branch,
+                target=target_branch
+            )
+        )
 
-    try:
         if title is None:
             title = "Automated merge of {source} into {target}" .format(
                 source=source_branch,
                 target=target_branch
             )
-        pull_request = github_api.create_pull_request(
-            head=source_branch,
-            base=target_branch,
-            title=title,
-            body=body
-        )
 
-        with open(output_file, 'w') as stream:  # pylint: disable=open-builtin
-            yaml.safe_dump(
-                {
-                    'pr_id': pull_request.id,
-                    'pr_number': pull_request.number,
-                    'pr_url': pull_request.url,
-                    'pr_repo_url': github_api.github_repo.url,
-                    'pr_head': pull_request.head.sha,
-                    'pr_base': pull_request.base.sha,
-                    'pr_diff_url': pull_request.diff_url,
-                    'pr_mergable': pull_request.mergeable,
-                    'pr_state': pull_request.state,
-                    'pr_mergable_state': pull_request.mergeable_state,
-                },
-                stream,
-                default_flow_style=False,
-                explicit_start=True
+        try:
+            pull_request = github_api.create_pull_request(
+                head=source_branch,
+                base=target_branch,
+                title=title,
+                body=body
             )
+        except GithubException:
+            LOG.error("Unable to create pull request. Aborting")
+            raise
 
-    except GithubException:
-        LOG.error("Unable to create pull request. Aborting")
-        raise
+        output_yaml = {
+            'pr_created': True,
+            'pr_id': pull_request.id,
+            'pr_number': pull_request.number,
+            'pr_url': pull_request.url,
+            'pr_repo_url': github_api.github_repo.url,
+            'pr_head': pull_request.head.sha,
+            'pr_base': pull_request.base.sha,
+            'pr_diff_url': pull_request.diff_url,
+            'pr_mergable': pull_request.mergeable,
+            'pr_state': pull_request.state,
+            'pr_mergable_state': pull_request.mergeable_state,
+        }
+
+    with open(output_file, 'w') as stream:  # pylint: disable=open-builtin
+        yaml.safe_dump(
+            output_yaml,
+            stream,
+            default_flow_style=False,
+            explicit_start=True
+        )
 
 
 if __name__ == "__main__":

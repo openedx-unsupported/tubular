@@ -16,6 +16,7 @@ import click
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.github_api import GitHubAPI  # pylint: disable=wrong-import-position
+from tubular.utils import exactly_one_set  # pylint: disable=wrong-import-position
 from github.GithubException import GithubException  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -81,14 +82,8 @@ def create_tag(org,
     """
     github_api = GitHubAPI(org, repo, token)
 
-    def _exactly_one_set(param_list):
-        """
-        Guarantees that only one of the cmd-line params list have a value set.
-        """
-        return sum(int(bool(param)) for param in param_list) == 1
-
     # Check for one and only one of the mutually-exclusive params.
-    if not _exactly_one_set((commit_sha, input_file, branch_name)):
+    if not exactly_one_set((commit_sha, input_file, branch_name)):
         err_msg = \
             "Exactly one of commit_sha ({!r}), input_file ({!r})," \
             " and branch_name ({!r}) should be specified.".format(
@@ -96,7 +91,8 @@ def create_tag(org,
                 input_file,
                 branch_name
             )
-        raise Exception(err_msg)
+        LOG.error(err_msg)
+        sys.exit(1)
 
     if input_file:
         input_vars = yaml.safe_load(open(input_file, 'r'))  # pylint: disable=open-builtin
