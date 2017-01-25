@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 """
 Command-line script used to delete AWS Auto-Scaling Groups that are tagged for deletion via Asgard.
 """

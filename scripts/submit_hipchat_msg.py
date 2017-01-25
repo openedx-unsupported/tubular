@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 """
 Command-line script to submit a HipChat message to one or more channels.
 """

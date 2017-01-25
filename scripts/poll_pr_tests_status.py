@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 """
 Script to check the combined test status of a GitHub PR or commit SHA.
 """

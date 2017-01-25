@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 """
 Command-line script to create a tag for a particular SHA.
 """

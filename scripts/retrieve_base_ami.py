@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 """
 Command-line script used to retrieve the last base AMI ID used for an environment/deployment/play.
 """

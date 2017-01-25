@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 """
 Command-line script to create a PR to merge a source branch into a target branch.
 Both the source and target branches are assumed to already exist.

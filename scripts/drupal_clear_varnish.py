@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 """
 Command-line script to clear the Varnish cache for an environment.
 """

@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 """
 Script to check if a PR's base is the specified branch.
 """

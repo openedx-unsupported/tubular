@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 """
 Command-line script to validate that an AMI was built for a particular EDP.
 """

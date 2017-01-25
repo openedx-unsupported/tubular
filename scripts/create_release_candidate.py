@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 """
 Command-line script to create a release candidate for an application
 """
