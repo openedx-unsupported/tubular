@@ -194,6 +194,16 @@ class GitHubApiTestCase(TestCase):
             )
 
     @ddt.data(
+        ('diverged', True),
+        ('divergent', False),
+        ('ahead', False)
+    )
+    @ddt.unpack
+    def test_have_branches_diverged(self, status, expected):
+        self.repo_mock.compare.return_value = Mock(spec=Comparison, status=status)
+        self.assertEqual(self.api.have_branches_diverged('base', 'head'), expected)
+
+    @ddt.data(
         ('123', range(10), 'SuCcEsS', True),
         ('123', range(10), 'success', True),
         ('123', range(10), 'SUCCESS', True),
