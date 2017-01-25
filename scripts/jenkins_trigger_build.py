@@ -1,6 +1,7 @@
 """
 Command-line script to trigger a jenkins job
 """
+from __future__ import absolute_import
 import logging
 from os import path
 import sys

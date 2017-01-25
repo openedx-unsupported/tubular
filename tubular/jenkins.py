@@ -1,6 +1,9 @@
 """
 Methods to interact with the Jenkins API to perform various tasks.
 """
+from __future__ import absolute_import
+from __future__ import division
+
 import logging
 import math
 

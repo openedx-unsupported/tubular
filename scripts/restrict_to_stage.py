@@ -1,6 +1,7 @@
 """
 Command-line script to allow only AMI deployments to stage - and no other environments.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from os import path

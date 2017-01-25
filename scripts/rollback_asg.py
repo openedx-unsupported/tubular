@@ -1,8 +1,11 @@
 """
 Command-line script to allow only AMI deployments to stage - and no other environments.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
+from __future__ import print_function
 
+import io
 from os import path
 import sys
 import logging
@@ -60,7 +63,7 @@ def rollback(config_file, dry_run, out_file):
 
     The disabled_asgs will be enabled and the current_asgs will be disabled.
     """
-    config = yaml.safe_load(open(config_file, 'r'))  # pylint: disable=open-builtin
+    config = yaml.safe_load(io.open(config_file, 'r'))
     current_asgs = config['current_asgs']
     disabled_asgs = config['disabled_asgs']
     ami_id = config['ami_id']
@@ -73,10 +76,10 @@ def rollback(config_file, dry_run, out_file):
             rollback_info = {}
 
         if out_file:
-            with open(out_file, 'w') as stream:  # pylint: disable=open-builtin
+            with io.open(out_file, 'w') as stream:
                 yaml.safe_dump(rollback_info, stream, default_flow_style=False, explicit_start=True)
         else:
-            print yaml.safe_dump(rollback_info, default_flow_style=False, explicit_start=True)
+            print(yaml.safe_dump(rollback_info, default_flow_style=False, explicit_start=True))
 
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()

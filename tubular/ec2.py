@@ -2,6 +2,7 @@
 Convenience functions built on top of boto that are useful
 when we deploy using asgard.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging

@@ -2,9 +2,12 @@
 Command-line script which, for each ASG (app) in each VPC, adds a rule to each SG associated
 with the ASG's launch configuration that allows SSH ingress from the GoCD agents' SG.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
+import six
+
 import click
 import boto.ec2
 from boto.ec2.autoscale import AutoScaleConnection
@@ -103,7 +106,7 @@ def add_ingress_rule(dry_run, go_agent_security_group, go_agent_security_group_o
         logging.info(sec_group.rules)
         try:
             # Add the ingress rule to the security group.
-            yes_no = raw_input("Apply the change to this security group? [Yes]")
+            yes_no = six.moves.input("Apply the change to this security group? [Yes]")
             if yes_no in ("", "y", "Y", "yes"):
                 sec_group.authorize(
                     ip_protocol='tcp',

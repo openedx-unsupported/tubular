@@ -1,6 +1,7 @@
 """
 Methods to interact with the Asgard API to perform various tasks.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from datetime import datetime, timedelta

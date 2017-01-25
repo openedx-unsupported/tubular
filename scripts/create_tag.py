@@ -1,8 +1,10 @@
 """
 Command-line script to create a tag for a particular SHA.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import io
 from os import path
 import sys
 import logging
@@ -95,7 +97,7 @@ def create_tag(org,
         sys.exit(1)
 
     if input_file:
-        input_vars = yaml.safe_load(open(input_file, 'r'))  # pylint: disable=open-builtin
+        input_vars = yaml.safe_load(io.open(input_file, 'r'))
         commit_sha = input_vars['sha']
     elif branch_name:
         commit_sha = github_api.get_head_commit_from_branch_name(branch_name)

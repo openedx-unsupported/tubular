@@ -2,6 +2,7 @@
 Command-line script used to delete a specified Auto-Scaling Group via Asgard.
 """
 # pylint: disable=invalid-name
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from os import path

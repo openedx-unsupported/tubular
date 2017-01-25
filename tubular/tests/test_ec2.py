@@ -1,6 +1,7 @@
 """
 Tests of the code interacting with the boto EC2 API.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import unittest

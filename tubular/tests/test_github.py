@@ -1,6 +1,7 @@
 """
 Tests for tubular.github_api.GitHubAPI
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from datetime import datetime, timedelta
@@ -205,12 +206,12 @@ class GitHubApiTestCase(TestCase):
         self.assertEqual(self.api.have_branches_diverged('base', 'head'), expected)
 
     @ddt.data(
-        ('123', range(10), 'SuCcEsS', True),
-        ('123', range(10), 'success', True),
-        ('123', range(10), 'SUCCESS', True),
-        ('123', range(10), 'pending', False),
-        ('123', range(10), 'failure', False),
-        ('123', range(10), None, False)
+        ('123', list(range(10)), 'SuCcEsS', True),
+        ('123', list(range(10)), 'success', True),
+        ('123', list(range(10)), 'SUCCESS', True),
+        ('123', list(range(10)), 'pending', False),
+        ('123', list(range(10)), 'failure', False),
+        ('123', list(range(10)), None, False)
     )
     @ddt.unpack
     def test_is_commit_successful(self, sha, statuses, state, expected):

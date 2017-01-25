@@ -8,6 +8,9 @@ unittest:
 
 quality:
 	pep8 --config=.pep8 tubular scripts admin
+	pylint --py3k tubular
+	pylint --py3k scripts
+	pylint --py3k admin
 	pylint tubular
 	pylint scripts
 	pylint admin

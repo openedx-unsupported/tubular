@@ -1,6 +1,7 @@
 """
 Command-line script to validate that an AMI was built for a particular EDP.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from os import path

@@ -1,10 +1,12 @@
 """
 Command-line script used to deploy an AMI.
 """
-# pylint: disable=invalid-name,open-builtin
+# pylint: disable=invalid-name
+from __future__ import absolute_import
 from __future__ import unicode_literals
+from __future__ import print_function
 
-from os import path
+import io
 import os
 import sys
 import logging
@@ -14,7 +16,7 @@ import click
 import yaml
 
 # Add top-level module path to sys.path before importing tubular code.
-sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tubular import asgard  # pylint: disable=wrong-import-position
 
@@ -40,7 +42,7 @@ def deploy(ami_id, out_file, config_file, dry_run):
         sys.exit(1)
 
     if config_file:
-        config = yaml.safe_load(open(config_file, 'r'))
+        config = yaml.safe_load(io.open(config_file, 'r'))
         if config:
             if not ami_id and 'ami_id' in config:
                 ami_id = config['ami_id']
@@ -60,10 +62,10 @@ def deploy(ami_id, out_file, config_file, dry_run):
         deploy_info['deploy_time'] = time.time()
 
         if out_file:
-            with open(out_file, 'w') as stream:
+            with io.open(out_file, 'w') as stream:
                 yaml.safe_dump(deploy_info, stream, default_flow_style=False, explicit_start=True)
         else:
-            print yaml.safe_dump(deploy_info, default_flow_style=False, explicit_start=True)
+            print(yaml.safe_dump(deploy_info, default_flow_style=False, explicit_start=True))
 
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()

@@ -1,8 +1,10 @@
 """
 Methods to interact with the Drupal API to perform various tasks.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import io
 import logging
 import requests
 from requests.auth import HTTPBasicAuth
@@ -110,7 +112,7 @@ def fetch_deployed_tag(env, username, password, path_name):
     response = api_client.get(FETCH_TAG_URL.format(env=env))
     response_json = parse_response(response, "Failed to fetch the deployed tag.")
     tag_name = response_json["vcs_path"]
-    with open(path_name.format(env=env), "w") as f:  # pylint: disable=open-builtin
+    with io.open(path_name.format(env=env), "w") as f:
         f.write(tag_name)
     return tag_name
 

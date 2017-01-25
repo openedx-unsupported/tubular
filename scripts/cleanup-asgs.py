@@ -2,6 +2,7 @@
 Command-line script used to delete AWS Auto-Scaling Groups that are tagged for deletion via Asgard.
 """
 # pylint: disable=invalid-name
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from os import path

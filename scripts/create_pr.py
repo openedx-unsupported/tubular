@@ -2,8 +2,10 @@
 Command-line script to create a PR to merge a source branch into a target branch.
 Both the source and target branches are assumed to already exist.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import io
 from os import path
 import sys
 import logging
@@ -157,7 +159,7 @@ def create_pull_request(org,
             'pr_mergable_state': pull_request.mergeable_state,
         }
 
-    with open(output_file, 'w') as stream:  # pylint: disable=open-builtin
+    with io.open(output_file, 'w') as stream:  # pylint: disable=open-builtin
         yaml.safe_dump(
             output_yaml,
             stream,

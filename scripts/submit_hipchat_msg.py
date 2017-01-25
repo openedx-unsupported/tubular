@@ -1,6 +1,7 @@
 """
 Command-line script to submit a HipChat message to one or more channels.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import sys

@@ -1,6 +1,7 @@
 """
 Command-line script to clear the Varnish cache for an environment.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import sys

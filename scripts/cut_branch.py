@@ -2,8 +2,10 @@
 """
 Command-line script to create a release candidate for an application
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import io
 from os import path
 import sys
 import logging
@@ -138,7 +140,7 @@ def create_release_candidate(org,
                   .format(branch_name=target_branch))
         raise
 
-    with open(output_file, 'w') as stream:  # pylint: disable=open-builtin
+    with io.open(output_file, 'w') as stream:
         yaml.safe_dump(
             {
                 'repo_name': repo,

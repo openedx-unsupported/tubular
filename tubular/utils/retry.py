@@ -1,6 +1,7 @@
 """
 Code used to retry calls that fail.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 import time
 import logging
@@ -83,6 +84,7 @@ class LifecycleManager(object):
 
         self._current_attempt_number = 0
         self._max_datetime = datetime.utcnow() + timedelta(0, max_time_seconds) if max_time_seconds else None
+        # pylint: disable=round-builtin
         self.max_attempts = round(max_attempts)
         self.delay_seconds = round(delay_seconds)
 

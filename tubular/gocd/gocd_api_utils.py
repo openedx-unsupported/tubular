@@ -1,7 +1,9 @@
 """
 Utility functions using the GoCD API via the requests module.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
+from __future__ import print_function
 
 import os
 import requests
@@ -53,7 +55,7 @@ class GoCDApiUtils(object):
         )
         success = response.status_code in (202,)
         if not success:
-            print "Error {}: {}: Pipeline {} failed to trigger.\n{}".format(
+            print("Error {}: {}: Pipeline {} failed to trigger.\n{}".format(
                 response.status_code, response.content, pipeline_name, post_url
-            )
+            ))
         return success

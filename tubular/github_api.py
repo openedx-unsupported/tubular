@@ -1,4 +1,5 @@
 """ Provides Access to the GitHub API """
+from __future__ import absolute_import
 from __future__ import print_function, unicode_literals
 
 from datetime import datetime, timedelta
@@ -29,7 +30,7 @@ DEFAULT_TAG_EMAIL_ADDRESS = 'no.public.email@edx.org'
 # Day of week constant
 _MONDAY = 0
 _FRIDAY = 4
-_NORMAL_RELEASE_WEEKDAYS = range(_MONDAY, _FRIDAY + 1)
+_NORMAL_RELEASE_WEEKDAYS = tuple(range(_MONDAY, _FRIDAY + 1))
 
 # Defaults for the polling of a PR's tests.
 MAX_PR_TEST_TRIES_DEFAULT = 5

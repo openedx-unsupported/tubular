@@ -1,6 +1,9 @@
 """
 Command-line script to merge a branch.
 """
+from __future__ import absolute_import
+
+import io
 from os import path
 import sys
 import logging
@@ -68,7 +71,7 @@ def merge_branch(org,
     github_url = u'git@github.com:{}/{}.git'.format(org, repo)
     merge_sha = merge_repo_branch(github_url, source_branch, target_branch, fast_forward_only)
 
-    with open(output_file, u'w') as stream:  # pylint: disable=open-builtin
+    with io.open(output_file, u'w') as stream:
         yaml.safe_dump(
             {
                 u'org_name': org,
