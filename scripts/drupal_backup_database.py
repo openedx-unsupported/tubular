@@ -1,6 +1,9 @@
+#! /usr/bin/env python3
+
 """
 Command-line script to create a database backup in an environment.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import sys

@@ -1,6 +1,7 @@
 """
 Methods to interact with the Asgard API to perform various tasks.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from datetime import datetime, timedelta
@@ -11,6 +12,7 @@ import traceback
 import copy
 from collections import defaultdict
 import requests
+import six
 import tubular.ec2 as ec2
 
 from tubular.utils.retry import retry
@@ -459,12 +461,12 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True):
         return
     if fail_if_active and is_asg_enabled(asg):
         msg = "Not deleting ASG {} as it is currently active.".format(asg)
-        LOG.warn(msg)
+        LOG.warning(msg)
         raise CannotDeleteActiveASG(msg)
 
     if fail_if_last and is_last_asg(asg):
         msg = "Not deleting ASG {} since it is the last ASG in this cluster."
-        LOG.warn(msg)
+        LOG.warning(msg)
         raise CannotDeleteLastASG(msg)
 
     payload = {"name": asg}
@@ -687,7 +689,7 @@ def _red_black_deploy(
         """
         Disable all the ASGs in the lists, keyed by cluster.
         """
-        for cluster, asgs in clustered_asgs.iteritems():
+        for cluster, asgs in six.iteritems(clustered_asgs):
             for asg in asgs:
                 try:
                     _disable_cluster_asg(cluster, asg)
@@ -696,7 +698,7 @@ def _red_black_deploy(
 
     elbs_to_monitor = []
     newly_enabled_asgs = defaultdict(list)
-    for cluster, asgs in new_cluster_asgs.iteritems():
+    for cluster, asgs in six.iteritems(new_cluster_asgs):
         for asg in asgs:
             try:
                 _enable_cluster_asg(cluster, asg)
@@ -735,7 +737,7 @@ def _red_black_deploy(
     time.sleep(secs_before_old_asgs_disabled)
 
     # Ensure the new ASGs are still healthy and not pending delete before disabling the old ASGs.
-    for cluster, asgs in newly_enabled_asgs.iteritems():
+    for cluster, asgs in six.iteritems(newly_enabled_asgs):
         for asg in asgs:
             err_msg = None
             if is_asg_pending_delete(asg):
@@ -748,7 +750,7 @@ def _red_black_deploy(
 
     LOG.info("New ASGs have passed the healthchecks. Now disabling old ASGs.")
 
-    for cluster, asgs in baseline_cluster_asgs.iteritems():
+    for cluster, asgs in six.iteritems(baseline_cluster_asgs):
         for asg in asgs:
             try:
                 if is_asg_enabled(asg):

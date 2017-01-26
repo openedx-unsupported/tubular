@@ -1,6 +1,7 @@
 """
 Tests of the code which retrys calls.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import os
@@ -9,10 +10,11 @@ import unittest
 
 import mock
 from ddt import ddt, data, unpack
+from six.moves import reload_module
 from tubular.utils import retry
 
 os.environ['TUBULAR_RETRY_ENABLED'] = "true"
-reload(retry)
+reload_module(retry)  # pylint: disable=too-many-function-args
 
 
 class UniqueTestException(Exception):

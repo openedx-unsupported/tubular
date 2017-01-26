@@ -1,10 +1,15 @@
+#! /usr/bin/env python3
+
 """
 Command-line script used to retrieve the last base AMI ID used for an environment/deployment/play.
 """
-# pylint: disable=invalid-name,open-builtin
+# pylint: disable=invalid-name
+from __future__ import absolute_import
 from __future__ import unicode_literals
+from __future__ import print_function
 
 from os import path
+import io
 import sys
 import logging
 import traceback
@@ -68,14 +73,14 @@ def retrieve_base_ami(environment, deployment, play, override, out_file):
         ))
 
         if out_file:
-            with open(out_file, 'w') as stream:
+            with io.open(out_file, 'w') as stream:
                 yaml.safe_dump(ami_info, stream, default_flow_style=False, explicit_start=True)
         else:
-            print yaml.safe_dump(ami_info, default_flow_style=False, explicit_start=True)
+            print(yaml.safe_dump(ami_info, default_flow_style=False, explicit_start=True))
 
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho('Error finding base AMI ID.\nMessage: {}'.format(err.message), fg='red')
+        click.secho('Error finding base AMI ID.\nMessage: {}'.format(err), fg='red')
         sys.exit(1)
 
     sys.exit(0)

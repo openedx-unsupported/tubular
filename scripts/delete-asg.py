@@ -1,7 +1,10 @@
+#! /usr/bin/env python3
+
 """
 Command-line script used to delete a specified Auto-Scaling Group via Asgard.
 """
 # pylint: disable=invalid-name
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from os import path
@@ -29,7 +32,7 @@ def delete_asg(asg_name):
         asgard.delete_asg(asg_name, True)
     except Exception as e:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho("Error Deleting ASG: {0}.\nMessage: {1}".format(asg_name, e.message), fg='red')
+        click.secho("Error Deleting ASG: {0}.\nMessage: {1}".format(asg_name, e), fg='red')
         sys.exit(1)
 
     sys.exit(0)

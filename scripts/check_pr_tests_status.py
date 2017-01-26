@@ -1,8 +1,12 @@
+#! /usr/bin/env python3
+
 """
 Script to check the combined test status of a GitHub PR or commit SHA.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import io
 from os import path
 import logging
 import sys
@@ -72,7 +76,7 @@ def check_tests(org,
 
     status_success = False
     if input_file:
-        input_vars = yaml.safe_load(open(input_file, 'r'))  # pylint: disable=open-builtin
+        input_vars = yaml.safe_load(io.open(input_file, 'r'))
         pr_number = input_vars['pr_number']
         status_success = gh_utils.check_pull_request_test_status(pr_number)
         git_obj = 'PR #{}'.format(pr_number)

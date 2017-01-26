@@ -1,6 +1,11 @@
+#! /usr/bin/env python3
+
 """
 Script to check if a PR's base is the specified branch.
 """
+from __future__ import absolute_import
+from __future__ import print_function
+
 from os import path
 import sys
 import click
@@ -50,9 +55,9 @@ def cli(org, repo, token, pr_number, branch_name):
     is_base = False
     if pr_number and branch_name:
         is_base = gh_utils.is_branch_base_of_pull_request(pr_number, branch_name)
-        print u"{}: Is branch '{}' the base of PR #{} ? {}!".format(
+        print(u"{}: Is branch '{}' the base of PR #{} ? {}!".format(
             sys.argv[0], branch_name, pr_number, u"Yes" if is_base else u"No"
-        )
+        ))
 
     # An exit code of 0 means success and non-zero means failure.
     sys.exit(not is_base)

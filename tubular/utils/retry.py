@@ -1,6 +1,7 @@
 """
 Code used to retry calls that fail.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 import time
 import logging
@@ -77,12 +78,17 @@ class LifecycleManager(object):
             raise RetryException(
                 "Must specify a delay_seconds number greater than 0. Value: {0}".format(delay_seconds))
 
-        if max_time_seconds > delay_seconds:
-            LOG.warn("""max_time_seconds {0} is greater than delay_seconds {1}. This will cause this method to only be
-                      attempted once""".format(max_time_seconds, delay_seconds))
+        if max_time_seconds is not None and max_time_seconds > delay_seconds:
+            LOG.warning(
+                "max_time_seconds {0} is greater than delay_seconds {1}. "
+                "This will cause this method to only be attempted once".format(
+                    max_time_seconds, delay_seconds
+                )
+            )
 
         self._current_attempt_number = 0
         self._max_datetime = datetime.utcnow() + timedelta(0, max_time_seconds) if max_time_seconds else None
+        # pylint: disable=round-builtin
         self.max_attempts = round(max_attempts)
         self.delay_seconds = round(delay_seconds)
 
@@ -146,8 +152,10 @@ class LifecycleManager(object):
                 result = func_to_retry(*args, **kwargs)
                 break
             except Exception as err:  # pylint: disable=broad-except
-                LOG.warn("Error executing function {0}, Exception type: {1} Message: {2}"
-                         .format(func_to_retry.__name__, err.__class__, err.message))
+                LOG.warning(
+                    "Error executing function {0}, Exception type: {1} Message: {2}".format(
+                        func_to_retry.__name__, err.__class__, err
+                    ))
                 result = err
 
             if not self.max_attempts_reached() and not self.max_time_reached():

@@ -1,8 +1,12 @@
+#! /usr/bin/env python3
+
 """
 Command-line script to properly format an RSA key.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import io
 import sys
 import logging
 import traceback
@@ -21,11 +25,11 @@ def format_rsa_key(key, output_file):
     """
     try:
         key = RSA.importKey(key.decode('unicode_escape'))
-        with open(output_file, 'w') as f:  # pylint: disable=open-builtin
+        with io.open(output_file, 'w') as f:
             f.write(key.exportKey())
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho("Error formatting RSA key. \nMessage: {0}".format(err.message), fg='red')
+        click.secho("Error formatting RSA key. \nMessage: {0}".format(err), fg='red')
         sys.exit(1)
 
     sys.exit(0)

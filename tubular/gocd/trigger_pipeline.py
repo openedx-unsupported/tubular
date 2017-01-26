@@ -1,11 +1,13 @@
 """
 Trigger a GoCD pipeline for a particular GitHub repo/PR.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
+from __future__ import print_function
 
 import sys
 import click
-from gocd_api_utils import GoCDApiUtils  # pylint: disable=relative-import
+from .gocd_api_utils import GoCDApiUtils
 
 
 @click.command()
@@ -42,7 +44,7 @@ def cli(pipeline_name, org, repo, token, pr_id):
     """
     success = GoCDApiUtils().trigger_pipeline(pipeline_name, org, repo, token, pr_id)
     if success:
-        print "Schedule of pipeline {} for repo {} and PR {}: success.".format(pipeline_name, repo, pr_id)
+        print("Schedule of pipeline {} for repo {} and PR {}: success.".format(pipeline_name, repo, pr_id))
     # An exit code of 0 means success and non-zero means failure.
     sys.exit(not success)
 

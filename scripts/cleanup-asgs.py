@@ -1,7 +1,10 @@
+#! /usr/bin/env python3
+
 """
 Command-line script used to delete AWS Auto-Scaling Groups that are tagged for deletion via Asgard.
 """
 # pylint: disable=invalid-name
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from os import path
@@ -31,11 +34,11 @@ def delete_asg():
             try:
                 asgard.delete_asg(asg.name)
             except Exception as e:  # pylint: disable=broad-except
-                click.secho("Unable to delete ASG: {0} - {1}".format(asg, e.message), fg='red')
+                click.secho("Unable to delete ASG: {0} - {1}".format(asg, e), fg='red')
                 error = True
     except Exception as e:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho("An error occured while cleaning up ASGs: {0}".format(e.message), fg='red')
+        click.secho("An error occured while cleaning up ASGs: {0}".format(e), fg='red')
         error = True
 
     if error:

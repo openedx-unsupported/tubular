@@ -1,6 +1,9 @@
+#! /usr/bin/env python3
+
 """
 Command-line script message pull requests in a range
 """
+from __future__ import absolute_import
 from os import path
 import sys
 import logging

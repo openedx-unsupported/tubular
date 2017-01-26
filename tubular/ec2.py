@@ -2,6 +2,7 @@
 Convenience functions built on top of boto that are useful
 when we deploy using asgard.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
@@ -153,7 +154,7 @@ def tags_for_ami(ami_id):
     except IndexError:
         raise ImageNotFoundException("ami: {} not found".format(ami_id))
     except EC2ResponseError as error:
-        raise ImageNotFoundException(error.message)
+        raise ImageNotFoundException(str(error))
 
     return ami.tags
 
@@ -351,12 +352,15 @@ def get_asgs_pending_delete():
                         asgs_pending_delete.append(asg)
                         break
             except ValueError:
-                LOG.warn("ASG {0} has an improperly formatted datetime string for the key {1}. Value: {2} . "
-                         "Format must match {3}"
-                         .format(asg.name, tag.key, tag.value, ISO_DATE_FORMAT))
+                LOG.warning(
+                    "ASG {0} has an improperly formatted datetime string for the key {1}. Value: {2} . "
+                    "Format must match {3}".format(
+                        asg.name, tag.key, tag.value, ISO_DATE_FORMAT
+                    )
+                )
                 continue
             except Exception as err:  # pylint: disable=broad-except
-                LOG.warn("Error occured while building a list of ASGs to delete, continuing: {0}".format(err.message))
+                LOG.warning("Error occured while building a list of ASGs to delete, continuing: {0}".format(err))
                 continue
 
     LOG.info("Number of ASGs pending delete: {0}".format(len(asgs_pending_delete)))

@@ -1,11 +1,14 @@
+#! /usr/bin/env python3
+
 """
 Command-line script to submit a HipChat message to one or more channels.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import sys
 import logging
-import urllib
+from six.moves import urllib
 import click
 import requests
 
@@ -73,7 +76,7 @@ def cli(auth_token, channels, message, color):
     }
 
     for channel in channel_list:
-        post_url = HIPCHAT_API_URL + NOTIFICATION_POST.format(urllib.quote(channel))
+        post_url = HIPCHAT_API_URL + NOTIFICATION_POST.format(urllib.parse.quote(channel))
         response = requests.post(post_url, headers=headers, json=msg_payload)
 
         if response.status_code not in (200, 201, 204):

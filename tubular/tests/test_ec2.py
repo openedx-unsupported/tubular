@@ -1,6 +1,7 @@
 """
 Tests of the code interacting with the boto EC2 API.
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import unittest
@@ -20,6 +21,7 @@ from tubular.exception import (
     MultipleImagesFoundException
 )
 from tubular.utils import EDP
+import six
 
 
 @ddt.ddt
@@ -168,13 +170,13 @@ class TestEC2(unittest.TestCase):
 
         edp = EDP("foo", "bar", "baz")
 
-        for name, tags in asgs.viewitems():
+        for name, tags in six.viewitems(asgs):
             create_asg_with_tags(name, tags)
 
         asgs = ec2.asgs_for_edp(edp)
         self.assertIsInstance(asgs, list)
 
-        self.assertEquals(len(asgs), expected_returned_count)
+        self.assertEqual(len(asgs), expected_returned_count)
         self.assertTrue(all(asg_name in asgs for asg_name in expected_asg_names_list))
 
     @ddt.data(
@@ -197,7 +199,7 @@ class TestEC2(unittest.TestCase):
         asgs = ec2.get_all_autoscale_groups(name_filter)
 
         self.assertIsInstance(asgs, list)
-        self.assertEquals(len(asgs), expected_result_count)
+        self.assertEqual(len(asgs), expected_result_count)
         if name_filter:
             self.assertTrue(all(asg.name in name_filter for asg in asgs))
 
@@ -316,7 +318,7 @@ class TestEC2(unittest.TestCase):
 
         # Ensure tag value is a parseable datetime.
         delete_tag = delete_tags.pop()
-        self.assertIsInstance(delete_tag.value, basestring)
+        self.assertIsInstance(delete_tag.value, six.string_types)
         datetime.datetime.strptime(delete_tag.value, ec2.ISO_DATE_FORMAT)
 
     # Moto does not currently implement delete_tags() - so this test can't complete successfully.
@@ -390,7 +392,7 @@ class TestEC2(unittest.TestCase):
                 """
                 Stub method returning a UTC datetime.
                 """
-                return cls(2016, 5, 18, 01, 00, 00, 000000)
+                return cls(2016, 5, 18, 1, 0, 0, 0)
         built_in_datetime = ec2.datetime
 
         # The instance of datetime becomes local to the module it's import in to. We must patch datetime using the
@@ -399,9 +401,9 @@ class TestEC2(unittest.TestCase):
 
         asg_name = "test-asg-tags"
         tag = ec2.create_tag_for_asg_deletion(asg_name, 10)
-        self.assertEqual(tag.value, datetime.datetime(2016, 5, 18, 01, 00, 10, 000000).isoformat())
+        self.assertEqual(tag.value, datetime.datetime(2016, 5, 18, 1, 0, 10, 0).isoformat())
         tag = ec2.create_tag_for_asg_deletion(asg_name, 300)
-        self.assertEqual(tag.value, datetime.datetime(2016, 5, 18, 01, 05, 00, 000000).isoformat())
+        self.assertEqual(tag.value, datetime.datetime(2016, 5, 18, 1, 5, 0, 0).isoformat())
 
         # Undo the monkey patch
         ec2.datetime = built_in_datetime
@@ -425,6 +427,6 @@ class TestEC2(unittest.TestCase):
         elb = ec2.get_all_load_balancers(name_filter)
 
         self.assertIsInstance(elb, list)
-        self.assertEquals(len(elb), expected_result_count)
+        self.assertEqual(len(elb), expected_result_count)
         if name_filter:
             self.assertTrue(all(asg.name in name_filter for asg in elb))

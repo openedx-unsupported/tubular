@@ -1,6 +1,7 @@
 """
 Tests for tubular.github_api.GitHubAPI
 """
+from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from datetime import datetime, timedelta
@@ -25,6 +26,7 @@ from github.Organization import Organization
 from github.PullRequest import PullRequest
 from github.Repository import Repository
 
+import six
 from tubular import github_api
 from tubular.exception import InvalidUrlException
 from tubular.github_api import (
@@ -38,10 +40,10 @@ from tubular.github_api import (
 
 # SHA1 is hash function designed to be difficult to reverse.
 # This dictionary will help us map SHAs back to the hashed values.
-SHA_MAP = {sha1(str(i)).hexdigest(): i for i in range(37)}
+SHA_MAP = {sha1(six.text_type(i).encode('utf-8')).hexdigest(): i for i in range(37)}
 # These will be used as test data to feed test methods below which
 # require SHAs.
-SHAS = list(SHA_MAP.keys())
+SHAS = sorted(SHA_MAP.keys())
 # This dictionary is used to convert trimmed SHAs back into the
 # originally hashed values.
 TRIMMED_SHA_MAP = {sha[:10]: i for sha, i in SHA_MAP.items()}
@@ -204,12 +206,12 @@ class GitHubApiTestCase(TestCase):
         self.assertEqual(self.api.have_branches_diverged('base', 'head'), expected)
 
     @ddt.data(
-        ('123', range(10), 'SuCcEsS', True),
-        ('123', range(10), 'success', True),
-        ('123', range(10), 'SUCCESS', True),
-        ('123', range(10), 'pending', False),
-        ('123', range(10), 'failure', False),
-        ('123', range(10), None, False)
+        ('123', list(range(10)), 'SuCcEsS', True),
+        ('123', list(range(10)), 'success', True),
+        ('123', list(range(10)), 'SUCCESS', True),
+        ('123', list(range(10)), 'pending', False),
+        ('123', list(range(10)), 'failure', False),
+        ('123', list(range(10)), None, False)
     )
     @ddt.unpack
     def test_is_commit_successful(self, sha, statuses, state, expected):
