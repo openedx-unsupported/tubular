@@ -287,7 +287,7 @@ class GitHubAPI(object):
             github.GithubException.UnknownObjectException: If the branch does not exist
         """
         commit_sha = self.get_head_commit_from_pull_request(pr_number)
-        return self._poll_commit(commit_sha) == 'success'
+        return self.poll_for_commit_successful(commit_sha)
 
     def poll_for_commit_successful(self, sha):
         """
@@ -475,6 +475,27 @@ class GitHubAPI(object):
         self.github_repo.create_git_ref(ref='refs/tags/{}'.format(tag_name), sha=sha)
 
         return created_tag
+
+    def have_branches_diverged(self, base_branch, compare_branch):
+        """
+        Checks to see if all the commits that are in the compare_branch are already in the base_branch.
+
+        Arguments:
+            base_branch (str): Branch to use as a base when comparing.
+            compare_branch (str): Branch to compare against base to see if it contains commits the base does not.
+
+        Returns:
+            bool: False if all commits in the compare_branch are already in the base_branch.
+                  True if the compare_branch contains commits which the base_branch does not.
+
+        Raises:
+            github.GithubException.GithubException: If the call fails.
+            github.GithubException.UnknownObjectException: If either branch does not exist.
+        """
+        return self.github_repo.compare(
+            base='refs/heads/{}'.format(base_branch),
+            head='refs/heads/{}'.format(compare_branch)
+        ).status == 'diverged'
 
     def is_commit_successful(self, sha):
         """

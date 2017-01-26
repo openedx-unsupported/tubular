@@ -23,7 +23,6 @@ LOG = logging.getLogger(__name__)
 @click.option(
     '--org',
     help='Org from the GitHub repository URL of https://github.com/<org>/<repo>',
-    default='edx'
 )
 @click.option(
     '--repo',
@@ -43,7 +42,6 @@ LOG = logging.getLogger(__name__)
 @click.option(
     '--input_file',
     help='File from which to read the PR information to merge.',
-    default='target/pull_request.yml'
 )
 def merge_pull_request(org,
                        repo,
@@ -61,23 +59,42 @@ def merge_pull_request(org,
         input_file (str): Path to a YAML file containing PR details.
           The YAML file is expected to have a 'pr_number' field containing the PR number.
 
-    If a PR number is specified, attempts to merge that PR.
-    If a PR number is *not* specified -and- an input file is specified, reads the file
-    to find the PR ID to merge and attempts to merge that PR.
+    If both or neither PR number and input file are specified, then return a failure.
+    If PR number is specified, attempt to merge that PR.
+    If input file is specified, attempt to merge the PR number read from the 'pr_number' field.
     """
     github_api = GitHubAPI(org, repo, token)
 
-    if pr_number is None:
+    if not pr_number and not input_file:
+        LOG.error("Neither PR number nor input file were specified - failing.")
+        sys.exit(1)
+    elif pr_number and input_file:
+        LOG.error("Both PR number *and* input file were specified - failing.")
+        sys.exit(1)
+
+    if input_file:
         config = yaml.safe_load(open(input_file, 'r'))  # pylint: disable=open-builtin
+        if not config['pr_created']:
+            # The input file indicates that no PR was created, so no PR tests to check here.
+            LOG.info("No PR created - so no PR to merge.")
+            sys.exit(0)
         pr_number = config['pr_number']
 
     try:
         github_api.merge_pull_request(pr_number)
     except (GithubException, UnknownObjectException):
-        LOG.error("PR #{pr} merge failed. Aborting.".format(pr=pr_number))
+        LOG.error("PR #{pr} merge for org '{org}' & repo '{repo}' failed. Aborting.".format(
+            pr=pr_number,
+            org=org,
+            repo=repo
+        ))
         raise
 
-    LOG.info("Merged PR #{pr} successfully.".format(pr=pr_number))
+    LOG.info("Merged PR #{pr} for org '{org}' & repo '{repo}' successfully.".format(
+        pr=pr_number,
+        org=org,
+        repo=repo
+    ))
 
 
 if __name__ == "__main__":

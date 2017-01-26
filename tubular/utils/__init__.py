@@ -13,3 +13,10 @@ WAIT_SLEEP_TIME = int(os.environ.get("WAIT_SLEEP_TIME", 5))
 DISABLE_OLD_ASG_WAIT_TIME = int(os.environ.get("DISABLE_OLD_ASG_WAIT_TIME", 0))
 
 EDP = namedtuple('EDP', ['environment', 'deployment', 'play'])
+
+
+def exactly_one_set(param_list):
+    """
+    Guarantees that only one of the cmd-line params list have a value set.
+    """
+    return sum(int(bool(param)) for param in param_list) == 1
