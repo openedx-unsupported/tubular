@@ -145,7 +145,7 @@ class GitRepo(object):
         Raises:
             subprocess.CalledProcessError: if the cmd fails
         """
-        cmd_args = ['git', 'rev-parse', branch_name]
+        cmd_args = ['git', 'rev-parse', 'refs/heads/{}'.format(branch_name)]
         return self._exec_cmd_output(cmd_args)
 
     def cleanup(self):
