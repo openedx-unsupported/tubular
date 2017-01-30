@@ -5,11 +5,13 @@ when we deploy using asgard.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import os
 import logging
 import time
 from datetime import datetime, timedelta
+import backoff
 import boto
-from boto.exception import EC2ResponseError
+from boto.exception import EC2ResponseError, BotoServerError
 from boto.ec2.autoscale.tag import Tag
 from tubular.utils import EDP, WAIT_SLEEP_TIME
 from tubular.exception import (
@@ -23,8 +25,28 @@ LOG = logging.getLogger(__name__)
 
 ISO_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 ASG_DELETE_TAG_KEY = 'delete_on_ts'
+MAX_ATTEMPTS = os.environ.get('RETRY_MAX_ATTEMPTS', 5)
+RETRY_FACTOR = os.environ.get('RETRY_FACTOR', 1.5)
 
 
+def giveup_if_not_throttling(ex):
+    """
+    Checks that a BotoServerError exceptions message contains the throttling string.
+
+    Args:
+        ex (boto.exception.BotoServerError):
+
+    Returns:
+        False if the throttling string is not found.
+    """
+    return not (str(ex.status) == "400" and ex.body and '<Code>Throttling</Code>' in ex.body)
+
+
+@backoff.on_exception(backoff.expo,
+                      BotoServerError,
+                      max_tries=MAX_ATTEMPTS,
+                      giveup=giveup_if_not_throttling,
+                      factor=RETRY_FACTOR)
 def get_all_autoscale_groups(names=None):
     """
     Get all the autoscale groups
@@ -46,6 +68,11 @@ def get_all_autoscale_groups(names=None):
     return total_asgs
 
 
+@backoff.on_exception(backoff.expo,
+                      BotoServerError,
+                      max_tries=MAX_ATTEMPTS,
+                      giveup=giveup_if_not_throttling,
+                      factor=RETRY_FACTOR)
 def get_all_load_balancers(names=None):
     """
     Get all the ELBs
@@ -87,6 +114,11 @@ def _instance_elbs(instance_id, elbs):
     return instance_elbs
 
 
+@backoff.on_exception(backoff.expo,
+                      BotoServerError,
+                      max_tries=MAX_ATTEMPTS,
+                      giveup=giveup_if_not_throttling,
+                      factor=RETRY_FACTOR)
 def active_ami_for_edp(env, dep, play):
     """
     Given an environment, deployment, and play, find the base AMI id used for the active deployment.
@@ -134,6 +166,11 @@ def active_ami_for_edp(env, dep, play):
     return amis.pop()
 
 
+@backoff.on_exception(backoff.expo,
+                      BotoServerError,
+                      max_tries=MAX_ATTEMPTS,
+                      giveup=giveup_if_not_throttling,
+                      factor=RETRY_FACTOR)
 def tags_for_ami(ami_id):
     """
     Look up the tags for an AMI.
@@ -288,6 +325,11 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
                resource_id=asg_name)
 
 
+@backoff.on_exception(backoff.expo,
+                      BotoServerError,
+                      max_tries=MAX_ATTEMPTS,
+                      giveup=giveup_if_not_throttling,
+                      factor=RETRY_FACTOR)
 def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=1800):
     """
     Tag an asg with a tag named ASG_DELETE_TAG_KEY with a value of the MS since epoch UTC + ms_until_delete_delta
@@ -307,6 +349,11 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=1800):
         autoscale.create_or_update_tags([tag])
 
 
+@backoff.on_exception(backoff.expo,
+                      BotoServerError,
+                      max_tries=MAX_ATTEMPTS,
+                      giveup=giveup_if_not_throttling,
+                      factor=RETRY_FACTOR)
 def remove_asg_deletion_tag(asg_name):
     """
     Remove deletion tag from an asg.
@@ -426,6 +473,25 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     Raises:
         TimeoutException: We we have run out of time.
     """
+
+    @backoff.on_exception(backoff.expo,
+                          BotoServerError,
+                          max_tries=MAX_ATTEMPTS,
+                          giveup=giveup_if_not_throttling,
+                          factor=RETRY_FACTOR)
+    def _get_elb_health(selected_elb):
+        """
+        Get the health of an ELB
+
+        Args:
+            selected_elb (boto.ec2.elb.loadbalancer.LoadBalancer):
+
+        Returns:
+            list of InstanceState <boto.ec2.elb.instancestate.InstanceState>
+
+        """
+        return selected_elb.get_instance_health()
+
     elbs_left = set(elbs_to_monitor)
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
@@ -433,7 +499,7 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
         for elb in elbs:
             LOG.info("Checking health for ELB: {}".format(elb.name))
             all_healthy = True
-            for instance in elb.get_instance_health():
+            for instance in _get_elb_health(elb):
                 if instance.state != 'InService':
                     all_healthy = False
                     break

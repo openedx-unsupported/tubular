@@ -12,6 +12,7 @@ import mock
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
 import boto
+from boto.exception import BotoServerError
 import tubular.ec2 as ec2
 from tubular.tests.test_utils import create_asg_with_tags, create_elb, clone_elb_instances_with_state
 from tubular.exception import (
@@ -430,3 +431,34 @@ class TestEC2(unittest.TestCase):
         self.assertEqual(len(elb), expected_result_count)
         if name_filter:
             self.assertTrue(all(asg.name in name_filter for asg in elb))
+
+    @ddt.data(
+        (400,
+         ('<ErrorResponse xmlns="http://autoscaling.amazonaws.com/doc/2011-01-01/">'
+          '  <Error>'
+          '     <Type>Sender</Type>'
+          '     <Code>Throttling</Code>'
+          '     <Message>Rate exceeded</Message>'
+          '  </Error>'
+          '  <RequestId>8xb4df00d</RequestId>'
+          '</ErrorResponse>'),
+         False),
+        ("400",
+         ('<ErrorResponse xmlns="http://autoscaling.amazonaws.com/doc/2011-01-01/">'
+          '  <Error>'
+          '     <Type>Sender</Type>'
+          '     <Code>Throttling</Code>'
+          '     <Message>Rate exceeded</Message>'
+          '  </Error>'
+          '  <RequestId>8xb4df00d</RequestId>'
+          '</ErrorResponse>'),
+         False),
+        ('junk', '<ErrorResponse xmlns="http://autoscaling.amazonaws.com/doc/2011-01-01/"></ErrorResponse>', True),
+        (200, '<ErrorResponse xmlns="http://autoscaling.amazonaws.com/doc/2011-01-01/"></ErrorResponse>', True),
+        (400, '<ErrorResponse xmlns="http://autoscaling.amazonaws.com/doc/2011-01-01/"></ErrorResponse>', True),
+        (400, 'BotoServerError requires real XML here, this should evaluate to None', True)
+    )
+    @ddt.unpack
+    def test_giveup_if_not_throttling(self, status, body, expected_result):
+        ex = BotoServerError(status, "reasons", body)
+        self.assertEqual(ec2.giveup_if_not_throttling(ex), expected_result)
