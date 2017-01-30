@@ -25,7 +25,7 @@ def format_rsa_key(key, output_file):
     """
     try:
         key = RSA.importKey(key.decode('unicode_escape'))
-        with io.open(output_file, 'w') as f:
+        with io.open(output_file, 'wb') as f:
             f.write(key.exportKey())
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
