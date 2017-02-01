@@ -21,3 +21,11 @@ def exactly_one_set(param_list):
     Guarantees that only one of the cmd-line params list have a value set.
     """
     return sum(int(bool(param)) for param in param_list) == 1
+
+
+def envvar_get_int(var_name, default):
+    """
+    Grab an environment variable and return it as an integer.
+    If the environment variable does not exist, return the default.
+    """
+    return int(os.environ.get(var_name, default))

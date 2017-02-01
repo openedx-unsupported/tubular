@@ -8,6 +8,7 @@ import os
 import backoff
 
 from tubular.exception import InvalidUrlException
+from tubular.utils import envvar_get_int
 from github import Github
 from github.Commit import Commit
 from github.GitCommit import GitCommit
@@ -86,14 +87,6 @@ def _backoff_handler(details):
     Simple logging handler for when polling backoff occurs.
     """
     LOGGER.info('Trying again in {wait:0.1f} seconds after {tries} tries calling {target}'.format(**details))
-
-
-def _envvar_get_int(var_name, default):
-    """
-    Grab an environment variable and return it as an integer.
-    If the environment variable does not exist, return the default.
-    """
-    return int(os.environ.get(var_name, default))
 
 
 def _constant_with_initial_wait(initial_wait=0, interval=1):
@@ -247,9 +240,9 @@ class GitHubAPI(object):
     @backoff.on_predicate(
         _constant_with_initial_wait,
         lambda x: x not in ('success', 'failure'),
-        max_tries=_envvar_get_int("MAX_PR_TEST_POLL_TRIES", MAX_PR_TEST_TRIES_DEFAULT),
-        initial_wait=_envvar_get_int("PR_TEST_INITIAL_WAIT_INTERVAL", PR_TEST_INITIAL_WAIT_INTERVAL_DEFAULT),
-        interval=_envvar_get_int("PR_TEST_POLL_INTERVAL", PR_TEST_POLL_INTERVAL_DEFAULT),
+        max_tries=envvar_get_int("MAX_PR_TEST_POLL_TRIES", MAX_PR_TEST_TRIES_DEFAULT),
+        initial_wait=envvar_get_int("PR_TEST_INITIAL_WAIT_INTERVAL", PR_TEST_INITIAL_WAIT_INTERVAL_DEFAULT),
+        interval=envvar_get_int("PR_TEST_POLL_INTERVAL", PR_TEST_POLL_INTERVAL_DEFAULT),
         jitter=None,
         on_backoff=_backoff_handler
     )
