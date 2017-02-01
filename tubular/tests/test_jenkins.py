@@ -2,6 +2,7 @@
 Tests for triggering a Jenkins job.
 """
 from __future__ import absolute_import
+from __future__ import print_function
 from __future__ import unicode_literals
 
 from itertools import islice
@@ -9,7 +10,9 @@ import json
 import re
 import unittest
 
+import backoff
 import ddt
+from mock import Mock
 import requests_mock
 
 from tubular.exception import BackendError
@@ -60,6 +63,7 @@ class TestBackoff(unittest.TestCase):
         (2, 100, 90, 2, [90]),
         (2, 1, 90, 8, [1, 2, 4, 8, 16, 32, 27]),
         (3, 5, 1000, 7, [5, 15, 45, 135, 405, 395]),
+        (2, 1, 3600, 13, [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 1553]),
     )
     @ddt.unpack
     def test_max_timeout(self, base, factor, timeout, expected_max_tries, expected_waits):
@@ -72,6 +76,22 @@ class TestBackoff(unittest.TestCase):
         self.assertEqual(expected_waits, waits)
 
         self.assertEqual(timeout, sum(waits))
+
+    def test_backoff_call(self):
+        # pylint: disable=protected-access
+        wait_gen, max_tries = jenkins._backoff_timeout(timeout=.36, base=2, factor=.0001)
+        always_false = Mock(return_value=False)
+
+        count_retries = backoff.on_predicate(
+            wait_gen,
+            max_tries=max_tries,
+            on_backoff=print,
+            jitter=None,
+        )(always_false.__call__)
+
+        count_retries()
+
+        self.assertEqual(always_false.call_count, 13)
 
 
 @ddt.ddt
