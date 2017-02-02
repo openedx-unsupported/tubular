@@ -31,21 +31,20 @@ def _backoff_timeout(timeout, base=2, factor=1):
     u"""
     Return a tuple of (wait_gen, max_tries) so that backoff will only try up to `timeout` seconds.
 
-    |timeout|wait x sec|make attempt #|total time (sec)|total time (min)|
-    |----:|----:|---:|----:|-----:|
-    |0    |0    |1   |0    | 0    |
-    |0.1  |1    |2   |1    |0.02  |
-    |0.5  |2    |3   |3    |0.05  |
-    |4    |4   |7    |0.12  |
-    |8    |5   |15   |0.25  |
-    |16   |6   |31   |0.52  |
-    |32   |7   |63   |1.05  |
-    |64   |8   |127  |2.12  |
-    |128  |9   |255  |4.25  |
-    |256  |10  |511  |8.52  |
-    |512  |11  |1023 |17.05 |
-    |1024 |12  |2047 |34.12 |
-    |2048 |13  |4095 |68.25 |
+    |timeout (s)|max attempts|wait durations        |
+    |----------:|-----------:|---------------------:|
+    |1          |2           |1                     |
+    |5          |4           |1, 2, 2               |
+    |10         |5           |1, 2, 4, 3            |
+    |30         |6           |1, 2, 4, 8, 13        |
+    |60         |8           |1, 2, 4, 8, 16, 32, 37|
+    |300        |10          |1, 2, 4, 8, 16, 32, 64|
+    |           |            |128, 44               |
+    |600        |11          |1, 2, 4, 8, 16, 32, 64|
+    |           |            |128, 256, 89          |
+    |3600       |13          |1, 2, 4, 8, 16, 32, 64|
+    |           |            |128, 256, 512, 1024,  |
+    |           |            |1553                  |
 
     """
     # Total duration of sum(factor * base ** n for n in range(K)) = factor*(base**K - 1)/(base - 1),
@@ -110,7 +109,9 @@ def trigger_build(base_url, user_name, user_token, job_name, job_token,
     @backoff.on_predicate(
         wait_gen,
         max_tries=max_tries,
-        on_giveup=_poll_giveup
+        on_giveup=_poll_giveup,
+        # We aren't worried about concurrent access, so turn off jitter
+        jitter=None,
     )
     def poll_build_for_result(build):
         u"""
