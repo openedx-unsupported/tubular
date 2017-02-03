@@ -71,7 +71,7 @@ def check_migrate_duration(migration_file,
     Check if a migration's duration exceeded a certain migration duration threshold.
     If so, email an alert to the specified email addresses.
     """
-    migration_info = yaml.safe_load(io.open(migration_file, 'r'))
+    migration_info = yaml.safe_load(io.open(migration_file, 'r'))[0]
     duration = migration_info['duration']
     threshold_exceeded = (duration >= duration_threshold)
     if threshold_exceeded:
