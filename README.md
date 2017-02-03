@@ -52,6 +52,7 @@ Please do not report security issues in public. Please email security@edx.org.
 | RETRY_MAX_ATTEMPTS   | 5                               | Maximum number attempts to be made when asgard returns a 400 or 500 response.            |
 | RETRY_DELAY_SECONDS  | 5                               | How long in seconds to wait between retries to asgard                                         |
 | RETRY_MAX_TIME_SECONDS | None                          | How long in seconds to keep retrying asgard before giving up.                                 |
+| RETRY_FACTOR         | 1.5                             | Factor to multiple the base wait time by per retry attempt.  Only applies to ec2 boto calls   |
 | ASGARD_ELB_HEALTH_TIMEOUT | 600                        | How long in seconds to wait for an instanced to become healthy in an ELB.                     |
 | SHA_LENGTH           | 10                              | Length of the commit SHA to use when querying for a PR by commit.                             |
 | BATCH_SIZE           | 18                              | Number of commits to batch together when querying a PR by commit.                             |
