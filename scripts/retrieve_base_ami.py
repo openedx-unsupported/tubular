@@ -66,7 +66,13 @@ def retrieve_base_ami(environment, deployment, play, override, out_file):
         else:
             ami_id = ec2.active_ami_for_edp(environment, deployment, play)
 
-        ami_info = {'base_ami_id': ami_id}
+        ami_info = {
+            # This is passed directly to an ansible script that expects a base_ami_id variable
+            'base_ami_id': ami_id,
+            # This matches the key produced by the create_ami.yml ansible play to make
+            # generating release pages easier.
+            'ami_id': ami_id,
+        }
         ami_info.update(ec2.tags_for_ami(ami_id))
         logging.info("Found active AMI ID for {env}-{dep}-{play}: {ami_id}".format(
             env=environment, dep=deployment, play=play, ami_id=ami_id
