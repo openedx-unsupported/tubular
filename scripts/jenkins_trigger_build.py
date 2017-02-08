@@ -9,6 +9,7 @@ from os import path
 import sys
 
 import click
+from jenkinsapi.constants import STATUS_FAIL, STATUS_ERROR, STATUS_ABORTED, STATUS_REGRESSION, STATUS_SUCCESS
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -71,9 +72,22 @@ from tubular import jenkins  # pylint: disable=wrong-import-position
     required=False,
     default=30 * 60,
 )
-def trigger(url, user_name, user_token, job, token, cause, param, timeout):
+@click.option(
+    u"--expected-status",
+    help=u"The expected job status once the job completes.",
+    default=STATUS_SUCCESS,
+    type=click.Choice([
+        STATUS_FAIL,
+        STATUS_ERROR,
+        STATUS_ABORTED,
+        STATUS_REGRESSION,
+        STATUS_SUCCESS,
+    ])
+)
+def trigger(url, user_name, user_token, job, token, cause, param, timeout, expected_status):
     u"""Trigger a jenkins job. """
-    jenkins.trigger_build(url, user_name, user_token, job, token, cause, param, timeout)
+    status = jenkins.trigger_build(url, user_name, user_token, job, token, cause, param, timeout)
+    return status == expected_status
 
 if __name__ == u"__main__":
     # Configure logging for the tubular module methods to
