@@ -155,6 +155,10 @@ def trigger_build(base_url, user_name, user_token, job_name, job_token,
 
     # Now block until you get a result back from the build.
     poll_build_for_result(build)
+
+    # Update the build's internal state, so that the final status is available
+    build.poll()
+
     status = build.get_status()
     LOG.info(u'Build status: {status}'.format(status=status))
     return status
