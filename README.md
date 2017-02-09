@@ -12,13 +12,12 @@ The scripts perform work to enable continuous delivery (CD) for https://edx.org.
 
 ## Configuration
 ```
-pip install -r requirements.txt
+pip install .
 ```
 
 ## Testing
 ```
-pip install -r requirements/test_requirements.txt
-make test
+tox
 ```
 
 ## License
