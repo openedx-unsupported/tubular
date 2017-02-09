@@ -9,16 +9,12 @@ from __future__ import unicode_literals
 from __future__ import print_function
 
 import io
-import os
 import sys
 import logging
 import time
 import traceback
 import click
 import yaml
-
-# Add top-level module path to sys.path before importing tubular code.
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tubular import asgard  # pylint: disable=wrong-import-position
 

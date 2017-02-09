@@ -7,14 +7,10 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import io
-from os import path
 import sys
 import logging
 import click
 import yaml
-
-# Add top-level module path to sys.path before importing tubular code.
-sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.github_api import (  # pylint: disable=wrong-import-position
     GitHubAPI,
