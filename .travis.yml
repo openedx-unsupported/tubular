@@ -6,6 +6,7 @@ python:
 
 # command to install dependencies
 install:
+  - pip install --upgrade pip setuptools
   - pip install tox-travis
 
 script:
