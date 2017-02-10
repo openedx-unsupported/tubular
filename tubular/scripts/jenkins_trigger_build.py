@@ -87,7 +87,8 @@ from tubular import jenkins  # pylint: disable=wrong-import-position
 def trigger(url, user_name, user_token, job, token, cause, param, timeout, expected_status):
     u"""Trigger a jenkins job. """
     status = jenkins.trigger_build(url, user_name, user_token, job, token, cause, param, timeout)
-    return status == expected_status
+    if status != expected_status:
+        raise click.ClickException(u'Job finished with unexpected status {}'.format(status))
 
 if __name__ == u"__main__":
     # Configure logging for the tubular module methods to
