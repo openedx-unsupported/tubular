@@ -104,11 +104,10 @@ def trigger_build(base_url, user_name, user_token, job_name, job_token,
     Raises:
         BackendError: if the Jenkins job could not be triggered successfully
     """
-    wait_gen, max_tries = _backoff_timeout(timeout)
-
     @backoff.on_predicate(
-        wait_gen,
-        max_tries=max_tries,
+        backoff.constant,
+        interval=60,
+        max_tries=timeout / 60 + 1,
         on_giveup=_poll_giveup,
         # We aren't worried about concurrent access, so turn off jitter
         jitter=None,
