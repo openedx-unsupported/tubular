@@ -308,6 +308,13 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
             if group_edp == edp:
                 matching_groups.append(group.name)
 
+    LOG.info(
+        "Returning %s ASGs for EDP %s-%s-%s.",
+        len(matching_groups),
+        edp.environment,
+        edp.deployment,
+        edp.play
+    )
     return matching_groups
 
 
@@ -429,6 +436,9 @@ def wait_for_in_service(all_asgs, timeout):
 
     Returns: Nothing if healthy, raises a timeout exception if un-healthy.
     """
+    if len(all_asgs) == 0:
+        LOG.info("No ASGs to monitor - skipping health check.")
+        return
 
     asgs_left_to_check = list(all_asgs)
     LOG.info("Waiting for ASGs to be healthy: {}".format(asgs_left_to_check))
@@ -440,7 +450,7 @@ def wait_for_in_service(all_asgs, timeout):
             all_healthy = True
             for instance in asg.instances:
                 if instance.health_status.lower() != 'healthy' or instance.lifecycle_state.lower() != 'inservice':
-                    # Instance is  not ready.
+                    # Instance is not ready.
                     all_healthy = False
                     break
 
@@ -491,6 +501,10 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
 
         """
         return selected_elb.get_instance_health()
+
+    if len(elbs_to_monitor) == 0:
+        LOG.info("No ELBs to monitor - skipping health check.")
+        return
 
     elbs_left = set(elbs_to_monitor)
     end_time = datetime.utcnow() + timedelta(seconds=timeout)

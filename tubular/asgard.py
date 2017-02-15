@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 import os
 import logging
 import time
-import traceback
 import copy
 from collections import defaultdict
 import requests
@@ -603,7 +602,7 @@ def deploy(ami_id):
         except:
             msg = "ASG creation failed for cluster '{}' but succeeded for cluster(s) {}."
             msg = msg.format(cluster, new_clustered_asgs.keys())
-            LOG.error(msg)
+            LOG.exception(msg)
             raise
 
     new_asgs = [asgs[0] for asgs in new_clustered_asgs.values()]
@@ -694,7 +693,7 @@ def _red_black_deploy(
                 try:
                     _disable_cluster_asg(cluster, asg)
                 except:  # pylint: disable=bare-except
-                    LOG.warning(failure_msg.format(asg))
+                    LOG.warning(failure_msg, asg, exc_info=True)
 
     elbs_to_monitor = []
     newly_enabled_asgs = defaultdict(list)
@@ -705,14 +704,13 @@ def _red_black_deploy(
                 elbs_to_monitor.extend(elbs_for_asg(asg))
                 newly_enabled_asgs[cluster].append(asg)
             except:  # pylint: disable=bare-except
-                LOG.error("Error enabling ASG '{}'. Disabling traffic to all new ASGs.".format(asg))
-                LOG.error(traceback.format_exc())
+                LOG.error("Error enabling ASG '%s'. Disabling traffic to all new ASGs.", asg, exc_info=True)
                 # Disable the ASG which failed first.
                 _disable_cluster_asg(cluster, asg)
                 # Then disable any new other ASGs that have been newly enabled.
                 _disable_clustered_asgs(
                     newly_enabled_asgs,
-                    "Unable to disable ASG '{}' after failure."
+                    "Unable to disable ASG '%s' after failure."
                 )
                 return (False, asgs_enabled, asgs_disabled)
 
@@ -724,10 +722,10 @@ def _red_black_deploy(
     try:
         ec2.wait_for_healthy_elbs(elbs_to_monitor, 600)
     except:  # pylint: disable=bare-except
-        LOG.info("Some ASGs are failing ELB health checks. Disabling traffic to all new ASGs.")
+        LOG.info("Some ASGs are failing ELB health checks. Disabling traffic to all new ASGs.", exc_info=True)
         _disable_clustered_asgs(
             newly_enabled_asgs,
-            "Unable to disable ASG '{}' after waiting for healthy ELBs."
+            "Unable to disable ASG '%s' after waiting for healthy ELBs."
         )
         return (False, asgs_enabled, asgs_disabled)
 
@@ -757,7 +755,7 @@ def _red_black_deploy(
                     try:
                         _disable_cluster_asg(cluster, asg)
                     except:  # pylint: disable=bare-except
-                        LOG.warning("Unable to disable ASG '{}' after enabling new ASGs.".format(asg))
+                        LOG.warning("Unable to disable ASG '%s' after enabling new ASGs.", asg, exc_info=True)
                 elif asg in asgs_enabled[cluster]:
                     # If the asg is not enabled, but we have it in the enabled list remove it. This may occur by
                     # pulling from 2 different sources of truth at different intervals. The asg could have been disabled
