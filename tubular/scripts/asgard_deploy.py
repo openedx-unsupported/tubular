@@ -24,40 +24,56 @@ from tubular import asgard  # pylint: disable=wrong-import-position
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+LOG = logging.getLogger(__name__)
 
 
 @click.command()
-@click.option('--ami_id', envvar='AMI_ID', help='The ami-id to deploy')
-@click.option('--out_file', help='output file for the deploy information yaml', default=None)
-@click.option('--config-file', envvar='CONFIG_FILE', help='The config file to to get the ami_id from.')
-@click.option('--dry-run', envvar='DRY_RUN', help='Don\'t actually deploy.', is_flag=True, default=False)
-def deploy(ami_id, out_file, config_file, dry_run):
+@click.option(
+    '--ami_id',
+    help='The AMI id to deploy.'
+)
+@click.option(
+    '--config-file',
+    help='The config file from which to to get the AMI id.'
+)
+@click.option(
+    '--out_file',
+    help='output file for the deploy information yaml',
+    default=None
+)
+@click.option(
+    '--dry-run',
+    envvar='DRY_RUN',
+    help='Don\'t actually deploy.',
+    is_flag=True,
+    default=False
+)
+def deploy(ami_id, config_file, out_file, dry_run):
     """
-    Method which deploys an AMI.
+    Deploys the specified AMI from either 'ami_id' or 'config-file'.
     """
-    env_ami_id = os.environ.get('AMI_ID', None)
-    if env_ami_id and ami_id != env_ami_id:
-        click.secho(
-            'Error: Command-line and env var AMI_ID do not match. ({} != {})'.format(ami_id, env_ami_id),
-            fg='red'
-        )
+    if ami_id is not None and config_file is not None:
+        LOG.error('Must specify either --ami_id or --config-file, but not both.')
+        sys.exit(1)
+
+    if ami_id is None and config_file is None:
+        LOG.error('Must specify at least one of --ami_id or --config-file.')
         sys.exit(1)
 
     if config_file:
         config = yaml.safe_load(io.open(config_file, 'r'))
-        if config:
-            if not ami_id and 'ami_id' in config:
-                ami_id = config['ami_id']
-    if not ami_id:
-        click.secho('AMI ID not specified in environment, on cli or in config file.', fg='red')
-        sys.exit(1)
+        if config and 'ami_id' in config:
+            ami_id = config['ami_id']
+        else:
+            LOG.error('No ami_id found in config file \'{}\'.'.format(config_file))
+            sys.exit(1)
 
     ami_id = ami_id.strip()
     try:
         if not dry_run:
             deploy_info = asgard.deploy(ami_id)
         else:
-            click.echo('Would have triggered a deploy of {}'.format(ami_id))
+            click.echo('DRY RUN: Would have triggered a deploy of AMI \'{}\'.'.format(ami_id))
             deploy_info = {}
 
         # Record the time of deployment in epoch seconds.
@@ -71,7 +87,7 @@ def deploy(ami_id, out_file, config_file, dry_run):
 
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho('Error Deploying AMI: {0}.\nMessage: {1}'.format(ami_id, err), fg='red')
+        LOG.error('Error Deploying AMI: {0}.\nMessage: {1}'.format(ami_id, err))
         sys.exit(1)
 
     sys.exit(0)
