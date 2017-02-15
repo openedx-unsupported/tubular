@@ -4,11 +4,11 @@
 Command-line script to trigger a jenkins job
 """
 from __future__ import absolute_import
-import logging
 from os import path
 import sys
 
 import click
+import click_log
 from jenkinsapi.constants import STATUS_FAIL, STATUS_ERROR, STATUS_ABORTED, STATUS_REGRESSION, STATUS_SUCCESS
 
 # Add top-level module path to sys.path before importing tubular code.
@@ -84,6 +84,8 @@ from tubular import jenkins  # pylint: disable=wrong-import-position
         STATUS_SUCCESS,
     ])
 )
+@click_log.simple_verbosity_option(default=u'INFO')
+@click_log.init()
 def trigger(url, user_name, user_token, job, token, cause, param, timeout, expected_status):
     u"""Trigger a jenkins job. """
     status = jenkins.trigger_build(url, user_name, user_token, job, token, cause, param, timeout)
@@ -91,7 +93,4 @@ def trigger(url, user_name, user_token, job, token, cause, param, timeout, expec
         raise click.ClickException(u'Job finished with unexpected status {}'.format(status))
 
 if __name__ == u"__main__":
-    # Configure logging for the tubular module methods to
-    # print to stdout of the console that called this script.
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
     trigger()  # pylint: disable=no-value-for-parameter
