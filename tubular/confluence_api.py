@@ -243,7 +243,7 @@ class ReleasePage(object):
             E.H2(u"Detailed Changes"),
             *(
                 pr_table(self.github_token, self.jira_url, delta)
-                for delta in set().union(*(version_deltas(old, new) for (old, new) in self.ami_pairs))
+                for delta in set().union(*[version_deltas(old, new) for (old, new) in self.ami_pairs])
                 if delta.new.sha != delta.base.sha
             )
         )
