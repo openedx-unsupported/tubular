@@ -105,7 +105,7 @@ def create_tag(org,
         commit_sha = github_api.get_head_commit_from_branch_name(branch_name)
 
     if deploy_artifact:
-        deploy_vars = yaml.safe_load(open(deploy_artifact, 'r'))  # pylint: disable=open-builtin
+        deploy_vars = yaml.safe_load(open(deploy_artifact, 'r'))
         deploy_time = datetime.datetime.fromtimestamp(deploy_vars['deploy_time'], EST)
     else:
         # If no deploy artifact was given from which to extract a deploy time, use the current time.

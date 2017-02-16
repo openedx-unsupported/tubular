@@ -84,7 +84,7 @@ def poll_tests(org,
         sys.exit(1)
 
     if input_file:
-        input_vars = yaml.safe_load(io.open(input_file, 'r'))  # pylint: disable=open-builtin
+        input_vars = yaml.safe_load(io.open(input_file, 'r'))
         if not input_vars['pr_created']:
             # The input file indicates that no PR was created, so no PR tests to check here.
             LOG.info("No PR created - so no PR tests require polling.")
