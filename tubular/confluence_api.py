@@ -214,9 +214,9 @@ class ReleasePage(object):
         """
         return SECTION(
             E.H2(u"Code Diffs"),
-            *(
+            *[
                 diff(old, new) for (old, new) in self.ami_pairs
-            )
+            ]
         )
 
     def _format_amis(self):
@@ -241,11 +241,11 @@ class ReleasePage(object):
         """
         return SECTION(
             E.H2(u"Detailed Changes"),
-            *(
+            *[
                 pr_table(self.github_token, self.jira_url, delta)
                 for delta in set().union(*[version_deltas(old, new) for (old, new) in self.ami_pairs])
                 if delta.new.sha != delta.base.sha
-            )
+            ]
         )
 
     def _format_gocd(self):
