@@ -7,15 +7,10 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from os import path
 import sys
 import logging
 import click
 import yaml
-
-
-# Add top-level module path to sys.path before importing tubular code.
-sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.confluence_api import ReleasePage, publish_page, AMI, ReleaseStatus  # pylint: disable=wrong-import-position
 from tubular.github_api import (  # pylint: disable=wrong-import-position

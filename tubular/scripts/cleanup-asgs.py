@@ -7,14 +7,10 @@ Command-line script used to delete AWS Auto-Scaling Groups that are tagged for d
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from os import path
 import sys
 import logging
 import traceback
 import click
-
-# Add top-level module path to sys.path before importing tubular code.
-sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular import asgard  # pylint: disable=wrong-import-position
 from tubular.ec2 import get_asgs_pending_delete  # pylint: disable=wrong-import-position

@@ -4,15 +4,10 @@
 Command-line script to trigger a jenkins job
 """
 from __future__ import absolute_import
-from os import path
-import sys
 
 import click
 import click_log
 from jenkinsapi.constants import STATUS_FAIL, STATUS_ERROR, STATUS_ABORTED, STATUS_REGRESSION, STATUS_SUCCESS
-
-# Add top-level module path to sys.path before importing tubular code.
-sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular import jenkins  # pylint: disable=wrong-import-position
 
