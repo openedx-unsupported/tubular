@@ -9,8 +9,13 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 from __future__ import print_function
 
+import os
+import sys
 import click
 from yagocd import Yagocd
+
+# Add top-level module path to sys.path before importing tubular code.
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 @click.command()
