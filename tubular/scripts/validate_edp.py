@@ -6,10 +6,14 @@ Command-line script to validate that an AMI was built for a particular EDP.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from os import path
 import sys
 import logging
 import traceback
 import click
+
+# Add top-level module path to sys.path before importing tubular code.
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.ec2 import validate_edp  # pylint: disable=wrong-import-position
 
