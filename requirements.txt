@@ -3,6 +3,7 @@ enum34 >=1.1.6, <2.0; python_version < '3.4'
 backoff>=1.3.2,<1.4.0
 boto==2.43.0
 click>=6.2,<7.0
+click-log==0.1.8
 jenkinsapi==0.3.3
 lxml >= 3.7, <3.8
 pycrypto
