@@ -6,7 +6,12 @@ Command-line script to clear the Varnish cache for an environment.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import sys
+from os import path
 import click
+
+# Add top-level module path to sys.path before importing tubular code.
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular import drupal  # pylint: disable=wrong-import-position
 

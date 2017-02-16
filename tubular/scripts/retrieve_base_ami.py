@@ -8,12 +8,16 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 from __future__ import print_function
 
+from os import path
 import io
 import sys
 import logging
 import traceback
 import click
 import yaml
+
+# Add top-level module path to sys.path before importing tubular code.
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular import ec2  # pylint: disable=wrong-import-position
 

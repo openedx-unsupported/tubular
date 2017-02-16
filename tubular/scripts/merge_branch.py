@@ -6,10 +6,14 @@ Command-line script to merge a branch.
 from __future__ import absolute_import
 
 import io
+from os import path
 import sys
 import logging
 import yaml
 import click
+
+# Add top-level module path to sys.path before importing tubular code.
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.git_repo import merge_branch as merge_repo_branch  # pylint: disable=wrong-import-position
 

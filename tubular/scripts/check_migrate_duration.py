@@ -8,10 +8,14 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import io
+import os
 import sys
 import logging
 import yaml
 import click
+
+# Add top-level module path to sys.path before importing tubular code.
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tubular.email import send_email  # pylint: disable=wrong-import-position
 
