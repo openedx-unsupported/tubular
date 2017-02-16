@@ -239,13 +239,15 @@ class ReleasePage(object):
         u"""
         Return an Element that contains tables with all merged PRs for each repository that changed.
         """
+        deltas = [version_deltas(old, new) for (old, new) in self.ami_pairs]
+        tables = [
+            pr_table(self.github_token, self.jira_url, delta)
+            for delta in set().union(*deltas)
+            if delta.new.sha != delta.base.sha
+        ]
         return SECTION(
             E.H2(u"Detailed Changes"),
-            *[
-                pr_table(self.github_token, self.jira_url, delta)
-                for delta in set().union(*[version_deltas(old, new) for (old, new) in self.ami_pairs])
-                if delta.new.sha != delta.base.sha
-            ]
+            *tables
         )
 
     def _format_gocd(self):
