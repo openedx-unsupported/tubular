@@ -114,10 +114,10 @@ def format_jira_references(jira_url, text):
     tickets = set(re.findall(u"\\b[A-Z]{2,}-\\d+\\b", text))
     if tickets:
         return SECTION(
-            *(
+            *[
                 E.P(E.A(ticket, href=u"{}/browse/{}".format(jira_url, ticket)))
                 for ticket in sorted(tickets)
-            )
+            ]
         )
     else:
         return u""
@@ -170,7 +170,7 @@ def pr_table(token, jira_url, delta):
                     E.TH(u"JIRA"),
                     E.TH(u"Release Notes?"),
                 ),
-                *(
+                *[
                     E.TR(
                         E.TD(E.A(
                             pull_request.merged_by.login,
@@ -189,7 +189,7 @@ def pr_table(token, jira_url, delta):
                         E.TD(u""),
                     )
                     for pull_request in sorted(prs, key=lambda pr: pr.merged_by.login)
-                )
+                ]
             )
         )
     )
