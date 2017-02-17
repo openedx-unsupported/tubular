@@ -80,7 +80,7 @@ def test_release_page(mock_github):
         </ul></section></section>
 
         <section><h2>Final AMIs</h2>
-        <ul style="list-style-type: square"><strong>env-depl-play: ami_id_2</strong></ul></section>
+        <ul style="list-style-type: square"><li>env-depl-play: ami_id_2</li></ul></section>
 
         <section><h2>Detailed Changes</h2>
         <section><h3>Changes for <a href="https://github.com/org/repo_a">org/repo_a</a> (12345...54321)</h3>

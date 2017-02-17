@@ -232,7 +232,7 @@ class ReleasePage(object):
             E.H2(u"Final AMIs"),
             E.UL(
                 *[
-                    E.STRONG(u"{ami.environment}-{ami.deployment}-{ami.play}: {ami.ami_id}".format(ami=ami))
+                    E.LI(u"{ami.environment}-{ami.deployment}-{ami.play}: {ami.ami_id}".format(ami=ami))
                     for _, ami in self.ami_pairs
                     if ami is not None
                 ],
