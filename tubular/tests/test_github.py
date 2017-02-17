@@ -4,7 +4,7 @@ Tests for tubular.github_api.GitHubAPI
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from datetime import datetime, timedelta
+from datetime import datetime, date
 from hashlib import sha1
 
 from unittest import TestCase
@@ -341,8 +341,8 @@ class GitHubApiTestCase(TestCase):
             )
 
     @ddt.data(
-        (datetime(2017, 1, 9), datetime(2017, 1, 10)),
-        (datetime(2017, 1, 13), datetime(2017, 1, 16)),
+        (datetime(2017, 1, 9, 11), date(2017, 1, 10)),
+        (datetime(2017, 1, 13, 11), date(2017, 1, 16)),
     )
     @ddt.unpack
     def test_message_pr_deployed_stage_weekend(self, message_date, deploy_date):
@@ -390,8 +390,8 @@ class ReleaseUtilsTestCase(TestCase):
         """
         Tests that rc branch names are properly formatted
         """
-        date = datetime(year=1983, month=12, day=7, hour=6)
-        name = rc_branch_name_for_date(date.date())
+        release_date = datetime(year=1983, month=12, day=7, hour=6)
+        name = rc_branch_name_for_date(release_date.date())
         self.assertEqual(name, 'rc/1983-12-07')
 
     @ddt.data(
@@ -417,36 +417,16 @@ class ReleaseUtilsTestCase(TestCase):
         summary = extract_message_summary(message)
         self.assertEqual(summary, expected)
 
-    def mock_now(self, now=datetime(year=1983, month=12, day=7, hour=6)):
-        """
-        Patches datetime.now to provide the given date
-        """
-        # datetime.now can't be patched directly
-        # so we have to go through this indirect route
-        datetime_patcher = patch.object(
-            github_api, 'datetime',
-            Mock(wraps=datetime)
-        )
-        mocked_datetime = datetime_patcher.start()
-        mocked_datetime.now.return_value = now  # pylint: disable=no-member
-        self.addCleanup(datetime_patcher.stop)
-        return now
-
-    def test_start_after_current_day(self):
+    @ddt.data(
+        (datetime(2017, 2, 17, 4, 0, 0), date(2017, 2, 17)),  # on Friday morning, the release date is Friday
+        (datetime(2017, 2, 17, 11, 0, 0), date(2017, 2, 20)),  # on Friday afternoon, the release date is Monday
+        (datetime(2017, 2, 15, 4, 0, 0), date(2017, 2, 15)),  # on Wednesday morning, the release date is Wednesday
+        (datetime(2017, 2, 15, 11, 0, 0), date(2017, 2, 16)),  # on Wednesday afternoon, the release date is Thursday
+    )
+    @ddt.unpack
+    def test_expected_release_date(self, at_time, expected_date):
         """
         Tests that we don't start on the current day
         """
-        now = self.mock_now()
-        date = default_expected_release_date([now.weekday()])
-        self.assertEqual(date.weekday(), now.weekday())
-        self.assertLess(now, date)
-
-    def test_start_soon(self):
-        """
-        Tests that the next day is within the next week
-        """
-        now = self.mock_now()
-        date = default_expected_release_date([now.weekday()])
-        self.assertEqual(date.weekday(), now.weekday())
-        next_week = date + timedelta(weeks=1)
-        self.assertLess(date, next_week)
+        release_date = default_expected_release_date(at_time=at_time)
+        self.assertEqual(release_date, expected_date)
