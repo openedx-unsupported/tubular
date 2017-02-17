@@ -86,13 +86,14 @@ def diff(base, new):
         version = delta.new or delta.base
         repo = GITHUB_PREFIX.sub(u'', version.repo)
         diff_items.append(E.LI(
-            E.STRONG(
-                E.A(
-                    u"{}: {}...{}".format(repo, delta.base.sha, delta.new.sha),
-                    href=u"{}/compare/{}...{}".format(
-                        version.repo, delta.base.sha, delta.new.sha
-                    ),
-                )
+            E.A(
+                u"{}: {}...{}".format(repo, delta.base.sha, delta.new.sha),
+                href=u"{}/compare/{}...{}".format(
+                    version.repo, delta.base.sha, delta.new.sha
+                ),
+            ) if delta.base.sha != delta.new.sha else E.A(
+                u"{}: {} (no change)".format(repo, delta.base.sha),
+                href=u"{}/commit/{}".format(repo, delta.base.sha),
             )
         ))
     return SECTION(
@@ -111,16 +112,20 @@ def format_jira_references(jira_url, text):
     Arguments:
         jira_url: The base url that the JIRA tickets should link to.
     """
-    tickets = set(re.findall(u"\\b[A-Z]{2,}-\\d+\\b", text))
-    if tickets:
-        return SECTION(
-            *[
-                E.P(E.A(ticket, href=u"{}/browse/{}".format(jira_url, ticket)))
-                for ticket in sorted(tickets)
-            ]
-        )
-    else:
+    if text is None:
         return u""
+
+    tickets = set(re.findall(u"\\b[A-Z]{2,}-\\d+\\b", text))
+
+    if not tickets:
+        return u""
+
+    return SECTION(
+        *[
+            E.P(E.A(ticket, href=u"{}/browse/{}".format(jira_url, ticket)))
+            for ticket in sorted(tickets)
+        ]
+    )
 
 
 def pr_table(token, jira_url, delta):
@@ -227,7 +232,7 @@ class ReleasePage(object):
             E.H2(u"Final AMIs"),
             E.UL(
                 *[
-                    E.STRONG(u"{ami.environment}-{ami.deployment}-{ami.play}: {ami.ami_id}".format(ami=ami))
+                    E.LI(u"{ami.environment}-{ami.deployment}-{ami.play}: {ami.ami_id}".format(ami=ami))
                     for _, ami in self.ami_pairs
                     if ami is not None
                 ],
@@ -303,5 +308,8 @@ def publish_page(url, user, password, space, parent_title, title, body):
         body: The storage-format contents of the page to publish.
     """
     conf = Confluence(url, user, password)
-    parent_page = conf.get_page_by_title(space, parent_title)
+    try:
+        parent_page = conf.get_page_by_title(space, parent_title)
+    except:
+        raise ValueError(u"Unable to retrieve page {!r} in space {!r}".format(parent_page, space))
     return conf.update_or_create(parent_page[u'id'], title, body)
