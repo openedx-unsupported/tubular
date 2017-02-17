@@ -111,16 +111,20 @@ def format_jira_references(jira_url, text):
     Arguments:
         jira_url: The base url that the JIRA tickets should link to.
     """
-    tickets = set(re.findall(u"\\b[A-Z]{2,}-\\d+\\b", text))
-    if tickets:
-        return SECTION(
-            *[
-                E.P(E.A(ticket, href=u"{}/browse/{}".format(jira_url, ticket)))
-                for ticket in sorted(tickets)
-            ]
-        )
-    else:
+    if text is None:
         return u""
+
+    tickets = set(re.findall(u"\\b[A-Z]{2,}-\\d+\\b", text))
+
+    if not tickets:
+        return u""
+
+    return SECTION(
+        *[
+            E.P(E.A(ticket, href=u"{}/browse/{}".format(jira_url, ticket)))
+            for ticket in sorted(tickets)
+        ]
+    )
 
 
 def pr_table(token, jira_url, delta):
