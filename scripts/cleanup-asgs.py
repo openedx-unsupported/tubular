@@ -1,1 +1,1 @@
-../tubular/scripts/cleanup-asgs.py
+../tubular/scripts/cleanup_asgs.py
