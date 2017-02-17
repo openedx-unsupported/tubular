@@ -86,13 +86,14 @@ def diff(base, new):
         version = delta.new or delta.base
         repo = GITHUB_PREFIX.sub(u'', version.repo)
         diff_items.append(E.LI(
-            E.STRONG(
-                E.A(
-                    u"{}: {}...{}".format(repo, delta.base.sha, delta.new.sha),
-                    href=u"{}/compare/{}...{}".format(
-                        version.repo, delta.base.sha, delta.new.sha
-                    ),
-                )
+            E.A(
+                u"{}: {}...{}".format(repo, delta.base.sha, delta.new.sha),
+                href=u"{}/compare/{}...{}".format(
+                    version.repo, delta.base.sha, delta.new.sha
+                ),
+            ) if delta.base.sha != delta.new.sha else E.A(
+                u"{}: {} (no change)".format(repo, delta.base.sha),
+                href=u"{}/commit/{}".format(repo, delta.base.sha),
             )
         ))
     return SECTION(

@@ -75,8 +75,8 @@ def test_release_page(mock_github):
         <section><h2>Code Diffs</h2>
         <section><h3>Comparing env-depl-play: ami_id_1 to ami_id_2</h3>
         <ul style="list-style-type: square">
-        <li><strong><a href="https://github.com/org/repo_a/compare/12345...54321">org/repo_a: 12345...54321</a></strong></li>
-        <li><strong><a href="git@github.com/org/repo_b/compare/12345...12345">git@github.com/org/repo_b: 12345...12345</a></strong></li>
+        <li><a href="https://github.com/org/repo_a/compare/12345...54321">org/repo_a: 12345...54321</a></li>
+        <li><a href="git@github.com/org/repo_b/commit/12345">git@github.com/org/repo_b: 12345 (no change)</a></li>
         </ul></section></section>
 
         <section><h2>Final AMIs</h2>
