@@ -74,10 +74,10 @@ EXPECTED_RELEASE_DATE = default_expected_release_date()
         Specify a date that the release branch is expected to be deployed.
         Should be in YYYY-MM-DD format. If not passed, defaults to the
         next upcoming Tuesday, which is currently {date}.
-        '''.format(date=EXPECTED_RELEASE_DATE.date().isoformat()),
+        '''.format(date=EXPECTED_RELEASE_DATE.isoformat()),
     callback=valid_date,
     envvar='RELEASE_DATE',
-    default=EXPECTED_RELEASE_DATE.date().isoformat()
+    default=EXPECTED_RELEASE_DATE.isoformat()
 )
 @click.option(
     '--find_commit',

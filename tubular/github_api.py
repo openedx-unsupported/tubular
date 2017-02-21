@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 from __future__ import print_function, unicode_literals
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 import logging
 import os
 import backoff
@@ -14,6 +14,7 @@ from github.Commit import Commit
 from github.GitCommit import GitCommit
 from github.GithubException import UnknownObjectException
 from github.InputGitAuthor import InputGitAuthor
+from pytz import timezone
 import six
 from validators import url as url_validator
 
@@ -32,6 +33,8 @@ DEFAULT_TAG_EMAIL_ADDRESS = 'no.public.email@edx.org'
 _MONDAY = 0
 _FRIDAY = 4
 _NORMAL_RELEASE_WEEKDAYS = tuple(range(_MONDAY, _FRIDAY + 1))
+RELEASE_TZ = timezone('US/Eastern')
+RELEASE_CUTOFF = time(10, tzinfo=RELEASE_TZ)
 
 # Defaults for the polling of a PR's tests.
 MAX_PR_TEST_TRIES_DEFAULT = 5
@@ -64,12 +67,19 @@ def extract_message_summary(message, max_length=50):
         return title[0:max_length] + '...'
 
 
-def default_expected_release_date(release_days=_NORMAL_RELEASE_WEEKDAYS):
+def default_expected_release_date(at_time=None, release_days=_NORMAL_RELEASE_WEEKDAYS):
     """
     Returns the default expected release date given the current date.
     Currently the nearest weekday in the future (can't be today).
     """
-    proposal = datetime.now() + timedelta(days=1)
+    if at_time is None:
+        at_time = datetime.now(RELEASE_TZ)
+
+    if at_time.timetz() < RELEASE_CUTOFF:
+        proposal = at_time.date()
+    else:
+        proposal = at_time.date() + timedelta(days=1)
+
     while proposal.weekday() not in release_days:
         proposal = proposal + timedelta(days=1)
     return proposal
