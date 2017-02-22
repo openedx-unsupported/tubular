@@ -5,6 +5,7 @@ from __future__ import print_function, unicode_literals
 from datetime import datetime, timedelta, time
 import logging
 import os
+import socket
 import backoff
 
 from tubular.exception import InvalidUrlException
@@ -247,6 +248,11 @@ class GitHubAPI(object):
             self.get_head_commit_from_pull_request(pr_number)
         ).state.lower() == 'success'
 
+    @backoff.on_exception(
+        backoff.expo,
+        socket.timeout,
+        max_tries=5
+    )
     @backoff.on_predicate(
         _constant_with_initial_wait,
         lambda x: x not in ('success', 'failure'),
