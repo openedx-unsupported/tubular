@@ -61,3 +61,12 @@ def merge_branch(repo_url,
     finally:
         rmtree(repo.working_dir)
     return merge_sha
+
+
+def add_remote(repo_path, remote_name, remote_url):
+    """
+    Add a remote named ``remote_name`` pointing to ``remote_url``
+    to the repo at ``repo_path``.
+    """
+    repo = Repo(repo_path)
+    repo.create_remote(remote_name, remote_url)
