@@ -12,11 +12,15 @@ The scripts perform work to enable continuous delivery (CD) for https://edx.org.
 
 ## Configuration
 ```
-pip install .
+pip install -e .[dev]
 ```
 
 ## Testing
 ```
+# Once, to install python versions:
+cat .python-versions | xargs -n1 pyenv install
+
+# Run the tests
 tox
 ```
 
