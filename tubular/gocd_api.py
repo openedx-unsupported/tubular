@@ -1,0 +1,97 @@
+""" Commands to interact with the GoCD API. """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function, unicode_literals
+
+import logging
+from datetime import datetime, timedelta
+from dateutil import tz
+
+from yagocd import Yagocd as yagocd
+from tubular.github_api import default_expected_release_date
+
+LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.INFO)
+
+
+class AdvancementPipelineNotFound(Exception):
+    """
+    Raise when not finding an appropriate advancement pipeline.
+    """
+    pass
+
+
+class GoCDAPI(object):
+    """
+    Interacts with the GoCD API to perform common tasks.
+    """
+    def __init__(self, username, password, go_server_url):
+        self.client = yagocd(
+            server=go_server_url,
+            auth=(username, password),
+        )
+
+    def approve_stage(self, pipeline_name, pipeline_counter, stage_name):
+        """
+        Approves the specified stage of the specified pipeline run.
+        """
+        LOG.info("Starting stage %s of pipeline %s:%s", stage_name, pipeline_name, pipeline_counter)
+        self.client.stages.run(pipeline_name, pipeline_counter, stage_name)
+
+    def fetch_pipeline_to_advance(self, advance_pipeline_name, relative_to=None):
+        """
+        Given:
+            - the name of a pipeline to manually advance (the advancement pipeline)
+            - a datetime representing the current time (typically the production release time)
+        find the advancement pipeline that should be advanced/deployed to production.
+
+        The algorithm:
+        - Query the value stream map containing the upstream pipeline materials of the advancement pipeline.
+        - Find the initial upstream pipeline material.
+        - Check the time at which the first job of the first stage was triggered.
+        - If the job was triggered before the last release time relative to the passed-in time, found.
+        - If not, keep going backwards into pipeline history until found.
+
+        Params:
+            relative_to: Datetime relative to which the release should occur. If None, use the current datetime.
+
+        Returns:
+            yagocd.resources.pipeline.PipelineInstance: Instance of advancement pipeline to advance.
+        """
+        # Compute the last release time (in UTC) relative to the passed-in time -or- now.
+        utc_zone = tz.gettz('UTC')
+        relative_time = relative_to if relative_to else datetime.now(utc_zone)
+        last_release_time = default_expected_release_date(
+            (relative_time - timedelta(days=1)).astimezone(utc_zone)
+        )
+
+        # Go backwards in advancement pipeline history, starting with the most recent run.
+        for advancement_pipeline in self.client.pipelines.full_history(advance_pipeline_name):
+            # Get the full instance information for the initial pipeline determined by the value stream map.
+            vsm = advancement_pipeline.value_stream_map()
+            initial_pipeline_inst = self.client.pipelines.get(vsm[0].data.name, vsm[0].data.counter)
+
+            # Find the trigger timestamp from the first job in the first stage of the first pipeline.
+            # Trigger timestamp is in milliseconds since the epoch time - convert to seconds.
+            trigger_time = initial_pipeline_inst.stages()[0].jobs()[0].data.get('scheduled_date') / 1000
+
+            # Convert the trigger timestamp to a UTC datetime.
+            utc_trigger_time = datetime.utcfromtimestamp(trigger_time).replace(tzinfo=utc_zone)
+
+            # Was the initial pipeline in the value stream map was triggered before the last release time?
+            if utc_trigger_time < last_release_time:
+                # Log relevant information.
+                est_time = utc_trigger_time.astimezone(tz.gettz('America/New_York'))
+                LOG.info('Found pipeline to advance: %s', advancement_pipeline.url)
+                LOG.info('From initial pipeline: %s', initial_pipeline_inst.url)
+                LOG.info('Initial pipeline %s was triggered at %s', initial_pipeline_inst.data.name, est_time)
+
+                # Return the advancement pipeline instance.
+                return self.client.pipelines.get(advancement_pipeline.data.name, advancement_pipeline.data.counter)
+
+        raise AdvancementPipelineNotFound(
+            'Could not find advancement pipeline for "{}" relative to time {},'
+            ' which maps to last release time {}.'.format(
+                advance_pipeline_name, relative_time, last_release_time
+            )
+        )
