@@ -161,7 +161,7 @@ def create_pull_request(org,
             'pr_mergable_state': pull_request.mergeable_state,
         }
 
-    with io.open(output_file, 'w') as stream:  # pylint: disable=open-builtin
+    with io.open(output_file, 'w') as stream:
         yaml.safe_dump(
             output_yaml,
             stream,
