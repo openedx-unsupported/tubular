@@ -11,6 +11,7 @@ import sys
 import logging
 import yaml
 import click
+import click_log
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -52,6 +53,8 @@ LOG = logging.getLogger(__name__)
     help=u'File in which to write the script\'s YAML output',
     default=u'target/merge_branch_sha.yml'
 )
+@click_log.simple_verbosity_option(default=u'INFO')
+@click_log.init()
 def merge_branch(org,
                  repo,
                  source_branch,
