@@ -13,7 +13,7 @@ from tubular.utils import envvar_get_int
 from github import Github
 from github.Commit import Commit
 from github.GitCommit import GitCommit
-from github.GithubException import UnknownObjectException
+from github.GithubException import UnknownObjectException, GithubException
 from github.InputGitAuthor import InputGitAuthor
 from pytz import timezone
 import six
@@ -53,6 +53,13 @@ class NoValidCommitsError(Exception):
 class InvalidPullRequestError(Exception):
     """
     Error indicating that a PR could not be found
+    """
+    pass
+
+
+class GitTagMismatchError(Exception):
+    """
+    Error indicating that a tag is pointing at an incorrect SHA.
     """
     pass
 
@@ -481,9 +488,22 @@ class GitHubAPI(object):
             tagger=tagger
         )
 
-        # We need to create a reference based on the tag
-        self.github_repo.create_git_ref(ref='refs/tags/{}'.format(tag_name), sha=sha)
-
+        try:
+            # We need to create a reference based on the tag
+            self.github_repo.create_git_ref(ref='refs/tags/{}'.format(tag_name), sha=sha)
+        except GithubException as exc:
+            # Check for 'Reference already exists' execption.
+            if exc.status != 422:
+                raise
+            # Exception is already created. Verify it's on the correct hash.
+            existing_tag = self.github_repo.get_git_tag(tag_name)
+            if existing_tag.sha != sha:
+                # The tag is already created and pointed to a different SHA than requested.
+                raise GitTagMismatchError(
+                    "Tag '{}' exists but point to SHA {} instead of requested SHA {}.".format(
+                        tag_name, existing_tag.sha, sha
+                    )
+                )
         return created_tag
 
     def have_branches_diverged(self, base_branch, compare_branch):
