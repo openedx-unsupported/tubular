@@ -769,3 +769,11 @@ class GitHubAPI(object):
             return False
 
         return comparison.status in ('behind', 'identical')
+
+    def find_approved_not_closed_prs(self, pr_base):
+        """
+        Yield all pull requests in the repo against ``pr_base`` that are approved and not closed.
+        """
+        query = "type:pr review:approved base:{} state:open state:merged".format(pr_base)
+        for issue in self.github_connection.search_issues(query):
+            yield self.github_repo.get_pull(issue.number)
