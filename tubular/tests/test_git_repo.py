@@ -31,7 +31,7 @@ class GitRepoTestCase(TestCase):
         )
         git_wrapper = mock_repo.clone_from.return_value.git
         git_wrapper.merge.assert_called_once_with('foo', ff_only=True)
-        git_wrapper.push.assert_called_once_with('origin', 'bar')
+        git_wrapper.push.assert_called_once_with('origin', 'refs/heads/bar')
         git_wrapper.rev_parse.assert_called_once_with('HEAD')
         self.assertEqual(git_wrapper.rev_parse.return_value, merge_sha)
         mock_rmtree.assert_called_once_with(mock_repo.clone_from.return_value.working_dir)

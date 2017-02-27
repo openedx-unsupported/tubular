@@ -56,7 +56,7 @@ def merge_branch(repo_url,
     repo = Repo.clone_from(repo_url, to_path=extract_repo_name(repo_url), branch=target_branch)
     try:
         repo.git.merge(source_branch, ff_only=ff_only)
-        repo.git.push('origin', target_branch)
+        repo.git.push('origin', 'refs/heads/{}'.format(target_branch))
         merge_sha = repo.git.rev_parse('HEAD')
     finally:
         rmtree(repo.working_dir)
