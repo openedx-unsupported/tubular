@@ -758,3 +758,14 @@ class GitHubAPI(object):
             PR_RELEASE_CANCELED_MESSAGE,
             force_message
         )
+
+    def has_been_merged(self, base, candidate):
+        """
+        Return whether ``candidate`` has been merged into ``base``.
+        """
+        try:
+            comparison = self.github_repo.compare(base, candidate)
+        except UnknownObjectException:
+            return False
+
+        return comparison.status in ('behind', 'identical')
