@@ -70,3 +70,12 @@ def add_remote(repo_path, remote_name, remote_url):
     """
     repo = Repo(repo_path)
     repo.create_remote(remote_name, remote_url)
+
+
+def octopus_merge(repo_path, base_branch, commitishes):
+    """
+    Merge all ``commitishes`` into ``base_branch``, inside ``repo_path``.
+    """
+    repo = Repo(repo_path)
+    repo.heads[base_branch].checkout()
+    repo.git.merge(*commitishes)
