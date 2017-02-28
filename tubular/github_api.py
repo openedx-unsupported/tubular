@@ -492,15 +492,18 @@ class GitHubAPI(object):
             # We need to create a reference based on the tag
             self.github_repo.create_git_ref(ref='refs/tags/{}'.format(tag_name), sha=sha)
         except GithubException as exc:
-            # Check for 'Reference already exists' execption.
+            # Upon trying to create a tag with a tag name that already exists,
+            # an "Unprocessable Entity" error with a status code of 422 is returned
+            # with a message of 'Reference already exists'.
+            # https://developer.github.com/v3/#client-errors
             if exc.status != 422:
                 raise
-            # Exception is already created. Verify it's on the correct hash.
+            # Tag is already created. Verify it's on the correct hash.
             existing_tag = self.github_repo.get_git_tag(tag_name)
             if existing_tag.sha != sha:
                 # The tag is already created and pointed to a different SHA than requested.
                 raise GitTagMismatchError(
-                    "Tag '{}' exists but point to SHA {} instead of requested SHA {}.".format(
+                    "Tag '{}' exists but points to SHA {} instead of requested SHA {}.".format(
                         tag_name, existing_tag.sha, sha
                     )
                 )
