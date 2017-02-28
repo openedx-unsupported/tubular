@@ -33,6 +33,7 @@ from tubular.github_api import (
     GitHubAPI,
     NoValidCommitsError,
     InvalidPullRequestError,
+    GitTagMismatchError,
     default_expected_release_date,
     extract_message_summary,
     rc_branch_name_for_date
@@ -194,6 +195,45 @@ class GitHubApiTestCase(TestCase):
                 ref='refs/tags/{}'.format(test_tag),
                 sha=test_sha
             )
+
+    def _setup_create_tag_mocks(self, status_code, msg, return_sha):
+        """
+        Setup the mocks for the create_tag calls below.
+        """
+        mock_user = Mock(NamedUser, email='test.user@edx.org')
+        mock_user.name = 'test_name'
+        self.repo_mock.create_git_tag = Mock()
+        self.repo_mock.create_git_ref = Mock(
+            side_effect=GithubException(status_code, {'message': msg})
+        )
+        self.repo_mock.get_git_tag = get_tag_mock = Mock()
+        get_tag_mock.return_value = Mock(sha=return_sha)
+        return mock_user
+
+    def test_create_tag_which_already_exists_but_matches_sha(self):
+        test_sha = 'abc'
+        mock_user = self._setup_create_tag_mocks(
+            422, 'Reference already exists', test_sha
+        )
+        with patch.object(Github, 'get_user', return_value=mock_user):
+            # No exception.
+            self.api.create_tag(test_sha, 'test_tag')
+
+    def test_create_tag_which_already_exists_and_no_sha_match(self):
+        mock_user = self._setup_create_tag_mocks(
+            422, 'Reference already exists', 'def'
+        )
+        with patch.object(Github, 'get_user', return_value=mock_user):
+            with self.assertRaises(GitTagMismatchError):
+                self.api.create_tag('abc', 'test_tag')
+
+    def test_create_tag_which_already_exists_and_unknown_exception(self):
+        mock_user = self._setup_create_tag_mocks(
+            421, 'Not sure what this is!', 'def'
+        )
+        with patch.object(Github, 'get_user', return_value=mock_user):
+            with self.assertRaises(GithubException):
+                self.api.create_tag('abc', 'test_tag')
 
     @ddt.data(
         ('diverged', True),

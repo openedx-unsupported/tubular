@@ -13,7 +13,7 @@ from tubular.utils import envvar_get_int
 from github import Github
 from github.Commit import Commit
 from github.GitCommit import GitCommit
-from github.GithubException import UnknownObjectException
+from github.GithubException import UnknownObjectException, GithubException
 from github.InputGitAuthor import InputGitAuthor
 from pytz import timezone
 import six
@@ -53,6 +53,13 @@ class NoValidCommitsError(Exception):
 class InvalidPullRequestError(Exception):
     """
     Error indicating that a PR could not be found
+    """
+    pass
+
+
+class GitTagMismatchError(Exception):
+    """
+    Error indicating that a tag is pointing at an incorrect SHA.
     """
     pass
 
@@ -481,9 +488,25 @@ class GitHubAPI(object):
             tagger=tagger
         )
 
-        # We need to create a reference based on the tag
-        self.github_repo.create_git_ref(ref='refs/tags/{}'.format(tag_name), sha=sha)
-
+        try:
+            # We need to create a reference based on the tag
+            self.github_repo.create_git_ref(ref='refs/tags/{}'.format(tag_name), sha=sha)
+        except GithubException as exc:
+            # Upon trying to create a tag with a tag name that already exists,
+            # an "Unprocessable Entity" error with a status code of 422 is returned
+            # with a message of 'Reference already exists'.
+            # https://developer.github.com/v3/#client-errors
+            if exc.status != 422:
+                raise
+            # Tag is already created. Verify it's on the correct hash.
+            existing_tag = self.github_repo.get_git_tag(tag_name)
+            if existing_tag.sha != sha:
+                # The tag is already created and pointed to a different SHA than requested.
+                raise GitTagMismatchError(
+                    "Tag '{}' exists but points to SHA {} instead of requested SHA {}.".format(
+                        tag_name, existing_tag.sha, sha
+                    )
+                )
         return created_tag
 
     def have_branches_diverged(self, base_branch, compare_branch):
