@@ -4,9 +4,9 @@ Tests for tubular.gocd_api.GoCDAPI
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from functools import partial
 from datetime import datetime
 from dateutil import tz
-from easydict import EasyDict
 
 from unittest import TestCase  # pylint: disable=wrong-import-order
 import ddt
@@ -15,7 +15,9 @@ from freezegun import freeze_time
 
 from yagocd.session import Session
 from yagocd.resources.pipeline import PipelineInstance
-from tubular.gocd_api import GoCDAPI, AdvancementPipelineNotFound
+from tubular.gocd_api import (
+    GoCDAPI, AdvancementPipelineNotFound, AdvancementPipelineAlreadyAdvanced
+)
 
 
 def convert_to_timestamp(dtime):
@@ -66,57 +68,42 @@ class GoCDApiTestCase(TestCase):
         Many keys/values are left out - only the essential ones for testing remain.
         """
         return (
-            # Pipeline history entry, retrieved via pipelines.full_history().
+            {
+                'name': 'prerelease_edxapp_materials_latest',
+                'counter': fillin_params['prerelease_counter'],
+                'stages': [
+                    {
+                        'name': 'initial_verification',
+                        'jobs': [
+                            {'name': 'armed_job', 'scheduled_date': fillin_params['job1_trigger_time']}
+                        ],
+                        'scheduled': fillin_params['stage_status']
+                    },
+                    {
+                        'name': 'manual_verification',
+                        'jobs': [],
+                        'scheduled': fillin_params['stage_status']
+                    }
+                ],
+            },
             {
                 'name': 'manual_verification_edxapp_prod_early_ami_build',
-                'counter': fillin_params['manual_counter']
-            },
-            # Value stream map of the above history entry, retrieved with PipelineInstance.value_stream_map().
-            (
-                {
-                    'name': u'prerelease_edxapp_materials_latest',
-                    'counter': fillin_params['prerelease_counter']
-                },
-                {
-                    'name': u'manual_verification_edxapp_prod_early_ami_build',
-                    'counter': fillin_params['manual_counter']
-                }
-            ),
-            # Pipeline instance data, retrieved via pipelines.get() method.
-            (
-                {
-                    'name': 'prerelease_edxapp_materials_latest',
-                    'counter': fillin_params['prerelease_counter'],
-                    'stages': [
-                        {
-                            'name': 'initial_verification',
-                            'jobs': [
-                                {'name': 'armed_job', 'scheduled_date': fillin_params['job1_trigger_time']}
-                            ]
-                        },
-                        {
-                            'name': 'manual_verification',
-                            'jobs': [],
-                        }
-                    ],
-                },
-                {
-                    'name': 'manual_verification_edxapp_prod_early_ami_build',
-                    'counter': fillin_params['manual_counter'],
-                    'stages': [
-                        {
-                            'name': 'initial_verification',
-                            'jobs': [
-                                {'name': 'armed_job', 'scheduled_date': fillin_params['job2_trigger_time']}
-                            ],
-                        },
-                        {
-                            'jobs': [],
-                            'name': 'manual_verification'
-                        }
-                    ],
-                }
-            )
+                'counter': fillin_params['manual_counter'],
+                'stages': [
+                    {
+                        'name': 'initial_verification',
+                        'jobs': [
+                            {'name': 'armed_job', 'scheduled_date': fillin_params['job2_trigger_time']}
+                        ],
+                        'scheduled': fillin_params['stage_status']
+                    },
+                    {
+                        'name': 'manual_verification',
+                        'jobs': [],
+                        'scheduled': fillin_params['stage_status']
+                    }
+                ],
+            }
         )
 
     def _build_mocked_gocd_data(self, fillin_params):
@@ -124,100 +111,116 @@ class GoCDApiTestCase(TestCase):
         Setup the GoCD data mocking for a single test.
         """
         instances = []
-        for fillins in fillin_params:
-            inst_data, vsm, gets = self._build_pipeline_system_data(fillins)
-            # Build a mocked PipelineInstance and add it to a full_history() list.
-            attrs = {
-                'value_stream_map.return_value': [
-                    Mock(spec=PipelineInstance, data=EasyDict(instance)) for instance in vsm
-                ]
-            }
-            instances.append(Mock(spec=PipelineInstance, data=EasyDict(inst_data), **attrs))
-            # Add the PipelineInstance data to the mocked get() call.
-            self._build_gets(gets)
+        with patch('yagocd.session.Session', spec=Session) as mock_session:
+            for fillins in fillin_params:
+                inst_data = self._build_pipeline_system_data(fillins)
+
+                # Build the value_stream_map() to return for the pipeline instance.
+                vsm_data = [PipelineInstance(mock_session, instance) for instance in inst_data]
+
+                # Build a mocked PipelineInstance for the manual_verification pipeline
+                # and add it to a full_history() list.
+                mock_instance = PipelineInstance(mock_session, inst_data[1])
+                mock_instance.value_stream_map = Mock(return_value=vsm_data)
+                instances.append(mock_instance)
+
+                # Add the PipelineInstance data to the mocked get() call.
+                self._build_gets(inst_data)
         return instances
 
-    @ddt.data(
-        (VALID_JOB_TRIGGER_TIME_MS, False),
-        (INVALID_JOB_TRIGGER_TIME_MS, True)
-    )
-    @ddt.unpack
-    def test_pipeline_instance_finding_using_specific_time(self, manual_trigger_time, exception_expected):
+    def _test_pipeline_instance_finding(
+            self, manual_trigger_time, stage_statuses, exception_expected=None, current_time=None
+    ):
         """
-        Verify that the correct pipeline instance is found, given the *current* time.
+        Test pipeline instance finding using common code for the tests below.
         """
-        current_time = datetime(2017, 2, 18, 1, 0, 0, tzinfo=tz.gettz('UTC'))
         gocd_api_data = [
             {
                 'prerelease_counter': 238,
                 'manual_counter': 157,
                 'job1_trigger_time': 1487707461420,
-                'job2_trigger_time': 1487707461420 + FAKE_TIME_BETWEEN_PIPELINE_RUNS_MS
+                'job2_trigger_time': 1487707461420 + FAKE_TIME_BETWEEN_PIPELINE_RUNS_MS,
+                'stage_status': stage_statuses[0]
             },
             {
                 'prerelease_counter': 228,
                 'manual_counter': 148,
                 'job1_trigger_time': manual_trigger_time,
-                'job2_trigger_time': manual_trigger_time + FAKE_TIME_BETWEEN_PIPELINE_RUNS_MS
+                'job2_trigger_time': manual_trigger_time + FAKE_TIME_BETWEEN_PIPELINE_RUNS_MS,
+                'stage_status': stage_statuses[1]
             }
         ]
         instances = self._build_mocked_gocd_data(gocd_api_data)
 
         with patch.object(self.test_gocd_client.client.pipelines, 'full_history', return_value=instances):
             with patch.object(self.test_gocd_client.client.pipelines, 'get', new=self._mock_gets):
+                fetch_func = partial(
+                    self.test_gocd_client.fetch_pipeline_to_advance,
+                    'manual_verification_edxapp_prod_early_ami_build',
+                    'manual_verification'
+                )
                 if exception_expected:
-                    with self.assertRaises(AdvancementPipelineNotFound):
-                        found_pipeline = self.test_gocd_client.fetch_pipeline_to_advance(
-                            'manual_verification_edxapp_prod_early_ami_build',
-                            current_time
-                        )
+                    with self.assertRaises(exception_expected):
+                        if current_time:
+                            found_pipeline = fetch_func(current_time)
+                        else:
+                            found_pipeline = fetch_func()
                 else:
-                    found_pipeline = self.test_gocd_client.fetch_pipeline_to_advance(
-                        'manual_verification_edxapp_prod_early_ami_build',
-                        current_time
-                    )
+                    if current_time:
+                        found_pipeline = fetch_func(current_time)
+                    else:
+                        found_pipeline = fetch_func()
                     self.assertEqual(found_pipeline.data.name, 'manual_verification_edxapp_prod_early_ami_build')
                     self.assertEqual(found_pipeline.data.counter, 148)
+
+    INSTANCE_FIND_TEST_DATA = (
+        (VALID_JOB_TRIGGER_TIME_MS, (False, False), None),
+        (VALID_JOB_TRIGGER_TIME_MS, (True, True), AdvancementPipelineNotFound),
+        (VALID_JOB_TRIGGER_TIME_MS, (False, True), AdvancementPipelineAlreadyAdvanced),
+        (INVALID_JOB_TRIGGER_TIME_MS, (False, False), AdvancementPipelineNotFound)
+    )
+
+    @ddt.data(*INSTANCE_FIND_TEST_DATA)
+    @ddt.unpack
+    def test_pipeline_instance_finding_using_specific_time(
+            self, manual_trigger_time, stage_statuses, exception_expected
+    ):
+        """
+        Verify that the correct pipeline instance is found, given the passed-in time.
+        """
+        self._test_pipeline_instance_finding(
+            manual_trigger_time,
+            stage_statuses,
+            exception_expected,
+            datetime(2017, 2, 18, 1, 0, 0, tzinfo=tz.gettz('UTC'))
+        )
 
     @freeze_time("2017-02-18 01:00:00")
-    @ddt.data(
-        (VALID_JOB_TRIGGER_TIME_MS, False),
-        (INVALID_JOB_TRIGGER_TIME_MS, True)
-    )
+    @ddt.data(*INSTANCE_FIND_TEST_DATA)
     @ddt.unpack
-    def test_pipeline_instance_finding_using_now(self, manual_trigger_time, exception_expected):
+    def test_pipeline_instance_finding_using_now(
+            self, manual_trigger_time, stage_statuses, exception_expected
+    ):
         """
-        Verify that the correct pipeline instance is found, given the *current* time.
+        Verify that the correct pipeline instance is found, given the *current* time of now().
         """
-        gocd_api_data = [
-            {
-                'prerelease_counter': 238,
-                'manual_counter': 157,
-                'job1_trigger_time': 1487707461420,
-                'job2_trigger_time': 1487707461420 + FAKE_TIME_BETWEEN_PIPELINE_RUNS_MS
-            },
-            {
-                'prerelease_counter': 228,
-                'manual_counter': 148,
-                'job1_trigger_time': manual_trigger_time,
-                'job2_trigger_time': manual_trigger_time + FAKE_TIME_BETWEEN_PIPELINE_RUNS_MS
-            }
-        ]
-        instances = self._build_mocked_gocd_data(gocd_api_data)
+        self._test_pipeline_instance_finding(
+            manual_trigger_time,
+            stage_statuses,
+            exception_expected
+        )
 
+    def test_pipeline_instance_finding_with_no_data(self):
+        """
+        Verify proper behavior when no history data is returned.
+        """
+        instances = self._build_mocked_gocd_data([])
         with patch.object(self.test_gocd_client.client.pipelines, 'full_history', return_value=instances):
-            with patch.object(self.test_gocd_client.client.pipelines, 'get', new=self._mock_gets):
-                if exception_expected:
-                    with self.assertRaises(AdvancementPipelineNotFound):
-                        found_pipeline = self.test_gocd_client.fetch_pipeline_to_advance(
-                            'manual_verification_edxapp_prod_early_ami_build',
-                        )
-                else:
-                    found_pipeline = self.test_gocd_client.fetch_pipeline_to_advance(
-                        'manual_verification_edxapp_prod_early_ami_build'
-                    )
-                    self.assertEqual(found_pipeline.data.name, 'manual_verification_edxapp_prod_early_ami_build')
-                    self.assertEqual(found_pipeline.data.counter, 148)
+            with self.assertRaises(AdvancementPipelineNotFound):
+                self.test_gocd_client.fetch_pipeline_to_advance(
+                    'manual_verification_edxapp_prod_early_ami_build',
+                    'manual_verification'
+                )
 
     def tearDown(self):
         self._instance_map = {}

@@ -21,6 +21,13 @@ class AdvancementPipelineNotFound(Exception):
     pass
 
 
+class AdvancementPipelineAlreadyAdvanced(Exception):
+    """
+    Raise when appropriate advancement pipeline has already been advanced.
+    """
+    pass
+
+
 class GoCDAPI(object):
     """
     Interacts with the GoCD API to perform common tasks.
@@ -38,7 +45,7 @@ class GoCDAPI(object):
         LOG.info("Starting stage %s of pipeline %s:%s", stage_name, pipeline_name, pipeline_counter)
         self.client.stages.run(pipeline_name, pipeline_counter, stage_name)
 
-    def fetch_pipeline_to_advance(self, advance_pipeline_name, relative_to=None):
+    def fetch_pipeline_to_advance(self, advance_pipeline_name, advance_stage_name, relative_to=None):
         """
         Given:
             - the name of a pipeline to manually advance (the advancement pipeline)
@@ -53,16 +60,28 @@ class GoCDAPI(object):
         - If not, keep going backwards into pipeline history until found.
 
         Params:
-            relative_to: Datetime relative to which the release should occur. If None, use the current datetime.
+            advance_pipeline_name (str): Pipeline name which contains the manual stage to advance.
+            advance_stage_name (str): Stage name in pipeline which requires manual advancement.
+            relative_to (datetime): Datetime relative to which the release should occur.
+                If None, use the current datetime.
 
         Returns:
             yagocd.resources.pipeline.PipelineInstance: Instance of advancement pipeline to advance.
         """
-        # Compute the last release time (in UTC) relative to the passed-in time -or- now.
+        def has_advanced(pipeline_instance, stage_name):
+            """
+            Check to see if a pipeline from a value stream map has been advanced.
+            """
+            return pipeline_instance.stage(stage_name).data['scheduled']
+
+        # Compute the previous release cutoff (in UTC) relative to the passed-in time -or- now.
         utc_zone = tz.gettz('UTC')
         relative_time = relative_to if relative_to else datetime.now(utc_zone)
-        last_release_time = default_expected_release_date(
-            (relative_time - timedelta(days=1)).astimezone(utc_zone)
+        previous_release_cutoff = default_expected_release_date(relative_time - timedelta(days=1))
+
+        LOG.info(
+            'Checking for advancement pipeline "%s" relative to time %s, mapping to last release time %s.',
+            advance_pipeline_name, relative_time, previous_release_cutoff
         )
 
         # Go backwards in advancement pipeline history, starting with the most recent run.
@@ -79,19 +98,38 @@ class GoCDAPI(object):
             utc_trigger_time = datetime.utcfromtimestamp(trigger_time).replace(tzinfo=utc_zone)
 
             # Was the initial pipeline in the value stream map was triggered before the last release time?
-            if utc_trigger_time < last_release_time:
+            if utc_trigger_time < previous_release_cutoff:
+                # Found the first pipeline to be triggered before the last release time.
+
                 # Log relevant information.
                 est_time = utc_trigger_time.astimezone(tz.gettz('America/New_York'))
                 LOG.info('Found pipeline to advance: %s', advancement_pipeline.url)
                 LOG.info('From initial pipeline: %s', initial_pipeline_inst.url)
                 LOG.info('Initial pipeline %s was triggered at %s', initial_pipeline_inst.data.name, est_time)
 
+                # Check to see if the pipeline has already been advanced.
+                if has_advanced(advancement_pipeline, advance_stage_name):
+                    LOG.info('But pipeline has already been advanced!')
+                    raise AdvancementPipelineAlreadyAdvanced(
+                        'Advancement pipeline "{}" found - but its stage "{}" has already been advanced.'.format(
+                            advance_pipeline_name,
+                            advance_stage_name
+                        )
+                    )
+
                 # Return the advancement pipeline instance.
                 return self.client.pipelines.get(advancement_pipeline.data.name, advancement_pipeline.data.counter)
+
+            elif has_advanced(advancement_pipeline, advance_stage_name):
+                # This pipeline has already been advanced. Since we'd expect not to advance a pipeline
+                # earlier than the last one advanced, stop at this point.
+                raise AdvancementPipelineNotFound(
+                    'More recent advanced pipeline was found - stopping historical search.'
+                )
 
         raise AdvancementPipelineNotFound(
             'Could not find advancement pipeline for "{}" relative to time {},'
             ' which maps to last release time {}.'.format(
-                advance_pipeline_name, relative_time, last_release_time
+                advance_pipeline_name, relative_time, previous_release_cutoff
             )
         )
