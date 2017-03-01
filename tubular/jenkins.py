@@ -153,7 +153,10 @@ def trigger_build(base_url, user_name, user_token, job_name, job_token,
     LOG.info(u'See {}'.format(build.baseurl))
 
     # Now block until you get a result back from the build.
-    poll_build_for_result(build)
+    try:
+        poll_build_for_result(build)
+    except HTTPError as err:
+        LOG.info(u'Received HTTP error in waiting for build result: {}').format(err)
 
     # Update the build's internal state, so that the final status is available
     build.poll()
