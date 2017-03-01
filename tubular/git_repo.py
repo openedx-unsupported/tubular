@@ -98,7 +98,8 @@ class LocalGitAPI(object):
         Add a remote named ``remote_name`` pointing to ``remote_url``
         to the repo at ``repo_path``.
         """
-        self.repo.create_remote(remote_name, remote_url)
+        remote = self.repo.create_remote(remote_name, remote_url)
+        remote.fetch()
 
     def octopus_merge(self, base_branch, commitishes):
         """
@@ -106,6 +107,18 @@ class LocalGitAPI(object):
         """
         self.checkout_branch(base_branch)
         self.repo.git.merge(*commitishes)
+
+    def force_branch_to(self, branch, commitish, remote=None):
+        """
+        Reset branch to commitish.
+        """
+        if remote:
+            commitish = self.repo.remotes[remote].refs[commitish]
+
+        if self.repo.active_branch == self.repo.heads[branch]:
+            self.repo.head.reset(commitish, index=True, working_tree=True)
+        else:
+            self.repo.heads[branch].reset(commitish, index=True)
 
     @contextmanager
     def cleanup(self):
