@@ -62,11 +62,11 @@ class LocalGitAPI(object):
         )
         return cls(repo)
 
-    def push_branch(self, branch):
+    def push_branch(self, branch, remote='origin'):
         """
         Push a branch up to the remote server.
         """
-        self.repo.git.push('origin', 'refs/heads/{}'.format(branch))
+        self.repo.git.push(remote, 'refs/heads/{}'.format(branch))
 
     def checkout_branch(self, branch):
         """
