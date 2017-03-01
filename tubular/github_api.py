@@ -8,8 +8,6 @@ import os
 import socket
 import backoff
 
-from tubular.exception import InvalidUrlException
-from tubular.utils import envvar_get_int
 from github import Github
 from github.Commit import Commit
 from github.GitCommit import GitCommit
@@ -18,6 +16,9 @@ from github.InputGitAuthor import InputGitAuthor
 from pytz import timezone
 import six
 from validators import url as url_validator
+
+from .exception import InvalidUrlException
+from .utils import envvar_get_int
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)

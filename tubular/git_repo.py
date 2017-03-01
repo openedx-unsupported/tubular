@@ -4,6 +4,7 @@ Direct git commands on a GitHub repo.
 from __future__ import absolute_import
 from __future__ import print_function, unicode_literals
 
+from contextlib import contextmanager
 import logging
 import re
 
@@ -88,11 +89,8 @@ class LocalGitAPI(object):
             Commit SHA of the merge commit where the branch was merged.
         """
         self.checkout_branch(target_branch)
-        try:
-            self.repo.git.merge(source_branch, ff_only=ff_only)
-            merge_sha = self.repo.git.rev_parse('HEAD')
-        finally:
-            rmtree(self.repo.working_dir)
+        self.repo.git.merge(source_branch, ff_only=ff_only)
+        merge_sha = self.repo.git.rev_parse('HEAD')
         return merge_sha
 
     def add_remote(self, remote_name, remote_url):
@@ -108,3 +106,13 @@ class LocalGitAPI(object):
         """
         self.checkout_branch(base_branch)
         self.repo.git.merge(*commitishes)
+
+    @contextmanager
+    def cleanup(self):
+        """
+        Delete the repo working directory when this contextmanager is finished.
+        """
+        try:
+            yield self
+        finally:
+            rmtree(self.repo.working_dir)

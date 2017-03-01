@@ -24,7 +24,8 @@ class GitRepoTestCase(TestCase):
         """
         Tests merging a branch successfully.
         """
-        merge_sha = LocalGitAPI.clone('git@github.com:edx/tubular.git', 'bar').merge_branch('foo', 'bar')
+        with LocalGitAPI.clone('git@github.com:edx/tubular.git', 'bar').cleanup() as repo:
+            merge_sha = repo.merge_branch('foo', 'bar')
 
         mock_repo.clone_from.assert_called_once_with(
             'git@github.com:edx/tubular.git', to_path='tubular', branch='bar'
