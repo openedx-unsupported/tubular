@@ -421,6 +421,33 @@ def get_asgs_pending_delete():
     return asgs_pending_delete
 
 
+def terminate_instances(region, tags, max_run_hours, skip_if_tag):
+    """
+    Terminates instances based on tag and the number of hours an instance has been running.
+
+    Args:
+        region (str): the ec2 region to search for instances.
+        tags (dict): tag names/values to search for instances (e.g. {'tag:Name':'*string*'} ).
+        max_run_hours (int): number of hours the instance should be left running before termination.
+        skip_if_tag (str): Instance will not be terminated if it is tagged with this value.
+
+    Returns:
+        list: of the instance IDs terminated.
+    """
+    conn = boto.ec2.connect_to_region(region)
+    instances_to_terminate = []
+
+    reservations = conn.get_all_instances(filters=tags)
+    for reservation in reservations:
+        for instance in reservation.instances:
+            total_run_time = datetime.utcnow() - datetime.strptime(instance.launch_time[:-1], ISO_DATE_FORMAT)
+            if total_run_time > timedelta(hours=max_run_hours) and skip_if_tag not in instance.tags:
+                instances_to_terminate.append(instance.id)
+    if len(instances_to_terminate) > 0:
+        conn.terminate_instances(instance_ids=instances_to_terminate)
+    return instances_to_terminate
+
+
 def wait_for_in_service(all_asgs, timeout):
     """
     Wait for the ASG and all instances in them to be healthy
