@@ -107,6 +107,7 @@ class LocalGitAPI(object):
         """
         self.checkout_branch(base_branch)
         self.repo.git.merge(*commitishes)
+        return self.repo.head.commit.hexsha
 
     def force_branch_to(self, branch, commitish, remote=None):
         """

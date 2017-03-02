@@ -4,9 +4,11 @@
 Command-line script to trigger a jenkins job
 """
 import logging
+import sys
 
 import click
 import click_log
+import yaml
 
 from tubular import github_api  # pylint: disable=wrong-import-position
 
@@ -71,9 +73,18 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
     help='The branch to merge the approved PRs on top of (from the source repository).',
     required=True,
 )
+@click.option(
+    '--out-file',
+    help=u"File location to export metadata about the branches merged to target-branch.",
+    type=click.File(mode='w'),
+    default=sys.stdout,
+)
 @click_log.simple_verbosity_option(default=u'INFO')
 @click_log.init()
-def octomerge(token, target_repo, source_repo, target_base_branch, source_base_branch, target_branch, source_branch):
+def octomerge(
+        token, target_repo, source_repo, target_base_branch, source_base_branch,
+        target_branch, source_branch, out_file
+):
     u"""
     Merge all approved security PRs into a release candidate.
 
@@ -103,5 +114,14 @@ def octomerge(token, target_repo, source_repo, target_base_branch, source_base_b
             )
         ))
 
-        local_repo.octopus_merge(target_branch, (pr.head.sha for pr in approved_prs))
+        merge_sha = local_repo.octopus_merge(target_branch, (pr.head.sha for pr in approved_prs))
         local_repo.push_branch(target_branch, force=True)
+
+        yaml.safe_dump({
+            'target_branch': target_branch,
+            'merge_sha': merge_sha,
+            'merged_prs': [
+                {'html_url': pr.html_url}
+                for pr in approved_prs
+            ]
+        }, stream=out_file)
