@@ -104,4 +104,4 @@ def octomerge(token, target_repo, source_repo, target_base_branch, source_base_b
         ))
 
         local_repo.octopus_merge(target_branch, (pr.head.sha for pr in approved_prs))
-        local_repo.push_branch(target_branch)
+        local_repo.push_branch(target_branch, force=True)
