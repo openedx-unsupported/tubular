@@ -90,7 +90,7 @@ def default_expected_release_date(at_time=None, release_days=_NORMAL_RELEASE_WEE
 
     while proposal.weekday() not in release_days:
         proposal = proposal + timedelta(days=1)
-    return proposal
+    return datetime.combine(proposal, RELEASE_CUTOFF)
 
 
 def rc_branch_name_for_date(date):

@@ -36,7 +36,8 @@ from tubular.github_api import (
     GitTagMismatchError,
     default_expected_release_date,
     extract_message_summary,
-    rc_branch_name_for_date
+    rc_branch_name_for_date,
+    RELEASE_CUTOFF
 )
 
 # SHA1 is hash function designed to be difficult to reverse.
@@ -458,10 +459,14 @@ class ReleaseUtilsTestCase(TestCase):
         self.assertEqual(summary, expected)
 
     @ddt.data(
-        (datetime(2017, 2, 17, 4, 0, 0), date(2017, 2, 17)),  # on Friday morning, the release date is Friday
-        (datetime(2017, 2, 17, 11, 0, 0), date(2017, 2, 20)),  # on Friday afternoon, the release date is Monday
-        (datetime(2017, 2, 15, 4, 0, 0), date(2017, 2, 15)),  # on Wednesday morning, the release date is Wednesday
-        (datetime(2017, 2, 15, 11, 0, 0), date(2017, 2, 16)),  # on Wednesday afternoon, the release date is Thursday
+        # on Friday morning, the release date is Friday
+        (datetime(2017, 2, 17, 4, 0, 0), datetime(2017, 2, 17)),
+        # on Friday afternoon, the release date is Monday
+        (datetime(2017, 2, 17, 11, 0, 0), datetime(2017, 2, 20)),
+        # on Wednesday morning, the release date is Wednesday
+        (datetime(2017, 2, 15, 4, 0, 0), datetime(2017, 2, 15)),
+        # on Wednesday afternoon, the release date is Thursday
+        (datetime(2017, 2, 15, 11, 0, 0), datetime(2017, 2, 16)),
     )
     @ddt.unpack
     def test_expected_release_date(self, at_time, expected_date):
@@ -469,4 +474,4 @@ class ReleaseUtilsTestCase(TestCase):
         Tests that we don't start on the current day
         """
         release_date = default_expected_release_date(at_time=at_time)
-        self.assertEqual(release_date, expected_date)
+        self.assertEqual(release_date, datetime.combine(expected_date, RELEASE_CUTOFF))
