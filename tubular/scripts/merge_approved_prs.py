@@ -3,34 +3,34 @@
 """
 Command-line script to trigger a jenkins job
 """
+import logging
+import sys
+
 import click
 import click_log
+import yaml
 
 from tubular import github_api  # pylint: disable=wrong-import-position
 
 
-def find_approved_prs(token, private_repo, public_repo, private_base_branch, public_base_branch):
+def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_branch):
     """
-    Yield all PRs in ``private_repo`` which meet the following criteria:
+    Yield all PRs in ``target_repo`` which meet the following criteria:
         * have been approved
         * have not been closed
-        * have a base branch of ``private_base_branch``
-        * have not been merged to ``public_base_branch`` in ``public_repo``
+        * have a base branch of ``target_base_branch``
+        * have not been merged to ``source_base_branch`` in ``source_repo``
 
     Arguments:
-        token: A github access token
-        private_repo (str, str): A tuple of org, repository
-        public_repo (str, str): A tuple of org, repository
-        private_base_branch (str): The name of the branch that PRs should be targetting
-        public_base_branch (str): The name of a branch that PRs shouldn't have been merged to
+        target_repo (str, str): A tuple of org, repository
+        source_repo (str, str): A tuple of org, repository
+        target_base_branch (str): The name of the branch that PRs should be targetting
+        source_base_branch (str): The name of a branch that PRs shouldn't have been merged to
     """
-    private_github_repo = github_api.GitHubAPI(*private_repo, token=token)
-    public_github_repo = github_api.GitHubAPI(*public_repo, token=token)
-
-    candidate_prs = list(private_github_repo.find_approved_not_closed_prs(private_base_branch))
+    candidate_prs = list(target_repo.find_approved_not_closed_prs(target_base_branch))
 
     for pull in candidate_prs:
-        if not public_github_repo.has_been_merged(public_base_branch, pull.head.sha):
+        if not source_repo.has_been_merged(source_base_branch, pull.head.sha):
             yield pull
 
 
@@ -41,41 +41,86 @@ def find_approved_prs(token, private_repo, public_repo, private_base_branch, pub
     required=True,
 )
 @click.option(
-    '--private-repo',
-    help='The org, repo pair for the private repository.',
+    '--target-repo',
+    help='The org, repo pair for the target repository.',
     nargs=2,
     required=True,
 )
 @click.option(
-    '--private-base-branch',
-    help='The branch in the private repository that PRs must target.',
+    '--target-base-branch',
+    help='The branch in the target repository that PRs must target.',
     required=True,
 )
 @click.option(
-    '--public-repo',
-    help='The org of the public repository.',
+    '--source-repo',
+    help='The org of the source repository.',
     nargs=2,
     required=True,
 )
 @click.option(
-    '--public-base-branch',
-    help='The branch in the public repository that PRs must not be merged to.',
+    '--source-base-branch',
+    help='The branch in the source repository that PRs must not be merged to.',
     required=True,
+)
+@click.option(
+    '--target-branch',
+    help='The branch to create in the target repository from the merged PRs.',
+    required=True,
+)
+@click.option(
+    '--source-branch',
+    help='The branch to merge the approved PRs on top of (from the source repository).',
+    required=True,
+)
+@click.option(
+    '--out-file',
+    help=u"File location to export metadata about the branches merged to target-branch.",
+    type=click.File(mode='w'),
+    default=sys.stdout,
 )
 @click_log.simple_verbosity_option(default=u'INFO')
 @click_log.init()
-def octomerge(token, private_repo, public_repo, private_base_branch, public_base_branch):
+def octomerge(
+        token, target_repo, source_repo, target_base_branch, source_base_branch,
+        target_branch, source_branch, out_file
+):
     u"""
     Merge all approved security PRs into a release candidate.
 
-    Any PR in ``privato-org/private-repo`` will be merged into ``private-branch``, as long
+    Any PR in ``privato-org/target-repo`` will be merged into ``target-branch``, as long
     as the PR meets the following conditions:
 
         * The PR has been approved (by at least one reviewer)
         * The PR has not been closed
-        * The PR has not been merged to ``public-repo-path:public-base-branch``.
-        * The PR is targeted at ``private-org/private-repo:private-base-branch``.
+        * The PR has not been merged to ``source-repo-path:source-base-branch``.
+        * The PR is targeted at ``target-org/target-repo:target-base-branch``.
     """
-    print("\n".join(pull.url for pull in find_approved_prs(
-        token, private_repo, public_repo, private_base_branch, public_base_branch
-    )))
+    target_github_repo = github_api.GitHubAPI(*target_repo, token=token)
+    source_github_repo = github_api.GitHubAPI(*source_repo, token=token)
+
+    with target_github_repo.clone(target_branch).cleanup() as local_repo:
+        local_repo.add_remote('source', source_github_repo.github_repo.ssh_url)
+        local_repo.force_branch_to(target_branch, source_branch, remote='source')
+
+        approved_prs = list(find_approved_prs(
+            target_github_repo, source_github_repo, target_base_branch, source_base_branch
+        ))
+        logging.info("Merging the following prs into {}:\n{}".format(
+            target_branch,
+            "\n".join(
+                "    {.html_url}".format(pr)
+                for pr in approved_prs
+            )
+        ))
+
+        merge_sha = local_repo.octopus_merge(target_branch, (pr.head.sha for pr in approved_prs))
+        local_repo.push_branch(target_branch, force=True)
+
+        yaml.safe_dump({
+            'target_branch': target_branch,
+            'merge_sha': merge_sha,
+            'merged_prs': [
+                {'html_url': pr.html_url}
+                for pr in approved_prs
+            ]
+        }, stream=out_file)

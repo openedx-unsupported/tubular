@@ -8,8 +8,6 @@ import os
 import socket
 import backoff
 
-from tubular.exception import InvalidUrlException
-from tubular.utils import envvar_get_int
 from github import Github
 from github.Commit import Commit
 from github.GitCommit import GitCommit
@@ -18,6 +16,10 @@ from github.InputGitAuthor import InputGitAuthor
 from pytz import timezone
 import six
 from validators import url as url_validator
+
+from .exception import InvalidUrlException
+from .utils import envvar_get_int
+from .git_repo import LocalGitAPI
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
@@ -145,6 +147,13 @@ class GitHubAPI(object):
         self.github_org = self.github_connection.get_organization(org)
         self.org = org
         self.repo = repo
+
+    def clone(self, branch=None):
+        """
+        Clone this Github repo as a LocalGitAPI instance.
+        """
+        clone_url = self.github_repo.ssh_url
+        return LocalGitAPI.clone(clone_url, branch)
 
     def user(self):
         """

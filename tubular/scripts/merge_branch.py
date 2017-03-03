@@ -16,7 +16,7 @@ import click_log
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from tubular.git_repo import merge_branch as merge_repo_branch  # pylint: disable=wrong-import-position
+from tubular.git_repo import LocalGitAPI  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -74,7 +74,9 @@ def merge_branch(org,
           If the merge cannot be performed as a fast-forward merge, the merge will fail.
     """
     github_url = u'git@github.com:{}/{}.git'.format(org, repo)
-    merge_sha = merge_repo_branch(github_url, source_branch, target_branch, fast_forward_only)
+    with LocalGitAPI.clone(github_url, target_branch).cleanup() as repo:
+        merge_sha = repo.merge_branch(source_branch, target_branch, fast_forward_only)
+        repo.push_branch(target_branch)
 
     with io.open(output_file, u'w') as stream:
         yaml.safe_dump(

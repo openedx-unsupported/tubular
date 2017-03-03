@@ -9,7 +9,7 @@ import ddt
 from git import GitCommandError
 from mock import patch
 
-from tubular.git_repo import merge_branch, InvalidGitRepoURL, extract_repo_name
+from tubular.git_repo import LocalGitAPI, InvalidGitRepoURL, extract_repo_name
 
 
 @ddt.ddt
@@ -24,14 +24,14 @@ class GitRepoTestCase(TestCase):
         """
         Tests merging a branch successfully.
         """
-        merge_sha = merge_branch('git@github.com:edx/tubular.git', 'foo', 'bar')
+        with LocalGitAPI.clone('git@github.com:edx/tubular.git', 'bar').cleanup() as repo:
+            merge_sha = repo.merge_branch('foo', 'bar')
 
         mock_repo.clone_from.assert_called_once_with(
             'git@github.com:edx/tubular.git', to_path='tubular', branch='bar'
         )
         git_wrapper = mock_repo.clone_from.return_value.git
         git_wrapper.merge.assert_called_once_with('foo', ff_only=True)
-        git_wrapper.push.assert_called_once_with('origin', 'refs/heads/bar')
         git_wrapper.rev_parse.assert_called_once_with('HEAD')
         self.assertEqual(git_wrapper.rev_parse.return_value, merge_sha)
         mock_rmtree.assert_called_once_with(mock_repo.clone_from.return_value.working_dir)
@@ -45,14 +45,13 @@ class GitRepoTestCase(TestCase):
         mock_repo.clone_from.side_effect = GitCommandError('cmd', 1)
 
         with self.assertRaises(GitCommandError):
-            merge_branch('git@github.com:edx/tubular.git', 'foo', 'bar')
+            LocalGitAPI.clone('git@github.com:edx/tubular.git', 'bar')
         self.assertEqual(mock_rmtree.call_count, 0)
 
     @patch('tubular.git_repo.rmtree', autospec=True)
     @patch('tubular.git_repo.Repo')
     @ddt.data(
         'clone_from.return_value.git.merge',
-        'clone_from.return_value.git.push',
         'clone_from.return_value.git.rev_parse',
     )
     def test_cleanup(self, failing_mock, mock_repo, mock_rmtree):
@@ -65,7 +64,7 @@ class GitRepoTestCase(TestCase):
         )
 
         with self.assertRaises(GitCommandError):
-            merge_branch('git@github.com:edx/tubular.git', 'foo', 'bar')
+            LocalGitAPI.clone('git@github.com:edx/tubular.git', 'bar').merge_branch('foo', 'bar')
             mock_rmtree.assert_called_once_with('tubular')
 
     @ddt.data(
