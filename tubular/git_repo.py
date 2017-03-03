@@ -96,14 +96,14 @@ class LocalGitAPI(object):
     def add_remote(self, remote_name, remote_url):
         """
         Add a remote named ``remote_name`` pointing to ``remote_url``
-        to the repo at ``repo_path``.
+        to this repo.
         """
         remote = self.repo.create_remote(remote_name, remote_url)
         remote.fetch()
 
     def octopus_merge(self, base_branch, commitishes):
         """
-        Merge all ``commitishes`` into ``base_branch``, inside ``repo_path``.
+        Merge all ``commitishes`` into ``base_branch`` in this repo.
         """
         self.checkout_branch(base_branch)
         self.repo.git.merge(*commitishes)
@@ -112,6 +112,11 @@ class LocalGitAPI(object):
     def force_branch_to(self, branch, commitish, remote=None):
         """
         Reset branch to commitish.
+
+        Arguments:
+            branch: the branch to reset
+            commitish: The commit to reset the branch to.
+            remote: The remote containing ``commitish``.
         """
         if remote:
             commitish = self.repo.remotes[remote].refs[commitish]

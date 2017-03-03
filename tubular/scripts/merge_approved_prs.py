@@ -22,7 +22,6 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
         * have not been merged to ``source_base_branch`` in ``source_repo``
 
     Arguments:
-        token: A github access token
         target_repo (str, str): A tuple of org, repository
         source_repo (str, str): A tuple of org, repository
         target_base_branch (str): The name of the branch that PRs should be targetting
@@ -109,7 +108,7 @@ def octomerge(
         logging.info("Merging the following prs into {}:\n{}".format(
             target_branch,
             "\n".join(
-                "    {pr.head.repo.owner.name}/{pr.head.repo.name}#{pr.number}".format(pr=pr)
+                "    {.html_url}".format(pr)
                 for pr in approved_prs
             )
         ))
