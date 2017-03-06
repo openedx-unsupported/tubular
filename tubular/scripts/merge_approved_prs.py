@@ -78,11 +78,15 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
     type=click.File(mode='w'),
     default=sys.stdout,
 )
+@click.option(
+    u'--target-reference-repo',
+    help=u"Path to a reference repository to speed up cloning of the target repository",
+)
 @click_log.simple_verbosity_option(default=u'INFO')
 @click_log.init()
 def octomerge(
         token, target_repo, source_repo, target_base_branch, source_base_branch,
-        target_branch, source_branch, out_file
+        target_branch, source_branch, out_file, target_reference_repo
 ):
     u"""
     Merge all approved security PRs into a release candidate.
@@ -98,7 +102,7 @@ def octomerge(
     target_github_repo = github_api.GitHubAPI(*target_repo, token=token)
     source_github_repo = github_api.GitHubAPI(*source_repo, token=token)
 
-    with target_github_repo.clone(target_branch).cleanup() as local_repo:
+    with target_github_repo.clone(target_branch, target_reference_repo).cleanup() as local_repo:
         local_repo.add_remote('source', source_github_repo.github_repo.ssh_url)
         local_repo.force_branch_to(target_branch, source_branch, remote='source')
 

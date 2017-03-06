@@ -311,5 +311,5 @@ def publish_page(url, user, password, space, parent_title, title, body):
     try:
         parent_page = conf.get_page_by_title(space, parent_title)
     except:
-        raise ValueError(u"Unable to retrieve page {!r} in space {!r}".format(parent_page, space))
+        raise ValueError(u"Unable to retrieve page {!r} in space {!r}".format(parent_title, space))
     return conf.update_or_create(parent_page[u'id'], title, body)

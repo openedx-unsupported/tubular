@@ -47,7 +47,7 @@ class LocalGitAPI(object):
         self.repo = repo
 
     @classmethod
-    def clone(cls, repo_url, branch=None):
+    def clone(cls, repo_url, branch=None, reference_repo=None):
         """
         Initialize a LocalGitAPI by cloning a remote repo.
 
@@ -55,11 +55,13 @@ class LocalGitAPI(object):
             repo_url (str): The full url of the repo to clone. The last part of this
                 url will be used as the repository directory name.
             branch (str): The branch to clone from
+            reference_repo (str): A path to a reference repo (to speed up clones)
         """
         repo = Repo.clone_from(
             repo_url,
             to_path=extract_repo_name(repo_url),
-            branch=branch
+            branch=branch,
+            reference=reference_repo,
         )
         return cls(repo)
 

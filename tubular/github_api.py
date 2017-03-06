@@ -148,12 +148,12 @@ class GitHubAPI(object):
         self.org = org
         self.repo = repo
 
-    def clone(self, branch=None):
+    def clone(self, branch=None, reference_repo=None):
         """
         Clone this Github repo as a LocalGitAPI instance.
         """
         clone_url = self.github_repo.ssh_url
-        return LocalGitAPI.clone(clone_url, branch)
+        return LocalGitAPI.clone(clone_url, branch, reference_repo)
 
     def user(self):
         """
