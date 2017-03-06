@@ -74,9 +74,9 @@ def merge_branch(org,
           If the merge cannot be performed as a fast-forward merge, the merge will fail.
     """
     github_url = u'git@github.com:{}/{}.git'.format(org, repo)
-    with LocalGitAPI.clone(github_url, target_branch).cleanup() as repo:
-        merge_sha = repo.merge_branch(source_branch, target_branch, fast_forward_only)
-        repo.push_branch(target_branch)
+    with LocalGitAPI.clone(github_url, target_branch).cleanup() as local_repo:
+        merge_sha = local_repo.merge_branch(source_branch, target_branch, fast_forward_only)
+        local_repo.push_branch(target_branch)
 
     with io.open(output_file, u'w') as stream:
         yaml.safe_dump(
