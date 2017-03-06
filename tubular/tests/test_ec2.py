@@ -462,3 +462,86 @@ class TestEC2(unittest.TestCase):
     def test_giveup_if_not_throttling(self, status, body, expected_result):
         ex = BotoServerError(status, "reasons", body)
         self.assertEqual(ec2.giveup_if_not_throttling(ex), expected_result)
+
+    @ddt.data(
+        (
+            [
+                {
+                    'ami_id': 'ami-1234fug',
+                    'tags': {'Name': 'gocd automation run'}
+                },
+                {
+                    'ami_id': 'ami-puppydog',
+                    'tags': {'Name': 'Normal Instance run by dogs'}
+                }
+            ], 0, 'do_not_delete', {'tag:Name': 'gocd*'}, 1
+        ),
+        (
+            [
+                {
+                    'ami_id': 'ami-1234fug',
+                    'tags': {'Name': 'gocd automation run'}
+                },
+                {
+                    'ami_id': 'ami-puppydog',
+                    'tags': {'Name': 'Hamster_Dance_001 '}
+                }
+            ], 1, 'do_not_delete', {'tag:Name': 'gocd*'}, 0
+        ),
+        (
+            [
+                {
+                    'ami_id': 'ami-1234fug',
+                    'tags': {'Name': 'gocd automation run', 'do_not_delete': 'true'}
+                },
+                {
+                    'ami_id': 'ami-puppydog',
+                    'tags': {'Name': 'Hamster_Dance_001'},
+                }
+            ], 0, 'do_not_delete', {'tag:Name': 'gocd*'}, 0
+        ),
+        (
+            [
+                {
+                    'ami_id': 'ami-1234fug',
+                    'tags': {'Name': 'gocd automation run', 'do_not_delete': 'true'}
+                },
+                {
+                    'ami_id': 'ami-puppydog',
+                    'tags': {'Name': 'Hamster_Dance_001'},
+                }
+            ], 1, 'do_not_delete', {'tag:Name': 'gocd*'}, 0
+        ),
+        (
+            [
+                {
+                    'ami_id': 'ami-1234fug',
+                    'tags': {'Name': 'gocd automation run 001'}
+                },
+                {
+                    'ami_id': 'ami-puppydog',
+                    'tags': {'Name': 'Hamster_Dance_001'},
+                },
+                {
+                    'ami_id': 'ami-1234fug',
+                    'tags': {'Name': 'gocd automation run 002'}
+                },
+            ], 0, 'do_not_delete', {'tag:Name': 'gocd*'}, 2
+        ),
+    )
+    @ddt.unpack
+    @mock_ec2
+    def test_terminate_instances(self, instances, max_run_hours, skip_if_tag, tags, expected_count):
+        conn = boto.connect_ec2('dummy_key', 'dummy_secret')
+        for requested_instance in instances:
+            reservation = conn.run_instances(requested_instance['ami_id'])
+            for instance in reservation.instances:
+                for key, val in requested_instance['tags'].items():
+                    instance.add_tag(key, val)
+
+        terminated_instances = ec2.terminate_instances(
+            'us-east-1',
+            max_run_hours=max_run_hours,
+            skip_if_tag=skip_if_tag,
+            tags=tags)
+        self.assertEqual(len(terminated_instances), expected_count)
