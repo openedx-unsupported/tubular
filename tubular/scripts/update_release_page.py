@@ -10,7 +10,9 @@ from __future__ import unicode_literals
 from os import path
 import sys
 import logging
+
 import click
+import click_log
 import yaml
 
 
@@ -93,6 +95,8 @@ EXPECTED_RELEASE_DATE = default_expected_release_date()
     help=u"File location to import metadata from to specify a page to update.",
     type=click.File(),
 )
+@click_log.simple_verbosity_option(default=u'INFO')
+@click_log.init()
 def create_release_page(
         ami_pairs, confluence_url, user, password, parent_title,
         space, title, github_token, jira_url, gocd_url, status,

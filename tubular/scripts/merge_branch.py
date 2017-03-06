@@ -53,6 +53,10 @@ LOG = logging.getLogger(__name__)
     help=u'File in which to write the script\'s YAML output',
     default=u'target/merge_branch_sha.yml'
 )
+@click.option(
+    u'--reference-repo',
+    help=u'Path to a reference repo to use to speed up cloning',
+)
 @click_log.simple_verbosity_option(default=u'INFO')
 @click_log.init()
 def merge_branch(org,
@@ -60,7 +64,8 @@ def merge_branch(org,
                  source_branch,
                  target_branch,
                  fast_forward_only,
-                 output_file):
+                 output_file,
+                 reference_repo):
     u"""
     Merges the source branch into the target branch without creating a pull request for the merge.
     Clones the repo in order to perform the proper git commands locally.
@@ -74,7 +79,7 @@ def merge_branch(org,
           If the merge cannot be performed as a fast-forward merge, the merge will fail.
     """
     github_url = u'git@github.com:{}/{}.git'.format(org, repo)
-    with LocalGitAPI.clone(github_url, target_branch).cleanup() as local_repo:
+    with LocalGitAPI.clone(github_url, target_branch, reference_repo).cleanup() as local_repo:
         merge_sha = local_repo.merge_branch(source_branch, target_branch, fast_forward_only)
         local_repo.push_branch(target_branch)
 
