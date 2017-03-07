@@ -207,8 +207,8 @@ class GitHubApiTestCase(TestCase):
         self.repo_mock.create_git_ref = Mock(
             side_effect=GithubException(status_code, {'message': msg})
         )
-        self.repo_mock.get_git_tag = get_tag_mock = Mock()
-        get_tag_mock.return_value = Mock(sha=return_sha)
+        self.repo_mock.get_git_ref = get_tag_mock = Mock()
+        get_tag_mock.return_value = Mock(object=Mock(sha=return_sha))
         return mock_user
 
     def test_create_tag_which_already_exists_but_matches_sha(self):

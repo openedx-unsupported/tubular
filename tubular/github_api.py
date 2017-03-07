@@ -508,12 +508,12 @@ class GitHubAPI(object):
             if exc.status != 422:
                 raise
             # Tag is already created. Verify it's on the correct hash.
-            existing_tag = self.github_repo.get_git_tag(tag_name)
-            if existing_tag.sha != sha:
+            existing_tag = self.github_repo.get_git_ref('tags/{}'.format(tag_name))
+            if existing_tag.object.sha != sha:
                 # The tag is already created and pointed to a different SHA than requested.
                 raise GitTagMismatchError(
                     "Tag '{}' exists but points to SHA {} instead of requested SHA {}.".format(
-                        tag_name, existing_tag.sha, sha
+                        tag_name, existing_tag.object.sha, sha
                     )
                 )
         return created_tag
