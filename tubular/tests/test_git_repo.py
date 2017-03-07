@@ -28,7 +28,7 @@ class GitRepoTestCase(TestCase):
             merge_sha = repo.merge_branch('foo', 'bar')
 
         mock_repo.clone_from.assert_called_once_with(
-            'git@github.com:edx/tubular.git', to_path='tubular', branch='bar', reference=None
+            'git@github.com:edx/tubular.git', to_path='tubular', branch='bar',
         )
         git_wrapper = mock_repo.clone_from.return_value.git
         git_wrapper.merge.assert_called_once_with('foo', ff_only=True)

@@ -57,11 +57,16 @@ class LocalGitAPI(object):
             branch (str): The branch to clone from
             reference_repo (str): A path to a reference repo (to speed up clones)
         """
+        kwargs = {}
+
+        if reference_repo:
+            kwargs['reference'] = reference_repo
+
         repo = Repo.clone_from(
             repo_url,
             to_path=extract_repo_name(repo_url),
             branch=branch,
-            reference=reference_repo,
+            **kwargs
         )
         return cls(repo)
 
