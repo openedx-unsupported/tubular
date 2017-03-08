@@ -113,7 +113,8 @@ class LocalGitAPI(object):
         Merge all ``commitishes`` into ``base_branch`` in this repo.
         """
         self.checkout_branch(base_branch)
-        self.repo.git.merge(*commitishes)
+        if commitishes:
+            self.repo.git.merge(*commitishes)
         return self.repo.head.commit.hexsha
 
     def force_branch_to(self, branch, commitish, remote=None):

@@ -6,8 +6,8 @@ from __future__ import unicode_literals
 
 from unittest import TestCase
 import ddt
-from git import GitCommandError
-from mock import patch
+from git import GitCommandError, Repo
+from mock import patch, MagicMock
 
 from tubular.git_repo import LocalGitAPI, InvalidGitRepoURL, extract_repo_name
 
@@ -66,6 +66,22 @@ class GitRepoTestCase(TestCase):
         with self.assertRaises(GitCommandError):
             LocalGitAPI.clone('git@github.com:edx/tubular.git', 'bar').merge_branch('foo', 'bar')
             mock_rmtree.assert_called_once_with('tubular')
+
+    def test_octopus_merge(self):
+        mock_repo = MagicMock(spec=Repo)
+        api = LocalGitAPI(mock_repo)
+        sha = api.octopus_merge('public/release-candidate', ['12345abcdef', 'deadbeef'])
+
+        mock_repo.git.merge.assert_called_once_with('12345abcdef', 'deadbeef')
+        self.assertEqual(sha, mock_repo.head.commit.hexsha)
+
+    def test_empty_octopus_merge(self):
+        mock_repo = MagicMock(spec=Repo)
+        api = LocalGitAPI(mock_repo)
+        sha = api.octopus_merge('public/release-candidate', [])
+
+        mock_repo.git.merge.assert_not_called()
+        self.assertEqual(sha, mock_repo.head.commit.hexsha)
 
     @ddt.data(
         ('https://github.com/edx/edx-platform.git', 'edx-platform'),
