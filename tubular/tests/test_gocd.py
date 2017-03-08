@@ -170,8 +170,8 @@ class GoCDApiTestCase(TestCase):
                         found_pipeline = fetch_func(current_time)
                     else:
                         found_pipeline = fetch_func()
-                    self.assertEqual(found_pipeline.data.name, 'manual_verification_edxapp_prod_early_ami_build')
-                    self.assertEqual(found_pipeline.data.counter, 148)
+                    self.assertEqual(found_pipeline.name, 'manual_verification_edxapp_prod_early_ami_build')
+                    self.assertEqual(found_pipeline.counter, 148)
 
     INSTANCE_FIND_TEST_DATA = (
         (VALID_JOB_TRIGGER_TIME_MS, (False, False), None),

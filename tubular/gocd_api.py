@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import print_function, unicode_literals
 
 import logging
+from collections import namedtuple
 from datetime import datetime, timedelta
 from dateutil import tz
 
@@ -26,6 +27,9 @@ class AdvancementPipelineAlreadyAdvanced(Exception):
     Raise when appropriate advancement pipeline has already been advanced.
     """
     pass
+
+
+PipelineInstance = namedtuple('PipelineInstance', ['name', 'counter', 'url'])
 
 
 class GoCDAPI(object):
@@ -66,7 +70,7 @@ class GoCDAPI(object):
                 If None, use the current datetime.
 
         Returns:
-            yagocd.resources.pipeline.PipelineInstance: Instance of advancement pipeline to advance.
+            PipelineInstance: Named tuple containing pipeline instance to advance.
         """
         def has_advanced(pipeline_instance, stage_name):
             """
@@ -118,7 +122,11 @@ class GoCDAPI(object):
                     )
 
                 # Return the advancement pipeline instance.
-                return self.client.pipelines.get(advancement_pipeline.data.name, advancement_pipeline.data.counter)
+                return PipelineInstance(
+                    advancement_pipeline.data.name,
+                    advancement_pipeline.data.counter,
+                    advancement_pipeline.url
+                )
 
             elif has_advanced(advancement_pipeline, advance_stage_name):
                 # This pipeline has already been advanced. Since we'd expect not to advance a pipeline
