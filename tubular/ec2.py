@@ -371,12 +371,14 @@ def remove_asg_deletion_tag(asg_name):
     Returns:
         None
     """
-    tag_to_delete = create_tag_for_asg_deletion(asg_name)
-    autoscale = boto.connect_autoscale()
-    if len(get_all_autoscale_groups([asg_name])) < 1:
+    asgs = get_all_autoscale_groups([asg_name])
+    if len(asgs) < 1:
         LOG.info("ASG {} no longer exists, will not remove deletion tag.".format(asg_name))
     else:
-        autoscale.delete_tags([tag_to_delete])
+        for asg in asgs:
+            for tag in asg.tags:
+                if tag.key == ASG_DELETE_TAG_KEY:
+                    tag.delete()
 
 
 def get_asgs_pending_delete():
