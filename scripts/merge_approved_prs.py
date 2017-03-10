@@ -1,0 +1,1 @@
+../tubular/scripts/merge_approved_prs.py
