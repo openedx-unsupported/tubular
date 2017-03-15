@@ -102,9 +102,7 @@ def message_pull_requests(org,
         ami_tags = yaml.safe_load(base_ami_tags)
         tag = u'version:{}'.format(ami_tag_app)
         version = ami_tags[tag]
-        repo_url, _, base_sha = version.partition(u' ')
-        if not repo_url.endswith(u'github.com/{}/{}'.format(org, repo)):
-            raise ValueError(u"Reading base_sha from wrong repo, tag {!r} was {!r}".format(tag, version))
+        _, _, base_sha = version.partition(u' ')
 
     api = GitHubAPI(org, repo, token)
     for pull_request in api.get_pr_range(base_sha, head_sha):
