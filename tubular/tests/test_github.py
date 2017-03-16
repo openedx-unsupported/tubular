@@ -255,7 +255,7 @@ class GitHubApiTestCase(TestCase):
         ('123', list(range(10)), None, False)
     )
     @ddt.unpack
-    def test_is_commit_successful(self, sha, statuses, state, expected):
+    def test_check_combined_status_commit(self, sha, statuses, statuses_returned, state, expected):
         mock_combined_status = Mock(spec=CommitCombinedStatus)
         mock_combined_status.statuses = statuses
         mock_combined_status.state = state
@@ -264,7 +264,7 @@ class GitHubApiTestCase(TestCase):
         commit_mock.get_combined_status.return_value = mock_combined_status
         self.repo_mock.get_commit.return_value = commit_mock
 
-        response = self.api.is_commit_successful(sha)
+        response, statuses = self.api.check_combined_status_commit(sha)
 
         self.assertEqual(response, expected)
         commit_mock.get_combined_status.assert_called()
@@ -286,16 +286,16 @@ class GitHubApiTestCase(TestCase):
             """
             return sha == good_commit_id
 
-        self.api.is_commit_successful = Mock(side_effect=_side_effect)
+        self.api._is_commit_successful = Mock(side_effect=_side_effect)  # pylint: disable=protected-access
 
         self.api.most_recent_good_commit(branch)
-        self.assertEqual(self.api.is_commit_successful.call_count, good_commit_id)
+        self.assertEqual(self.api._is_commit_successful.call_count, good_commit_id)  # pylint: disable=protected-access
 
     def test_most_recent_good_commit_no_commit(self):
         commits = [Mock(spec=Commit, sha=i) for i in range(1, 10)]
         self.api.get_commits_by_branch = Mock(return_value=commits)
 
-        self.api.is_commit_successful = Mock(return_value=False)
+        self.api._is_commit_successful = Mock(return_value=False)  # pylint: disable=protected-access
         self.assertRaises(NoValidCommitsError, self.api.most_recent_good_commit, 'release-candidate')
 
     @ddt.data(

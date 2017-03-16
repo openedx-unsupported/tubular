@@ -17,6 +17,7 @@ import yaml
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.github_api import GitHubAPI  # pylint: disable=wrong-import-position
+from tubular.utils import exactly_one_set  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -65,26 +66,34 @@ def check_tests(org,
     If any other status besides success (such as in-progress/pending), return a failure.
 
     If an input YAML file is specified, read the PR number from the file to check.
-    Else if both PR number -and- commit hash is specified, return a failure.
-    Else if either PR number -or- commit hash is specified, check the tests for the specified value.
+    If a PR number is specified, check that PR number's tests.
+    If a commit hash is specified, check that commit hash's tests.
     """
-    gh_utils = GitHubAPI(org, repo, token)
-
-    if pr_number and commit_hash:
-        LOG.info("Both PR number and commit hash are specified. Only one of the two should be specified - failing.")
+    # Check for one and only one of the mutually-exclusive params.
+    if not exactly_one_set((input_file, pr_number, commit_hash)):
+        err_msg = \
+            "Exactly one of input_file ({!r}), pr_number ({!r})," \
+            " and commit_hash ({!r}) should be specified.".format(
+                input_file,
+                pr_number,
+                commit_hash
+            )
+        LOG.error(err_msg)
         sys.exit(1)
+
+    gh_utils = GitHubAPI(org, repo, token)
 
     status_success = False
     if input_file:
         input_vars = yaml.safe_load(io.open(input_file, 'r'))
         pr_number = input_vars['pr_number']
-        status_success = gh_utils.check_pull_request_test_status(pr_number)
+        status_success, test_statuses = gh_utils.check_combined_status_pull_request(pr_number)
         git_obj = 'PR #{}'.format(pr_number)
     elif pr_number:
-        status_success = gh_utils.check_pull_request_test_status(pr_number)
+        status_success, test_statuses = gh_utils.check_combined_status_pull_request(pr_number)
         git_obj = 'PR #{}'.format(pr_number)
     elif commit_hash:
-        status_success = gh_utils.is_commit_successful(commit_hash)
+        status_success, test_statuses = gh_utils.check_combined_status_commit(commit_hash)
         git_obj = 'commit hash {}'.format(commit_hash)
 
     LOG.info("{}: Combined status of {} is {}.".format(
