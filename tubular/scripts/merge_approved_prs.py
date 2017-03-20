@@ -55,7 +55,7 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
 )
 @click.option(
     '--source-repo',
-    help='The org of the source repository.',
+    help='The org, repo pair of the source repository.',
     nargs=2,
     required=True,
 )
