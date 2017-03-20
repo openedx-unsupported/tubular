@@ -82,11 +82,23 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
     u'--target-reference-repo',
     help=u"Path to a reference repository to speed up cloning of the target repository",
 )
+@click.option(
+    u'--repo-variable',
+    help=u"The name of the variable to add to the results yaml file. This variable will "
+         u"contain the url of the repository which has the --sha-variable in it."
+)
+@click.option(
+    u'--sha-variable',
+    help=u"The name of the variable to add to the results yaml file. This variable will "
+         u"contain the sha of the merge commit.",
+    default='merge_sha',
+)
 @click_log.simple_verbosity_option(default=u'INFO')
 @click_log.init()
 def octomerge(
         token, target_repo, source_repo, target_base_branch, source_base_branch,
-        target_branch, source_branch, out_file, target_reference_repo
+        target_branch, source_branch, out_file, target_reference_repo,
+        repo_variable, sha_variable,
 ):
     u"""
     Merge all approved security PRs into a release candidate.
@@ -120,11 +132,19 @@ def octomerge(
         merge_sha = local_repo.octopus_merge(target_branch, (pr.head.sha for pr in approved_prs))
         local_repo.push_branch(target_branch, force=True)
 
-        yaml.safe_dump({
+        results = {
             'target_branch': target_branch,
-            'merge_sha': merge_sha,
+            sha_variable: merge_sha,
             'merged_prs': [
                 {'html_url': pr.html_url}
                 for pr in approved_prs
-            ]
-        }, stream=out_file)
+            ],
+        }
+
+        if repo_variable:
+            if approved_prs:
+                results[repo_variable] = target_repo
+            else:
+                results[repo_variable] = source_repo
+
+        yaml.safe_dump(repo_variable, stream=out_file)
