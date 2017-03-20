@@ -5,6 +5,8 @@ Command-line script to trigger a jenkins job
 """
 import logging
 import sys
+import os
+import os.path
 
 import click
 import click_log
@@ -75,7 +77,7 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
 @click.option(
     '--out-file',
     help=u"File location to export metadata about the branches merged to target-branch.",
-    type=click.File(mode='w'),
+    type=click.File(mode='w', lazy=True),
     default=sys.stdout,
 )
 @click.option(
@@ -146,5 +148,9 @@ def octomerge(
                 results[repo_variable] = target_repo
             else:
                 results[repo_variable] = source_repo
+
+        dirname = os.path.dirname(out_file.name)
+        if dirname:
+            os.makedirs(dirname, exist_ok=True)
 
         yaml.safe_dump(repo_variable, stream=out_file)
