@@ -24,7 +24,7 @@ def format_rsa_key(key, output_file):
     Correctly format the mangled RSA key that is passed from gocd using secure variables
     """
     try:
-        key = RSA.importKey(key.decode('unicode_escape'))
+        key = RSA.importKey(key)
         with io.open(output_file, 'wb') as f:
             f.write(key.exportKey())
     except Exception as err:  # pylint: disable=broad-except
