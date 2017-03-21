@@ -145,12 +145,12 @@ def octomerge(
 
         if repo_variable:
             if approved_prs:
-                results[repo_variable] = target_repo
+                results[repo_variable] = target_github_repo.github_repo.clone_url
             else:
-                results[repo_variable] = source_repo
+                results[repo_variable] = source_github_repo.github_repo.clone_url
 
         dirname = os.path.dirname(out_file.name)
         if dirname:
             os.makedirs(dirname, exist_ok=True)
 
-        yaml.safe_dump(repo_variable, stream=out_file)
+        yaml.safe_dump(results, stream=out_file)
