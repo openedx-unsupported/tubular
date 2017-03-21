@@ -7,7 +7,6 @@ click-log==0.1.8
 GitPython==2.1.1
 jenkinsapi==0.3.3
 lxml >= 3.7, <3.8
-pycrypto
 PyGithub==1.29
 pytz==2016.10
 pyyaml==3.12
