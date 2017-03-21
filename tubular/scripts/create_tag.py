@@ -68,6 +68,11 @@ EST = timezone('US/Eastern')
     '--tag_message',
     help='Message to use when tagging.',
 )
+@click.option(
+    '--commit_sha_variable',
+    help='Name of the variable to read the SHA from in --input_file',
+    default='sha',
+)
 def create_tag(org,
                repo,
                token,
@@ -76,7 +81,8 @@ def create_tag(org,
                branch_name,
                deploy_artifact,
                tag_name,
-               tag_message):
+               tag_message,
+               commit_sha_variable):
     """
     Creates a tag at a specified commit SHA with a tag name/message.
     The commit SHA is passed in using *one* of these ways:
@@ -100,7 +106,7 @@ def create_tag(org,
 
     if input_file:
         input_vars = yaml.safe_load(io.open(input_file, 'r'))
-        commit_sha = input_vars['sha']
+        commit_sha = input_vars[commit_sha_variable]
     elif branch_name:
         commit_sha = github_api.get_head_commit_from_branch_name(branch_name)
 
