@@ -75,18 +75,19 @@ def test_release_page(mock_github):
         <section><h2>Code Diffs</h2>
         <section><h3>Comparing env-depl-play: ami_id_1 to ami_id_2</h3>
         <ul style="list-style-type: square">
-        <li><a href="https://github.com/org/repo_a/compare/12345...54321">org/repo_a: 12345...54321</a></li>
-        <li><a href="git@github.com/org/repo_b/commit/12345">git@github.com/org/repo_b: 12345 (no change)</a></li>
+        <li>app_a (org/repo_a): <a href="https://github.com/org/repo_a/compare/12345...54321">12345...54321</a>
+        </li>
+        <li>app_b (git@github.com/org/repo_b): <a href="git@github.com/org/repo_b/commit/12345">12345 (no change)</a>
+        </li>
         </ul></section></section>
 
         <section><h2>Final AMIs</h2>
         <ul style="list-style-type: square"><li>env-depl-play: ami_id_2</li></ul></section>
 
         <section><h2>Detailed Changes</h2>
-        <section><h3>Changes for <a href="https://github.com/org/repo_a">org/repo_a</a>
-        </h3>
-        <p><strong>Before: </strong>12345</p>
-        <p><strong>After: </strong>54321</p>
+        <section><h3>Changes for app_a (<a href="https://github.com/org/repo_a">org/repo_a</a>)</h3>
+        <p><strong>Before: </strong><a href="https://github.com/org/repo_a/commit/12345">12345</a></p>
+        <p><strong>After: </strong><a href="https://github.com/org/repo_a/commit/54321">54321</a></p>
         <table class="wrapped"><tbody>
         <tr>
         <th>Merged By</th>

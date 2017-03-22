@@ -17,7 +17,7 @@ from lxml.html.builder import E as element_maker
 import lxml.html
 
 SECTION = element_maker.section
-VersionDelta = namedtuple(u'VersionDelta', [u'base', u'new'])
+VersionDelta = namedtuple(u'VersionDelta', [u'app', u'base', u'new'])
 
 
 class Version(namedtuple(u'_Version', [u'repo', u'sha'])):
@@ -113,33 +113,43 @@ def version_deltas(base, new):
         base_version = base.versions.get(app)
         new_version = new.versions.get(app)
 
-        yield VersionDelta(base_version, new_version)
+        yield VersionDelta(app, base_version, new_version)
 
 
-def diff_link(repo, base, new):
+def format_commit_url(version):
+    """
+    Format the url that points to the supplied ``version``.
+    """
+    return u"{0.repo}/commit/{0.sha}".format(version)
+
+
+def diff_link(delta):
     u"""
     Return a nicely formatted link that links to a github commit/diff page
-    comparing ``base`` and ``new`` inside ``repo``.
+    comparing ``delta.base`` and ``delta.new``.
     """
-    short_repo = GITHUB_PREFIX.sub(u'', repo)
-    if base is None:
-        summary = u"{} (added)".format(new.sha)
-        href = u"{}/commit/{}".format(repo, new.sha)
-    elif new is None:
-        summary = u"{} (removed)".format(base.sha)
-        href = u"{}/commit/{}".format(repo, base.sha)
-    elif base.sha == new.sha:
-        summary = u"{} (no change)".format(base.sha)
-        href = u"{}/commit/{}".format(repo, base.sha)
+    if delta.base is None:
+        summary = u"{} (added)".format(delta.new.sha)
+        href = format_commit_url(delta.new)
+    elif delta.new is None:
+        summary = u"{} (removed)".format(delta.base.sha)
+        href = format_commit_url(delta.base)
+    elif delta.base.sha == delta.new.sha:
+        summary = u"{} (no change)".format(delta.base.sha)
+        href = format_commit_url(delta.new)
     else:
-        summary = u"{}...{}".format(base.sha, new.sha)
+        summary = u"{}...{}".format(delta.base.sha, delta.new.sha)
         href = u"{}/compare/{}...{}".format(
-            repo, base.sha, new.sha
+            delta.new.repo, delta.base.sha, delta.new.sha
         )
-    return E.A(
-        u"{}: {}".format(short_repo, summary),
-        href=href
-    )
+
+    return [
+        u"{} ({}): ".format(
+            delta.app,
+            GITHUB_PREFIX.sub(u'', (delta.new or delta.base).repo),
+        ),
+        E.A(summary, href=href),
+    ]
 
 
 def diff(base, new):
@@ -152,9 +162,10 @@ def diff(base, new):
             They must also have the keys 'environment', 'deployment', 'play', and 'ami_id'.
     """
     diff_items = []
-    for delta in sorted(set(version_deltas(base, new)), key=lambda delta: delta.base or delta.new):
-        version = delta.new or delta.base
-        diff_items.append(E.LI(diff_link(version.repo, delta.base, delta.new)))
+    unique_version_changes = set(version_deltas(base, new))
+    sorted_version_changes = sorted(unique_version_changes, key=lambda delta: delta.base or delta.new)
+    for delta in sorted_version_changes:
+        diff_items.append(E.LI(*diff_link(delta)))
     return SECTION(
         E.H3(u"Comparing {base.environment}-{base.deployment}-{base.play}: {base.ami_id} to {new.ami_id}".format(
             base=base,
@@ -242,19 +253,20 @@ def pr_table(token, jira_url, delta):
 
     return SECTION(
         E.H3(
-            u"Changes for ",
+            u"Changes for {} (".format(delta.app),
             E.A(
                 GITHUB_PREFIX.sub(u'', version.repo),
                 href=version.repo
             ),
+            ")"
         ),
         E.P(
             E.STRONG(u"Before: "),
-            delta.base.sha
+            E.A(delta.base.sha, href=format_commit_url(delta.base))
         ),
         E.P(
             E.STRONG(u"After: "),
-            delta.new.sha
+            E.A(delta.new.sha, href=format_commit_url(delta.new))
         ),
         change_details,
     )
