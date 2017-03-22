@@ -83,7 +83,10 @@ def test_release_page(mock_github):
         <ul style="list-style-type: square"><li>env-depl-play: ami_id_2</li></ul></section>
 
         <section><h2>Detailed Changes</h2>
-        <section><h3>Changes for <a href="https://github.com/org/repo_a">org/repo_a</a> (12345...54321)</h3>
+        <section><h3>Changes for <a href="https://github.com/org/repo_a">org/repo_a</a>
+        </h3>
+        <p><strong>Before: </strong>12345</p>
+        <p><strong>After: </strong>54321</p>
         <table class="wrapped"><tbody>
         <tr>
         <th>Merged By</th>
