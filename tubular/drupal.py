@@ -221,5 +221,5 @@ def check_state(task_id, username, password):
     response_json = parse_response(response, "Failed to check state of response.")
     if response_json["state"] == "done":
         return True
-    raise BackendError("Check state failed. The state of the response was {state}, not done as expected.".format(
-        state=response_json["state"]))
+    raise BackendError("Check state failed. The state of the response was {state}, not done as expected.\n"
+                       "JSON Data: {response}".format(state=response_json["state"], response=response_json))
