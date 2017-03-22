@@ -18,7 +18,38 @@ import lxml.html
 
 SECTION = element_maker.section
 VersionDelta = namedtuple(u'VersionDelta', [u'base', u'new'])
-Version = namedtuple(u'Version', [u'repo', u'sha'])
+
+
+class Version(namedtuple(u'_Version', [u'repo', u'sha'])):
+    """
+    A value-object capturing a version of a repo.
+    """
+    __slots__ = ()
+
+    def __lt__(self, other):
+        if other is None:
+            return False
+        else:
+            return super().__lt__(other)
+
+    def __le__(self, other):
+        if other is None:
+            return False
+        else:
+            return super().__le__(other)
+
+    def __gt__(self, other):
+        if other is None:
+            return False
+        else:
+            return super().__gt__(other)
+
+    def __ge__(self, other):
+        if other is None:
+            return False
+        else:
+            return super().__ge__(other)
+
 
 GITHUB_PREFIX = re.compile(u'https?://github.com/')
 LOGGER = logging.getLogger(__name__)
@@ -50,6 +81,19 @@ class AMI(object):
             repo, _, sha = value.partition(u' ')
             self.versions[app] = Version(convert_ssh_url(repo), sha)
 
+    def __repr__(self):
+        return "{}({!r}, {!r}, {!r}, {!r}, **{!r}".format(
+            self.__class__.__name__,
+            self.ami_id,
+            self.environment,
+            self.deployment,
+            self.play,
+            {
+                'version:{}'.format(app): "{} {}".format(version.repo, version.sha)
+                for app, version in self.versions.items()
+            },
+        )
+
 
 def convert_ssh_url(url):
     u"""
@@ -72,6 +116,32 @@ def version_deltas(base, new):
         yield VersionDelta(base_version, new_version)
 
 
+def diff_link(repo, base, new):
+    u"""
+    Return a nicely formatted link that links to a github commit/diff page
+    comparing ``base`` and ``new`` inside ``repo``.
+    """
+    short_repo = GITHUB_PREFIX.sub(u'', repo)
+    if base is None:
+        summary = u"{} (added)".format(new.sha)
+        href = u"{}/commit/{}".format(repo, new.sha)
+    elif new is None:
+        summary = u"{} (removed)".format(base.sha)
+        href = u"{}/commit/{}".format(repo, base.sha)
+    elif base.sha == new.sha:
+        summary = u"{} (no change)".format(base.sha)
+        href = u"{}/commit/{}".format(repo, base.sha)
+    else:
+        summary = u"{}...{}".format(base.sha, new.sha)
+        href = u"{}/compare/{}...{}".format(
+            repo, base.sha, new.sha
+        )
+    return E.A(
+        u"{}: {}".format(short_repo, summary),
+        href=href
+    )
+
+
 def diff(base, new):
     u"""
     Return an Element that renders the version differences between the amis `base` and `new`.
@@ -82,20 +152,9 @@ def diff(base, new):
             They must also have the keys 'environment', 'deployment', 'play', and 'ami_id'.
     """
     diff_items = []
-    for delta in sorted(set(version_deltas(base, new))):
+    for delta in sorted(set(version_deltas(base, new)), key=lambda delta: delta.base or delta.new):
         version = delta.new or delta.base
-        repo = GITHUB_PREFIX.sub(u'', version.repo)
-        diff_items.append(E.LI(
-            E.A(
-                u"{}: {}...{}".format(repo, delta.base.sha, delta.new.sha),
-                href=u"{}/compare/{}...{}".format(
-                    version.repo, delta.base.sha, delta.new.sha
-                ),
-            ) if delta.base.sha != delta.new.sha else E.A(
-                u"{}: {} (no change)".format(repo, delta.base.sha),
-                href=u"{}/commit/{}".format(repo, delta.base.sha),
-            )
-        ))
+        diff_items.append(E.LI(diff_link(version.repo, delta.base, delta.new)))
     return SECTION(
         E.H3(u"Comparing {base.environment}-{base.deployment}-{base.play}: {base.ami_id} to {new.ami_id}".format(
             base=base,
@@ -143,28 +202,8 @@ def pr_table(token, jira_url, delta):
 
     try:
         prs = api.get_pr_range(delta.base.sha, delta.new.sha)
-    except Exception:  # pylint: disable=broad-except
-        LOGGER.exception(u'Unable to get PRs for %r', delta)
-        return SECTION(
-            E.H3(
-                u"Unable to list changes for {} ({}...{})".format(
-                    version.repo,
-                    delta.base.sha,
-                    delta.new.sha
-                )
-            )
-        )
 
-    return SECTION(
-        E.H3(
-            u"Changes for ",
-            E.A(
-                GITHUB_PREFIX.sub(u'', version.repo),
-                href=version.repo
-            ),
-            u" ({}...{})".format(delta.base.sha, delta.new.sha),
-        ),
-        E.TABLE(
+        change_details = E.TABLE(
             E.CLASS(u"wrapped"),
             E.TBODY(
                 E.TR(
@@ -197,6 +236,27 @@ def pr_table(token, jira_url, delta):
                 ]
             )
         )
+    except Exception:  # pylint: disable=broad-except
+        LOGGER.exception(u'Unable to get PRs for %r', delta)
+        change_details = E.P("Unable to list changes")
+
+    return SECTION(
+        E.H3(
+            u"Changes for ",
+            E.A(
+                GITHUB_PREFIX.sub(u'', version.repo),
+                href=version.repo
+            ),
+        ),
+        E.P(
+            E.STRONG(u"Before: "),
+            delta.base.sha
+        ),
+        E.P(
+            E.STRONG(u"After: "),
+            delta.new.sha
+        ),
+        change_details,
     )
 
 
@@ -247,8 +307,8 @@ class ReleasePage(object):
         deltas = [version_deltas(old, new) for (old, new) in self.ami_pairs]
         tables = [
             pr_table(self.github_token, self.jira_url, delta)
-            for delta in set().union(*deltas)
-            if delta.new.sha != delta.base.sha
+            for delta in sorted(set().union(*deltas), key=lambda delta: delta.base or delta.new)
+            if delta.base and delta.new and delta.new.sha != delta.base.sha
         ]
         return SECTION(
             E.H2(u"Detailed Changes"),
