@@ -285,7 +285,9 @@ class GitHubAPI(object):
             commit_sha (str): Commit SHA to check.
 
         Returns:
-            True if all tests have passed successfully, else False.
+            tuple(bool, dict):
+                bool: True if all tests have passed successfully, False otherwise
+                dict: Key/values of ci_context:ci_url
 
         Raises:
             github.GithubException.GithubException: If the response fails.
@@ -301,7 +303,9 @@ class GitHubAPI(object):
             pr_number (int): Number of PR to check.
 
         Returns:
-            True if all tests have passed successfully, else False.
+            tuple(bool, dict):
+                bool: True if all tests have passed successfully, False otherwise
+                dict: Key/values of ci_context:ci_url
 
         Raises:
             github.GithubException.GithubException: If the response fails.
@@ -586,26 +590,6 @@ class GitHubAPI(object):
             head='refs/heads/{}'.format(compare_branch)
         ).status == 'diverged'
 
-    def _is_commit_successful(self, sha):
-        """
-        Returns whether the passed commit has passed all its tests.
-        Ensures there is at least one status update so that
-        commits whose tests haven't started yet are not valid.
-
-        Arguments:
-            sha (str): The SHA of which to get the status.
-
-        Returns:
-            bool: true when the combined state equals 'success'
-        """
-        commit_status = self.get_commit_combined_statuses(sha)
-
-        # Determine if the commit has passed all checks
-        if len(commit_status.statuses) < 1 or commit_status.state is None:
-            return False
-
-        return commit_status.state.lower() == 'success'
-
     def most_recent_good_commit(self, branch):
         """
         Returns the most recent commit on master that has passed the tests
@@ -624,7 +608,7 @@ class GitHubAPI(object):
 
         result = None
         for commit in commits:
-            if self._is_commit_successful(commit.sha):
+            if self._is_commit_successful(commit.sha)[0]:
                 result = commit
                 return result
 

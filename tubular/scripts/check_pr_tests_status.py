@@ -8,6 +8,7 @@ from __future__ import unicode_literals
 
 import io
 from os import path
+import os
 import logging
 import sys
 import click
@@ -53,12 +54,19 @@ LOG = logging.getLogger(__name__)
     '--commit_hash',
     help='Commit hash to check.',
 )
+@click.option(
+    '--out_file',
+    help=u"File location in which to write CI test status info.",
+    type=click.File(mode='w', lazy=True),
+    default=sys.stdout
+)
 def check_tests(org,
                 repo,
                 token,
                 input_file,
                 pr_number,
-                commit_hash):
+                commit_hash,
+                out_file):
     """
     Check the current combined status of a GitHub PR/commit in a repo once.
 
@@ -99,6 +107,11 @@ def check_tests(org,
     LOG.info("{}: Combined status of {} is {}.".format(
         sys.argv[0], git_obj, "success" if status_success else "failed"
     ))
+
+    dirname = os.path.dirname(out_file.name)
+    if dirname:
+        os.makedirs(dirname, exist_ok=True)
+    yaml.safe_dump(test_statuses, stream=out_file)
 
     # An exit code of 0 means success and non-zero means failure.
     sys.exit(not status_success)
