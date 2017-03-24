@@ -16,6 +16,7 @@ from github import UnknownObjectException
 from github.Branch import Branch
 from github.Commit import Commit
 from github.Comparison import Comparison
+from github.CommitStatus import CommitStatus
 from github.CommitCombinedStatus import CommitCombinedStatus
 from github.GitCommit import GitCommit
 from github.GitRef import GitRef
@@ -247,26 +248,28 @@ class GitHubApiTestCase(TestCase):
         self.assertEqual(self.api.have_branches_diverged('base', 'head'), expected)
 
     @ddt.data(
-        ('123', list(range(10)), 'SuCcEsS', True),
-        ('123', list(range(10)), 'success', True),
-        ('123', list(range(10)), 'SUCCESS', True),
-        ('123', list(range(10)), 'pending', False),
-        ('123', list(range(10)), 'failure', False),
-        ('123', list(range(10)), None, False)
+        ('123', list(range(10)), 10, 'SuCcEsS', True),
+        ('123', list(range(10)), 10, 'success', True),
+        ('123', list(range(10)), 10, 'SUCCESS', True),
+        ('123', list(range(10)), 10, 'pending', False),
+        ('123', list(range(10)), 10, 'failure', False),
+        ('123', list(range(10)), 0, None, False)
     )
     @ddt.unpack
-    def test_is_commit_successful(self, sha, statuses, state, expected):
+    def test_check_combined_status_commit(self, sha, statuses, statuses_returned, state, expected):
         mock_combined_status = Mock(spec=CommitCombinedStatus)
-        mock_combined_status.statuses = statuses
+        mock_combined_status.statuses = [Mock(spec=CommitStatus, id=i) for i in statuses]
         mock_combined_status.state = state
 
         commit_mock = Mock(spec=Commit)
         commit_mock.get_combined_status.return_value = mock_combined_status
         self.repo_mock.get_commit.return_value = commit_mock
 
-        response = self.api.is_commit_successful(sha)
+        response, statuses = self.api.check_combined_status_commit(sha)
 
         self.assertEqual(response, expected)
+        self.assertIsInstance(statuses, dict)
+        self.assertEqual(len(statuses), statuses_returned)
         commit_mock.get_combined_status.assert_called()
         self.repo_mock.get_commit.assert_called_with(sha)
 
@@ -284,18 +287,18 @@ class GitHubApiTestCase(TestCase):
             """
             side effect returns True when the commit ID matches the current iteration
             """
-            return sha == good_commit_id
+            return (sha == good_commit_id, {})
 
-        self.api.is_commit_successful = Mock(side_effect=_side_effect)
+        self.api._is_commit_successful = Mock(side_effect=_side_effect)  # pylint: disable=protected-access
 
         self.api.most_recent_good_commit(branch)
-        self.assertEqual(self.api.is_commit_successful.call_count, good_commit_id)
+        self.assertEqual(self.api._is_commit_successful.call_count, good_commit_id)  # pylint: disable=protected-access
 
     def test_most_recent_good_commit_no_commit(self):
         commits = [Mock(spec=Commit, sha=i) for i in range(1, 10)]
         self.api.get_commits_by_branch = Mock(return_value=commits)
 
-        self.api.is_commit_successful = Mock(return_value=False)
+        self.api._is_commit_successful = Mock(return_value=(False, {}))  # pylint: disable=protected-access
         self.assertRaises(NoValidCommitsError, self.api.most_recent_good_commit, 'release-candidate')
 
     @ddt.data(

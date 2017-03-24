@@ -231,6 +231,12 @@ class GitHubAPI(object):
         Calls GitHub's '<commit>/statuses' endpoint for a given commit. See
         https://developer.github.com/v3/repos/statuses/#get-the-combined-status-for-a-specific-ref
 
+        Arguments:
+            commit: One of:
+                - string (interprets as git SHA and fetches commit)
+                - GitCommit (uses the accompanying git SHA and fetches commit)
+                - Commit (directly gets the combined status)
+
         Returns:
             github.CommitCombinedStatus.CommitCombinedStatus
 
@@ -246,7 +252,50 @@ class GitHubAPI(object):
 
         return commit.get_combined_status()
 
-    def check_pull_request_test_status(self, pr_number):
+    def _is_commit_successful(self, sha):
+        """
+        Returns whether the passed commit has passed all its tests.
+        Ensures there is at least one status update so that
+        commits whose tests haven't started yet are not valid.
+
+        Arguments:
+            sha (str): The SHA of which to get the status.
+
+        Returns:
+            tuple(bool, dict):
+                bool: True when the combined state equals 'success', False otherwise
+                dict: Key/values of ci_context:ci_url
+        """
+        commit_status = self.get_commit_combined_statuses(sha)
+
+        # Determine if the commit has passed all checks
+        if len(commit_status.statuses) < 1 or commit_status.state is None:
+            return (False, {})
+
+        return (
+            commit_status.state.lower() == 'success',
+            {cs.context: cs.target_url for cs in commit_status.statuses}
+        )
+
+    def check_combined_status_commit(self, commit_sha):
+        """
+        Given a commit SHA, query the current combined status of the commit's tests.
+
+        Arguments:
+            commit_sha (str): Commit SHA to check.
+
+        Returns:
+            tuple(bool, dict):
+                bool: True if all tests have passed successfully, False otherwise
+                dict: Key/values of ci_context:ci_url
+
+        Raises:
+            github.GithubException.GithubException: If the response fails.
+            github.GithubException.UnknownObjectException: If the SHA does not exist
+        """
+        return self._is_commit_successful(commit_sha)
+
+    def check_combined_status_pull_request(self, pr_number):
         """
         Given a PR number, query the current combined status of the PR's tests.
 
@@ -254,15 +303,17 @@ class GitHubAPI(object):
             pr_number (int): Number of PR to check.
 
         Returns:
-            True if all tests have passed successfully, else False.
+            tuple(bool, dict):
+                bool: True if all tests have passed successfully, False otherwise
+                dict: Key/values of ci_context:ci_url
 
         Raises:
             github.GithubException.GithubException: If the response fails.
-            github.GithubException.UnknownObjectException: If the branch does not exist
+            github.GithubException.UnknownObjectException: If the PR does not exist
         """
-        return self.get_commit_combined_statuses(
+        return self._is_commit_successful(
             self.get_head_commit_from_pull_request(pr_number)
-        ).state.lower() == 'success'
+        )
 
     @backoff.on_exception(
         backoff.expo,
@@ -539,26 +590,6 @@ class GitHubAPI(object):
             head='refs/heads/{}'.format(compare_branch)
         ).status == 'diverged'
 
-    def is_commit_successful(self, sha):
-        """
-        Returns whether the passed commit has passed all its tests.
-        Ensures there is at least one status update so that
-        commits whose tests haven't started yet are not valid.
-
-        Arguments:
-            sha (str): The SHA of which to get the status.
-
-        Returns:
-            bool: true when the combined state equals 'success'
-        """
-        commit_status = self.get_commit_combined_statuses(sha)
-
-        # Determine if the commit has passed all checks
-        if len(commit_status.statuses) < 1 or commit_status.state is None:
-            return False
-
-        return commit_status.state.lower() == 'success'
-
     def most_recent_good_commit(self, branch):
         """
         Returns the most recent commit on master that has passed the tests
@@ -577,7 +608,7 @@ class GitHubAPI(object):
 
         result = None
         for commit in commits:
-            if self.is_commit_successful(commit.sha):
+            if self._is_commit_successful(commit.sha)[0]:
                 result = commit
                 return result
 
