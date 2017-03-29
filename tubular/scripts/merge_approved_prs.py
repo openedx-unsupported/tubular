@@ -145,9 +145,14 @@ def octomerge(
 
         if repo_variable:
             if approved_prs:
-                results[repo_variable] = target_github_repo.github_repo.clone_url
+                repo = target_github_repo.github_repo
             else:
-                results[repo_variable] = source_github_repo.github_repo.clone_url
+                repo = source_github_repo.github_repo
+
+            if repo.private:
+                results[repo_variable] = repo.ssh_url
+            else:
+                results[repo_variable] = repo.clone_url
 
         dirname = os.path.dirname(out_file.name)
         if dirname:
