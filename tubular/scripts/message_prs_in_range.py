@@ -82,6 +82,8 @@ def message_pull_requests(org,
                           base_ami_tags,
                           base_ami_tag_app,
                           head_sha,
+                          head_ami_tags,
+                          head_ami_tag_app,
                           message_type):
     u"""
     Message a range of Pull requests between the BASE and HEAD SHA specified.
@@ -115,6 +117,12 @@ def message_pull_requests(org,
         tag = u'version:{}'.format(base_ami_tag_app)
         version = base_ami_tags[tag]
         _, _, base_sha = version.partition(u' ')
+
+    if head_sha is None and head_ami_tags and head_ami_tag_app:
+        head_ami_tags = yaml.safe_load(head_ami_tags)
+        tag = u'version:{}'.format(head_ami_tag_app)
+        version = head_ami_tags[tag]
+        _, _, head_sha = version.partition(u' ')
 
     api = GitHubAPI(org, repo, token)
     for pull_request in api.get_pr_range(base_sha, head_sha):
