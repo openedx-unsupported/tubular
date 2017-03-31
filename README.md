@@ -59,3 +59,10 @@ Please do not report security issues in public. Please email security@edx.org.
 | ASGARD_ELB_HEALTH_TIMEOUT | 600                        | How long in seconds to wait for an instanced to become healthy in an ELB.                     |
 | SHA_LENGTH           | 10                              | Length of the commit SHA to use when querying for a PR by commit.                             |
 | BATCH_SIZE           | 18                              | Number of commits to batch together when querying a PR by commit.                             |
+
+## Guidelines
+
+Some general guidelines for tubular scripts:
+
+* Prefer --my-argument to --my_argument
+* Install your scripts by adding them to the console_scripts list in setup.cfg
