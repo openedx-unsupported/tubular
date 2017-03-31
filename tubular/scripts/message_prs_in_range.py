@@ -37,22 +37,31 @@ LOG = logging.getLogger(__name__)
     help=u'The github access token, see https://help.github.com/articles/creating-an-access-token-for-command-line-use/'
 )
 @click.option(
-    u'--base_sha',
+    u'--base_sha', u'--base-sha',
     help=u'The BASE SHA of the range',
 )
 @click.option(
-    u'--base_ami_tags',
+    u'--base_ami_tags', u'--base-ami-tags',
     help=u'A YAML file with tags for the base_ami should be used as the baseline for these messages',
     type=click.File(),
 )
 @click.option(
-    u'--ami_tag_app',
+    u'--ami_tag_app', u'--base-ami-tag-app', 'base_ami_tag_app',
     help=u'The name of the app to read the base_sha from',
 )
 @click.option(
-    u'--head_sha',
+    u'--head_sha', u'--head-sha',
     required=True,
     help=u'The HEAD SHA of the range',
+)
+@click.option(
+    u'--head-ami-tags',
+    help=u'A YAML file with tags for the head_ami should be used as the headline for these messages',
+    type=click.File(),
+)
+@click.option(
+    u'--head-ami-tag-app', 'head_ami_tag_app',
+    help=u'The name of the app to read the head_sha from',
 )
 @click.option(
     u'--release_stage', u'message_type', flag_value=u'stage'
@@ -63,13 +72,18 @@ LOG = logging.getLogger(__name__)
 @click.option(
     u'--release_rollback', u'message_type', flag_value=u'rollback'
 )
+@click.option(
+    u'--release', u'message_type', type=click.Choice(['stage', 'prod', 'rollback']),
+)
 def message_pull_requests(org,
                           repo,
                           token,
                           base_sha,
                           base_ami_tags,
-                          ami_tag_app,
+                          base_ami_tag_app,
                           head_sha,
+                          head_ami_tags,
+                          head_ami_tag_app,
                           message_type):
     u"""
     Message a range of Pull requests between the BASE and HEAD SHA specified.
@@ -98,11 +112,17 @@ def message_pull_requests(org,
         u'rollback': u'message_pr_release_canceled'
     }
 
-    if base_sha is None and base_ami_tags and ami_tag_app:
-        ami_tags = yaml.safe_load(base_ami_tags)
-        tag = u'version:{}'.format(ami_tag_app)
-        version = ami_tags[tag]
+    if base_sha is None and base_ami_tags and base_ami_tag_app:
+        base_ami_tags = yaml.safe_load(base_ami_tags)
+        tag = u'version:{}'.format(base_ami_tag_app)
+        version = base_ami_tags[tag]
         _, _, base_sha = version.partition(u' ')
+
+    if head_sha is None and head_ami_tags and head_ami_tag_app:
+        head_ami_tags = yaml.safe_load(head_ami_tags)
+        tag = u'version:{}'.format(head_ami_tag_app)
+        version = head_ami_tags[tag]
+        _, _, head_sha = version.partition(u' ')
 
     api = GitHubAPI(org, repo, token)
     for pull_request in api.get_pr_range(base_sha, head_sha):
