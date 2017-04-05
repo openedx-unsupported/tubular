@@ -9,6 +9,7 @@ import socket
 import backoff
 
 from github import Github
+from github.PullRequest import PullRequest
 from github.Commit import Commit
 from github.GitCommit import GitCommit
 from github.GithubException import UnknownObjectException, GithubException
@@ -684,16 +685,16 @@ class GitHubAPI(object):
             # by that PR. We want to avoid listing the PR twice in this situation,
             # and also when a PR includes more than one commit.
             if not pulls.get(issue.number):
-                pulls[issue.number] = self.github_repo.get_pull(issue.number)
+                pulls[issue.number] = issue.repository.get_pull(issue.number)
 
         return list(pulls.values())
 
-    def message_pull_request(self, pr_number, message, message_filter, force_message=False):
+    def message_pull_request(self, pull_request, message, message_filter, force_message=False):
         """
         Messages a pull request. Will only message the PR if the message has not already been posted to the discussion
 
         Args:
-            pr_number (int): the number of the pull request
+            pull_request (github.PullRequest.PullRequest or int): the pull request (object or number) to message
             message (str): the message to post to the pull request
             message_filter (str): the message filter used to avoid duplicate messages
             force_message (bool): if set true the message will be posted without duplicate checking
@@ -729,22 +730,23 @@ class GitHubAPI(object):
                 result = True
             return result
 
-        try:
-            pull_request = self.github_repo.get_pull(pr_number)
-        except UnknownObjectException:
-            raise InvalidPullRequestError('PR #{pr_number} does not exist'.format(pr_number=pr_number))
+        if not isinstance(pull_request, PullRequest):
+            try:
+                pull_request = self.github_repo.get_pull(pull_request)
+            except UnknownObjectException:
+                raise InvalidPullRequestError('PR #{} does not exist'.format(pull_request))
 
         if force_message or _not_duplicate(pull_request.get_issue_comments(), message_filter):
             return pull_request.create_issue_comment(message)
         else:
             return None
 
-    def message_pr_deployed_stage(self, pr_number, deploy_date=None, force_message=False):
+    def message_pr_deployed_stage(self, pull_request, deploy_date=None, force_message=False):
         """
         Sends a message that this PRs commits have been deployed to the staging environment
 
         Args:
-            pr_number (int): The number of the pull request
+            pull_request (github.PullRequest.PullRequest or int): The pull request (object or number) to message
             force_message (bool): if set true the message will be posted without duplicate checking
 
         Returns:
@@ -755,18 +757,18 @@ class GitHubAPI(object):
             deploy_date = default_expected_release_date()
 
         return self.message_pull_request(
-            pr_number,
+            pull_request,
             (PR_ON_STAGE_BASE_MESSAGE + PR_ON_STAGE_DATE_MESSAGE).format(date=deploy_date),
             PR_ON_STAGE_BASE_MESSAGE,
             force_message,
         )
 
-    def message_pr_deployed_prod(self, pr_number, force_message=False):
+    def message_pr_deployed_prod(self, pull_request, force_message=False):
         """
         sends a message that this PRs commits have been deployed to the production environment
 
         Args:
-            pr_number (int): The number of the pull request
+            pull_request (github.PullRequest.PullRequest or int): The pull request (object or number) to message
             force_message (bool): if set true the message will be posted without duplicate checking
 
         Returns:
@@ -774,18 +776,18 @@ class GitHubAPI(object):
 
         """
         return self.message_pull_request(
-            pr_number,
+            pull_request,
             PR_ON_PROD_MESSAGE,
             PR_ON_PROD_MESSAGE,
             force_message
         )
 
-    def message_pr_release_canceled(self, pr_number, force_message=False):
+    def message_pr_release_canceled(self, pull_request, force_message=False):
         """
         Sends a message that this PRs commits have not made it to production as the release was canceled
 
         Args:
-            pr_number (int): The number of the pull request
+            pull_request (github.PullRequest.PullRequest or int): The pull request (object or number) to message
             force_message (bool): if set true the message will be posted without duplicate checking
 
         Returns:
@@ -793,7 +795,7 @@ class GitHubAPI(object):
 
         """
         return self.message_pull_request(
-            pr_number,
+            pull_request,
             PR_RELEASE_CANCELED_MESSAGE,
             PR_RELEASE_CANCELED_MESSAGE,
             force_message
