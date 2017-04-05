@@ -323,7 +323,11 @@ class GitHubApiTestCase(TestCase):
             """
             Stub implementation of GitHub issue search.
             """
-            return [Mock(spec=Issue, number=TRIMMED_SHA_MAP[sha]) for sha in shas.split()]
+            return [Mock(
+                spec=Issue,
+                number=TRIMMED_SHA_MAP[sha],
+                repository=self.repo_mock,
+            ) for sha in shas.split()]
 
         mock_search_issues.side_effect = search_issues_side_effect
 
