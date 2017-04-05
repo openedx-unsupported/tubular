@@ -51,7 +51,6 @@ LOG = logging.getLogger(__name__)
 )
 @click.option(
     u'--head_sha', u'--head-sha',
-    required=True,
     help=u'The HEAD SHA of the range',
 )
 @click.option(
