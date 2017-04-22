@@ -664,8 +664,11 @@ class GitHubAPI(object):
             for index in range(0, length, batch_size):
                 yield batchable[index:index + batch_size]
 
-        comparison = self.github_repo.compare(start_sha, end_sha)
-        shas = [commit.sha[:sha_length] for commit in comparison.commits]
+        if start_sha == end_sha:
+            shas = end_sha
+        else:
+            comparison = self.github_repo.compare(start_sha, end_sha)
+            shas = [commit.sha[:sha_length] for commit in comparison.commits]
 
         issues = []
         for sha_batch in batch(shas):
