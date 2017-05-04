@@ -176,12 +176,11 @@ class LocalGitAPI(object):
             self.repo.heads[branch].reset(commitish, index=True)
 
     @contextmanager
-    def cleanup(self, cleanup=True):
+    def cleanup(self):
         """
         Delete the repo working directory when this contextmanager is finished.
         """
         try:
             yield self
         finally:
-            if cleanup:
-                rmtree(self.repo.working_dir)
+            rmtree(self.repo.working_dir)
