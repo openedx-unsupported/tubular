@@ -60,6 +60,13 @@ class InvalidPullRequestError(Exception):
     pass
 
 
+class PullRequestCreationError(Exception):
+    """
+    Error indicating that a PR could not be created
+    """
+    pass
+
+
 class GitTagMismatchError(Exception):
     """
     Error indicating that a tag is pointing at an incorrect SHA.
@@ -226,6 +233,22 @@ class GitHubAPI(object):
             github.GithubException.UnknownObjectException: If the branch does not exist
         """
         return self.get_commits_by_branch(branch_name)[0].sha
+
+    def get_merge_commit_from_pull_request(self, pr_number):
+        """
+        Given a pull request number, return the PR's merge commit hash.
+
+        Arguments:
+            pr_number (int): Number of PR to check.
+
+        Returns:
+            Commit SHA of the merge commit which merged the PR into the base branch.
+
+        Raises:
+            github.GithubException.GithubException: If the response fails.
+            github.GithubException.UnknownObjectException: If the PR does not exist.
+        """
+        return self.get_pull_request(pr_number).merge_commit_sha
 
     def get_commit_combined_statuses(self, commit):
         """
@@ -475,12 +498,16 @@ class GitHubAPI(object):
             github.GithubException.GithubException:
 
         """
-        return self.github_repo.create_pull(
-            title=title,
-            body=body,
-            head=head,
-            base=base
-        )
+        try:
+            return self.github_repo.create_pull(
+                title=title,
+                body=body,
+                head=head,
+                base=base
+            )
+        except GithubException as exc:
+            # PR could not be created.
+            raise PullRequestCreationError(str(exc.data))
 
     def get_pull_request(self, pr_number):
         """
