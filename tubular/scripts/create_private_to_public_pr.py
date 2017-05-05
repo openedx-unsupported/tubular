@@ -69,7 +69,7 @@ LOG = logging.getLogger(__name__)
 )
 @click_log.simple_verbosity_option(default=u'INFO')
 @click_log.init()
-def create_public_to_private_pr(private_org,
+def create_private_to_public_pr(private_org,
                                 private_repo,
                                 private_source_branch,
                                 public_org,
@@ -159,4 +159,4 @@ def create_public_to_private_pr(private_org,
 
 
 if __name__ == u"__main__":
-    create_public_to_private_pr()  # pylint: disable=no-value-for-parameter
+    create_private_to_public_pr()  # pylint: disable=no-value-for-parameter
