@@ -1,14 +1,14 @@
 """
 Pretty simple module to help move commits between git repos with broken common history, such as ones created through
 a git filter subdirectory. Has some tools for speeding up activities on large repos such as limiting history search
-by include / ignore directives and by date. 
+by include / ignore directives and by date.
 """
 import io
 import os
 import re
 import hashlib
+import configparser
 import datetime
-import ConfigParser
 import pprint
 from collections import OrderedDict
 
@@ -51,14 +51,14 @@ class Grafter(object):
                  original_repo_head="master", branched_repo_head="master", tracked=None, original_ignore=None,
                  branched_ignore=None, verbose=False, dry_run=False):
         """
-        :param original_repo_path: Relative or absolute path to the original repo's location on this machine 
+        :param original_repo_path: Relative or absolute path to the original repo's location on this machine
         :param branched_repo_path: Relative or absolute path to the branched repo's location on this machine
         :param max_lookback_days: How many days back to look for changes to carry over, fewer is faster
         :param original_repo_head: Branch to use in the original repo
         :param branched_repo_head: Branch to use in the branched repo
         :param tracked: Dict mapping original repo relative paths to branched repo relative paths ex:
                         {
-                            'old/path/code': 'new/path/stored/elsewhere/code', 
+                            'old/path/code': 'new/path/stored/elsewhere/code',
                             'old/path/file.py': 'new/path/libraries/file.py'
                         }
         :param original_ignore: List of paths inside the tracked paths to ignore commits from in the original repo
@@ -66,7 +66,7 @@ class Grafter(object):
         :param verbose: Turn on / off verbose output
         :param dry_run: When True, does not create a new branch or perform commits
         """
-        self.pp = pprint.PrettyPrinter(indent=3)
+        self.pprint = pprint.PrettyPrinter(indent=3)
 
         self.dry_run = dry_run
         self.verbose = verbose
@@ -110,7 +110,7 @@ class Grafter(object):
     def sanity_check_repos(self):
         """
         Make sure the repos exist, are not empty, and are not dirty.
-        
+
         :raises InputException if conditions are not met
         """
         errors = []
@@ -119,8 +119,9 @@ class Grafter(object):
                 errors.append("ERROR- repository {} is empty!".format(repo.working_tree_dir))
 
             if repo.is_dirty():
-                errors.append("ERROR- repository {} is dirty! Please commit any changes before running.".format(
-                    repo.working_tree_dir
+                errors.append(
+                    "ERROR- repository {} is dirty! Please commit any changes before running.".format(
+                        repo.working_tree_dir
                     )
                 )
 
@@ -154,11 +155,11 @@ class Grafter(object):
         :raises InputException if conditions are not met
         """
         errors = []
-        for p in paths:
-            path = join(repo_path, p)
+        for path in paths:
+            full_path = join(repo_path, path)
 
-            if not os.path.exists(path):
-                errors.append("{} path {} does not exist!".format(path_type, path))
+            if not os.path.exists(full_path):
+                errors.append("{} path {} does not exist!".format(path_type, full_path))
         self.fail_on_errors(errors)
 
     @staticmethod
@@ -170,7 +171,7 @@ class Grafter(object):
         """
         if len(errors):
             err_str = "\n".join(errors)
-            print err_str
+            print(err_str)
             raise InputException(err_str)
 
     @staticmethod
@@ -191,11 +192,11 @@ class Grafter(object):
 
     def find_candidate_commits(self):
         """
-        Walks backwards through time, populating self.candidate_commits with "commits of interest" from first the 
+        Walks backwards through time, populating self.candidate_commits with "commits of interest" from first the
         branched repo, then the original. Uses a combination of commit metadata and commit messages from previous grafts
         to match up commits that exist in both repos, leaving us with the ability to find commits that exist only in
         the original repo which we want to graft onto the new repo.
-\       """
+        """
         # If we've previously grafted a commit we'll pull the old sha out of the message and use it to prevent
         # duplicate graftings.
         found_grafted_commits = {}
@@ -217,37 +218,39 @@ class Grafter(object):
 
                 # Skip PR merges as they only yield empty commits for us.
                 # TODO: Find a better way to check this. Diffs don't work.
-                if commit.committer.name != "GitHub" and len(commit.parents):
-                    for i in commit.diff(commit.parents[0]):
-                        # If any file in this commit is a valid candidate we keep the whole commit so we check them all
-                        if not self.is_valid_candidate_path(i.a_path, repo_name):
-                            continue
+                if commit.committer.name == "GitHub" or not len(commit.parents):
+                    continue
 
-                        if digest not in self.candidate_commits:
-                            self.candidate_commits[digest] = {
-                                "branched_commit": None, "original_commit": None
-                            }
+                for i in commit.diff(commit.parents[0]):
+                    # If any file in this commit is a valid candidate we keep the whole commit so we check them all
+                    if not self.is_valid_candidate_path(i.a_path, repo_name):
+                        continue
 
-                        self.candidate_commits[digest][commit_key] = commit
+                    if digest not in self.candidate_commits:
+                        self.candidate_commits[digest] = {
+                            "branched_commit": None, "original_commit": None
+                        }
 
-                        # This chunk is just to make sure we don't re-apply the same commits repeatedly. It looks for
-                        # a token in the branched repo commits like this ">>3908512a0bd425de80222f3c4f64b65f7af4e7d7<<"
-                        # which indicates a previous graft of that commit hash from the original repo.
-                        #
-                        # When we get to the original repo, if we run into those commits we can apply the actual commit
-                        # hash in the branched repo to self.candidate_commits, which will exclude those commits from
-                        # being cloned later.
-                        if repo_name == "branched":
-                            previous_graft_artifact = re.search(SHA_MESSAGE_TOKEN, commit.message)
+                    self.candidate_commits[digest][commit_key] = commit
 
-                            if previous_graft_artifact:
-                                found_grafted_commits[previous_graft_artifact.groups()[1]] = commit.hexsha
-                        elif self.candidate_commits[digest]["branched_commit"] is None:
-                            if commit.hexsha in found_grafted_commits:
-                                self.candidate_commits[digest]["branched_commit"] = found_grafted_commits[commit.hexsha]
+                    # This chunk is just to make sure we don't re-apply the same commits repeatedly. It looks for
+                    # a token in the branched repo commits like this ">>3908512a0bd425de80222f3c4f64b65f7af4e7d7<<"
+                    # which indicates a previous graft of that commit hash from the original repo.
+                    #
+                    # When we get to the original repo, if we run into those commits we can apply the actual commit
+                    # hash in the branched repo to self.candidate_commits, which will exclude those commits from
+                    # being cloned later.
+                    if repo_name == "branched":
+                        previous_graft_artifact = re.search(SHA_MESSAGE_TOKEN, commit.message)
 
-                        # Once we've stored off the commit, no need to check more files
-                        break
+                        if previous_graft_artifact:
+                            found_grafted_commits[previous_graft_artifact.groups()[1]] = commit.hexsha
+                    elif self.candidate_commits[digest]["branched_commit"] is None:
+                        if commit.hexsha in found_grafted_commits:
+                            self.candidate_commits[digest]["branched_commit"] = found_grafted_commits[commit.hexsha]
+
+                    # Once we've stored off the commit, no need to check more files
+                    break
 
     def try_map_path(self, source):
         """
@@ -289,7 +292,7 @@ class Grafter(object):
             self.output_branch.checkout()
 
         # Move over every applicable commit from the old repo to the new branch, moving in chronological order
-        for digest, commit_dict in reversed(self.candidate_commits.items()):
+        for _, commit_dict in reversed(self.candidate_commits.items()):
             original_commit = commit_dict["original_commit"]
 
             # We only care about commits to the original branch that hadn't made it to the new branch
@@ -325,16 +328,16 @@ class Grafter(object):
                 fdate = datetime.datetime.fromtimestamp(original_commit.committed_date).isoformat()
                 subject = original_commit.message.split("\n")[0].strip()
                 msg = """{subject}
-                
+
 Grafting commit >>{sha}<< from {original_repo_name}
 Original commit by {committer_name} on {date} with this message:
 ----------------------------------------------------------------
 {message}""".format(sha=original_commit.hexsha, committer_name=original_commit.committer.name, date=fdate,
                     message=original_commit.message, subject=subject, original_repo_name=self.original_repo_name)
 
-                print msg
-                print "\n".join(found_files)
-                print "\n\n"
+                print(msg)
+                print("\n".join(found_files))
+                print("\n\n")
 
                 if not self.dry_run:
                     self.branched_repo.index.add(found_files)
@@ -343,9 +346,9 @@ Original commit by {committer_name} on {date} with this message:
                 self.vprint("\n\nNothing to commit for original repo sha {}".format(original_commit.hexsha))
 
         if not self.dry_run:
-            print "--------------------------------------------------"
-            print "Your branch has been changed to {}".format(self.output_branch)
-            print "--------------------------------------------------"
+            print("--------------------------------------------------")
+            print("Your branch has been changed to {}".format(self.output_branch))
+            print("--------------------------------------------------")
 
     def is_valid_candidate_path(self, path, repo_name):
         """
@@ -376,16 +379,16 @@ Original commit by {committer_name} on {date} with this message:
         """
         if self.verbose:
             if pretty:
-                self.pp.pprint(string)
+                self.pprint.pprint(string)
             else:
-                print string
+                print(string)
 
     def report(self):
         """
         Prints a short report with some information about the current state of the graft. Only really useful after
         find_candidate_commits and clone_commits have been called.
         """
-        print "\nDebug Report:\n-----------------------------------------------"
+        print("\nDebug Report:\n-----------------------------------------------")
         # TODO: Various other print statements should probably be moved in here and formatted correctly
         problematic_commits = set()
 
@@ -400,17 +403,17 @@ Original commit by {committer_name} on {date} with this message:
                 print("{} - commit {} only in original repo".format(digest, commit_dict['original_commit']))
                 problematic_commits.add(commit_dict["original_commit"])
 
-        print "\nCommits in original repo that were checked against:"
-        self.pp.pprint(problematic_commits)
+        print("\nCommits in original repo that were checked against:")
+        self.pprint.pprint(problematic_commits)
 
-        print "\n{} modified files in tracked paths that do not exist in branched".format(
-            len(self.unmatched_original_files))
-        self.pp.pprint(self.unmatched_original_files)
+        print("\n{} modified files in tracked paths that do not exist in branched".format(
+            len(self.unmatched_original_files)))
+        self.pprint.pprint(self.unmatched_original_files)
 
 
 def process_config_str(config_str):
     """
-    Takes potentially multi-line RawConfigParser-returned strings, strips them, and splits them by line.  
+    Takes potentially multi-line RawConfigParser-returned strings, strips them, and splits them by line.
     :param config_str: String parsed in by RawConfigParser
     :return: List of strings broken up and trimmed.
     """
@@ -445,9 +448,9 @@ def process_tracked_config_str(config_lst):
 @click.option('--verbose', is_flag=True, help="Verbose output")
 def main(conf, dry_run, verbose):
     """
-    Creates a "best-guess" copy of commits across two unrelated (no consistent history) github repositories 
+    Creates a "best-guess" copy of commits across two unrelated (no consistent history) github repositories
     """
-    config = ConfigParser.RawConfigParser()
+    config = configparser.RawConfigParser()
     config.read(conf)
 
     orig_repo_name = config.get("repositories", "original_repository_name")
@@ -460,26 +463,26 @@ def main(conf, dry_run, verbose):
     original_ignored = process_config_str(config.get("tracked_paths", "original_ignored"))
     branched_ignored = process_config_str(config.get("tracked_paths", "branched_ignored"))
 
-    g = Grafter(orig_repo_name,
-                orig,
-                branched,
-                tracked=tracked,
-                original_ignore=original_ignored,
-                branched_ignore=branched_ignored,
-                original_repo_head=original_branch,
-                branched_repo_head=branched_branch,
-                dry_run=dry_run,
-                verbose=verbose)
-    g.find_candidate_commits()
-    g.clone_commits()
+    grafter = Grafter(orig_repo_name,
+                      orig,
+                      branched,
+                      tracked=tracked,
+                      original_ignore=original_ignored,
+                      branched_ignore=branched_ignored,
+                      original_repo_head=original_branch,
+                      branched_repo_head=branched_branch,
+                      dry_run=dry_run,
+                      verbose=verbose)
+    grafter.find_candidate_commits()
+    grafter.clone_commits()
 
     if verbose:
-        g.report()
+        grafter.report()
 
         if not dry_run:
-            print "---------------------------------------------------"
-            print "WARNING: Your active git branches may have changed!"
-            print "---------------------------------------------------"
+            print("---------------------------------------------------")
+            print("WARNING: Your active git branches may have changed!")
+            print("---------------------------------------------------")
 
 if __name__ == "__main__":
-    main()
+    main()  # pylint: disable=no-value-for-parameter
