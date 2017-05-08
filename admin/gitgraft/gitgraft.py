@@ -183,11 +183,11 @@ class Grafter(object):
         :return: sha1 hexdigest of some of the given commit's metadata
         """
         hsh = hashlib.sha1()
-        hsh.update("%i" % commit.committed_date)
-        hsh.update("%i" % commit.authored_date)
+        hsh.update(b"%i" % commit.committed_date)
+        hsh.update(b"%i" % commit.authored_date)
         hsh.update(commit.message.encode("utf-8"))
-        hsh.update(commit.author.email)
-        hsh.update(commit.committer.email)
+        hsh.update(commit.author.email.encode("utf-8"))
+        hsh.update(commit.committer.email.encode("utf-8"))
         return hsh.hexdigest()
 
     def find_candidate_commits(self):
@@ -208,6 +208,7 @@ class Grafter(object):
             # Key into the self.candidate_commits[digest] dict so we can make this chunk of code reusable across
             # original and branched repos.
             commit_key = "{}_commit".format(repo_name)
+            paths = list(paths)
 
             for commit in repo.iter_commits(paths=paths):
                 self.vprint("Processing commit: {}".format(commit.hexsha))
@@ -292,7 +293,9 @@ class Grafter(object):
             self.output_branch.checkout()
 
         # Move over every applicable commit from the old repo to the new branch, moving in chronological order
-        for _, commit_dict in reversed(self.candidate_commits.items()):
+        # Extra list() call here is to work around reversed() not working with OrderedDicts in Python 3.4
+        # https://bugs.python.org/issue19505
+        for commit_dict in reversed(list(self.candidate_commits.values())):
             original_commit = commit_dict["original_commit"]
 
             # We only care about commits to the original branch that hadn't made it to the new branch
