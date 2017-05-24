@@ -25,10 +25,12 @@ from .git_repo import LocalGitAPI
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
-PR_ON_STAGE_BASE_MESSAGE = '**EdX Release Notice**: This PR has been deployed to the staging environment '
-PR_ON_STAGE_DATE_MESSAGE = 'in preparation for a release to production on {date:%A, %B %d, %Y}.'
-PR_ON_PROD_MESSAGE = '**EdX Release Notice**: This PR has been deployed to the production environment.'
-PR_RELEASE_CANCELED_MESSAGE = '**EdX Release Notice**: This PR has been rolled back from the production environment.'
+PR_PREFIX = '**EdX Release Notice**: '
+PR_ON_STAGE_BASE_MESSAGE = PR_PREFIX + 'This PR has been deployed to the staging environment '
+PR_ON_STAGE_DATE_MESSAGE = 'in preparation for a release to production on {date:%A, %B %d, %Y}. {extra_text}'
+PR_ON_PROD_MESSAGE = PR_PREFIX + 'This PR has been deployed to the production environment. {extra_text}'
+PR_RELEASE_CANCELED_MESSAGE = PR_PREFIX + 'This PR has been rolled back from the production environment. {extra_text}'
+PR_BROKE_VAGRANT_DEVSTACK_MESSAGE = PR_PREFIX + 'This PR may have broken Vagrant Devstack CI. {extra_text}'
 
 DEFAULT_TAG_USERNAME = 'no_user'
 DEFAULT_TAG_EMAIL_ADDRESS = 'no.public.email@edx.org'
@@ -768,13 +770,14 @@ class GitHubAPI(object):
         else:
             return None
 
-    def message_pr_deployed_stage(self, pull_request, deploy_date=None, force_message=False):
+    def message_pr_deployed_stage(self, pr_number, deploy_date=None, force_message=False, extra_text=''):
         """
         Sends a message that this PRs commits have been deployed to the staging environment
 
         Args:
-            pull_request (github.PullRequest.PullRequest or int): The pull request (object or number) to message
+            pr_number (int): The number of the pull request
             force_message (bool): if set true the message will be posted without duplicate checking
+            extra_text (str): Extra text that will be inserted at the end of the PR message
 
         Returns:
             github.IssueComment.IssueComment
@@ -784,47 +787,70 @@ class GitHubAPI(object):
             deploy_date = default_expected_release_date()
 
         return self.message_pull_request(
-            pull_request,
-            (PR_ON_STAGE_BASE_MESSAGE + PR_ON_STAGE_DATE_MESSAGE).format(date=deploy_date),
+            pr_number,
+            (PR_ON_STAGE_BASE_MESSAGE + PR_ON_STAGE_DATE_MESSAGE).format(date=deploy_date, extra_text=extra_text),
             PR_ON_STAGE_BASE_MESSAGE,
             force_message,
         )
 
-    def message_pr_deployed_prod(self, pull_request, force_message=False):
+    def message_pr_deployed_prod(self, pr_number, force_message=False, extra_text=''):
         """
         sends a message that this PRs commits have been deployed to the production environment
 
         Args:
-            pull_request (github.PullRequest.PullRequest or int): The pull request (object or number) to message
+            pr_number (int): The number of the pull request
             force_message (bool): if set true the message will be posted without duplicate checking
+            extra_text (str): Extra text that will be inserted at the end of the PR message
 
         Returns:
             github.IssueComment.IssueComment
 
         """
         return self.message_pull_request(
-            pull_request,
-            PR_ON_PROD_MESSAGE,
-            PR_ON_PROD_MESSAGE,
+            pr_number,
+            PR_ON_PROD_MESSAGE.format(extra_text=extra_text),
+            PR_ON_PROD_MESSAGE.format(extra_text=''),
             force_message
         )
 
-    def message_pr_release_canceled(self, pull_request, force_message=False):
+    def message_pr_release_canceled(self, pr_number, force_message=False, extra_text=''):
         """
         Sends a message that this PRs commits have not made it to production as the release was canceled
 
         Args:
-            pull_request (github.PullRequest.PullRequest or int): The pull request (object or number) to message
+            pr_number (int): The number of the pull request
             force_message (bool): if set true the message will be posted without duplicate checking
+            extra_text (str): Extra text that will be inserted at the end of the PR message
 
         Returns:
             github.IssueComment.IssueComment
 
         """
         return self.message_pull_request(
-            pull_request,
-            PR_RELEASE_CANCELED_MESSAGE,
-            PR_RELEASE_CANCELED_MESSAGE,
+            pr_number,
+            PR_RELEASE_CANCELED_MESSAGE.format(extra_text=extra_text),
+            PR_RELEASE_CANCELED_MESSAGE.format(extra_text=''),
+            force_message
+        )
+
+    def message_pr_broke_vagrant(self, pr_number, force_message=False, extra_text=''):
+        """
+
+        Sends a message that this PRs commits have broken vagrant devstack
+
+        Args:
+            pr_number (int): The number of the pull request
+            force_message (bool): if set true the message will be posted without duplicate checking
+            extra_text (str): Extra text that will be inserted at the end of the PR message
+
+        Returns:
+            github.IssueComment.IssueComment
+
+        """
+        return self.message_pull_request(
+            pr_number,
+            PR_BROKE_VAGRANT_DEVSTACK_MESSAGE.format(extra_text=extra_text),
+            PR_BROKE_VAGRANT_DEVSTACK_MESSAGE.format(extra_text=''),
             force_message
         )
 
