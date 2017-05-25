@@ -72,7 +72,13 @@ LOG = logging.getLogger(__name__)
     u'--release_rollback', u'message_type', flag_value=u'rollback'
 )
 @click.option(
-    u'--release', u'message_type', type=click.Choice(['stage', 'prod', 'rollback']),
+    u'--release_vagrant_broken', u'message_type', flag_value=u'broke_vagrant'
+)
+@click.option(
+    u'--release', u'message_type', type=click.Choice(['stage', 'prod', 'rollback', 'broke_vagrant']),
+)
+@click.option(
+    u'--extra_text', u'extra_text', default=''
 )
 def message_pull_requests(org,
                           repo,
@@ -83,7 +89,8 @@ def message_pull_requests(org,
                           head_sha,
                           head_ami_tags,
                           head_ami_tag_app,
-                          message_type):
+                          message_type,
+                          extra_text):
     u"""
     Message a range of Pull requests between the BASE and HEAD SHA specified.
 
@@ -97,10 +104,13 @@ def message_pull_requests(org,
         repo (str): The github repository
         token (str): The authentication token
         base_sha (str): The starting SHA
-        base_ami_tags (file): An open YAML file containing ami tags
-        ami_tag_app (str): The app to read from the base_ami_tags
+        base_ami_tags (str): An open YAML file containing the base AMI tags
+        base_ami_tag_app (str): The app name to read the the base_ami_tags
         head_sha (str): The ending SHA
+        head_ami_tags (str): Yaml file containing the head AMI tags
+        head_ami_tag_app (str): the app name to read the head_ami_tags
         message_type (str): type of message to send
+        extra_text (str): Extra text to be inserted in the PR message
 
     Returns:
         None
@@ -108,7 +118,8 @@ def message_pull_requests(org,
     methods = {
         u'stage': u'message_pr_deployed_stage',
         u'prod': u'message_pr_deployed_prod',
-        u'rollback': u'message_pr_release_canceled'
+        u'rollback': u'message_pr_release_canceled',
+        u'broke_vagrant': u'message_pr_broke_vagrant',
     }
 
     if base_sha is None and base_ami_tags and base_ami_tag_app:
@@ -126,7 +137,7 @@ def message_pull_requests(org,
     api = GitHubAPI(org, repo, token)
     for pull_request in api.get_pr_range(base_sha, head_sha):
         LOG.info(u"Posting message type %r to %d.", message_type, pull_request.number)
-        getattr(api, methods[message_type])(pull_request)
+        getattr(api, methods[message_type])(pull_request, extra_text)
 
 
 if __name__ == u"__main__":
