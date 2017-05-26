@@ -377,12 +377,13 @@ class GitHubApiTestCase(TestCase):
             self.assertRaises(InvalidPullRequestError, self.api.message_pull_request, 3, 'test', 'test')
 
     def test_message_pr_deployed_stage(self):
+        deploy_date = github_api.default_expected_release_date()
         with patch.object(self.api, 'message_pull_request') as mock:
-            self.api.message_pr_deployed_stage(1, deploy_date=datetime(2017, 1, 10))
+            self.api.message_pr_deployed_stage(1, deploy_date=deploy_date)
             mock.assert_called_with(
                 1,
                 (github_api.PR_ON_STAGE_BASE_MESSAGE + github_api.PR_ON_STAGE_DATE_MESSAGE).format(
-                    date=datetime(2017, 1, 10),
+                    date=deploy_date,
                     extra_text=''
                 ),
                 github_api.PR_ON_STAGE_BASE_MESSAGE.format(extra_text=''),
