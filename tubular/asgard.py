@@ -78,7 +78,6 @@ def clusters_for_asgs(asgs):
         u'test-edx-worker-v007',
     ]
 
-I want
     Returns:
         dict: A mapping of cluster names to asgs in the cluster.
 
@@ -519,8 +518,10 @@ def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
 
     Returns:
         dict(str, str, dict): Returns a dictionary with the keys:
-            'ami_id' - AMI id used to deploy the AMI, None if unspecified
+            'ami_id' - AMI id used to deploy the AMI, None if unspecified.
+            'current_ami_id' -  The AMI that is running in an environment after a rollback.
             'current_asgs' - Lists of current active ASGs, keyed by cluster.
+            'disabled_ami_id' - The AMI that was running in an environment before the rollback.
             'disabled_asgs' - Lists of current inactive ASGs, keyed by cluster.
 
     Raises:
@@ -553,7 +554,7 @@ def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
         if ami_id:
             edp = ec2.edp_for_ami(ami_id)
             disabled_ami_id = ec2.active_ami_for_edp(edp.environment, edp.deployment, edp.play)
-    except(MissingTagException, ImageNotFoundException, MultipleImagesFoundException):
+    except (MissingTagException, ImageNotFoundException, MultipleImagesFoundException):
         # don't want to fail on this info not being available, we'll assign UNKNOWN and
         # continue with the rollback
         disabled_ami_id = 'UNKNOWN'
@@ -614,7 +615,12 @@ def deploy(ami_id):
     edp = ec2.edp_for_ami(ami_id)
 
     # fetch the active AMI_ID
-    disabled_ami_id = ec2.active_ami_for_edp(edp.environment, edp.deployment, edp.play)
+    try:
+        disabled_ami_id = ec2.active_ami_for_edp(edp.environment, edp.deployment, edp.play)
+    except (ImageNotFoundException, MultipleImagesFoundException):
+        # don't want to fail on this info not being available, we'll assign UNKNOWN and
+        # continue with the rollback
+        disabled_ami_id = 'UNKNOWN'
 
     # These are all autoscaling groups that match the tags we care about.
     existing_edp_asgs = ec2.asgs_for_edp(edp, filter_asgs_pending_delete=False)
