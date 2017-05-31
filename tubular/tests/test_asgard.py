@@ -1097,11 +1097,13 @@ class TestAsgard(unittest.TestCase):
         )
         expected_output = {
             'ami_id': ami_id,
+            'current_ami_id': ami_id,
             'current_asgs':
                 {
                     'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v099'],
                     'loadtest-edx-worker': ['loadtest-edx-worker-v099']
                 },
+            'disabled_ami_id': ami_id,
             'disabled_asgs':
                 {
                     'loadtest-edx-edxapp':
@@ -1203,6 +1205,8 @@ class TestAsgard(unittest.TestCase):
         expected_output['current_asgs'] = rollback_input['disabled_asgs']
         expected_output['disabled_asgs'] = rollback_input['current_asgs']
         expected_output['ami_id'] = ami_id
+        expected_output['current_ami_id'] = ami_id
+        expected_output['disabled_ami_id'] = ami_id
 
         # Rollback and check output.
         self.assertEqual(
@@ -1322,11 +1326,13 @@ class TestAsgard(unittest.TestCase):
         }
         expected_output = {
             'ami_id': self.test_ami_id,
+            'current_ami_id': self.test_ami_id,
             'current_asgs':
                 {
                     'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v099'],
                     'loadtest-edx-worker': ['loadtest-edx-worker-v099']
                 },
+            'disabled_ami_id': self.test_ami_id,
             'disabled_asgs':
                 {
                     'loadtest-edx-edxapp':
@@ -1371,6 +1377,7 @@ class TestAsgard(unittest.TestCase):
         }
         expected_output = {
             'ami_id': None,
+            'current_ami_id': None,
             'current_asgs':
                 {
                     'loadtest-edx-edxapp':
@@ -1380,6 +1387,7 @@ class TestAsgard(unittest.TestCase):
                         ],
                     'loadtest-edx-worker': ['loadtest-edx-worker-v034']
                 },
+            'disabled_ami_id': None,
             'disabled_asgs':
                 {
                     'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v097'],
@@ -1424,11 +1432,13 @@ class TestAsgard(unittest.TestCase):
         # Deletion tags are removed from 97/98 and they're used for the rollback.
         expected_output = {
             'ami_id': self.test_ami_id,
+            'current_ami_id': self.test_ami_id,
             'current_asgs':
                 {
                     'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v097'],
                     'loadtest-edx-worker': ['loadtest-edx-worker-v098']
                 },
+            'disabled_ami_id': self.test_ami_id,
             'disabled_asgs':
                 {
                     'loadtest-edx-edxapp':
@@ -1475,11 +1485,13 @@ class TestAsgard(unittest.TestCase):
         # Deletion tags are removed from 97/98 and they're used for the rollback.
         expected_output = {
             'ami_id': self.test_ami_id,
+            'current_ami_id': self.test_ami_id,
             'current_asgs':
                 {
                     'loadtest-edx-edxapp': ['loadtest-edx-edxapp-v099'],
                     'loadtest-edx-worker': ['loadtest-edx-worker-v099']
                 },
+            'disabled_ami_id': self.test_ami_id,
             'disabled_asgs':
                 {
                     'loadtest-edx-edxapp':

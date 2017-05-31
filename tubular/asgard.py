@@ -16,16 +16,19 @@ import tubular.ec2 as ec2
 
 from tubular.utils.retry import retry
 from tubular.exception import (
-    BackendError,
-    BackendDataError,
+    ASGCountZeroException,
     ASGDoesNotExistException,
-    CannotDisableActiveASG,
+    BackendDataError,
+    BackendError,
     CannotDeleteActiveASG,
     CannotDeleteLastASG,
+    CannotDisableActiveASG,
+    ClusterDoesNotExistException,
+    ImageNotFoundException,
+    MissingTagException,
+    MultipleImagesFoundException,
     ResourceDoesNotExistException,
     TimeoutException,
-    ClusterDoesNotExistException,
-    ASGCountZeroException
 )
 from tubular.utils import WAIT_SLEEP_TIME, DISABLE_OLD_ASG_WAIT_TIME
 
@@ -75,7 +78,7 @@ def clusters_for_asgs(asgs):
         u'test-edx-worker-v007',
     ]
 
-
+I want
     Returns:
         dict: A mapping of cluster names to asgs in the cluster.
 
@@ -544,6 +547,16 @@ def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
                 LOG.info("Rollback ASG '{}' has been removed. Aborting rollback to ASGs.".format(asg))
                 rollback_ready = False
                 break
+    disabled_ami_id = None
+    try:
+        # fetch the currently deployed AMI_ID for the clusters for logging
+        if ami_id:
+            edp = ec2.edp_for_ami(ami_id)
+            disabled_ami_id = ec2.active_ami_for_edp(edp.environment, edp.deployment, edp.play)
+    except(MissingTagException, ImageNotFoundException, MultipleImagesFoundException):
+        # don't want to fail on this info not being available, we'll assign UNKNOWN and
+        # continue with the rollback
+        disabled_ami_id = 'UNKNOWN'
 
     if rollback_ready:
         # Perform the rollback.
@@ -552,7 +565,13 @@ def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
             LOG.info("Rollback failed for cluster(s) {}.".format(current_clustered_asgs.keys()))
         else:
             LOG.info("Woot! Rollback Done!")
-            return {'ami_id': ami_id, 'current_asgs': enabled_asgs, 'disabled_asgs': disabled_asgs}
+            return {
+                'ami_id': ami_id,
+                'current_ami_id': ami_id,
+                'current_asgs': enabled_asgs,
+                'disabled_ami_id': disabled_ami_id,
+                'disabled_asgs': disabled_asgs
+            }
 
     # Rollback failed -or- wasn't attempted. Attempt a deploy.
     if ami_id:
@@ -560,7 +579,13 @@ def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
         return deploy(ami_id)
     else:
         LOG.info("No AMI id specified - so no deploy occurred during rollback.")
-        return {'ami_id': None, 'current_asgs': current_clustered_asgs, 'disabled_asgs': rollback_to_clustered_asgs}
+        return {
+            'ami_id': None,
+            'current_ami_id': ami_id,
+            'current_asgs': current_clustered_asgs,
+            'disabled_ami_id': disabled_ami_id,
+            'disabled_asgs': rollback_to_clustered_asgs
+        }
 
 
 def deploy(ami_id):
@@ -572,8 +597,10 @@ def deploy(ami_id):
 
     Returns:
         dict(str, str, dict): Returns a dictionary with the keys:
-            'ami_id' - AMI id used to deploy the AMI
+            'ami_id' - AMI id used to deploy the AMI.
+            'current_ami_id' - AMI_ID of the current ASG.
             'current_asgs' - Lists of current active ASGs, keyed by cluster.
+            'disabled_ami_id' - AMI_ID of the disabled ASG.
             'disabled_asgs' - Lists of current inactive ASGs, keyed by cluster.
 
     Raises:
@@ -585,6 +612,9 @@ def deploy(ami_id):
 
     # Pull the EDP from the AMI ID
     edp = ec2.edp_for_ami(ami_id)
+
+    # fetch the active AMI_ID
+    disabled_ami_id = ec2.active_ami_for_edp(edp.environment, edp.deployment, edp.play)
 
     # These are all autoscaling groups that match the tags we care about.
     existing_edp_asgs = ec2.asgs_for_edp(edp, filter_asgs_pending_delete=False)
@@ -617,7 +647,13 @@ def deploy(ami_id):
                            "enabled_asgs: {} - disabled_asgs: {}".format(enabled_asgs, disabled_asgs))
 
     LOG.info("Woot! Deploy Done!")
-    return {'ami_id': ami_id, 'current_asgs': enabled_asgs, 'disabled_asgs': disabled_asgs}
+    return {
+        'ami_id': ami_id,
+        'current_ami_id': ami_id,
+        'current_asgs': enabled_asgs,
+        'disabled_asgs': disabled_asgs,
+        'disabled_ami_id': disabled_ami_id,
+    }
 
 
 def _red_black_deploy(

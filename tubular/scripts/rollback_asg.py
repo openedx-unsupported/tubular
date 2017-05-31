@@ -67,14 +67,16 @@ def rollback(config_file, dry_run, out_file):
     """
     config = yaml.safe_load(io.open(config_file, 'r'))
     current_asgs = config['current_asgs']
+    current_ami_id = config['current_ami_id']
     disabled_asgs = config['disabled_asgs']
-    ami_id = config['ami_id']
+    disabled_ami_id = config['disabled_ami_id']
 
     try:
         if not dry_run:
-            rollback_info = asgard.rollback(current_asgs, disabled_asgs, ami_id)
+            rollback_info = asgard.rollback(current_asgs, disabled_asgs, disabled_ami_id)
         else:
-            click.echo('Would have triggered a rollback of {}'.format(ami_id))
+            click.echo('Would have triggered a rollback of {} to prior AMI - {}'
+                       .format(current_ami_id, disabled_ami_id))
             rollback_info = {}
 
         if out_file:
@@ -85,7 +87,7 @@ def rollback(config_file, dry_run, out_file):
 
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho('Error rolling back AMI: {0}.\nMessage: {1}'.format(ami_id, err), fg='red')
+        click.secho('Error rolling back AMI: {0}.\nMessage: {1}'.format(current_ami_id, err), fg='red')
         sys.exit(1)
 
     sys.exit(0)
