@@ -377,14 +377,16 @@ class GitHubApiTestCase(TestCase):
             self.assertRaises(InvalidPullRequestError, self.api.message_pull_request, 3, 'test', 'test')
 
     def test_message_pr_deployed_stage(self):
+        deploy_date = github_api.default_expected_release_date()
         with patch.object(self.api, 'message_pull_request') as mock:
-            self.api.message_pr_deployed_stage(1, deploy_date=datetime(2017, 1, 10))
+            self.api.message_pr_deployed_stage(1, deploy_date=deploy_date)
             mock.assert_called_with(
                 1,
                 (github_api.PR_ON_STAGE_BASE_MESSAGE + github_api.PR_ON_STAGE_DATE_MESSAGE).format(
-                    date=datetime(2017, 1, 10)
+                    date=deploy_date,
+                    extra_text=''
                 ),
-                github_api.PR_ON_STAGE_BASE_MESSAGE,
+                github_api.PR_ON_STAGE_BASE_MESSAGE.format(extra_text=''),
                 False
             )
 
@@ -401,30 +403,29 @@ class GitHubApiTestCase(TestCase):
                 mock.assert_called_with(
                     1,
                     (github_api.PR_ON_STAGE_BASE_MESSAGE + github_api.PR_ON_STAGE_DATE_MESSAGE).format(
-                        date=deploy_date
+                        date=deploy_date, extra_text=''
                     ),
                     github_api.PR_ON_STAGE_BASE_MESSAGE,
                     False
                 )
 
-    def test_message_pr_deployed_prod(self):
+    @ddt.data(
+        (1, github_api.PR_ON_PROD_MESSAGE, '', False, 'message_pr_deployed_prod'),
+        (1337, github_api.PR_ON_PROD_MESSAGE, 'some extra words', False, 'message_pr_deployed_prod'),
+        (867, github_api.PR_RELEASE_CANCELED_MESSAGE, '', True, 'message_pr_release_canceled'),
+        (5, github_api.PR_RELEASE_CANCELED_MESSAGE, 'Elmo does not approve', False, 'message_pr_release_canceled'),
+        (30, github_api.PR_BROKE_VAGRANT_DEVSTACK_MESSAGE, '', False, 'message_pr_broke_vagrant'),
+        (9, github_api.PR_BROKE_VAGRANT_DEVSTACK_MESSAGE, 'Why did you merge this?', True, 'message_pr_broke_vagrant'),
+    )
+    @ddt.unpack
+    def test_message_pr_methods(self, pr_number, message, extra_text, force_message, fn_name):
         with patch.object(self.api, 'message_pull_request') as mock:
-            self.api.message_pr_deployed_prod(1)
+            getattr(self.api, fn_name)(pr_number, extra_text=extra_text, force_message=force_message)
             mock.assert_called_with(
-                1,
-                github_api.PR_ON_PROD_MESSAGE,
-                github_api.PR_ON_PROD_MESSAGE,
-                False
-            )
-
-    def test_message_pr_release_canceled(self):
-        with patch.object(self.api, 'message_pull_request') as mock:
-            self.api.message_pr_release_canceled(1)
-            mock.assert_called_with(
-                1,
-                github_api.PR_RELEASE_CANCELED_MESSAGE,
-                github_api.PR_RELEASE_CANCELED_MESSAGE,
-                False
+                pr_number,
+                message.format(extra_text=extra_text),
+                message.format(extra_text=''),
+                force_message
             )
 
 
