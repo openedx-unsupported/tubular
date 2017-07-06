@@ -7,12 +7,15 @@ from __future__ import unicode_literals
 
 import os
 import logging
+import re
 import time
 from datetime import datetime, timedelta
 import backoff
 import boto
 from boto.exception import EC2ResponseError, BotoServerError
 from boto.ec2.autoscale.tag import Tag
+import boto3
+import botocore.exceptions  # use botocore.exceptions.ClientError instead of BotoServerError for boto3 exceptions
 from tubular.utils import EDP, WAIT_SLEEP_TIME
 from tubular.exception import (
     ImageNotFoundException,
@@ -29,17 +32,33 @@ MAX_ATTEMPTS = os.environ.get('RETRY_MAX_ATTEMPTS', 5)
 RETRY_FACTOR = os.environ.get('RETRY_FACTOR', 1.5)
 
 
+# TODO: determine if we need to handle the situation where max retry attempts was reached.
 def giveup_if_not_throttling(ex):
     """
-    Checks that a BotoServerError exceptions message contains the throttling string.
+    Checks if a BotoServerError/ClientError exception indicates non-throttling related error.
+
+    If this check returns True, it suggests that retry handlers should give up.
 
     Args:
-        ex (boto.exception.BotoServerError):
+        ex (boto.exception.BotoServerError or botocore.exceptions.ClientError):
 
     Returns:
-        False if the throttling string is not found.
+        boolean: True if the exception indicates non-throttling related error.
+
+    Raises:
+        ValueError: the exception parameter is not a boto error response.
     """
-    return not (str(ex.status) == "400" and ex.body and '<Code>Throttling</Code>' in ex.body)
+    if isinstance(ex, BotoServerError):
+        status_code = ex.status
+        message = ex.body
+    elif isinstance(ex, botocore.exceptions.ClientError):
+        status_code = ex.response['Error'].get('Code', 'Unknown')
+        message = ex.response['Error'].get('Message', 'Unknown')
+    else:
+        raise ValueError('Expecting the parameter to be either boto.exception.BotoServerError (boto2) or ' +
+                         'botocore.exceptions.ClientError (boto3), instead got {}'.format(type(ex)))
+
+    return not (str(status_code) == '400' and message and '<Code>Throttling</Code>' in message)
 
 
 @backoff.on_exception(backoff.expo,
@@ -262,16 +281,18 @@ def is_stage_ami(ami_id):
     return ami_for_stage
 
 
-def asgs_for_edp(edp, filter_asgs_pending_delete=True):
+def asgs_for_edp(edp, filter_asgs_pending_delete=True, regex_filter=None):
     """
     All AutoScalingGroups that have the tags of this play.
 
     A play is made up of many auto_scaling groups.
 
     Arguments:
-        EDP Named Tuple: The edp tags for the ASGs you want.
+        edp (EDP Named Tuple): The edp tags for the ASGs you want.
+        filter_asgs_pending_delete (bool): Do not include ASGs tagged for deletion.
+        regex_filter (str): Only include ASGs matching this regex.
     Returns:
-        list: list of ASG names that match the EDP.
+        list: list of ASG names that match the EDP and given filters.
     eg.
 
      [
@@ -290,11 +311,20 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
 
     for group in all_groups:
         LOG.debug("Checking group {}".format(group))
+        filter_this_group = False
         tags = {tag.key: tag.value for tag in group.tags}
         LOG.debug("Tags for asg {}: {}".format(group.name, tags))
         if filter_asgs_pending_delete and ASG_DELETE_TAG_KEY in tags.keys():
-            LOG.info("filtering ASG: {0} because it is tagged for deletion on: {1}"
+            LOG.info('filtering out ASG "{0}" because it is tagged for deletion on "{1}"'
                      .format(group.name, tags[ASG_DELETE_TAG_KEY]))
+            filter_this_group = True
+        if regex_filter is not None and not re.match(regex_filter, group.name):
+            LOG.info('filtering out ASG "{0}" because it does not match the regex filter "{1}"'
+                     .format(group.name, regex_filter))
+            filter_this_group = True
+        if filter_this_group:
+            # for one or more reasons this group has been filtered out, so do
+            # not consider it for addition to the output.
             continue
 
         edp_keys = ['environment', 'deployment', 'play']
@@ -560,3 +590,76 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
         time.sleep(WAIT_SLEEP_TIME)
 
     raise TimeoutException("The following ELBs never became healthy: {}".format(elbs_left))
+
+
+@backoff.on_exception(backoff.expo,
+                      botocore.exceptions.ClientError,
+                      max_tries=MAX_ATTEMPTS,
+                      giveup=giveup_if_not_throttling,
+                      factor=RETRY_FACTOR)
+def ensure_cloudwatch_alarm(region, **kwargs):
+    """
+    Ensure there is a cloudwatch alarm as defined.
+
+    Arguments:
+        region (str): name of AWS region where to create alarm
+        **kwargs: Passthrough options to boto3 put_metric_alarm():
+            http://boto3.readthedocs.io/en/latest/reference/services/cloudwatch.html#CloudWatch.Client.put_metric_alarm
+
+    Returns:
+        Nothing, since the underlying call put_metric_alarm() returns nothing.
+    """
+    client = boto3.client('cloudwatch', region_name=region)
+    client.put_metric_alarm(**kwargs)
+
+
+@backoff.on_exception(backoff.expo,
+                      botocore.exceptions.ClientError,
+                      max_tries=MAX_ATTEMPTS,
+                      giveup=giveup_if_not_throttling,
+                      factor=RETRY_FACTOR)
+def ensure_asg_scaling_policy(region, **kwargs):
+    """
+    Ensure there is an ASG scaling policy as defined.
+
+    Arguments:
+        region (str): name of AWS region where to create policy
+        **kwargs: Passthrough options to boto3 put_scaling_policy():
+            http://boto3.readthedocs.io/en/latest/reference/services/autoscaling.html#AutoScaling.Client.put_scaling_policy
+
+    Returns:
+        dict: Response object from the put_scaling_policy() call.  At minimum,
+            this dict contains a 'PolicyARN' key whose value represents the ARN
+            of the newly created or modified scaling policy.
+    """
+    client = boto3.client('autoscaling', region_name=region)
+    response = client.put_scaling_policy(**kwargs)
+    return response
+
+
+@backoff.on_exception(backoff.expo,
+                      botocore.exceptions.ClientError,
+                      max_tries=MAX_ATTEMPTS,
+                      giveup=giveup_if_not_throttling,
+                      factor=RETRY_FACTOR)
+def describe_asg_scaling_policies(region, **kwargs):
+    """
+    Simple passthrough function to describe_policies() adding retry behavior.
+    """
+    client = boto3.client('autoscaling', region_name=region)
+    response = client.describe_policies(**kwargs)
+    return response
+
+
+@backoff.on_exception(backoff.expo,
+                      botocore.exceptions.ClientError,
+                      max_tries=MAX_ATTEMPTS,
+                      giveup=giveup_if_not_throttling,
+                      factor=RETRY_FACTOR)
+def describe_cloudwatch_alarms(region, **kwargs):
+    """
+    Simple passthrough function to describe_alarms() adding retry behavior.
+    """
+    client = boto3.client('cloudwatch', region_name=region)
+    response = client.describe_alarms(**kwargs)
+    return response
