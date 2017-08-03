@@ -180,6 +180,23 @@ class TestEC2(unittest.TestCase):
         self.assertEqual(len(asgs), expected_returned_count)
         self.assertTrue(all(asg_name in asgs for asg_name in expected_asg_names_list))
 
+    @mock_autoscaling
+    @mock_ec2
+    @ddt.file_data("test_asgs_for_edp_regex_filter_data.json")
+    def test_asgs_for_edp_regex_filter(self, params):
+        asgs, expected_returned_count, expected_asg_names_list = params
+
+        edp = EDP("foo", "bar", "baz")
+
+        for name, tags in six.viewitems(asgs):
+            create_asg_with_tags(name, tags)
+
+        asgs = ec2.asgs_for_edp(edp, regex_filter="matched_name")
+        self.assertIsInstance(asgs, list)
+
+        self.assertEqual(len(asgs), expected_returned_count)
+        self.assertTrue(all(asg_name in asgs for asg_name in expected_asg_names_list))
+
     @ddt.data(
         (103, 103, None),
         (103, 103, []),

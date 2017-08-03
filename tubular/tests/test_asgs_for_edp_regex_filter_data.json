@@ -1,0 +1,36 @@
+{
+  "no_asgs": [
+    {},
+    0,
+    []
+  ],
+  "untagged_and_mismatched_asgs" : [
+    {
+      "matched_name_but_untagged_asg": {},
+      "mismatched_but_tagged_asg": {
+        "environment": "foo",
+        "deployment": "bar",
+        "play": "baz"
+      }
+    },
+    0,
+    []
+  ],
+  "one_good_asg" : [
+    {
+      "matched_name_but_untagged_asg": {},
+      "mismatched_but_tagged_asg": {
+        "environment": "foo",
+        "deployment": "bar",
+        "play": "baz"
+      },
+      "matched_name_asg": {
+        "environment": "foo",
+        "deployment": "bar",
+        "play": "baz"
+      }
+    },
+    1,
+    ["matched_name_asg"]
+  ]
+}
