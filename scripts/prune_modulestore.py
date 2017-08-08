@@ -3,17 +3,22 @@
 """
 [WIP]
 
-Command-line script used to clean up (trim) the modulestore structure. By virtue of its nature, the module store versions updates and over a period of time, these updates account for a significant growth in the size of the mongo database.abs
+Command-line script used to clean up (trim) the modulestore structure. By virtue of its nature, the module store
+versions updates and over a period of time, these updates account for a significant growth in the size of the mongo database.
 
-This script supports:
-    1. dry-run:
+This script prunes the modulestore structures using the parameters specified.
+
+The final product will support:
+    1. dry-run: 
     2. prune targeted course/active version
     3. prune all active versions
+    4. support tests via static data
+    5. visualize targeted course trees
 
 Options 2 & 3 support removing all structures or keeping a number of older structures (in support of user-specified retention policy)
 
 See more details regarding module store at http://edx.readthedocs.io/projects/edx-developer-guide/en/latest/modulestores/split-mongo.html
-See additional details at https://openedx.atlassian.net/browse/PLAT-697
+See additional details regarding the growth problem with the modulestore at https://openedx.atlassian.net/browse/PLAT-697
 """
 
 # pylint: disable=invalid-name
@@ -265,24 +270,11 @@ def prune_structures(db, structures_to_remove):
 def relink(db, available_version_list_with_prev_original, list_of_avail_id):
 
     """
-    for each in available_version_list_with_prev_original:
-        if each["previous_version"] is None:
-            #print "Hi None"
-            pass
-        elif each["previous_version"] not in list_of_avail_id and each["previous_version"] is not None:
-            to_be_linked_version_id = []
-            # b = []
-            original_version_id = []
-            to_be_linked_version_id.append(each['_id'])
-            # b.append(each['previous_version'])
-            original_version_id.append(each['original_version'])
-            print to_be_linked_version_id
-            print original_version_id
-            # we are appending into the array and linking it, Since $in in mongo query is expecting list
-            db.modulestore.structures.update({'_id': {'$in': to_be_linked_version_id}},{'$set': {"previous_version": original_version_id[0]}})
-        else:
-            #print "Nothing to delete"
-            pass
+    There is ongoing discussions about the need to support relinking modulestore structures
+    to their original version. 
+
+    Keeping this in place as a place holder
+    
     """
 
 def find_previous_version(lookup_key, lookup_value, structures_list):
@@ -378,7 +370,7 @@ def get_structures_to_delete(active_versions, structures=None, db=None, version_
                         versions_to_retain.append(version_tree[-1])
                     
                         # This will extract the mid range of 1 to n+1 version id's from the version_tree
-                        versions_to_remove.extend(version_tree[1 : len(version_tree) -1 ]) 
+                        versions_to_remove.extend(version_tree[version_retention - 1 : len(version_tree) - 1 ]) 
                     
                     # tree mapping is complete, add to forest/list of trees
                     # only useful for dry runs and graphing purposes
