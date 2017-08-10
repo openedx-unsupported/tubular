@@ -1,0 +1,94 @@
+{
+    "active_versions": [
+        {
+            "_id": "583602b0e9ec21ec98727b81",
+            "versions": {
+                "draft-branch": "595f47eae9ec2154eceba297",
+                "published-branch": "595f47eae9ec2154eceba295"
+            }
+        },
+        {
+            "_id": "5836042ae9ec21ec8d727b81",
+            "versions": {
+                "library": "5876bb3077238e18e7d9c33e"
+            }
+        }
+    ],
+    "structures": [
+        {
+            "_id": "595f47eae9ec2154eceba297",
+            "original_version": "583602b0e9ec21ec98727b80",
+            "previous_version": "58dd9d18620de9c0be7937c3"
+        },
+        {
+            "_id": "58dd9d18620de9c0be7937c3",
+            "previous_version": "58dd0fd4620de9c0c9793627",
+            "original_version": "583602b0e9ec21ec98727b80"
+        },
+        {
+            "_id": "58dd0fd4620de9c0c9793627",
+            "previous_version": "58dd0fd4620de9c0c9ea7e27",
+            "original_version": "583602b0e9ec21ec98727b80"
+        },
+        {
+            "_id": "58dd0fd4620de9c0c9ea7e27",
+            "previous_version": "58cd0fd4620dedc0c9ea7e29",
+            "original_version": "583602b0e9ec21ec98727b80"
+        },
+        {
+            "_id": "58cd0fd4620dedc0c9ea7e29",
+            "previous_version": "583602b0e9ec21ec98727b80",
+            "original_version": "583602b0e9ec21ec98727b80"
+        },
+        {
+            "_id": "583602b0e9ec21ec98727b80",
+            "previous_version": null,
+            "original_version": "583602b0e9ec21ec98727b80"
+        },
+        {
+            "_id": "583602b0e9ec21ec98727b82",
+            "previous_version": null,
+            "original_version": "583602b0e9ec21ec98727b82"
+        },
+        {
+            "_id": "595f47eae9ec2154eceba295",
+            "original_version": "583602b0e9ec21ec98727b82",
+            "previous_version": "58dd9d18620de9c0be7937c4"
+        },
+        {
+            "_id": "58dd9d18620de9c0be7937c4",
+            "previous_version": "58dd0fd4620de9c0c9793625",
+            "original_version": "583602b0e9ec21ec98727b82"
+        },
+        {
+            "_id": "58dd0fd4620de9c0c9793625",
+            "original_version": "583602b0e9ec21ec98727b82",
+            "previous_version": "583602b0e9ec21ec98727b82"
+        },
+        {
+            "_id": "5876bb3077238e18e7d9c33e",
+            "original_version": "5836042ae9ec21ec8d727b80",
+            "previous_version": "5876ba1077238e18d5d9c3e1"
+        },
+        {
+            "_id": "5876ba1077238e18d5d9c3e1",
+            "previous_version": "584b4f9b77238edd2c55ff1a",
+            "original_version": "5836042ae9ec21ec8d727b80"
+        },
+        {
+            "_id": "584b4f9b77238edd2c55ff1a",
+            "original_version": "5836042ae9ec21ec8d727b80",
+            "previous_version": "584b4f7677238edd2155ff51"
+        },
+        {
+            "_id": "584b4f7677238edd2155ff51",
+            "previous_version": "5836042ae9ec21ec8d727b80",
+            "original_version": "5836042ae9ec21ec8d727b80"
+        },
+        {
+            "_id": "5836042ae9ec21ec8d727b80",
+            "previous_version": null,
+            "original_version": "5836042ae9ec21ec8d727b80"
+        }
+    ]
+}
