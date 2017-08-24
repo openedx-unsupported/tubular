@@ -11,11 +11,28 @@ from pymongo import MongoClient
 
 class ModuleStore(object):
     """
-    Handles pruning operations for the edx module store structues
+    Handles pruning operations for the edx module store structures
+
+    Here are schemas for key objects referenced in this class:
+
+    active_version: dictionary representing an active_version document
+        ** '_id': an ObjectId (guid)
+        ** 'versions': dictionary of versions
+            ** 'draft-branch': draft branch version
+            ** 'published-branch': published branch version
+            ** 'library': library version
+
+    structure: dictionary representing a structure document:
+        ** '_id': an ObjectId (guid)
+        ** 'original_version': the original structure id in the previous_version relation
+        ** 'previous_version': the structure id from which this one was derived. For published courses, this
+                                points to the previously published version of the structure not the draft
+                                published to this.
+
     """
 
     # the dictionary keys to track for active versions
-    target_active_versions_keys = [u'library', u'draft-branch', u'published-branch']
+    target_active_versions_keys = ['library', 'draft-branch', 'published-branch']
 
     def __init__(self, logger=None):
 
@@ -23,13 +40,20 @@ class ModuleStore(object):
         self.logger = logger
         self.db = None
 
+        # retention minimum
+        self._minimum_version_retention = 3
+
     def initialize_database_connection(self, mongo_database_connection=None, mongo_database_name="edxapp"):
 
         """
         Initialize database connection
+
+        :param mongo_database_connection: connection string to mongo database. If none is specified, localhost is used.
+        :param mongo_database_name: name of the mongo database the application will interact with
+
         """
 
-        if mongo_database_connection is None:
+        if not mongo_database_connection:
             client = MongoClient()
         else:
             client = MongoClient(mongo_database_connection)
@@ -40,47 +64,85 @@ class ModuleStore(object):
 
         """
         Log a message
+
+        :param message: the message to log
+        :param message_type: the type of log message (info, warning or debug). If a message is not info or warning, it
+        falls back to debug
+
         """
 
-        if self.logger is not None:
+        if self.logger:
             if message_type == "info":
                 self.logger.info(message)
+
+            elif message_type == "warning":
+                self.logger.warning(message)
+
             else:
                 self.logger.debug(message)
 
-    def save_data_file(self, data, output_file):
+    def save_data_file(self, data, output_file=None, output_file_object=None):
 
         """
         Save the specified data file to disk
+
+        :param data: the active versions and/or structure data being saved
+        :param output_file: path to an output file to save the data
+        :param output_file_object: tempfile file-like object for saving temporary files
+
+        This function supports two options:
+        1. specifying the output file name - output will be saved at the path specified
+        2. a file-like object returned from tempfile.NamedTemporaryFile
+
+        Either output_file or output_file_object must be specified. If both are specified,
+        output_file will be preferred. If none is specified, an exception will be raised.
+
         """
 
-        self.log("Saving the purged dataset to {0}".format(output_file))
+        if output_file:
+            self.log("Saving the purged dataset to %s" % output_file)
 
-        # write the updated dataset
-        with open(output_file, 'w') as outfile:
-            json.dump(data, outfile)
+            # write the updated dataset
+            with open(output_file, 'w') as outfile:
+                json.dump(data, outfile)
 
-    def prune_structures_static_data(self, original_dataset, structures_to_remove):
+        elif output_file_object:
+            self.log("Saving the purged dataset using tempfile file-like object")
+            output_file_object.write(json.dumps(data).encode())
+
+        else:
+            raise ValueError("you must specify either the output_file or output_file_object")
+
+    def prune_structures_static_data(self, structures, structures_to_remove):
 
         """
         Prune the static test data and return the results
+
+        :param structures: list of structure dictionaries (see dictionary definition in class docstring)
+        :param structures_to_remove: list of ObjectIds representing Ids of structures that should be pruned
+        :return: list of structure dictionaries
+
         """
 
-        pruned_static_data = []
+        pruned_structures = []
 
-        for structure_doc in original_dataset[u'structures']:
+        for structure_doc in structures:
 
-            if structure_doc[u'_id'] not in structures_to_remove:
-                pruned_static_data.append(structure_doc)
+            if structure_doc['_id'] not in structures_to_remove:
+                pruned_structures.append(structure_doc)
 
-        original_dataset[u'structures'] = pruned_static_data
-
-        return original_dataset
+        return pruned_structures
 
     def load_test_dataset(self, dataset_file):
 
         """
-        Load the json dataset from the file specified
+        Load the json data set from the file specified
+
+        :param dataset_file: file containing the test data set
+            ** 'active_versions': list of active version dictionaries
+            ** 'structures': list of structure dictionaries
+        :return: dictionary representing the test data set
+
         """
 
         # check if the specified file exists
@@ -88,7 +150,7 @@ class ModuleStore(object):
 
         assert isinstance(file_exists, object)
         if not file_exists:
-            raise IOError("The specified file doesn't exist: {0}".format(dataset_file))
+            raise IOError("The specified file doesn't exist: %s", dataset_file)
 
         # load the file
         with open(dataset_file) as dataset:
@@ -100,10 +162,15 @@ class ModuleStore(object):
 
         """
         Generate a document filter for bulk querying
+
+        :param doc_filter: dictionary representing a mongo bulk query filter
+            ** '$in': list of document ids guids
+        :return: fully formed mongo query filter
+
         """
 
         # establish the query filter  (respecting cases where no value is specified)
-        query_filter = None
+        query_filter = {}
 
         if len(doc_filter['$in']) > 0:
             query_filter = {"_id": doc_filter}
@@ -114,6 +181,10 @@ class ModuleStore(object):
 
         """
         Generate document filter for bulk querying the active version collection
+
+        :param active_version_id_list: list of ids for active versions
+        :return: fully formed mongo query filter
+
         """
 
         av_filter = {'$in': []}
@@ -121,18 +192,39 @@ class ModuleStore(object):
         for active_version_id in active_version_id_list.split(","):
             av_filter['$in'].append(ObjectId(active_version_id.strip()))
 
-        # establish the query filter  (respecting cases where no value is specified)
+        # establish the query filter (respecting cases where no value is specified)
         return self.get_query_filter(av_filter)
 
-    def get_structures_filter(self, active_version_list):
+    def get_structures_filter(self, active_version_list=None):
 
         """
         Generate document filter for bulk querying the structures collection
+
+        :param active_version_list: list of active version dictionaries (see dictionary definition in class docstring)
+        :return: fully formed mongo query filter
+
         """
 
         structure_filter = {'$in': []}
 
         for active_version in active_version_list:
+
+            # check for unknown versions
+            unknown_versions = [
+                version
+                for
+                version
+                in
+                active_version['versions']
+                if
+                version
+                not in
+                self.target_active_versions_keys
+            ]
+
+            if unknown_versions:
+                message = "%s are not currently tracked for pruning" % unknown_versions
+                self.log(message, "warning")
 
             for target_key in self.target_active_versions_keys:
                 if target_key in active_version['versions']:
@@ -145,12 +237,15 @@ class ModuleStore(object):
 
         """
         Get all documents from the active_versions collection
+        :param active_version_list: list of active version dictionaries (see dictionary definition in class docstring)
+        :return: list of active version dictionaries
+
         """
 
         # establish the active version filter (if required)
         active_version_filter = None
 
-        if active_version_list is not None:
+        if active_version_list:
             active_version_filter = self.get_active_version_filter(active_version_list)
 
         fields = {
@@ -173,24 +268,28 @@ class ModuleStore(object):
             # collect all interesting docs: library & [draft|published]-branch active versions
             avdocs_versions = active_version_doc['versions']
 
-            if u'library' in avdocs_versions \
-                    or u'draft-branch' in avdocs_versions \
-                    or u'published-branch' in avdocs_versions:
+            if 'library' in avdocs_versions \
+                    or 'draft-branch' in avdocs_versions \
+                    or 'published-branch' in avdocs_versions:
                 active_versions.append(active_version_doc)
 
         # return the active versions
         return active_versions
 
-    def get_structures(self, filter_enabled, active_versions_list):
+    def get_structures(self, active_versions=None):
 
         """
         Get all documents from the structures collection
+
+        :param active_versions: list of active version dictionaries (see dictionary definition in class docstring)
+        :return: list of structure dictionaries (see dictionary definition in class docstring)
         """
 
         # use filters (if required)
         structure_filter = None
-        if filter_enabled:
-            structure_filter = self.get_structures_filter(active_versions_list)
+        if active_versions:
+            # TODO: implement structure filtering based on specified active versions
+            structure_filter = self.get_structures_filter()
 
         fields = {
             "_id": 1,
@@ -198,58 +297,53 @@ class ModuleStore(object):
             "original_version": 1
         }
 
-        structures_list = []
+        # Get a list of all structures (or those relevant to the active versions via specified filter)
+        structure_docs = self.db.modulestore.structures.find(structure_filter, fields)
 
-        # TODO: apply filters to support limiting the pruning operation to 1 or more courses / active versions
-        if structure_filter is None:
-            resultset = self.db.modulestore.structures.find({}, fields)
-        else:
-            resultset = self.db.modulestore.structures.find(structure_filter, fields)
-
-        for structure_doc in resultset:
-            # Get a list of all structures (or those relevant to the active versions via specified filter)
-            # this will give the list of Dictionary's with _id and previous_version
-            structures_list.append(structure_doc)
-
-        return structures_list
+        return list(structure_docs)
 
     def prune_structures(self, structures_to_remove):
 
         """
         Prune the specified documents from the structures collection
+
+        :param structures_to_remove: list of structure ids targeted for removal
+        :return: mongo WriteResult object representing the status of the operation
+
         """
 
         # TODO: (performance): chunk up the removals to minimize possible production impact
-        if len(structures_to_remove) == 0:
+        if not structures_to_remove == 0:
             return
 
-        structures_removal_filter = {'$in': []}
+        structures_removal_filter = {
+            '$in': [ObjectId(oid) for oid in structures_to_remove]
+        }
 
-        for structure_objectid_str in structures_to_remove:
-            structures_removal_filter['$in'].append(ObjectId(structure_objectid_str))
-
-        return self.db.modulestore.structures.remove({'_id': structures_removal_filter})
+        return self.db.modulestore.structures.remove(structures_removal_filter)
 
     def relink(self, structures):
 
         """
         Relink structures to their original version post pruning
+
+        :param structures: list of structure dictionaries to relink (see dictionary definition in class docstring)
+        :return: list of structure dictionaries relinked to their original versions
+
         """
 
         self.log("Relinking structures to their original versions")
 
-        index_position = 0
-        available_ids = []
-
         # build a list of all available ids
-        available_ids.extend([structure_doc['_id'] for structure_doc in structures])
+        available_ids = {structure_doc['_id'] for structure_doc in structures}
 
         # iterate structures and relink to original
-        for structure_doc in structures:
+        for index_position, structure_doc in enumerate(structures):
 
-            if structure_doc["previous_version"] is not None and structure_doc["previous_version"] not in available_ids:
+            if structure_doc["previous_version"] and structure_doc["previous_version"] not in available_ids:
 
-                self.log("{0} was not found in {1}".format(structure_doc["previous_version"], available_ids), "debug")
+                message = "%s was not found in %s" % (structure_doc["previous_version"], available_ids)
+                self.log(message, "debug")
 
                 to_be_linked_version_id = []
                 original_version_id = []
@@ -257,11 +351,11 @@ class ModuleStore(object):
                 to_be_linked_version_id.append(structure_doc['_id'])
                 original_version_id.append(structure_doc['original_version'])
 
-                self.log("{0} version is being linked to {1}".format(to_be_linked_version_id, original_version_id[0]),
-                         "debug")
+                message = "%s version is being linked to %s" % (to_be_linked_version_id, original_version_id[0])
+                self.log(message, "debug")
 
                 # TODO: refactor to support bulk updates for performance concerns
-                if self.db is not None:
+                if self.db:
 
                     # this is a live update session
                     self.db.modulestore.structures.update(
@@ -271,74 +365,94 @@ class ModuleStore(object):
                 else:
 
                     # this is working against static dataset
-                    structures[index_position][u'previous_version'] = original_version_id[0]
+                    structures[index_position]['previous_version'] = original_version_id[0]
 
             else:
-                self.log("Nothing to link for structure: {0}".format(structure_doc['_id']), "debug")
+                self.log("Nothing to link for structure: %s" % structure_doc['_id'], "debug")
 
             # advance the index position
             index_position += 1
 
         return structures
 
-    def find_previous_version(self, lookup_key, lookup_value, structures_list):
+    def find_previous_version(self, lookup_key, lookup_value, structures):
 
         """
         This function searches all structure documents for the one specified
+
+        :param lookup_key: dictionary key to use for lookups
+        :param lookup_value: expected value of the dictionary field to establish a match
+        :param structures: list of structure dictionaries (see dictionary definition in class docstring)
+        :return: structure dictionary with matching key/value or None
+
         """
 
+        # TODO: Perf improvements needed here (ie: using lookup dictionary instead)
         # it is more efficient to use a structures list
         # instead of separate db calls (which may be necessary for supporting
         # pruning individual active versions)
-        for structure_doc in structures_list:
+        for structure_doc in structures:
 
             if structure_doc[lookup_key] == lookup_value:
                 return structure_doc
 
-    def build_activeversion_tree(self, active_version, structures):
+    def build_active_version_ancestry(self, active_version, structures):
 
         """
-        Build a tree representing the active_version and its tree of ancestors
-        from structures
+        Build a tree representing the active_version and its list of ancestors from structures
+        :param active_version: an active version dictionary (see dictionary definition in class docstring)
+        :param structures: list of structure dictionaries (see dictionary definition in class docstring)
+        :return: list of structures representing an active version lineage
         """
 
         # link the active version to its base version in structures
         structure_doc = self.find_previous_version('_id', active_version, structures)
 
-        # map the tree for the identified structure
-        version_tree = []
+        # map the ancestors for the identified structure
+        version_ancestry = []
 
         # recursively identify the ancestors
-        if structure_doc is not None:
+        if structure_doc:
 
-            # build the tree
-            version_tree.append(str(structure_doc['_id']))
+            # build the ancestral list
+            version_ancestry.append(str(structure_doc['_id']))
 
-            while structure_doc[u'previous_version'] is not None:
+            while structure_doc['previous_version']:
 
                 # search for the parent structure doc
-                structure_doc = self.find_previous_version('_id', structure_doc[u'previous_version'], structures)
+                structure_doc = self.find_previous_version('_id', structure_doc['previous_version'], structures)
 
-                # build the tree - recursively
-                if structure_doc is None:
-                    # end of the tree (original version)
+                # build the ancestral list - recursively
+                if not structure_doc:
+                    # start of the lineage (original version)
                     break
 
-                version_tree.append(str(structure_doc['_id']))
+                version_ancestry.append(str(structure_doc['_id']))
 
-        return version_tree
+        return version_ancestry
 
-    def get_structures_to_delete(self, active_versions, structures=None, version_retention=2, relink_structures=False):
+    def get_structures_to_delete(self, active_versions, structures=None, version_retention=3):
 
         """
         Generate a list of structures that meet the conditions for pruning and associated visualization
+
+        :param active_versions: list of active version dictionaries (see dictionary definition in class docstring)
+        :param structures: list of structure dictionaries (see dictionary definition in class docstring)
+        :param version_retention: number of structures to retain after purge excluding the original version
+        :return: set of structures to be removed and their ancestry list
         """
 
         # initialize key variables
-        version_trees = []
+        version_ancestry_lists = []
         versions_to_retain = []
         versions_to_remove = []
         counter = 0
+
+        # defensive: ensure that version_retention >=3
+        if version_retention < self._minimum_version_retention:
+
+            message_template = "Version retention of %s is below the minimum allowed and is being updated to %s"
+            self.log(message_template % (version_retention, self._minimum_version_retention), "info")
 
         # iterate the active versions and build the associated version tree
         for active_version in active_versions:
@@ -350,37 +464,36 @@ class ModuleStore(object):
                 if target_key in active_version['versions']:
 
                     # print(active_version)
-                    version_tree = self.build_activeversion_tree(active_version['versions'][target_key], structures)
+                    version_ancestry_list = self.build_active_version_ancestry(
+                        active_version['versions'][target_key],
+                        structures)
 
                     # only add the tree if it has 1+ element
-                    tree_length = len(version_tree)
-                    if tree_length > 0:
+                    if len(version_ancestry_list) > 0:
 
-                        status_message = "Processing Active Version {0} | {3}: {1} version with a {2}-version tree"
+                        status_message = "Processing Active Version %s | %s: %s version with a %s-version tree"
 
-                        self.log(status_message.format(
+                        self.log(status_message % (
                             counter,
+                            str(active_version['_id']),
                             target_key,
-                            len(version_tree),
-                            str(active_version['_id'])))
+                            len(version_ancestry_list)))
 
                         # if the tree exceeds the minimum number of elements,
                         # identify tree elements that should be removed
-                        if tree_length > version_retention:
+                        if len(version_ancestry_list) > version_retention:
 
                             # track the required version: first & last
-                            versions_to_retain.extend(version_tree[:2])
+                            versions_to_retain.extend(version_ancestry_list[:2])
+                            versions_to_retain.append(version_ancestry_list[-1])
 
-                            # if relinking is not required, it is ok to remove the original version
-                            if not relink_structures:
-                                versions_to_retain.append(version_tree[-1])
-
-                            # This will extract the mid range of 1 to n+1 version id's from the version_tree
-                            versions_to_remove.extend(version_tree[version_retention - 1: len(version_tree) - 1])
+                            # This will extract the mid range of 1 to n+1 version id's from the version_ancestry_list
+                            versions_to_remove.extend(
+                                version_ancestry_list[version_retention - 1: len(version_ancestry_list) - 1])
 
                             # tree mapping is complete, add to forest/list of trees
                         # only useful for dry runs and graphing purposes
-                        version_trees.append(version_tree)
+                        version_ancestry_lists.append(version_ancestry_list)
 
         # All trees have been processed.
         # We now have a final list of structures to retain & remove
@@ -388,17 +501,22 @@ class ModuleStore(object):
         # remove duplicates from the versions_to_retain
         versions_to_retain = list(set(versions_to_retain))
 
+        # TODO: Performance improvements: evaluate if keeping as set is more optimal than as list
         # remove structures on the versions_to_remove list that are on the versions_to_retain list
         # this supports course re-runs and related links
-        versions_to_remove = list(set(versions_to_remove) - set(versions_to_retain))
+        versions_to_remove = set(versions_to_remove) - set(versions_to_retain)
 
-        # return the list of items to remove
-        return {'versions_to_remove': versions_to_remove, 'version_trees': version_trees}
+        # return the set of items to remove and the associated list of version trees
+        return {'versions_to_remove': versions_to_remove, 'version_ancestry_lists': version_ancestry_lists}
 
     def get_database(self, connection, database_name):
 
         """
         Establish a connection to the database
+
+        :param connection: connection string to mongo database
+        :param database_name: name of the database
+        :return: mongo database client reference
         """
 
         if connection is None:

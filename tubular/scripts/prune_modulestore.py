@@ -25,6 +25,9 @@ http://edx.readthedocs.io/projects/edx-developer-guide/en/latest/modulestores/sp
 See additional details regarding the growth problem with the modulestore at
 https://openedx.atlassian.net/browse/PLAT-697
 
+See detail documentation for the structures collection at
+https://github.com/edx/edx-platform/blob/master/common/lib/xmodule/xmodule/modulestore/split_mongo/split.py
+
 """
 
 from __future__ import absolute_import
@@ -47,36 +50,31 @@ LOG = logging.getLogger(__name__)
 # parameter handling
 @click.command()
 @click.option(
-    u'--connection',
+    '--connection',
     default=None,
-    help=u'Connection string to the target mongo database. This defaults to localhost without password.'
+    help='Connection string to the target mongo database. This defaults to localhost without password.'
 )
 @click.option(
-    u'--version-retention',
-    default=2,
-    help=u'Number of versions to retain for a course/library'
+    '--version-retention',
+    default=3,
+    type=click.IntRange(3, None),
+    help='Number of versions to retain for a course/library: from active version to origin'
 )
 @click.option(
-    u'--relink-structures',
-    default=True,
-    help=u'boolean indicator of whether or not to relink the structures to the original version after pruning'
-)
-@click.option(
-    u'--active-version-filter',
+    '--active-version-filter',
     default=None,
-    help=u'comma-separated list of objectIds to target for pruning'
+    help='comma-separated list of objectIds to target for pruning'
 )
 @click.option(
-    u'--database-name',
-    default=u'edxapp',
-    help=u'name of the edx mongo database containing the course structures to prune'
+    '--database-name',
+    default='edxapp',
+    help='name of the edx mongo database containing the course structures to prune'
 )
-@click_log.simple_verbosity_option(default=u'INFO')
+@click_log.simple_verbosity_option(default='INFO')
 @click_log.init()
 def prune_modulestore(
         connection,
         version_retention,
-        relink_structures,
         active_version_filter,
         database_name):
 
@@ -88,10 +86,6 @@ def prune_modulestore(
     module_store = modulestore.ModuleStore(logger=LOG)
     structure_prune_data = None
 
-    # ensure that version_retention is 2+
-    if version_retention < 2:
-        raise ValueError("Version retention must be at at least 2: origin and active version")
-
     # we are using live data
     # establish database connection
     LOG.info("Establishing database connection")
@@ -101,29 +95,27 @@ def prune_modulestore(
 
     # get the data: active versions (courses/library) and accompanying structures
     active_versions = module_store.get_active_versions(active_version_filter)
-    LOG.info("{0} active versions identified.".format(len(active_versions)))
+    LOG.info("%s active versions identified.", len(active_versions))
 
     # get the accompanying structures
-    filter_enabled = (active_version_filter is not None and len(active_versions) > 0)
-    structures = module_store.get_structures(filter_enabled, active_versions)
-    LOG.info("{0} associated structure docs identified".format(len(structures)))
+    structures = module_store.get_structures()
+    LOG.info("%s associated structure docs identified", len(structures))
 
     # identify structures that should be deleted
     structure_prune_data = module_store.get_structures_to_delete(
         active_versions,
         structures,
-        version_retention,
-        relink_structures)
+        version_retention)
 
     # prune structures
-    structure_prune_candidates = structure_prune_data[u'versions_to_remove']
-    LOG.info("{0} structures identified for removal".format(len(structure_prune_candidates)))
+    structure_prune_candidates = structure_prune_data['versions_to_remove']
+    LOG.info("%s structures identified for removal", len(structure_prune_candidates))
 
     # we are pruning the live data
     module_store.prune_structures(structure_prune_candidates)
 
-    if relink_structures:
-        module_store.relink(structures)
+    # relinking is mandatory
+    module_store.relink(structures)
 
 
 if __name__ == '__main__':
