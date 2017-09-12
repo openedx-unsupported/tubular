@@ -120,7 +120,7 @@ def create_release_page(
         title = "{:%Y-%m-%d} Release".format(EXPECTED_RELEASE_DATE)
 
     if space is None:
-        space = 'ENG'
+        space = 'RELEASES'
 
     if parent_title is None:
         parent_title = 'LMS/Studio Release Pages'
