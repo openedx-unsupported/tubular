@@ -124,14 +124,7 @@ class ModuleStore(object):
 
         """
 
-        pruned_structures = []
-
-        for structure_doc in structures:
-
-            if structure_doc['_id'] not in structures_to_remove:
-                pruned_structures.append(structure_doc)
-
-        return pruned_structures
+        return [structure_doc for structure_doc in structures if structure_doc['_id'] not in structures_to_remove]
 
     def load_test_dataset(self, dataset_file):
 
@@ -148,7 +141,6 @@ class ModuleStore(object):
         # check if the specified file exists
         file_exists = os.path.isfile(dataset_file)
 
-        assert isinstance(file_exists, object)
         if not file_exists:
             raise IOError("The specified file doesn't exist: %s", dataset_file)
 
@@ -187,10 +179,8 @@ class ModuleStore(object):
 
         """
 
-        av_filter = {'$in': []}
-
-        for active_version_id in active_version_id_list.split(","):
-            av_filter['$in'].append(ObjectId(active_version_id.strip()))
+        filter_list = [ObjectId(active_version_id.strip()) for active_version_id in active_version_id_list.split(",")]
+        av_filter = {'$in': filter_list}
 
         # establish the query filter (respecting cases where no value is specified)
         return self.get_query_filter(av_filter)
@@ -211,15 +201,8 @@ class ModuleStore(object):
 
             # check for unknown versions
             unknown_versions = [
-                version
-                for
-                version
-                in
-                active_version['versions']
-                if
-                version
-                not in
-                self.target_active_versions_keys
+                version for version in active_version['versions']
+                if version not in self.target_active_versions_keys
             ]
 
             if unknown_versions:
@@ -455,9 +438,7 @@ class ModuleStore(object):
             self.log(message_template % (version_retention, self._minimum_version_retention), "info")
 
         # iterate the active versions and build the associated version tree
-        for active_version in active_versions:
-
-            counter += 1
+        for counter, active_version in enumerate(active_versions, start=1):
 
             for target_key in self.target_active_versions_keys:
 

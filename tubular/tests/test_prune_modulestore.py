@@ -98,13 +98,7 @@ class TestModuleStorePruning(unittest.TestCase):
 
         """
 
-        found = False
-        for structure_doc in structures:
-            if structure_doc['_id'] == key:
-                found = True
-                break
-
-        return found
+        return any(structure_doc['_id'] == key for structure_doc in structures)
 
     def get_unique_structure_ids(self, structures):
 

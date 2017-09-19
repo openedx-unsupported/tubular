@@ -86,7 +86,6 @@ def prune_modulestore(
     module_store = modulestore.ModuleStore(logger=LOG)
     structure_prune_data = None
 
-    # we are using live data
     # establish database connection
     LOG.info("Establishing database connection")
     module_store.initialize_database_connection(
