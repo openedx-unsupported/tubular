@@ -407,6 +407,8 @@ def remove_asg_deletion_tag(asg_name):
             for tag in asg.tags:
                 if tag.key == ASG_DELETE_TAG_KEY:
                     tag.delete()
+                if tag.key == WORKER_ASG_DELETE_TAG_KEY:
+                    tag.delete()
 
 
 def get_asgs_pending_delete():
