@@ -25,6 +25,7 @@ LOG = logging.getLogger(__name__)
 
 ISO_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 ASG_DELETE_TAG_KEY = 'delete_on_ts'
+WORKER_ASG_DELETE_TAG_KEY = 'delete_worker_on_ts'
 MAX_ATTEMPTS = os.environ.get('RETRY_MAX_ATTEMPTS', 5)
 RETRY_FACTOR = os.environ.get('RETRY_FACTOR', 1.5)
 
@@ -318,7 +319,7 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
     return matching_groups
 
 
-def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
+def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None, asg_delete_tag_key):
     """
     Create a tag that will be used to mark an ASG for deletion.
     """
@@ -326,7 +327,7 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
         tag_value = None
     else:
         tag_value = (datetime.utcnow() + timedelta(seconds=seconds_until_delete_delta)).isoformat()
-    return Tag(key=ASG_DELETE_TAG_KEY,
+    return Tag(key=asg_delete_tag_key,
                value=tag_value,
                propagate_at_launch=False,
                resource_id=asg_name)
@@ -349,6 +350,29 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=1800):
         None
     """
     tag = create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta)
+    autoscale = boto.connect_autoscale()
+    if len(get_all_autoscale_groups([asg_name])) < 1:
+        LOG.info("ASG {} no longer exists, will not tag".format(asg_name))
+    else:
+        autoscale.create_or_update_tags([tag])
+
+@backoff.on_exception(backoff.expo,
+                      BotoServerError,
+                      max_tries=MAX_ATTEMPTS,
+                      giveup=giveup_if_not_throttling,
+                      factor=RETRY_FACTOR)
+def tag_worker_asg_for_deletion(asg_name, seconds_until_delete_delta=1800):
+    """
+    Tag an asg with a tag named ASG_DELETE_TAG_KEY with a value of the MS since epoch UTC + ms_until_delete_delta
+    that an ASG may be deleted.
+
+    Arguments:
+        asg_name (str): the name of the autoscale group to tag
+
+    Returns:
+        None
+    """
+    tag = create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=seconds_until_delete_delta, asg_delete_tag_key=WORKER_ASG_DELETE_TAG_KEY)
     autoscale = boto.connect_autoscale()
     if len(get_all_autoscale_groups([asg_name])) < 1:
         LOG.info("ASG {} no longer exists, will not tag".format(asg_name))
