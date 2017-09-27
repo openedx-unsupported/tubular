@@ -293,6 +293,7 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
         LOG.debug("Checking group {}".format(group))
         tags = {tag.key: tag.value for tag in group.tags}
         LOG.debug("Tags for asg {}: {}".format(group.name, tags))
+        # TODO: This is problematic because it assumes all instacnes to be deleted have the same deletion tag
         if filter_asgs_pending_delete and ASG_DELETE_TAG_KEY in tags.keys():
             LOG.info("filtering ASG: {0} because it is tagged for deletion on: {1}"
                      .format(group.name, tags[ASG_DELETE_TAG_KEY]))
