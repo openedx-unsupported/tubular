@@ -413,8 +413,8 @@ def remove_asg_deletion_tag(asg_name):
 
 def get_asgs_pending_delete(asg_delete_tag_key=ASG_DELETE_TAG_KEY):
     """
-    Get a list of all the autoscale groups marked with the ASG_DELETE_TAG_KEY.
-    Return only those groups who's ASG_DELETE_TAG_KEY as past the current time.
+    Get a list of all the autoscale groups marked with the asg_delete_tag_key.
+    Return only those groups who's asg_delete_tag_key is past the current time.
 
     It's intended for this method to be robust and to return as many ASGs that
     are pending delete as possible even if an error occurs during the process.
