@@ -411,13 +411,16 @@ def remove_asg_deletion_tag(asg_name):
                     tag.delete()
 
 
-def get_asgs_pending_delete():
+def get_asgs_pending_delete(asg_delete_tag_key=ASG_DELETE_TAG_KEY):
     """
     Get a list of all the autoscale groups marked with the ASG_DELETE_TAG_KEY.
     Return only those groups who's ASG_DELETE_TAG_KEY as past the current time.
 
     It's intended for this method to be robust and to return as many ASGs that
     are pending delete as possible even if an error occurs during the process.
+
+    Args:
+        asg_delete_tag_key (str): AWS tag name to check for pending delete timestamp
 
     Returns:
         List(<boto.ec2.autoscale.group.AutoScalingGroup>)
@@ -431,8 +434,8 @@ def get_asgs_pending_delete():
         LOG.debug("Checking for {0} on asg: {1}".format(ASG_DELETE_TAG_KEY, asg.name))
         for tag in asg.tags:
             try:
-                if tag.key == ASG_DELETE_TAG_KEY:
-                    LOG.debug("Found {0} tag, deletion time: {1}".format(ASG_DELETE_TAG_KEY, tag.value))
+                if tag.key == asg_delete_tag_key:
+                    LOG.debug("Found {0} tag, deletion time: {1}".format(asg_delete_tag_key, tag.value))
                     if datetime.strptime(tag.value, ISO_DATE_FORMAT) - current_datetime < timedelta(0, 0, 0):
                         LOG.debug("Adding ASG: {0} to the list of ASGs to delete.".format(asg.name))
                         asgs_pending_delete.append(asg)
