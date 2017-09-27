@@ -455,6 +455,15 @@ def get_asgs_pending_delete(asg_delete_tag_key=ASG_DELETE_TAG_KEY):
     LOG.info("Number of ASGs pending delete: {0}".format(len(asgs_pending_delete)))
     return asgs_pending_delete
 
+def get_worker_asgs_pending_delete(asg_delete_tag_key=ASG_DELETE_TAG_KEY):
+    """
+    Wrapper around get_asgs_pending_delete to get worker asgs pending delete
+
+    Returns:
+        List(<boto.ec2.autoscale.group.AutoScalingGroup>)
+    """
+    return get_asgs_pending_delete(asg_delete_tag_key=WORKER_ASG_DELETE_TAG_KEY)
+
 
 def terminate_instances(region, tags, max_run_hours, skip_if_tag):
     """
