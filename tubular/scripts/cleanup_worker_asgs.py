@@ -18,7 +18,7 @@ import click
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular import asgard  # pylint: disable=wrong-import-position
-from tubular.ec2 import get_asgs_pending_delete  # pylint: disable=wrong-import-position
+from tubular.ec2 import get_worker_asgs_pending_delete  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
@@ -30,8 +30,8 @@ def delete_worker_asg():
     """
     error = False
 
-    #TODO: Check 0 publishers connected
-    #TODO: Check queues empty
+    # TODO: Check 0 publishers connected
+    # TODO: Check queues empty
 
     try:
         asgs = get_worker_asgs_pending_delete()

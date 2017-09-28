@@ -361,6 +361,7 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=1800):
     else:
         autoscale.create_or_update_tags([tag])
 
+
 @backoff.on_exception(backoff.expo,
                       BotoServerError,
                       max_tries=MAX_ATTEMPTS,
@@ -377,7 +378,10 @@ def tag_worker_asg_for_deletion(asg_name, seconds_until_delete_delta=1800):
     Returns:
         None
     """
-    tag = create_tag_for_asg_deletion(asg_name, WORKER_ASG_DELETE_TAG_KEY, seconds_until_delete_delta=seconds_until_delete_delta)
+    tag = create_tag_for_asg_deletion(
+        asg_name, WORKER_ASG_DELETE_TAG_KEY,
+        seconds_until_delete_delta=seconds_until_delete_delta
+    )
     autoscale = boto.connect_autoscale()
     if len(get_all_autoscale_groups([asg_name])) < 1:
         LOG.info("ASG {} no longer exists, will not tag".format(asg_name))
@@ -408,6 +412,7 @@ def remove_asg_deletion_tag(asg_name):
             for tag in asg.tags:
                 if tag.key in [ASG_DELETE_TAG_KEY, WORKER_ASG_DELETE_TAG_KEY]:
                     tag.delete()
+
 
 def get_asgs_pending_delete(asg_delete_tag_key=ASG_DELETE_TAG_KEY):
     """
@@ -453,7 +458,8 @@ def get_asgs_pending_delete(asg_delete_tag_key=ASG_DELETE_TAG_KEY):
     LOG.info("Number of ASGs pending delete: {0}".format(len(asgs_pending_delete)))
     return asgs_pending_delete
 
-def get_worker_asgs_pending_delete(asg_delete_tag_key=ASG_DELETE_TAG_KEY):
+
+def get_worker_asgs_pending_delete():
     """
     Wrapper around get_asgs_pending_delete to get worker asgs pending delete
 
