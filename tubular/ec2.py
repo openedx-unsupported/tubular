@@ -293,14 +293,15 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
         LOG.debug("Checking group {}".format(group))
         tags = {tag.key: tag.value for tag in group.tags}
         LOG.debug("Tags for asg {}: {}".format(group.name, tags))
-        if filter_asgs_pending_delete and ASG_DELETE_TAG_KEY in tags.keys():
-            LOG.info("filtering ASG: {0} because it is tagged for deletion on: {1}"
-                     .format(group.name, tags[ASG_DELETE_TAG_KEY]))
-            continue
-        elif filter_asgs_pending_delete and WORKER_ASG_DELETE_TAG_KEY in tags.keys():
-            LOG.info("filtering ASG: {0} because it is tagged for deletion on: {1}"
-                     .format(group.name, tags[WORKER_ASG_DELETE_TAG_KEY]))
-            continue
+        if filter_asgs_pending_delete:
+            if ASG_DELETE_TAG_KEY in tags.keys():
+                LOG.info("filtering ASG: {0} because it is tagged for deletion on: {1}"
+                         .format(group.name, tags[ASG_DELETE_TAG_KEY]))
+                continue
+            elif WORKER_ASG_DELETE_TAG_KEY in tags.keys():
+                LOG.info("filtering ASG: {0} because it is tagged for deletion on: {1}"
+                         .format(group.name, tags[WORKER_ASG_DELETE_TAG_KEY]))
+                continue
 
         edp_keys = ['environment', 'deployment', 'play']
         if all([tag in tags for tag in edp_keys]):
@@ -323,7 +324,7 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
     return matching_groups
 
 
-def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None, asg_delete_tag_key):
+def create_tag_for_asg_deletion(asg_name, asg_delete_tag_key, seconds_until_delete_delta=None):
     """
     Create a tag that will be used to mark an ASG for deletion.
     """
@@ -353,7 +354,7 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=1800):
     Returns:
         None
     """
-    tag = create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta)
+    tag = create_tag_for_asg_deletion(asg_name, ASG_DELETE_TAG_KEY, seconds_until_delete_delta)
     autoscale = boto.connect_autoscale()
     if len(get_all_autoscale_groups([asg_name])) < 1:
         LOG.info("ASG {} no longer exists, will not tag".format(asg_name))
@@ -376,7 +377,7 @@ def tag_worker_asg_for_deletion(asg_name, seconds_until_delete_delta=1800):
     Returns:
         None
     """
-    tag = create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=seconds_until_delete_delta, asg_delete_tag_key=WORKER_ASG_DELETE_TAG_KEY)
+    tag = create_tag_for_asg_deletion(asg_name, WORKER_ASG_DELETE_TAG_KEY, seconds_until_delete_delta=seconds_until_delete_delta)
     autoscale = boto.connect_autoscale()
     if len(get_all_autoscale_groups([asg_name])) < 1:
         LOG.info("ASG {} no longer exists, will not tag".format(asg_name))
@@ -405,11 +406,8 @@ def remove_asg_deletion_tag(asg_name):
     else:
         for asg in asgs:
             for tag in asg.tags:
-                if tag.key == ASG_DELETE_TAG_KEY:
+                if tag.key in [ASG_DELETE_TAG_KEY, WORKER_ASG_DELETE_TAG_KEY]:
                     tag.delete()
-                if tag.key == WORKER_ASG_DELETE_TAG_KEY:
-                    tag.delete()
-
 
 def get_asgs_pending_delete(asg_delete_tag_key=ASG_DELETE_TAG_KEY):
     """

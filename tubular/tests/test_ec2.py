@@ -375,7 +375,7 @@ class TestEC2(unittest.TestCase):
 
     def test_create_tag_for_asg_deletion(self):
         asg_name = "test-asg-tags"
-        tag = ec2.create_tag_for_asg_deletion(asg_name, 1)
+        tag = ec2.create_tag_for_asg_deletion(asg_name, ec2.ASG_DELETE_TAG_KEY, 1)
 
         self.assertEqual(tag.key, ec2.ASG_DELETE_TAG_KEY)
         self.assertEqual(tag.resource_id, asg_name)
@@ -401,9 +401,9 @@ class TestEC2(unittest.TestCase):
         ec2.datetime = NewDateTime
 
         asg_name = "test-asg-tags"
-        tag = ec2.create_tag_for_asg_deletion(asg_name, 10)
+        tag = ec2.create_tag_for_asg_deletion(asg_name, ec2.WORKER_ASG_DELETE_TAG_KEY, 10)
         self.assertEqual(tag.value, datetime.datetime(2016, 5, 18, 1, 0, 10, 0).isoformat())
-        tag = ec2.create_tag_for_asg_deletion(asg_name, 300)
+        tag = ec2.create_tag_for_asg_deletion(asg_name, ec2.WORKER_ASG_DELETE_TAG_KEY, 300)
         self.assertEqual(tag.value, datetime.datetime(2016, 5, 18, 1, 5, 0, 0).isoformat())
 
         # Undo the monkey patch

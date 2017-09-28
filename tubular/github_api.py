@@ -772,7 +772,7 @@ class GitHubAPI(object):
 
     def message_pr_deployed_stage(self, pr_number, deploy_date=None, force_message=False, extra_text=''):
         """
-        Sends a message that this PRs commits have been deployed to the staging environment
+        Sends a message that this PRs commits have been deployed to the  staging environment
 
         Args:
             pr_number (int): The number of the pull request
