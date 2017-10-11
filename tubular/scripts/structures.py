@@ -84,8 +84,25 @@ def cli(ctx, connection, database_name):
         "to 2. Put 0 here if you want to prune as much as possible."
     )
 )
+@click.option(
+    '--delay',
+    default=5000,
+    type=click.IntRange(0, None),
+    help=(
+        "Delay in milliseconds between queries to fetch structures from MongoDB "
+        " during plan creation. Tune to adjust load on the database."
+    )
+)
+@click.option(
+    '--batch-size',
+    default=10000,
+    type=click.IntRange(1, None),
+    help=(
+        "How many Structures do we fetch at a time?"
+    )
+)
 @click.pass_context
-def make_plan(ctx, plan_file, details, retain):
+def make_plan(ctx, plan_file, details, retain, delay, batch_size):
     """
     Create a Change Plan JSON file describing the operations needed to prune the
     database. This command is read-only and does not alter the database.
@@ -114,7 +131,7 @@ def make_plan(ctx, plan_file, details, retain):
     to have to scan every document in the collection. We saw a read rate of
     ~50K structures/minute while load testing.
     """
-    structures_graph = ctx.obj['BACKEND'].structures_graph()
+    structures_graph = ctx.obj['BACKEND'].structures_graph(delay / 1000.0, batch_size)
 
     # This will create the details file as a side-effect, if specified.
     change_plan = ChangePlan.create(structures_graph, retain, details)
