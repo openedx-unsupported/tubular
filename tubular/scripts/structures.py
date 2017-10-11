@@ -127,7 +127,7 @@ def make_plan(ctx, plan_file, details, retain):
 @click.argument('plan_file', type=click.File('r'))
 @click.option(
     '--delay',
-    default=1000,
+    default=5000,
     type=click.IntRange(0, None),
     help=(
         "Delay in milliseconds between batch deletions during pruning. Tune to "
