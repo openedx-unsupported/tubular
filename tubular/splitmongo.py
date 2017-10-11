@@ -344,9 +344,12 @@ class SplitMongoBackend(object):
         self._active_versions = self._db[db_name].modulestore.active_versions
         self._structures = self._db[db_name].modulestore.structures
 
-    def structures_graph(self):
+    def structures_graph(self, delay, batch_size):
         """
         Return StructuresGraph for the entire modulestore.
+
+        `batch_size` is the number of structure documents we pull at a time.
+        `delay` is the delay in seconds between batch queries.
 
         This has one slight complication. A StructuresGraph is expected to be a
         consistent view of the database, but MongoDB doesn't offer a "repeatable
@@ -392,7 +395,7 @@ class SplitMongoBackend(object):
         are in the `structures` doc, so a new Active Version that we're
         completely unaware of will be left alone.
         """
-        structures = self._all_structures()
+        structures = self._all_structures(delay, batch_size)
         branches = self._all_branches()
 
         # Guard against the race condition that branch.structure_id or its
@@ -419,25 +422,44 @@ class SplitMongoBackend(object):
 
         return StructuresGraph(branches, structures)
 
-    def _all_structures(self):
+    def _all_structures(self, delay, batch_size):
         """
         Return a dict mapping Structure IDs to Structures for all Structures in
         the database.
+
+        `batch_size` is the number of structure documents we pull at a time.
+        `delay` is the delay in seconds between batch queries.
         """
         LOG.info("Fetching all known Structures (this might take a while)...")
+        LOG.info("Delay in seconds: %s, Batch size: %s", delay, batch_size)
 
         # Important to keep this as a generator to limit memory usage.
         parsed_docs = (
             self.parse_structure_doc(doc)
             for doc
-            in self._structures.find(
-                projection=['original_version', 'previous_version']
-            )
+            in self._structures_from_db(delay, batch_size)
         )
         structures = {structure.id: structure for structure in parsed_docs}
         LOG.info("Fetched %s Structures", len(structures))
 
         return structures
+
+    def _structures_from_db(self, delay, batch_size):
+        """
+        Iterate through all Structure documents in the database.
+
+        `batch_size` is the number of structure documents we pull at a time.
+        `delay` is the delay in seconds between batch queries.
+        """
+        cursor = self._structures.find(
+            projection=['original_version', 'previous_version']
+        )
+        cursor.batch_size(batch_size)
+        for i, structure_doc in enumerate(cursor, start=1):
+            yield structure_doc
+            if i % batch_size == 0:
+                LOG.info("Structure Cursor at %s (%s)", i, structure_doc['_id'])
+                time.sleep(delay)
 
     def _all_branches(self):
         """Retrieve list of all ActiveVersionBranch objects in the database."""

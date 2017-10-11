@@ -371,7 +371,7 @@ class TestSplitMongoBackend(unittest.TestCase):
 
     def test_structures_graph(self):
         """Test pulling a full graph out."""
-        graph = self.backend.structures_graph()
+        graph = self.backend.structures_graph(0, 100)
         self.assertEqual(
             graph.branches,
             [
@@ -412,7 +412,7 @@ class TestSplitMongoBackend(unittest.TestCase):
             ),
             delay=0
         )
-        graph = self.backend.structures_graph()
+        graph = self.backend.structures_graph(0, 100)
         self.assertEqual(
             list(graph.structures.keys()),
             [str_id(i) for i in [1, 4, 10, 11, 20]]
@@ -434,9 +434,9 @@ class TestSplitMongoBackend(unittest.TestCase):
         # Get the real method before we patch it...
         real_all_structures_fn = SplitMongoBackend._all_structures  # pylint: disable=protected-access
 
-        def add_structures(backend):
+        def add_structures(backend, delay, batch_size):
             """Do what _all_structures() would do, then add new Structures."""
-            structures = real_all_structures_fn(backend)
+            structures = real_all_structures_fn(backend, delay, batch_size)
 
             # Create new Structures
             self.structures.insert_one(
@@ -475,7 +475,7 @@ class TestSplitMongoBackend(unittest.TestCase):
 
         with patch.object(SplitMongoBackend, '_all_structures', autospec=True) as all_structures_mock:
             all_structures_mock.side_effect = add_structures
-            graph = self.backend.structures_graph()
+            graph = self.backend.structures_graph(0, 100)
             self.assertEqual(len(graph.structures), 10)
             self.assertEqual(len(graph.branches), 4)
 
