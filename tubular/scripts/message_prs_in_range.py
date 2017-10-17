@@ -14,6 +14,7 @@ import yaml
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.github_api import GitHubAPI  # pylint: disable=wrong-import-position
+from tubular.github_api import GithubException  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -135,7 +136,18 @@ def message_pull_requests(org,
         _, _, head_sha = version.partition(u' ')
 
     api = GitHubAPI(org, repo, token)
-    for pull_request in api.get_pr_range(base_sha, head_sha):
+
+    number_of_tries = 10
+    pull_requests = []
+    while number_of_tries > 0:
+        if number_of_tries == 0:
+            LOG.error('Was not able to retrieve PR range from GitHub')
+            sys.exit(1)
+        try:
+            pull_requests = api.get_pr_range(base_sha, head_sha)
+        except GithubException:
+            number_of_tries = number_of_tries - 1
+    for pull_request in pull_requests:
         LOG.info(u"Posting message type %r to %d.", message_type, pull_request.number)
         getattr(api, methods[message_type])(pr_number=pull_request, extra_text=extra_text)
 
