@@ -85,7 +85,11 @@ def merge_pull_request(org,
         pr_number = config['pr_number']
 
     try:
-        github_api.merge_pull_request(pr_number)
+        pull_request = github_api.get_pull_request(pr_number)
+        if(not pull_request.is_merged()):
+            github_api.merge_pull_request(pr_number)
+        else:
+            LOG.info("This PR was already merged - no merge is necessary.")
     except (GithubException, UnknownObjectException):
         LOG.error("PR #{pr} merge for org '{org}' & repo '{repo}' failed. Aborting.".format(
             pr=pr_number,
