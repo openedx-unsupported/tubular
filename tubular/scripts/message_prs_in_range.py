@@ -150,6 +150,7 @@ def message_pull_requests(org,
             LOG.info('Attempting to retrieve PR range')
             pull_requests = api.get_pr_range(base_sha, head_sha)
             LOG.info('Got PR Range')
+            break
         except RateLimitExceededException:
             number_of_tries = number_of_tries - 1
             time_until_next_try += time_until_next_try
