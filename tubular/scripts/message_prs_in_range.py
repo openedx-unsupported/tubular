@@ -7,14 +7,16 @@ from __future__ import absolute_import
 from os import path
 import sys
 import logging
+from time import sleep
 import click
 import yaml
+
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.github_api import GitHubAPI  # pylint: disable=wrong-import-position
-from tubular.github_api import GithubException  # pylint: disable=wrong-import-position
+from github.GithubException import RateLimitExceededException  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -138,15 +140,21 @@ def message_pull_requests(org,
     api = GitHubAPI(org, repo, token)
 
     number_of_tries = 10
+    time_until_next_try = 2
     pull_requests = []
     while number_of_tries > 0:
         if number_of_tries == 0:
             LOG.error('Was not able to retrieve PR range from GitHub')
             sys.exit(1)
         try:
+            LOG.info('Attempting to retrieve PR range')
             pull_requests = api.get_pr_range(base_sha, head_sha)
-        except GithubException:
+            LOG.info('Got PR Range')
+        except RateLimitExceededException:
             number_of_tries = number_of_tries - 1
+            time_until_next_try += time_until_next_try
+            LOG.info("Failed to retrieve PR range will try again in {} seconds".format(time_until_next_try))
+            sleep(time_until_next_try)
     for pull_request in pull_requests:
         LOG.info(u"Posting message type %r to %d.", message_type, pull_request.number)
         getattr(api, methods[message_type])(pr_number=pull_request, extra_text=extra_text)
