@@ -6,6 +6,7 @@ Command-line script message pull requests in a range
 from __future__ import absolute_import
 from os import path
 import sys
+import socket
 import logging
 import click
 import backoff
@@ -131,14 +132,30 @@ def message_pull_requests(org,
         version = head_ami_tags[tag]
         _, _, head_sha = version.partition(u' ')
 
-    api = GitHubAPI(org, repo, token)
-
+    api = get_client(org, repo, token)
     pull_requests = retrieve_pull_requests(api, base_sha, head_sha)
     for pull_request in pull_requests:
         message_prs(api, message_type, pull_request, extra_text)
 
 
-@backoff.on_exception(backoff.expo, RateLimitExceededException, max_tries=7)
+@backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7)
+def get_client(org, repo, token):
+    u"""
+    Returns the github client, pointing at the repo specified
+
+    Args:
+        org (str): The github organization
+        repo (str): The github repository
+        token (str): The authentication token
+
+    Returns:
+        Returns the github client object
+    """
+    api = GitHubAPI(org, repo, token)
+    return api
+
+
+@backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7)
 def retrieve_pull_requests(api, base_sha, head_sha):
     u"""
     Use the github API to retrieve pull requests between the BASE and HEAD SHA specified.
@@ -155,7 +172,7 @@ def retrieve_pull_requests(api, base_sha, head_sha):
     return pull_requests
 
 
-@backoff.on_exception(backoff.expo, RateLimitExceededException, max_tries=7)
+@backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7)
 def message_prs(api, message_type, pull_request, extra_text):
     u"""
     Send a Message for a Pull request.
@@ -182,7 +199,6 @@ def message_prs(api, message_type, pull_request, extra_text):
     }
     LOG.info(u"Posting message type %r to %d.", message_type, pull_request.number)
     getattr(api, methods[message_type])(pr_number=pull_request, extra_text=extra_text)
-
 
 if __name__ == u"__main__":
     message_pull_requests()  # pylint: disable=no-value-for-parameter
