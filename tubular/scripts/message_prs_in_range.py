@@ -7,8 +7,8 @@ from __future__ import absolute_import
 from os import path
 import sys
 import logging
-from time import sleep
 import click
+import backoff
 import yaml
 
 
@@ -118,12 +118,6 @@ def message_pull_requests(org,
     Returns:
         None
     """
-    methods = {
-        u'stage': u'message_pr_deployed_stage',
-        u'prod': u'message_pr_deployed_prod',
-        u'rollback': u'message_pr_release_canceled',
-        u'broke_vagrant': u'message_pr_broke_vagrant',
-    }
 
     if base_sha is None and base_ami_tags and base_ami_tag_app:
         base_ami_tags = yaml.safe_load(base_ami_tags)
@@ -139,26 +133,55 @@ def message_pull_requests(org,
 
     api = GitHubAPI(org, repo, token)
 
-    number_of_tries = 10
-    time_until_next_try = 2
-    pull_requests = []
-    while number_of_tries > 0:
-        if number_of_tries == 0:
-            LOG.error('Was not able to retrieve PR range from GitHub')
-            sys.exit(1)
-        try:
-            LOG.info('Attempting to retrieve PR range')
-            pull_requests = api.get_pr_range(base_sha, head_sha)
-            LOG.info('Got PR Range')
-            break
-        except RateLimitExceededException:
-            number_of_tries = number_of_tries - 1
-            time_until_next_try += time_until_next_try
-            LOG.info("Failed to retrieve PR range will try again in {} seconds".format(time_until_next_try))
-            sleep(time_until_next_try)
+    pull_requests = retrieve_pull_requests(api, base_sha, head_sha)
     for pull_request in pull_requests:
-        LOG.info(u"Posting message type %r to %d.", message_type, pull_request.number)
-        getattr(api, methods[message_type])(pr_number=pull_request, extra_text=extra_text)
+        message_prs(api, message_type, pull_request, extra_text)
+
+
+@backoff.on_exception(backoff.expo, RateLimitExceededException, max_tries=7)
+def retrieve_pull_requests(api, base_sha, head_sha):
+    u"""
+    Use the github API to retrieve pull requests between the BASE and HEAD SHA specified.
+
+    Args:
+        api (obj): The github API client
+        base_sha (str): The starting SHA
+        head_sha (str): The ending SHA
+
+    Returns:
+        An array of pull request objects
+    """
+    pull_requests = api.get_pr_range(base_sha, head_sha)
+    return pull_requests
+
+
+@backoff.on_exception(backoff.expo, RateLimitExceededException, max_tries=7)
+def message_prs(api, message_type, pull_request, extra_text):
+    u"""
+    Send a Message for a Pull request.
+
+    Message can be one of 3 types:
+    - PR on stage
+    - PR on prod
+    - Release canceled
+
+    Args:
+        api (obj): The github API client
+        message_type (obj): The message type to be sent(see above)
+        pull_request (obj): The Pull request for which the message is to be sent
+        extra_text (str): extra text to include in the message
+
+    Returns:
+        None
+    """
+    methods = {
+        u'stage': u'message_pr_deployed_stage',
+        u'prod': u'message_pr_deployed_prod',
+        u'rollback': u'message_pr_release_canceled',
+        u'broke_vagrant': u'message_pr_broke_vagrant',
+    }
+    LOG.info(u"Posting message type %r to %d.", message_type, pull_request.number)
+    getattr(api, methods[message_type])(pr_number=pull_request, extra_text=extra_text)
 
 
 if __name__ == u"__main__":
