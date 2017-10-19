@@ -29,7 +29,9 @@ click_log.basic_config(LOG)
     default="mongodb://localhost:27017",
     help=(
         'Connection string to the target mongo database. This defaults to '
-        'localhost without password (that will work against devstack).'
+        'localhost without password (that will work against devstack). '
+        'You may need to use urllib.parse.quote_plus() to percent-escape '
+        'your username and password.'
     )
 )
 @click.option(
@@ -90,7 +92,7 @@ def cli(ctx, connection, database_name):
     type=click.IntRange(0, None),
     help=(
         "Delay in milliseconds between queries to fetch structures from MongoDB "
-        " during plan creation. Tune to adjust load on the database."
+        "during plan creation. Tune to adjust load on the database."
     )
 )
 @click.option(
@@ -124,12 +126,6 @@ def make_plan(ctx, plan_file, details, retain, delay, batch_size):
     so any Structures that are "orphaned" as a result of partial runs of this
     script or Studio race conditions will not be reflected. That being said,
     orphaned Structures are detected and properly noted in the Change Plan JSON.
-
-    This command does not currently implement any sort of throttling. The most
-    expensive part of this will be MongoDB disk access. Even though we're only
-    looking at a few fields, those are not indexed fields, and MongoDB is going
-    to have to scan every document in the collection. We saw a read rate of
-    ~50K structures/minute while load testing.
     """
     structures_graph = ctx.obj['BACKEND'].structures_graph(delay / 1000.0, batch_size)
 
