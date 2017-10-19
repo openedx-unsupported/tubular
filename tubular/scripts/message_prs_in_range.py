@@ -6,14 +6,18 @@ Command-line script message pull requests in a range
 from __future__ import absolute_import
 from os import path
 import sys
+import socket
 import logging
 import click
+import backoff
 import yaml
+
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.github_api import GitHubAPI  # pylint: disable=wrong-import-position
+from github.GithubException import RateLimitExceededException  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -115,12 +119,6 @@ def message_pull_requests(org,
     Returns:
         None
     """
-    methods = {
-        u'stage': u'message_pr_deployed_stage',
-        u'prod': u'message_pr_deployed_prod',
-        u'rollback': u'message_pr_release_canceled',
-        u'broke_vagrant': u'message_pr_broke_vagrant',
-    }
 
     if base_sha is None and base_ami_tags and base_ami_tag_app:
         base_ami_tags = yaml.safe_load(base_ami_tags)
@@ -134,11 +132,73 @@ def message_pull_requests(org,
         version = head_ami_tags[tag]
         _, _, head_sha = version.partition(u' ')
 
-    api = GitHubAPI(org, repo, token)
-    for pull_request in api.get_pr_range(base_sha, head_sha):
-        LOG.info(u"Posting message type %r to %d.", message_type, pull_request.number)
-        getattr(api, methods[message_type])(pr_number=pull_request, extra_text=extra_text)
+    api = get_client(org, repo, token)
+    pull_requests = retrieve_pull_requests(api, base_sha, head_sha)
+    for pull_request in pull_requests:
+        message_prs(api, message_type, pull_request, extra_text)
 
+
+@backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7)
+def get_client(org, repo, token):
+    u"""
+    Returns the github client, pointing at the repo specified
+
+    Args:
+        org (str): The github organization
+        repo (str): The github repository
+        token (str): The authentication token
+
+    Returns:
+        Returns the github client object
+    """
+    api = GitHubAPI(org, repo, token)
+    return api
+
+
+@backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7)
+def retrieve_pull_requests(api, base_sha, head_sha):
+    u"""
+    Use the github API to retrieve pull requests between the BASE and HEAD SHA specified.
+
+    Args:
+        api (obj): The github API client
+        base_sha (str): The starting SHA
+        head_sha (str): The ending SHA
+
+    Returns:
+        An array of pull request objects
+    """
+    pull_requests = api.get_pr_range(base_sha, head_sha)
+    return pull_requests
+
+
+@backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7)
+def message_prs(api, message_type, pull_request, extra_text):
+    u"""
+    Send a Message for a Pull request.
+
+    Message can be one of 3 types:
+    - PR on stage
+    - PR on prod
+    - Release canceled
+
+    Args:
+        api (obj): The github API client
+        message_type (obj): The message type to be sent(see above)
+        pull_request (obj): The Pull request for which the message is to be sent
+        extra_text (str): extra text to include in the message
+
+    Returns:
+        None
+    """
+    methods = {
+        u'stage': u'message_pr_deployed_stage',
+        u'prod': u'message_pr_deployed_prod',
+        u'rollback': u'message_pr_release_canceled',
+        u'broke_vagrant': u'message_pr_broke_vagrant',
+    }
+    LOG.info(u"Posting message type %r to %d.", message_type, pull_request.number)
+    getattr(api, methods[message_type])(pr_number=pull_request, extra_text=extra_text)
 
 if __name__ == u"__main__":
     message_pull_requests()  # pylint: disable=no-value-for-parameter
