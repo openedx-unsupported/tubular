@@ -50,6 +50,9 @@ CLUSTER_INFO_URL = "{}/cluster/show/{}.json".format(ASGARD_API_ENDPOINT, "{}")
 
 LOG = logging.getLogger(__name__)
 
+MAX_ATTEMPTS = os.environ.get('RETRY_MAX_ATTEMPTS', 5)
+RETRY_FACTOR = os.environ.get('RETRY_FACTOR', 1.5)
+
 
 def handle_throttling(json_response):
     """
@@ -58,11 +61,13 @@ def handle_throttling(json_response):
     Raises:
     RateLimitedException: When we are being rate limited by AWS.
     """
-    if 'status' in json_response:
-        if json_response['status'] and json_response['status'] == 'failed' and json_response['log']:
-            last_log_entry = json_response['log'][len(json_response['log']) - 1]
-            if 'com.amazonaws.AmazonServiceException' in last_log_entry and 'Throttling' in last_log_entry:
-                raise RateLimitedException("AWS is throttling requests from Asgard")
+    if ('status' in json_response and
+            json_response['status'] == 'failed' and
+            json_response['log']):
+
+        last_log_entry = json_response['log'][len(json_response['log']) - 1]
+        if 'com.amazonaws.AmazonServiceException' in last_log_entry and 'Throttling' in last_log_entry:
+            raise RateLimitedException("AWS is throttling requests from Asgard")
 
 
 def _parse_json(url, response):
@@ -77,7 +82,11 @@ def _parse_json(url, response):
     return response_json
 
 
-@backoff.on_exception(backoff.expo, (RateLimitedException, BackendDataError), max_tries=7)
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       BackendDataError),
+                      max_tries=MAX_ATTEMPTS,
+                      factor=RETRY_FACTOR)
 def clusters_for_asgs(asgs):
     """
     An autoscaling group can belong to multiple clusters potentially.
@@ -136,7 +145,11 @@ def clusters_for_asgs(asgs):
     return relevant_clusters
 
 
-@backoff.on_exception(backoff.expo, (RateLimitedException, BackendDataError), max_tries=7)
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       BackendDataError),
+                      max_tries=MAX_ATTEMPTS,
+                      factor=RETRY_FACTOR)
 def asgs_for_cluster(cluster):
     """
     Given a named cluster, get all ASGs in the cluster.
@@ -166,7 +179,11 @@ def asgs_for_cluster(cluster):
     return asgs_json
 
 
-@backoff.on_exception(backoff.expo, (RateLimitedException, TimeoutException), max_tries=7)
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       TimeoutException),
+                      max_tries=MAX_ATTEMPTS,
+                      factor=RETRY_FACTOR)
 def wait_for_task_completion(task_url, timeout):
     """
     Arguments:
@@ -199,7 +216,10 @@ def wait_for_task_completion(task_url, timeout):
     raise TimeoutException("Timed out while waiting for task {}".format(task_url))
 
 
-@backoff.on_exception(backoff.expo, (RateLimitedException, RateLimitedException), max_tries=7)
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException),
+                      max_tries=MAX_ATTEMPTS,
+                      factor=RETRY_FACTOR)
 def new_asg(cluster, ami_id):
     """
     Create a new ASG in the given asgard cluster using the given AMI.
@@ -260,10 +280,13 @@ def new_asg(cluster, ami_id):
     return newest_asg['autoScalingGroupName']
 
 
-@backoff.on_exception(backoff.expo, (RateLimitedException,
-                                     TimeoutException,
-                                     BackendError,
-                                     ASGCountZeroException), max_tries=7)
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       TimeoutException,
+                       BackendError,
+                       ASGCountZeroException),
+                      max_tries=MAX_ATTEMPTS,
+                      factor=RETRY_FACTOR)
 def _get_asgard_resource_info(url):
     """
     A generic function for querying Asgard for inforamtion about a specific resource,
@@ -408,7 +431,12 @@ def is_last_asg(asg):
     return False
 
 
-@backoff.on_exception(backoff.expo, (RateLimitedException, TimeoutException, BackendError), max_tries=7)
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       TimeoutException,
+                       BackendError),
+                      max_tries=MAX_ATTEMPTS,
+                      factor=RETRY_FACTOR)
 def enable_asg(asg):
     """
     Enable an ASG in asgard.  This means it will have ELBs routing to it
@@ -437,7 +465,12 @@ def enable_asg(asg):
         raise BackendError(msg)
 
 
-@backoff.on_exception(backoff.expo, (RateLimitedException, TimeoutException, BackendError), max_tries=7)
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       TimeoutException,
+                       BackendError),
+                      max_tries=MAX_ATTEMPTS,
+                      factor=RETRY_FACTOR)
 def disable_asg(asg):
     """
     Disable an ASG using asgard.
@@ -480,7 +513,12 @@ def disable_asg(asg):
         raise BackendError(msg)
 
 
-@backoff.on_exception(backoff.expo, (RateLimitedException, TimeoutException, BackendError), max_tries=7)
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       TimeoutException,
+                       BackendError),
+                      max_tries=MAX_ATTEMPTS,
+                      factor=RETRY_FACTOR)
 def delete_asg(asg, fail_if_active=True, fail_if_last=True):
     """
     Delete an ASG using asgard.
@@ -521,7 +559,11 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True):
         raise BackendError(msg)
 
 
-@backoff.on_exception(backoff.expo, (RateLimitedException, BackendDataError), max_tries=7)
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       BackendDataError),
+                      max_tries=MAX_ATTEMPTS,
+                      factor=RETRY_FACTOR)
 def elbs_for_asg(asg):
     """
     Return the ELB(s) which are directing traffic to a particular ASG.
@@ -549,10 +591,13 @@ def elbs_for_asg(asg):
     return elbs
 
 
-@backoff.on_exception(backoff.expo, (RateLimitedException,
-                                     TimeoutException,
-                                     BackendError,
-                                     ASGDoesNotExistException), max_tries=7)
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       TimeoutException,
+                       BackendError,
+                       ASGDoesNotExistException),
+                      max_tries=MAX_ATTEMPTS,
+                      factor=RETRY_FACTOR)
 def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
     """
     Rollback to a particular list of ASGs for one or more clusters.
@@ -636,10 +681,13 @@ def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
         }
 
 
-@backoff.on_exception(backoff.expo, (RateLimitedException,
-                                     TimeoutException,
-                                     BackendError,
-                                     ASGDoesNotExistException), max_tries=7)
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       TimeoutException,
+                       BackendError,
+                       ASGDoesNotExistException),
+                      max_tries=MAX_ATTEMPTS,
+                      factor=RETRY_FACTOR)
 def deploy(ami_id):
     """
     Deploys an AMI as an auto-scaling group (ASG) to AWS.
