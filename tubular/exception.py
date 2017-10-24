@@ -58,3 +58,7 @@ class ASGCountZeroException(Exception):
 
 class InvalidUrlException(Exception):
     pass
+
+
+class RateLimitedException(Exception):
+    pass
