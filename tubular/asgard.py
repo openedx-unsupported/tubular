@@ -581,12 +581,6 @@ def elbs_for_asg(asg):
     return elbs
 
 
-@backoff.on_exception(backoff.expo,
-                      (RateLimitedException,
-                       TimeoutException,
-                       BackendError,
-                       ASGDoesNotExistException),
-                      max_tries=MAX_ATTEMPTS)
 def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
     """
     Rollback to a particular list of ASGs for one or more clusters.
@@ -670,12 +664,6 @@ def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
         }
 
 
-@backoff.on_exception(backoff.expo,
-                      (RateLimitedException,
-                       TimeoutException,
-                       BackendError,
-                       ASGDoesNotExistException),
-                      max_tries=MAX_ATTEMPTS)
 def deploy(ami_id):
     """
     Deploys an AMI as an auto-scaling group (ASG) to AWS.
