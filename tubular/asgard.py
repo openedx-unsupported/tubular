@@ -50,7 +50,7 @@ CLUSTER_INFO_URL = "{}/cluster/show/{}.json".format(ASGARD_API_ENDPOINT, "{}")
 
 LOG = logging.getLogger(__name__)
 
-MAX_ATTEMPTS = os.environ.get('RETRY_MAX_ATTEMPTS', 5)
+MAX_ATTEMPTS = int(os.environ.get('RETRY_MAX_ATTEMPTS', 5))
 
 
 def handle_throttling(json_response):
@@ -60,6 +60,7 @@ def handle_throttling(json_response):
     Raises:
     RateLimitedException: When we are being rate limited by AWS.
     """
+
     if ('status' in json_response and
             json_response['status'] == 'failed' and
             json_response['log']):
@@ -177,8 +178,7 @@ def asgs_for_cluster(cluster):
 
 
 @backoff.on_exception(backoff.expo,
-                      (RateLimitedException,
-                       TimeoutException),
+                      (RateLimitedException),
                       max_tries=MAX_ATTEMPTS)
 def wait_for_task_completion(task_url, timeout):
     """
@@ -234,6 +234,7 @@ def new_asg(cluster, ami_id):
         ASGCountZeroException: When the new ASG brought online has 0 for it's min and desired counts
         RateLimitedException: When we are being rate limited by AWS.
     """
+
     payload = {
         "name": cluster,
         "imageId": ami_id,
@@ -243,6 +244,8 @@ def new_asg(cluster, ami_id):
         NEW_ASG_URL,
         data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT
     )
+    resource_info_json = _parse_json(NEW_ASG_URL, response)
+    handle_throttling(resource_info_json)
     LOG.debug("Sent request to create new ASG in Cluster({}).".format(cluster))
 
     if response.status_code == 404:
@@ -258,7 +261,6 @@ def new_asg(cluster, ami_id):
     response = wait_for_task_completion(response.url, ASGARD_NEW_ASG_CREATION_TIMEOUT)
     if response['status'] == 'failed':
         msg = "Failure during new ASG creation. Task Log: \n{}".format(response['log'])
-        handle_throttling(response)
         raise BackendError(msg)
 
     # Potential Race condition if multiple people are making ASGs for the same cluster

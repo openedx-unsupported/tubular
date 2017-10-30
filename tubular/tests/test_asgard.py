@@ -21,7 +21,8 @@ from tubular.exception import (
     BackendError,
     CannotDeleteActiveASG,
     CannotDeleteLastASG,
-    ASGDoesNotExistException
+    ASGDoesNotExistException,
+    RateLimitedException
 )
 from tubular.tests.test_utils import create_asg_with_tags, create_elb
 from tubular.ec2 import tag_asg_for_deletion
@@ -29,6 +30,7 @@ from tubular.ec2 import tag_asg_for_deletion
 # Disable the retry decorator and reload the asgard module. This will ensure that tests do not fail because of the retry
 # decorator recalling a method when using httpretty with side effect iterators
 os.environ['TUBULAR_RETRY_ENABLED'] = "false"
+os.environ['RETRY_MAX_ATTEMPTS'] = "1"
 reload_module(asgard)  # pylint: disable=too-many-function-args
 
 
@@ -313,6 +315,39 @@ RUNNING_SAMPLE_TASK = {
     "updateTime": "2016-02-11 19:03:37 UTC"
 }
 
+AWS_RATE_LIMIT_EXCEPTION = {
+    "log":
+    [
+        "2017-10-18_16:14:34 Started on thread Task:Creating auto scaling group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271', min 15, max 15, traffic prevented.",
+        "2017-10-18_16:14:34 Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' will start with 0 instances",
+        "2017-10-18_16:14:34 Create Auto Scaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
+        "2017-10-18_16:14:34 Create Launch Configuration 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' with image 'ami-abbf6fd1'",
+        "2017-10-18_16:14:34 Create Autoscaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
+        "2017-10-18_16:14:35 Disabling adding instances to ELB for auto scaling group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
+        (
+            "2017-10-18_16:14:35 Launch Config 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' has been created. "
+            "Auto Scaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' has been created. "
+        ),
+        '2017-10-18_16:14:35 Create 2 Scaling Policies',
+        "2017-10-18_16:14:35 Create Scaling Policy 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1779'",
+        "2017-10-18_16:14:35 Create Alarm 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1779'",
+        "2017-10-18_16:14:36 Create Scaling Policy 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1780'",
+        "2017-10-18_16:14:36 Create Alarm 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1780'",
+        "2017-10-18_16:14:36 Resizing group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' to min 15, max 15",
+        "2017-10-18_16:14:36 Setting group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' to min 15 max 15",
+        "2017-10-18_16:14:36 Update Autoscaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
+        "2017-10-18_16:14:36 Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' has 0 instances. Waiting for 15 to exist.",
+        (
+        '2017-10-18_16:19:11 Exception: com.amazonaws.AmazonServiceException: Rate exceeded (Service: '
+        'AmazonAutoScaling; Status Code: 400; Error Code: Throttling; Request ID: 1324046b-b420-11e7-a9eb-7fe7ac63f645)'
+        )
+    ],
+    "status": "failed",
+    "operation": "",
+    "durationString": "0s",
+    "updateTime": "2016-02-11 02:31:12 UTC"
+}
+
 
 SAMPLE_ASG_INFO = {
     "group": {
@@ -499,13 +534,26 @@ class TestAsgard(unittest.TestCase):
         with self.assertRaises(BackendError):
             asgard.wait_for_task_completion(task_url, 1)
 
-    def test_task_timeout(self, req_mock):
+    def test_new_asg_aws_rate_limit(self, req_mock):
         task_url = "http://some.host/task/1234.json"
-        req_mock.get(
-            task_url,
-            json=RUNNING_SAMPLE_TASK)
+        cluster = "loadtest-edx-edxapp"
+        ami_id = "ami-abc1234"
 
-        self.assertRaises(TimeoutException, asgard.wait_for_task_completion, task_url, 1)
+        req_mock.post(
+            asgard.NEW_ASG_URL,
+            json=AWS_RATE_LIMIT_EXCEPTION,
+            headers={"Location": task_url},
+            status_code=200)
+
+        req_mock.get(
+            asgard.NEW_ASG_URL,
+            json=COMPLETED_SAMPLE_TASK)
+
+        url = asgard.CLUSTER_INFO_URL.format(cluster)
+        req_mock.get(
+            url,
+            json=VALID_CLUSTER_JSON_INFO)
+        self.assertRaises(RateLimitedException, asgard.new_asg, cluster, ami_id)
 
     def test_new_asg(self, req_mock):
         task_url = "http://some.host/task/1234.json"
@@ -788,6 +836,51 @@ class TestAsgard(unittest.TestCase):
         )
 
         self.assertRaises(CannotDeleteLastASG, asgard.delete_asg, asg)
+
+    def _setup_common_enable_disable_asg_mock_calls(self, req_mock, asg, test_function, endpoint_url):
+        task_url = "http://some.host/task/1234.json"
+        cluster = "app_cluster"
+
+        req_mock.post(
+            endpoint_url,
+            json=AWS_RATE_LIMIT_EXCEPTION,
+            status_code=200
+        )
+
+        req_mock.get(
+            endpoint_url,
+            json=AWS_RATE_LIMIT_EXCEPTION,
+            status_code=200
+        )
+
+        req_mock.get(
+            asgard.ASG_INFO_URL.format(asg),
+            json=enabled_asg(asg)
+        )
+
+        req_mock.get(
+            asgard.CLUSTER_INFO_URL.format(cluster),
+            json=VALID_CLUSTER_JSON_INFO
+        )
+
+        req_mock.get(
+            task_url,
+            json=COMPLETED_SAMPLE_TASK
+        )
+
+    def test_enable_asg_aws_rate_limit(self, req_mock):
+        endpoint_url = asgard.ASG_ACTIVATE_URL
+        asg = "loadtest-edx-edxapp-v059"
+        test_function = asgard.enable_asg
+        self._setup_common_enable_disable_asg_mock_calls(req_mock, asg, test_function, endpoint_url)
+        self.assertRaises(RateLimitedException, test_function, asg)
+
+    def test_disable_asg_aws_rate_limit(self, req_mock):
+        endpoint_url = asgard.ASG_DEACTIVATE_URL
+        asg = "loadtest-edx-edxapp-v059"
+        test_function = asgard.disable_asg
+        self._setup_common_enable_disable_asg_mock_calls(req_mock, asg, test_function, endpoint_url)
+        self.assertRaises(RateLimitedException, test_function, asg)
 
     @mock_autoscaling
     @mock_ec2
