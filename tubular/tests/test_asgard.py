@@ -318,14 +318,20 @@ RUNNING_SAMPLE_TASK = {
 AWS_RATE_LIMIT_EXCEPTION = {
     "log":
     [
-        "2017-10-18_16:14:34 Started on thread Task:Creating auto scaling group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271', min 15, max 15, traffic prevented.",
+        (
+            "2017-10-18_16:14:34 Started on thread Task:Creating auto scaling group "
+            "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271', min 15, max 15, traffic prevented."
+        ),
         "2017-10-18_16:14:34 Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' will start with 0 instances",
         "2017-10-18_16:14:34 Create Auto Scaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
-        "2017-10-18_16:14:34 Create Launch Configuration 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' with image 'ami-abbf6fd1'",
+        ("2017-10-18_16:14:34 Create Launch Configuration "
+            "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' with image 'ami-abbf6fd1'"),
         "2017-10-18_16:14:34 Create Autoscaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
-        "2017-10-18_16:14:35 Disabling adding instances to ELB for auto scaling group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
+        ("2017-10-18_16:14:35 Disabling adding instances "
+            "to ELB for auto scaling group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'"),
         (
-            "2017-10-18_16:14:35 Launch Config 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' has been created. "
+            "2017-10-18_16:14:35 Launch Config "
+            "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' has been created. "
             "Auto Scaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' has been created. "
         ),
         '2017-10-18_16:14:35 Create 2 Scaling Policies',
@@ -336,7 +342,8 @@ AWS_RATE_LIMIT_EXCEPTION = {
         "2017-10-18_16:14:36 Resizing group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' to min 15, max 15",
         "2017-10-18_16:14:36 Setting group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' to min 15 max 15",
         "2017-10-18_16:14:36 Update Autoscaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
-        "2017-10-18_16:14:36 Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' has 0 instances. Waiting for 15 to exist.",
+        ("2017-10-18_16:14:36 Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'"
+        " has 0 instances. Waiting for 15 to exist."),
         (
         '2017-10-18_16:19:11 Exception: com.amazonaws.AmazonServiceException: Rate exceeded (Service: '
         'AmazonAutoScaling; Status Code: 400; Error Code: Throttling; Request ID: 1324046b-b420-11e7-a9eb-7fe7ac63f645)'
@@ -836,51 +843,6 @@ class TestAsgard(unittest.TestCase):
         )
 
         self.assertRaises(CannotDeleteLastASG, asgard.delete_asg, asg)
-
-    def _setup_common_enable_disable_asg_mock_calls(self, req_mock, asg, test_function, endpoint_url):
-        task_url = "http://some.host/task/1234.json"
-        cluster = "app_cluster"
-
-        req_mock.post(
-            endpoint_url,
-            json=AWS_RATE_LIMIT_EXCEPTION,
-            status_code=200
-        )
-
-        req_mock.get(
-            endpoint_url,
-            json=AWS_RATE_LIMIT_EXCEPTION,
-            status_code=200
-        )
-
-        req_mock.get(
-            asgard.ASG_INFO_URL.format(asg),
-            json=enabled_asg(asg)
-        )
-
-        req_mock.get(
-            asgard.CLUSTER_INFO_URL.format(cluster),
-            json=VALID_CLUSTER_JSON_INFO
-        )
-
-        req_mock.get(
-            task_url,
-            json=COMPLETED_SAMPLE_TASK
-        )
-
-    def test_enable_asg_aws_rate_limit(self, req_mock):
-        endpoint_url = asgard.ASG_ACTIVATE_URL
-        asg = "loadtest-edx-edxapp-v059"
-        test_function = asgard.enable_asg
-        self._setup_common_enable_disable_asg_mock_calls(req_mock, asg, test_function, endpoint_url)
-        self.assertRaises(RateLimitedException, test_function, asg)
-
-    def test_disable_asg_aws_rate_limit(self, req_mock):
-        endpoint_url = asgard.ASG_DEACTIVATE_URL
-        asg = "loadtest-edx-edxapp-v059"
-        test_function = asgard.disable_asg
-        self._setup_common_enable_disable_asg_mock_calls(req_mock, asg, test_function, endpoint_url)
-        self.assertRaises(RateLimitedException, test_function, asg)
 
     @mock_autoscaling
     @mock_ec2
