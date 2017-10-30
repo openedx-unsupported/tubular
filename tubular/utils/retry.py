@@ -10,7 +10,7 @@ import os
 from functools import wraps
 from datetime import datetime, timedelta
 
-MAX_ATTEMPTS = os.environ.get('RETRY_MAX_ATTEMPTS', 5)
+MAX_ATTEMPTS = int(os.environ.get('RETRY_MAX_ATTEMPTS', 5))
 DELAY_SECONDS = os.environ.get('RETRY_DELAY_SECONDS', 5)
 MAX_TIME_SECONDS = os.environ.get('RETRY_MAX_TIME_SECONDS', None)
 

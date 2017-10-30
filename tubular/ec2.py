@@ -25,7 +25,7 @@ LOG = logging.getLogger(__name__)
 
 ISO_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 ASG_DELETE_TAG_KEY = 'delete_on_ts'
-MAX_ATTEMPTS = os.environ.get('RETRY_MAX_ATTEMPTS', 5)
+MAX_ATTEMPTS = int(os.environ.get('RETRY_MAX_ATTEMPTS', 5))
 RETRY_FACTOR = os.environ.get('RETRY_FACTOR', 1.5)
 
 
