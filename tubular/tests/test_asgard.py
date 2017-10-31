@@ -552,10 +552,6 @@ class TestAsgard(unittest.TestCase):
             headers={"Location": task_url},
             status_code=200)
 
-        req_mock.get(
-            asgard.NEW_ASG_URL,
-            json=COMPLETED_SAMPLE_TASK)
-
         url = asgard.CLUSTER_INFO_URL.format(cluster)
         req_mock.get(
             url,
@@ -911,12 +907,109 @@ class TestAsgard(unittest.TestCase):
         else:
             self.assertRaises(BackendError, test_function, asg)
 
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    def test_deploy_asg_error_did_not_create_multiple_asgs(self, req_mock):
+        """
+        Test that new_asg is not called more than the number of asgs that
+        are intended to be created when an error occurs
+        """
+        counter = 0
+
+        def count_new_asg_calls(request, context):
+            """
+            Count the number of times the new_asg request goes out
+            """
+            task_url = "http://some.host/task/new_asg_1234.json"
+            context.headers = {
+                "Location": task_url,
+                "server": asgard.ASGARD_API_ENDPOINT
+            }
+            request_values = urllib.parse.parse_qs(request.text)
+            new_asg_name = "{}-v099".format(request_values["name"][0])
+            new_ami_id = request_values["imageId"][0]
+            create_asg_with_tags(new_asg_name, self.test_asg_tags, new_ami_id)
+            context.status_code = 302
+            nonlocal counter
+            counter = counter + 1
+            return ""
+
+        ami_id = self._setup_for_deploy(
+            req_mock,
+            new_asg_task_status=FAILED_SAMPLE_TASK,
+            new_asg_post_callback_override=count_new_asg_calls
+        )
+
+        try:
+            asgard.deploy(ami_id)
+        except BackendError:
+            pass
+        self.assertEqual(1, counter)  # We fail midway here, so we dont expect additional calls to new_asg
+
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    def test_deploy_asg_rate_limit_did_not_create_multiple_asgs(self, req_mock):
+        """
+        Test that new_asg is not called more than the number of asgs that are
+        intended to be created when AWS throttles our requests
+        """
+        counter = 0
+
+        def count_new_asg_calls(request, context):
+            """
+            Count the number of times the new_asg request goes out
+            """
+            task_url = "http://some.host/task/new_asg_1234.json"
+            context.headers = {
+                "Location": task_url,
+                "server": asgard.ASGARD_API_ENDPOINT
+            }
+            request_values = urllib.parse.parse_qs(request.text)
+            new_asg_name = "{}-v099".format(request_values["name"][0])
+            new_ami_id = request_values["imageId"][0]
+            create_asg_with_tags(new_asg_name, self.test_asg_tags, new_ami_id)
+            context.status_code = 302
+            nonlocal counter
+            counter = counter + 1
+            return ""
+
+        ami_id = self._setup_for_deploy(req_mock, new_asg_post_callback_override=count_new_asg_calls)
+
+        not_in_service_asgs = ["loadtest-edx-edxapp-v058"]
+        in_service_asgs = ["loadtest-edx-edxapp-v059", "loadtest-edx-worker-v034"]
+        new_asgs = ["loadtest-edx-edxapp-v099", "loadtest-edx-worker-v099"]
+
+        self._mock_asgard_not_pending_delete(req_mock, in_service_asgs, json_builder=enabled_asg)
+        self._mock_asgard_pending_delete(req_mock, not_in_service_asgs)
+
+        for asg in new_asgs:
+            url = asgard.ASG_INFO_URL.format(asg)
+            req_mock.get(
+                url,
+                [
+                    dict(json=deleted_asg_not_in_progress(asg),
+                         status_code=200),
+                    dict(json=deleted_asg_not_in_progress(asg),
+                         status_code=200),
+                    dict(json=AWS_RATE_LIMIT_EXCEPTION,
+                         status_code=200),
+                ])
+        try:
+            asgard.deploy(ami_id)
+        except RateLimitedException:  # expect this failure to be bubbled up after failing MAX_RETRY times
+            pass
+
+        self.assertEqual(2, counter)  # once per new asg
+
     def _setup_for_deploy(  # pylint: disable=dangerous-default-value
             self,
             req_mock,
             new_asg_task_status=COMPLETED_SAMPLE_TASK,
             enable_asg_task_status=COMPLETED_SAMPLE_TASK,
             disable_asg_task_status=COMPLETED_SAMPLE_TASK,
+            new_asg_post_callback_override=None
     ):
         """
         Setup all the variables for an ASG deployment.
@@ -971,10 +1064,11 @@ class TestAsgard(unittest.TestCase):
         # Mock endpoints for building new ASGs
         task_url = "http://some.host/task/new_asg_1234.json"
 
-        def new_asg_post_callback(request, context):
+        def default_new_asg_callback(request, context):
             """
             Callback method for POST.
             """
+            task_url = "http://some.host/task/new_asg_1234.json"
             context.headers = {
                 "Location": task_url,
                 "server": asgard.ASGARD_API_ENDPOINT
@@ -988,7 +1082,7 @@ class TestAsgard(unittest.TestCase):
 
         req_mock.post(
             asgard.NEW_ASG_URL,
-            json=new_asg_post_callback)
+            json=default_new_asg_callback if new_asg_post_callback_override is None else new_asg_post_callback_override)
 
         req_mock.get(
             task_url,
