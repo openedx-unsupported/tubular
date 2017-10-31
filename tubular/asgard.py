@@ -177,9 +177,6 @@ def asgs_for_cluster(cluster):
     return asgs_json
 
 
-@backoff.on_exception(backoff.expo,
-                      (RateLimitedException),
-                      max_tries=MAX_ATTEMPTS)
 def wait_for_task_completion(task_url, timeout):
     """
     Arguments:
