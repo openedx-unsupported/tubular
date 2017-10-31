@@ -17,7 +17,6 @@ from moto.ec2.utils import random_ami_id
 from six.moves import urllib, reload_module
 import tubular.asgard as asgard
 from tubular.exception import (
-    TimeoutException,
     BackendError,
     CannotDeleteActiveASG,
     CannotDeleteLastASG,
@@ -325,10 +324,10 @@ AWS_RATE_LIMIT_EXCEPTION = {
         "2017-10-18_16:14:34 Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' will start with 0 instances",
         "2017-10-18_16:14:34 Create Auto Scaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
         ("2017-10-18_16:14:34 Create Launch Configuration "
-            "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' with image 'ami-abbf6fd1'"),
+         "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' with image 'ami-abbf6fd1'"),
         "2017-10-18_16:14:34 Create Autoscaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
         ("2017-10-18_16:14:35 Disabling adding instances "
-            "to ELB for auto scaling group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'"),
+         "to ELB for auto scaling group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'"),
         (
             "2017-10-18_16:14:35 Launch Config "
             "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' has been created. "
@@ -343,10 +342,11 @@ AWS_RATE_LIMIT_EXCEPTION = {
         "2017-10-18_16:14:36 Setting group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' to min 15 max 15",
         "2017-10-18_16:14:36 Update Autoscaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
         ("2017-10-18_16:14:36 Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'"
-        " has 0 instances. Waiting for 15 to exist."),
+         " has 0 instances. Waiting for 15 to exist."),
         (
-        '2017-10-18_16:19:11 Exception: com.amazonaws.AmazonServiceException: Rate exceeded (Service: '
-        'AmazonAutoScaling; Status Code: 400; Error Code: Throttling; Request ID: 1324046b-b420-11e7-a9eb-7fe7ac63f645)'
+            '2017-10-18_16:19:11 Exception: com.amazonaws.AmazonServiceException: Rate exceeded (Service: '
+            'AmazonAutoScaling; Status Code: 400; Error Code: '
+            'Throttling; Request ID: 1324046b-b420-11e7-a9eb-7fe7ac63f645)'
         )
     ],
     "status": "failed",
