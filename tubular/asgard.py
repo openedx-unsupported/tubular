@@ -70,7 +70,7 @@ def handle_throttling(json_response):
             raise RateLimitedException("AWS is throttling requests from Asgard")
 
 
-def _parse_json(url, response):
+def _parse_asgard_json_response(url, response):
     """
     Protect against non-JSON responses that are sometimes returned from Asgard.
     """
@@ -79,6 +79,7 @@ def _parse_json(url, response):
     except ValueError:
         msg = "Expected json response from url: '{}' - but got the following:\n{}"
         raise BackendError(msg.format(url, response.text))
+    handle_throttling(response_json)
     return response_json
 
 
@@ -124,8 +125,7 @@ def clusters_for_asgs(asgs):
     url = request.prepare().url
     LOG.debug("Getting Cluster List from: {}".format(url))
     response = requests.get(CLUSTER_LIST_URL, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
-    cluster_json = _parse_json(url, response)
-    handle_throttling(cluster_json)
+    cluster_json = _parse_asgard_json_response(url, response)
 
     relevant_clusters = {}
     for cluster in cluster_json:
@@ -166,8 +166,7 @@ def asgs_for_cluster(cluster):
     url = CLUSTER_INFO_URL.format(cluster)
     response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
     LOG.debug("ASGs for Cluster: {}".format(response.text))
-    asgs_json = _parse_json(url, response)
-    handle_throttling(asgs_json)
+    asgs_json = _parse_asgard_json_response(url, response)
 
     if len(asgs_json) < 1:
         msg = "Expected a list of dicts with an 'autoScalingGroupName' attribute. " \
@@ -199,8 +198,7 @@ def wait_for_task_completion(task_url, timeout):
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
         response = requests.get(task_url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
-        json_response = _parse_json(task_url, response)
-        handle_throttling(json_response)
+        json_response = _parse_asgard_json_response(task_url, response)
         if json_response['status'] in ('completed', 'failed'):
             return json_response
 
@@ -210,7 +208,7 @@ def wait_for_task_completion(task_url, timeout):
 
 
 @backoff.on_exception(backoff.expo,
-                      (RateLimitedException),
+                      (RateLimitedException,),
                       max_tries=MAX_ATTEMPTS)
 def new_asg(cluster, ami_id):
     """
@@ -241,8 +239,7 @@ def new_asg(cluster, ami_id):
         NEW_ASG_URL,
         data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT
     )
-    resource_info_json = _parse_json(NEW_ASG_URL, response)
-    handle_throttling(resource_info_json)
+    _parse_asgard_json_response(NEW_ASG_URL, response)
     LOG.debug("Sent request to create new ASG in Cluster({}).".format(cluster))
 
     if response.status_code == 404:
@@ -304,8 +301,7 @@ def _get_asgard_resource_info(url):
         raise BackendError('Call to asgard failed with status code: {0}: {1}'
                            .format(response.status_code, response.text))
     LOG.debug("ASG info: {}".format(response.text))
-    resource_info_json = _parse_json(url, response)
-    handle_throttling(resource_info_json)
+    resource_info_json = _parse_asgard_json_response(url, response)
     return resource_info_json
 
 
@@ -569,8 +565,7 @@ def elbs_for_asg(asg):
     """
     url = ASG_INFO_URL.format(asg)
     response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
-    resp_json = _parse_json(url, response)
-    handle_throttling(resp_json)
+    resp_json = _parse_asgard_json_response(url, response)
     try:
         elbs = resp_json['group']['loadBalancerNames']
     except (KeyError, TypeError):
