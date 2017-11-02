@@ -53,7 +53,7 @@ LOG = logging.getLogger(__name__)
 MAX_ATTEMPTS = int(os.environ.get('RETRY_MAX_ATTEMPTS', 5))
 
 
-def handle_throttling(json_response):
+def _handle_throttling(json_response):
     """
     Throw an exception if AWS is throttling Asgard
 
@@ -79,7 +79,7 @@ def _parse_asgard_json_response(url, response):
     except ValueError:
         msg = "Expected json response from url: '{}' - but got the following:\n{}"
         raise BackendError(msg.format(url, response.text))
-    handle_throttling(response_json)
+    _handle_throttling(response_json)
     return response_json
 
 
