@@ -239,7 +239,6 @@ def new_asg(cluster, ami_id):
         NEW_ASG_URL,
         data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT
     )
-    _parse_asgard_json_response(NEW_ASG_URL, response)
     LOG.debug("Sent request to create new ASG in Cluster({}).".format(cluster))
 
     if response.status_code == 404:

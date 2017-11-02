@@ -541,22 +541,22 @@ class TestAsgard(unittest.TestCase):
         with self.assertRaises(BackendError):
             asgard.wait_for_task_completion(task_url, 1)
 
-    def test_new_asg_aws_rate_limit(self, req_mock):
-        task_url = "http://some.host/task/1234.json"
-        cluster = "loadtest-edx-edxapp"
-        ami_id = "ami-abc1234"
+    # def test_new_asg_aws_rate_limit(self, req_mock):
+    #     task_url = "http://some.host/task/1234.json"
+    #     cluster = "loadtest-edx-edxapp"
+    #     ami_id = "ami-abc1234"
 
-        req_mock.post(
-            asgard.NEW_ASG_URL,
-            json=AWS_RATE_LIMIT_EXCEPTION,
-            headers={"Location": task_url},
-            status_code=200)
+    #     req_mock.post(
+    #         asgard.NEW_ASG_URL,
+    #         json=AWS_RATE_LIMIT_EXCEPTION,
+    #         headers={"Location": task_url},
+    #         status_code=200)
 
-        url = asgard.CLUSTER_INFO_URL.format(cluster)
-        req_mock.get(
-            url,
-            json=VALID_CLUSTER_JSON_INFO)
-        self.assertRaises(RateLimitedException, asgard.new_asg, cluster, ami_id)
+    #     url = asgard.CLUSTER_INFO_URL.format(cluster)
+    #     req_mock.get(
+    #         url,
+    #         json=VALID_CLUSTER_JSON_INFO)
+    #     self.assertRaises(RateLimitedException, asgard.new_asg, cluster, ami_id)
 
     def test_new_asg(self, req_mock):
         task_url = "http://some.host/task/1234.json"
