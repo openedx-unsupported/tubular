@@ -72,11 +72,11 @@ class LifecycleManager(object):
         """
         if max_attempts < 1:
             raise RetryException(
-                "Must specify a max_attempts number greater than 1. Value: {0}".format(max_attempts))
+                "Must specify a max_attempts number greater than or equal to 1. Value: {0}".format(max_attempts))
 
         if delay_seconds < 0:
             raise RetryException(
-                "Must specify a delay_seconds number greater than 0. Value: {0}".format(delay_seconds))
+                "Must specify a delay_seconds number greater than or equal to 0. Value: {0}".format(delay_seconds))
 
         if max_time_seconds is not None and max_time_seconds > delay_seconds:
             LOG.warning(

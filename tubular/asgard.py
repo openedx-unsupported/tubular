@@ -10,11 +10,11 @@ import logging
 import time
 import copy
 from collections import defaultdict
+import backoff
 import requests
 import six
 import tubular.ec2 as ec2
 
-from tubular.utils.retry import retry
 from tubular.exception import (
     ASGCountZeroException,
     ASGDoesNotExistException,
@@ -29,6 +29,7 @@ from tubular.exception import (
     MultipleImagesFoundException,
     ResourceDoesNotExistException,
     TimeoutException,
+    RateLimitedException,
 )
 from tubular.utils import WAIT_SLEEP_TIME, DISABLE_OLD_ASG_WAIT_TIME
 
@@ -49,8 +50,27 @@ CLUSTER_INFO_URL = "{}/cluster/show/{}.json".format(ASGARD_API_ENDPOINT, "{}")
 
 LOG = logging.getLogger(__name__)
 
+MAX_ATTEMPTS = int(os.environ.get('RETRY_MAX_ATTEMPTS', 5))
 
-def _parse_json(url, response):
+
+def _handle_throttling(json_response):
+    """
+    Throw an exception if AWS is throttling Asgard
+
+    Raises:
+    RateLimitedException: When we are being rate limited by AWS.
+    """
+
+    if ('status' in json_response and
+            json_response['status'] == 'failed' and
+            json_response['log']):
+
+        last_log_entry = json_response['log'][len(json_response['log']) - 1]
+        if 'com.amazonaws.AmazonServiceException' in last_log_entry and 'Throttling' in last_log_entry:
+            raise RateLimitedException("AWS is throttling requests from Asgard")
+
+
+def _parse_asgard_json_response(url, response):
     """
     Protect against non-JSON responses that are sometimes returned from Asgard.
     """
@@ -59,10 +79,14 @@ def _parse_json(url, response):
     except ValueError:
         msg = "Expected json response from url: '{}' - but got the following:\n{}"
         raise BackendError(msg.format(url, response.text))
+    _handle_throttling(response_json)
     return response_json
 
 
-@retry()
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       BackendDataError),
+                      max_tries=MAX_ATTEMPTS)
 def clusters_for_asgs(asgs):
     """
     An autoscaling group can belong to multiple clusters potentially.
@@ -94,13 +118,14 @@ def clusters_for_asgs(asgs):
     Raises:
         BackendDataError: We got bad data from the backend. We can't
             get cluster information from it.
+        RateLimitedException: When we are being rate limited by AWS.
     """
 
     request = requests.Request('GET', CLUSTER_LIST_URL, params=ASGARD_API_TOKEN)
     url = request.prepare().url
     LOG.debug("Getting Cluster List from: {}".format(url))
     response = requests.get(CLUSTER_LIST_URL, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
-    cluster_json = _parse_json(url, response)
+    cluster_json = _parse_asgard_json_response(url, response)
 
     relevant_clusters = {}
     for cluster in cluster_json:
@@ -119,7 +144,10 @@ def clusters_for_asgs(asgs):
     return relevant_clusters
 
 
-@retry()
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       BackendDataError),
+                      max_tries=MAX_ATTEMPTS)
 def asgs_for_cluster(cluster):
     """
     Given a named cluster, get all ASGs in the cluster.
@@ -129,21 +157,23 @@ def asgs_for_cluster(cluster):
 
     Returns:
         list(dict): List of ASGs.
+
+    Raises:
+        RateLimitedException: When we are being rate limited by AWS.
     """
 
     LOG.debug("URL: {}".format(CLUSTER_INFO_URL.format(cluster)))
     url = CLUSTER_INFO_URL.format(cluster)
     response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
-
     LOG.debug("ASGs for Cluster: {}".format(response.text))
-    asgs = _parse_json(url, response)
+    asgs_json = _parse_asgard_json_response(url, response)
 
-    if len(asgs) < 1:
+    if len(asgs_json) < 1:
         msg = "Expected a list of dicts with an 'autoScalingGroupName' attribute. " \
-              "Got: {}".format(asgs)
+              "Got: {}".format(asgs_json)
         raise BackendDataError(msg)
 
-    return asgs
+    return asgs_json
 
 
 def wait_for_task_completion(task_url, timeout):
@@ -158,6 +188,7 @@ def wait_for_task_completion(task_url, timeout):
 
     Raises:
         TimeoutException: When we timeout waiting for the task to finish.
+        RateLimitedException: When we are being rate limited by AWS.
     """
 
     if not task_url.endswith('.json'):
@@ -167,7 +198,7 @@ def wait_for_task_completion(task_url, timeout):
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
         response = requests.get(task_url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
-        json_response = _parse_json(task_url, response)
+        json_response = _parse_asgard_json_response(task_url, response)
         if json_response['status'] in ('completed', 'failed'):
             return json_response
 
@@ -176,6 +207,9 @@ def wait_for_task_completion(task_url, timeout):
     raise TimeoutException("Timed out while waiting for task {}".format(task_url))
 
 
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,),
+                      max_tries=MAX_ATTEMPTS)
 def new_asg(cluster, ami_id):
     """
     Create a new ASG in the given asgard cluster using the given AMI.
@@ -193,7 +227,9 @@ def new_asg(cluster, ami_id):
         TimeoutException: When the task to bring up the new ASG times out.
         BackendError: When the task to bring up the new ASG fails.
         ASGCountZeroException: When the new ASG brought online has 0 for it's min and desired counts
+        RateLimitedException: When we are being rate limited by AWS.
     """
+
     payload = {
         "name": cluster,
         "imageId": ami_id,
@@ -203,6 +239,7 @@ def new_asg(cluster, ami_id):
         NEW_ASG_URL,
         data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT
     )
+    _parse_asgard_json_response(NEW_ASG_URL, response)
     LOG.debug("Sent request to create new ASG in Cluster({}).".format(cluster))
 
     if response.status_code == 404:
@@ -234,11 +271,23 @@ def new_asg(cluster, ami_id):
     return newest_asg['autoScalingGroupName']
 
 
-@retry()
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       TimeoutException,
+                       BackendError,
+                       ASGCountZeroException),
+                      max_tries=MAX_ATTEMPTS)
 def _get_asgard_resource_info(url):
     """
     A generic function for querying Asgard for inforamtion about a specific resource,
     such as an Autoscaling Group, A cluster.
+
+
+    Raises:
+        TimeoutException: When the task to bring up the new ASG times out.
+        BackendError: When the task to bring up the new ASG fails.
+        ASGCountZeroException: When the new ASG brought online has 0 for it's min and desired counts
+        RateLimitedException: When we are being rate limited by AWS.
     """
 
     LOG.debug("URL: {}".format(url))
@@ -251,9 +300,9 @@ def _get_asgard_resource_info(url):
     elif response.status_code != 200:
         raise BackendError('Call to asgard failed with status code: {0}: {1}'
                            .format(response.status_code, response.text))
-
     LOG.debug("ASG info: {}".format(response.text))
-    return _parse_json(url, response)
+    resource_info_json = _parse_asgard_json_response(url, response)
+    return resource_info_json
 
 
 def get_asg_info(asg):
@@ -371,7 +420,11 @@ def is_last_asg(asg):
     return False
 
 
-@retry()
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       TimeoutException,
+                       BackendError),
+                      max_tries=MAX_ATTEMPTS)
 def enable_asg(asg):
     """
     Enable an ASG in asgard.  This means it will have ELBs routing to it
@@ -384,7 +437,9 @@ def enable_asg(asg):
         None: When the asg has been enabled.
 
     Raises:
-        TimeoutException: If the task to enable the ASG fails.
+        BackendError: If the task to enable the ASG fails.
+        TimeoutException: If the request to enable the ASG times out
+        RateLimitedException: When we are being rate limited by AWS.
     """
     payload = {"name": asg}
     response = requests.post(
@@ -398,7 +453,11 @@ def enable_asg(asg):
         raise BackendError(msg)
 
 
-@retry()
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       TimeoutException,
+                       BackendError),
+                      max_tries=MAX_ATTEMPTS)
 def disable_asg(asg):
     """
     Disable an ASG using asgard.
@@ -411,10 +470,11 @@ def disable_asg(asg):
         None: When the asg has been disabled.
 
     Raises:
-        TimeoutException: If the task to enable the ASG fails..
+        TimeoutException: If the task to enable the ASG times out
         BackendError: If asgard was unable to disable the ASG
         ASGDoesNotExistException: If the ASG does not exist
         CannotDisableActiveASG: if the current ASG is active
+        RateLimitedException: When we are being rate limited by AWS.
     """
     try:
         if is_asg_pending_delete(asg):
@@ -440,7 +500,11 @@ def disable_asg(asg):
         raise BackendError(msg)
 
 
-@retry()
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       TimeoutException,
+                       BackendError),
+                      max_tries=MAX_ATTEMPTS)
 def delete_asg(asg, fail_if_active=True, fail_if_last=True):
     """
     Delete an ASG using asgard.
@@ -456,6 +520,7 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True):
         TimeoutException: If the task to delete the ASG fails...
         BackendError: If asgard was unable to delete the ASG
         ASGDoesNotExistException: When an ASG does not exist
+        RateLimitedException: When we are being rate limited by AWS.
     """
     if is_asg_pending_delete(asg):
         LOG.info("Not deleting ASG {} due to its already pending deletion.".format(asg))
@@ -480,7 +545,10 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True):
         raise BackendError(msg)
 
 
-@retry()
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,
+                       BackendDataError),
+                      max_tries=MAX_ATTEMPTS)
 def elbs_for_asg(asg):
     """
     Return the ELB(s) which are directing traffic to a particular ASG.
@@ -492,11 +560,12 @@ def elbs_for_asg(asg):
         list(str): List of the ELB names.
 
     Raises:
-        BackendError: If unexpected response from Asgard.
+        BackendDataError: If unexpected response from Asgard.
+        RateLimitedException: When we are being rate limited by AWS.
     """
     url = ASG_INFO_URL.format(asg)
     response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
-    resp_json = _parse_json(url, response)
+    resp_json = _parse_asgard_json_response(url, response)
     try:
         elbs = resp_json['group']['loadBalancerNames']
     except (KeyError, TypeError):

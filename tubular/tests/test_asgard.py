@@ -17,11 +17,11 @@ from moto.ec2.utils import random_ami_id
 from six.moves import urllib, reload_module
 import tubular.asgard as asgard
 from tubular.exception import (
-    TimeoutException,
     BackendError,
     CannotDeleteActiveASG,
     CannotDeleteLastASG,
-    ASGDoesNotExistException
+    ASGDoesNotExistException,
+    RateLimitedException
 )
 from tubular.tests.test_utils import create_asg_with_tags, create_elb
 from tubular.ec2 import tag_asg_for_deletion
@@ -29,6 +29,7 @@ from tubular.ec2 import tag_asg_for_deletion
 # Disable the retry decorator and reload the asgard module. This will ensure that tests do not fail because of the retry
 # decorator recalling a method when using httpretty with side effect iterators
 os.environ['TUBULAR_RETRY_ENABLED'] = "false"
+os.environ['RETRY_MAX_ATTEMPTS'] = "1"
 reload_module(asgard)  # pylint: disable=too-many-function-args
 
 
@@ -313,6 +314,47 @@ RUNNING_SAMPLE_TASK = {
     "updateTime": "2016-02-11 19:03:37 UTC"
 }
 
+AWS_RATE_LIMIT_EXCEPTION = {
+    "log":
+    [
+        (
+            "2017-10-18_16:14:34 Started on thread Task:Creating auto scaling group "
+            "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271', min 15, max 15, traffic prevented."
+        ),
+        "2017-10-18_16:14:34 Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' will start with 0 instances",
+        "2017-10-18_16:14:34 Create Auto Scaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
+        ("2017-10-18_16:14:34 Create Launch Configuration "
+         "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' with image 'ami-abbf6fd1'"),
+        "2017-10-18_16:14:34 Create Autoscaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
+        ("2017-10-18_16:14:35 Disabling adding instances "
+         "to ELB for auto scaling group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'"),
+        (
+            "2017-10-18_16:14:35 Launch Config "
+            "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' has been created. "
+            "Auto Scaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' has been created. "
+        ),
+        '2017-10-18_16:14:35 Create 2 Scaling Policies',
+        "2017-10-18_16:14:35 Create Scaling Policy 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1779'",
+        "2017-10-18_16:14:35 Create Alarm 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1779'",
+        "2017-10-18_16:14:36 Create Scaling Policy 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1780'",
+        "2017-10-18_16:14:36 Create Alarm 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1780'",
+        "2017-10-18_16:14:36 Resizing group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' to min 15, max 15",
+        "2017-10-18_16:14:36 Setting group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' to min 15 max 15",
+        "2017-10-18_16:14:36 Update Autoscaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
+        ("2017-10-18_16:14:36 Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'"
+         " has 0 instances. Waiting for 15 to exist."),
+        (
+            '2017-10-18_16:19:11 Exception: com.amazonaws.AmazonServiceException: Rate exceeded (Service: '
+            'AmazonAutoScaling; Status Code: 400; Error Code: '
+            'Throttling; Request ID: 1324046b-b420-11e7-a9eb-7fe7ac63f645)'
+        )
+    ],
+    "status": "failed",
+    "operation": "",
+    "durationString": "0s",
+    "updateTime": "2016-02-11 02:31:12 UTC"
+}
+
 
 SAMPLE_ASG_INFO = {
     "group": {
@@ -499,13 +541,22 @@ class TestAsgard(unittest.TestCase):
         with self.assertRaises(BackendError):
             asgard.wait_for_task_completion(task_url, 1)
 
-    def test_task_timeout(self, req_mock):
+    def test_new_asg_aws_rate_limit(self, req_mock):
         task_url = "http://some.host/task/1234.json"
-        req_mock.get(
-            task_url,
-            json=RUNNING_SAMPLE_TASK)
+        cluster = "loadtest-edx-edxapp"
+        ami_id = "ami-abc1234"
 
-        self.assertRaises(TimeoutException, asgard.wait_for_task_completion, task_url, 1)
+        req_mock.post(
+            asgard.NEW_ASG_URL,
+            json=AWS_RATE_LIMIT_EXCEPTION,
+            headers={"Location": task_url},
+            status_code=200)
+
+        url = asgard.CLUSTER_INFO_URL.format(cluster)
+        req_mock.get(
+            url,
+            json=VALID_CLUSTER_JSON_INFO)
+        self.assertRaises(RateLimitedException, asgard.new_asg, cluster, ami_id)
 
     def test_new_asg(self, req_mock):
         task_url = "http://some.host/task/1234.json"
@@ -856,12 +907,109 @@ class TestAsgard(unittest.TestCase):
         else:
             self.assertRaises(BackendError, test_function, asg)
 
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    def test_deploy_asg_error_did_not_create_multiple_asgs(self, req_mock):
+        """
+        Test that new_asg is not called more than the number of asgs that
+        are intended to be created when an error occurs
+        """
+        counter = 0
+
+        def count_new_asg_calls(request, context):
+            """
+            Count the number of times the new_asg request goes out
+            """
+            task_url = "http://some.host/task/new_asg_1234.json"
+            context.headers = {
+                "Location": task_url,
+                "server": asgard.ASGARD_API_ENDPOINT
+            }
+            request_values = urllib.parse.parse_qs(request.text)
+            new_asg_name = "{}-v099".format(request_values["name"][0])
+            new_ami_id = request_values["imageId"][0]
+            create_asg_with_tags(new_asg_name, self.test_asg_tags, new_ami_id)
+            context.status_code = 302
+            nonlocal counter
+            counter = counter + 1
+            return ""
+
+        ami_id = self._setup_for_deploy(
+            req_mock,
+            new_asg_task_status=FAILED_SAMPLE_TASK,
+            new_asg_post_callback_override=count_new_asg_calls
+        )
+
+        try:
+            asgard.deploy(ami_id)
+        except BackendError:
+            pass
+        self.assertEqual(1, counter)  # We fail midway here, so we dont expect additional calls to new_asg
+
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
+    def test_deploy_asg_rate_limit_did_not_create_multiple_asgs(self, req_mock):
+        """
+        Test that new_asg is not called more than the number of asgs that are
+        intended to be created when AWS throttles our requests
+        """
+        counter = 0
+
+        def count_new_asg_calls(request, context):
+            """
+            Count the number of times the new_asg request goes out
+            """
+            task_url = "http://some.host/task/new_asg_1234.json"
+            context.headers = {
+                "Location": task_url,
+                "server": asgard.ASGARD_API_ENDPOINT
+            }
+            request_values = urllib.parse.parse_qs(request.text)
+            new_asg_name = "{}-v099".format(request_values["name"][0])
+            new_ami_id = request_values["imageId"][0]
+            create_asg_with_tags(new_asg_name, self.test_asg_tags, new_ami_id)
+            context.status_code = 302
+            nonlocal counter
+            counter = counter + 1
+            return ""
+
+        ami_id = self._setup_for_deploy(req_mock, new_asg_post_callback_override=count_new_asg_calls)
+
+        not_in_service_asgs = ["loadtest-edx-edxapp-v058"]
+        in_service_asgs = ["loadtest-edx-edxapp-v059", "loadtest-edx-worker-v034"]
+        new_asgs = ["loadtest-edx-edxapp-v099", "loadtest-edx-worker-v099"]
+
+        self._mock_asgard_not_pending_delete(req_mock, in_service_asgs, json_builder=enabled_asg)
+        self._mock_asgard_pending_delete(req_mock, not_in_service_asgs)
+
+        for asg in new_asgs:
+            url = asgard.ASG_INFO_URL.format(asg)
+            req_mock.get(
+                url,
+                [
+                    dict(json=deleted_asg_not_in_progress(asg),
+                         status_code=200),
+                    dict(json=deleted_asg_not_in_progress(asg),
+                         status_code=200),
+                    dict(json=AWS_RATE_LIMIT_EXCEPTION,
+                         status_code=200),
+                ])
+        try:
+            asgard.deploy(ami_id)
+        except RateLimitedException:  # expect this failure to be bubbled up after failing MAX_RETRY times
+            pass
+
+        self.assertEqual(2, counter)  # once per new asg
+
     def _setup_for_deploy(  # pylint: disable=dangerous-default-value
             self,
             req_mock,
             new_asg_task_status=COMPLETED_SAMPLE_TASK,
             enable_asg_task_status=COMPLETED_SAMPLE_TASK,
             disable_asg_task_status=COMPLETED_SAMPLE_TASK,
+            new_asg_post_callback_override=None
     ):
         """
         Setup all the variables for an ASG deployment.
@@ -916,10 +1064,11 @@ class TestAsgard(unittest.TestCase):
         # Mock endpoints for building new ASGs
         task_url = "http://some.host/task/new_asg_1234.json"
 
-        def new_asg_post_callback(request, context):
+        def default_new_asg_callback(request, context):
             """
             Callback method for POST.
             """
+            task_url = "http://some.host/task/new_asg_1234.json"
             context.headers = {
                 "Location": task_url,
                 "server": asgard.ASGARD_API_ENDPOINT
@@ -933,7 +1082,7 @@ class TestAsgard(unittest.TestCase):
 
         req_mock.post(
             asgard.NEW_ASG_URL,
-            json=new_asg_post_callback)
+            json=default_new_asg_callback if new_asg_post_callback_override is None else new_asg_post_callback_override)
 
         req_mock.get(
             task_url,
