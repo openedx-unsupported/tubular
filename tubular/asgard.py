@@ -176,6 +176,9 @@ def asgs_for_cluster(cluster):
     return asgs_json
 
 
+@backoff.on_exception(backoff.expo,
+                      (RateLimitedException,),
+                      max_tries=MAX_ATTEMPTS)
 def wait_for_task_completion(task_url, timeout):
     """
     Arguments:
@@ -207,9 +210,6 @@ def wait_for_task_completion(task_url, timeout):
     raise TimeoutException("Timed out while waiting for task {}".format(task_url))
 
 
-@backoff.on_exception(backoff.expo,
-                      (RateLimitedException,),
-                      max_tries=MAX_ATTEMPTS)
 def new_asg(cluster, ami_id):
     """
     Create a new ASG in the given asgard cluster using the given AMI.
