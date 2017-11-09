@@ -88,7 +88,7 @@ def cli(ctx, connection, database_name):
 )
 @click.option(
     '--delay',
-    default=5000,
+    default=15000,
     type=click.IntRange(0, None),
     help=(
         "Delay in milliseconds between queries to fetch structures from MongoDB "
@@ -140,7 +140,7 @@ def make_plan(ctx, plan_file, details, retain, delay, batch_size):
 @click.argument('plan_file', type=click.File('r'))
 @click.option(
     '--delay',
-    default=5000,
+    default=15000,
     type=click.IntRange(0, None),
     help=(
         "Delay in milliseconds between batch deletions during pruning. Tune to "
