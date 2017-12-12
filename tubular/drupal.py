@@ -22,7 +22,7 @@ FETCH_TAG_URL = "{root}/sites/{realm}:{site}/envs/{{env}}.json".format(
 CLEAR_CACHE_URL = "{root}/sites/{realm}:{site}/envs/{{env}}/domains/{{domain}}/cache.json".format(
     root=ACQUIA_ENDPOINT, realm=REALM, site=SITE
 )
-DEPLOY_URL = "{root}/sites/{realm}:{site}/envs/{{env}}/code-deploy.json?path={{tag}}".format(
+DEPLOY_URL = "{root}/sites/{realm}:{site}/envs/{{env}}/code-deploy.json?path={{branch_or_tag}}".format(
     root=ACQUIA_ENDPOINT, realm=REALM, site=SITE
 )
 BACKUP_DATABASE_URL = "{root}/sites/{realm}:{site}/envs/{{env}}/dbs/{database}/backups.json".format(
@@ -33,13 +33,27 @@ CHECK_TASKS_URL = "{root}/sites/{realm}:{site}/tasks/{{id}}.json".format(
 )
 # Maps environments to domains.
 VALID_ENVIRONMENTS = {
-    "test": [
-        "edxstg.prod.acquia-sites.com",
-        "stage-edx-mktg-backend.edx.org",
-        "stage-edx-mktg-edit.edx.org",
-        "stage-webview.edx.org",
-        "stage.edx.org",
-        "www.stage.edx.org",
+    "acceptance": [
+        "edxacc.prod.acquia-sites.com",
+        "acceptance-edx-mktg-backend.edx.org",
+        "acceptance-edx-mktg-edit.edx.org",
+        "acceptance-edx-mktg-webview.edx.org",
+        "acceptance.edx.org",
+    ],
+    "dev": [
+        "edxdev.prod.acquia-sites.com",
+        "dev-edx-mktg-backend.edx.org",
+        "dev-edx-mktg-edx.edx.org",
+        "dev-edx-mktg-webview.edx.org",
+        "dev.edx.org",
+        "www.dev.edx.org",
+    ],
+    "extra": [
+        "edxextra.prod.acquia-sites.com",
+        "extra-edx-mktg-backend.edx.org",
+        "extra-edx-mktg-edit.edx.org",
+        "extra-webview.edx.org",
+        "extra.edx.org",
     ],
     "prod": [
         "edx.prod.acquia-sites.com",
@@ -47,6 +61,21 @@ VALID_ENVIRONMENTS = {
         "prod-edx-mktg-edit.edx.org",
         "webview.edx.org",
         "www.edx.org",
+    ],
+    "qa": [
+        "edxqa.prod.acquia-sites.com",
+        "qa-edx-mktg-backend.edx.org",
+        "qa-edx-mktg-edit.edx.org",
+        "qa-edx-mktg-webview.edx.org",
+        "qa.edx.org",
+    ],
+    "test": [
+        "edxstg.prod.acquia-sites.com",
+        "stage-edx-mktg-backend.edx.org",
+        "stage-edx-mktg-edit.edx.org",
+        "stage-webview.edx.org",
+        "stage.edx.org",
+        "www.stage.edx.org",
     ],
 }
 LOG = logging.getLogger(__name__)
@@ -152,15 +181,15 @@ def clear_varnish_cache(env, username, password):
 
 
 @retry()
-def deploy(env, username, password, tag):
+def deploy(env, username, password, branch_or_tag):
     """
-    Deploys a given tag to the specified environment.
+    Deploys a given branch or tag to the specified environment.
 
     Args:
         env (str): The environment to deploy code in (e.g. test or prod)
         username (str): The Acquia username necessary to run the command.
         password (str): The Acquia password necessary to run the command.
-        tag (str): The tag to deploy to the specified environment.
+        branch_or_tag (str): The branch or tag to deploy to the specified environment.
 
     Returns:
         True if the code is successfully deployed.
@@ -170,7 +199,7 @@ def deploy(env, username, password, tag):
     """
     __ = VALID_ENVIRONMENTS[env]
     api_client = get_api_client(username, password)
-    response = api_client.post(DEPLOY_URL.format(env=env, tag=tag))
+    response = api_client.post(DEPLOY_URL.format(env=env, branch_or_tag=branch_or_tag))
     response_json = parse_response(response, "Failed to deploy code.")
     return check_state(response_json["id"], username, password)
 

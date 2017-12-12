@@ -220,26 +220,27 @@ class TestDrupal(unittest.TestCase):
         Tests deploy raises BackendError when status != 200
         """
         mock.post(
-            drupal.DEPLOY_URL.format(env=ACQUIA_ENV, tag=TEST_TAG),
+            drupal.DEPLOY_URL.format(env=ACQUIA_ENV, branch_or_tag=TEST_TAG),
             json={},
             status_code=501
         )
         with self.assertRaises(BackendError):
-            drupal.deploy(env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD, tag=TEST_TAG)
+            drupal.deploy(env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD, branch_or_tag=TEST_TAG)
 
     def test_deploy_success(self, mock):
         """
         Tests deploy returns True when there is a valid response.
         """
         mock.post(
-            drupal.DEPLOY_URL.format(env=ACQUIA_ENV, tag=TEST_TAG),
+            drupal.DEPLOY_URL.format(env=ACQUIA_ENV, branch_or_tag=TEST_TAG),
             json=DEPLOY_RESPONSE_WAITING,
         )
         mock.get(
             drupal.CHECK_TASKS_URL.format(id="2"),
             json=DEPLOY_RESPONSE_DONE
         )
-        self.assertTrue(drupal.deploy(env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD, tag=TEST_TAG))
+        self.assertTrue(drupal.deploy(
+            env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD, branch_or_tag=TEST_TAG))
 
     def test_backup_database_failure(self, mock):
         """
@@ -304,4 +305,4 @@ class TestDrupal(unittest.TestCase):
         Tests KeyError is raised when an invalid environment is attempted.
         """
         with self.assertRaises(KeyError):
-            drupal.deploy(env="failure", username=TEST_USERNAME, password=TEST_PASSWORD, tag=TEST_TAG)
+            drupal.deploy(env="failure", username=TEST_USERNAME, password=TEST_PASSWORD, branch_or_tag=TEST_TAG)
