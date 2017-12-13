@@ -144,10 +144,7 @@ def octomerge(
         }
 
         if repo_variable:
-            if approved_prs:
-                repo = target_github_repo.github_repo
-            else:
-                repo = source_github_repo.github_repo
+            repo = target_github_repo.github_repo
 
             if repo.private:
                 results[repo_variable] = repo.ssh_url
