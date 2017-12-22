@@ -240,7 +240,8 @@ class TestDrupal(unittest.TestCase):
             json=DEPLOY_RESPONSE_DONE
         )
         self.assertTrue(drupal.deploy(
-            env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD, branch_or_tag=TEST_TAG))
+            env=ACQUIA_ENV, username=TEST_USERNAME, password=TEST_PASSWORD, branch_or_tag=TEST_TAG
+        ))
 
     def test_backup_database_failure(self, mock):
         """

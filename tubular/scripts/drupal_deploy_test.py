@@ -26,7 +26,7 @@ def deploy(env, username, password, branch_or_tag):
     """
     Deploys a given tag to the specified environment.
 
-    Args:
+    Arguments:
         env (str): The environment to deploy code in (e.g. test or prod)
         username (str): The Acquia username necessary to run the command.
         password (str): The Acquia password necessary to run the command.
