@@ -48,6 +48,13 @@ PR_TEST_INITIAL_WAIT_INTERVAL_DEFAULT = 10
 PR_TEST_POLL_INTERVAL_DEFAULT = 10
 
 
+class SearchRateLimitError(Exception):
+    """
+    Error indicating that the rate limit for search has been hit. See: https://developer.github.com/v3/search.
+    """
+    pass
+
+
 class NoValidCommitsError(Exception):
     """
     Error indicating that there are no commits with valid statuses
@@ -541,6 +548,42 @@ class GitHubAPI(object):
         pull_request = self.get_pull_request(pr_number)
         pull_request.merge()
 
+    # We run this a few extra times than normal bc it may need to backoff up to a minute or more
+    @backoff.on_exception(backoff.expo,
+                          (SearchRateLimitError),
+                          max_tries=12)
+    def search_issues(self, query, github_type, base):
+        """
+        Performs a Github issue search, retrying if it fails
+        due to custom ratelimit errors
+
+        Arguments:
+            query (string): Github issues search query.
+                See: https://help.github.com/articles/searching-issues-and-pull-requests/
+            github_type (string): optional legal values are 'pr' or 'issue'
+            base (string): optional Base branch
+            user (string): optional Github user
+            repo (string): optional Github repo
+
+        Raises:
+            GithubException: For unknown errors
+            SearchRateLimitError: If we have retried the search, and it has failed the specified number of times
+        """
+
+        try:
+            return self.github_connection.search_issues(query,
+                                                        type=github_type,
+                                                        base=base,
+                                                        user=self.user,
+                                                        repo=self.repo)
+        except GithubException as exc:
+            message = str(exc.data)
+            if 'you have triggered an abuse detection mechanism' in message.lower():
+                # See: 'https://help.github.com/articles/searching-issues-and-pull-requests/'
+                raise SearchRateLimitError('Github is throttling your requests to the search endpoint.')
+            raise exc
+        raise 'Failed to search_issues on Github'
+
     def create_tag(
             self,
             sha,
@@ -700,13 +743,8 @@ class GitHubAPI(object):
         for sha_batch in batch(shas):
             # For more about searching issues,
             # see https://help.github.com/articles/searching-issues.
-            issues += self.github_connection.search_issues(
-                ' '.join(sha_batch),
-                type='pr',
-                base='master',
-                user=self.org,
-                repo=self.repo,
-            )
+            query = ' '.join(sha_batch)
+            issues += self.search_issues(query, 'pr', 'master')
 
         pulls = {}
         for issue in issues:
@@ -869,6 +907,6 @@ class GitHubAPI(object):
         """
         Yield all pull requests in the repo against ``pr_base`` that are approved and not closed.
         """
-        query = "type:pr review:approved base:{} state:open state:merged".format(pr_base)
-        for issue in self.github_connection.search_issues(query):
+        query = "review:approved state:open state:merged"
+        for issue in self.search_issues(query, 'pr', pr_base):
             yield self.github_repo.get_pull(issue.number)
