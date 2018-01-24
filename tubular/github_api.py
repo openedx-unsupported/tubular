@@ -197,7 +197,7 @@ class GitHubAPI(object):
             Commit SHA of the PR HEAD.
 
         Raises:
-            github.GithubException.GithubException: If the response fails.
+            github.GithubException.GithubException: Unknown errors from github
             github.GithubException.UnknownObjectException: If the branch does not exist
         """
         return self.get_pull_request(pr_number).head.sha
@@ -238,7 +238,7 @@ class GitHubAPI(object):
             Commit SHA of the branch HEAD.
 
         Raises:
-            github.GithubException.GithubException: If the response fails.
+            github.GithubException.GithubException: Unknown errors from github
             github.GithubException.UnknownObjectException: If the branch does not exist
         """
         return self.get_commits_by_branch(branch_name)[0].sha
@@ -254,7 +254,7 @@ class GitHubAPI(object):
             Commit SHA of the merge commit which merged the PR into the base branch.
 
         Raises:
-            github.GithubException.GithubException: If the response fails.
+            github.GithubException.GithubException: Unknown errors from github
             github.GithubException.UnknownObjectException: If the PR does not exist.
         """
         return self.get_pull_request(pr_number).merge_commit_sha
@@ -323,7 +323,7 @@ class GitHubAPI(object):
                 dict: Key/values of ci_context:ci_url
 
         Raises:
-            github.GithubException.GithubException: If the response fails.
+            github.GithubException.GithubException: Unknown errors from github
             github.GithubException.UnknownObjectException: If the SHA does not exist
         """
         return self._is_commit_successful(commit_sha)
@@ -341,7 +341,7 @@ class GitHubAPI(object):
                 dict: Key/values of ci_context:ci_url
 
         Raises:
-            github.GithubException.GithubException: If the response fails.
+            github.GithubException.GithubException: Unknown errors from github
             github.GithubException.UnknownObjectException: If the PR does not exist
         """
         return self._is_commit_successful(
@@ -393,7 +393,7 @@ class GitHubAPI(object):
             True if all tests have passed successfully, else False.
 
         Raises:
-            github.GithubException.GithubException: If the response fails.
+            github.GithubException.GithubException: Unknown errors from github
             github.GithubException.UnknownObjectException: If the branch does not exist
         """
         commit_sha = self.get_head_commit_from_pull_request(pr_number)
@@ -424,7 +424,7 @@ class GitHubAPI(object):
             True if PR is opened against the branch, else False.
 
         Raises:
-            github.GithubException.GithubException: If the response fails.
+            github.GithubException.GithubException: Unknown errors from github
             github.GithubException.UnknownObjectException: If the branch does not exist
         """
         pull_request = self.get_pull_request(pr_number)
@@ -457,7 +457,7 @@ class GitHubAPI(object):
             branch_name (str): The name of the branch to delete
 
         Raises:
-            github.GithubException.GithubException: If the response fails.
+            github.GithubException.GithubException: Unknown errors from github
             github.GithubException.UnknownObjectException: If the branch does not exist
         """
         ref = self.github_repo.get_git_ref(
@@ -529,7 +529,7 @@ class GitHubAPI(object):
             github.PullRequest.PullRequest
 
         Raises:
-            github.GithubException.GithubException: If the response fails.
+            github.GithubException.GithubException: Unknown errors from github
             github.GithubException.UnknownObjectException: If the PR ID does not exist
         """
         return self.github_repo.get_pull(pr_number)
@@ -551,7 +551,8 @@ class GitHubAPI(object):
     # We run this a few extra times than normal bc it may need to backoff up to a minute or more
     @backoff.on_exception(backoff.expo,
                           (SearchRateLimitError),
-                          max_tries=12)
+                          max_tries=12,
+                          max_value=128)  # Keep it at 2 minutes and retry ~3 times after that.
     def search_issues(self, query, github_type, base):
         """
         Performs a Github issue search, retrying if it fails
@@ -566,7 +567,7 @@ class GitHubAPI(object):
             repo (string): optional Github repo
 
         Raises:
-            GithubException: For unknown errors
+            GithubException: Unknown errors from github
             SearchRateLimitError: If we have retried the search, and it has failed the specified number of times
         """
 
