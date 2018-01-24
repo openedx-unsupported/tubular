@@ -1,1 +1,0 @@
-../tubular/scripts/drupal_deploy_test.py
