@@ -3,7 +3,7 @@ backoff>=1.3.2,<1.4.0
 boto==2.43.0
 click>=6.2,<7.0
 click-log==0.1.8
-edx-opaque-keys==0.4.0
+-e git+https://github.com/edx/opaque-keys.git@c056e200fd8c21819a31d1f6025290521073b2da#egg=edx-opaque-keys==0.4.2
 enum34 >=1.1.6, <2.0; python_version < '3.4'
 freezegun==0.3.8
 GitPython==2.1.8
