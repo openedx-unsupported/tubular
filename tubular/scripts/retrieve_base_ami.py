@@ -61,10 +61,11 @@ def retrieve_base_ami(environment, deployment, play, override, out_file):
         sys.exit(1)
 
     try:
+        edp_ami_id = ec2.active_ami_for_edp(environment, deployment, play)
         if override:
             ami_id = override
         else:
-            ami_id = ec2.active_ami_for_edp(environment, deployment, play)
+            ami_id = edp_ami_id
 
         ami_info = {
             # This is passed directly to an ansible script that expects a base_ami_id variable
@@ -73,7 +74,7 @@ def retrieve_base_ami(environment, deployment, play, override, out_file):
             # generating release pages easier.
             'ami_id': ami_id,
         }
-        ami_info.update(ec2.tags_for_ami(ami_id))
+        ami_info.update(ec2.tags_for_ami(edp_ami_id))
         logging.info("Found active AMI ID for {env}-{dep}-{play}: {ami_id}".format(
             env=environment, dep=deployment, play=play, ami_id=ami_id
         ))
