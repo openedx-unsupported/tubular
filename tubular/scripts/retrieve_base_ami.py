@@ -52,12 +52,8 @@ def retrieve_base_ami(environment, deployment, play, override, out_file):
     """
 
     has_edp = environment is not None or deployment is not None or play is not None
-    if has_edp and override is not None:
-        logging.error("--environment, --deployment and --play are mutually exclusive with --override.")
-        sys.exit(1)
-
-    if not has_edp and override is None:
-        logging.error("Either --environment, --deployment and --play or --override are required.")
+    if not has_edp:
+        logging.error("Specify --environment, --deployment and --play.")
         sys.exit(1)
 
     try:
