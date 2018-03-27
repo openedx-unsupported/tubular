@@ -248,25 +248,27 @@ class GitHubApiTestCase(TestCase):
         self.assertEqual(self.api.have_branches_diverged('base', 'head'), expected)
 
     @ddt.data(
-        ('123', list(range(10)), 10, 'SuCcEsS', True),
-        ('123', list(range(10)), 10, 'success', True),
-        ('123', list(range(10)), 10, 'SUCCESS', True),
-        ('123', list(range(10)), 10, 'pending', False),
-        ('123', list(range(10)), 10, 'failure', False),
-        ('123', list(range(10)), 0, None, False)
+        ('123', list(range(10)), 10, 'SuCcEsS', True, "dummy_url"),
+        ('123', list(range(10)), 10, 'success', True, "dummy_url"),
+        ('123', list(range(10)), 10, 'SUCCESS', True, "dummy_url"),
+        ('123', list(range(10)), 10, 'pending', False, "dummy_url"),
+        ('123', list(range(10)), 10, 'failure', False, "dummy_url"),
+        ('123', list(range(10)), 0, None, False, "")
     )
     @ddt.unpack
-    def test_check_combined_status_commit(self, sha, statuses, statuses_returned, state, expected):
+    def test_check_combined_status_commit(self, sha, statuses, statuses_returned, state, expected, combined_url):
         mock_combined_status = Mock(spec=CommitCombinedStatus)
         mock_combined_status.statuses = [Mock(spec=CommitStatus, id=i) for i in statuses]
         mock_combined_status.state = state
+        mock_combined_status.url = combined_url
 
         commit_mock = Mock(spec=Commit)
         commit_mock.get_combined_status.return_value = mock_combined_status
         self.repo_mock.get_commit.return_value = commit_mock
 
-        response, statuses = self.api.check_combined_status_commit(sha)
+        response, statuses, commit_url = self.api.check_combined_status_commit(sha)
 
+        self.assertEqual(commit_url, combined_url)
         self.assertEqual(response, expected)
         self.assertIsInstance(statuses, dict)
         self.assertEqual(len(statuses), statuses_returned)

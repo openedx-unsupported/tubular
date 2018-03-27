@@ -303,11 +303,12 @@ class GitHubAPI(object):
 
         # Determine if the commit has passed all checks
         if len(commit_status.statuses) < 1 or commit_status.state is None:
-            return (False, {})
+            return (False, {}, "")
 
         return (
             commit_status.state.lower() == 'success',
-            {cs.context: cs.target_url for cs in commit_status.statuses}
+            {cs.context: cs.target_url for cs in commit_status.statuses},
+            commit_status.url
         )
 
     def check_combined_status_commit(self, commit_sha):

@@ -95,18 +95,20 @@ def check_tests(org,
     if input_file:
         input_vars = yaml.safe_load(io.open(input_file, 'r'))
         pr_number = input_vars['pr_number']
-        status_success, test_statuses = gh_utils.check_combined_status_pull_request(pr_number)
+        status_success, test_statuses, combined_status_url = gh_utils.check_combined_status_pull_request(pr_number)
         git_obj = 'PR #{}'.format(pr_number)
     elif pr_number:
-        status_success, test_statuses = gh_utils.check_combined_status_pull_request(pr_number)
+        status_success, test_statuses, combined_status_url = gh_utils.check_combined_status_pull_request(pr_number)
         git_obj = 'PR #{}'.format(pr_number)
     elif commit_hash:
-        status_success, test_statuses = gh_utils.check_combined_status_commit(commit_hash)
+        status_success, test_statuses, combined_status_url = gh_utils.check_combined_status_commit(commit_hash)
         git_obj = 'commit hash {}'.format(commit_hash)
 
     LOG.info("{}: Combined status of {} is {}.".format(
         sys.argv[0], git_obj, "success" if status_success else "failed"
     ))
+    LOG.info("{}: Combined status url: {}".format(
+        sys.argv[0], combined_status_url))
 
     dirname = os.path.dirname(out_file.name)
     if dirname:
