@@ -6,6 +6,8 @@ from __future__ import division
 
 import logging
 import math
+import os.path
+import shutil
 
 import backoff
 from jenkinsapi.jenkins import Jenkins
@@ -15,6 +17,33 @@ from requests.exceptions import HTTPError
 from tubular.exception import BackendError
 
 LOG = logging.getLogger(__name__)
+
+
+def _recreate_directory(directory):
+    """
+    Deletes an existing directory recursively (if exists) and (re-)creates it.
+    """
+    if os.path.exists(directory):
+        shutil.rmtree(directory)
+    os.mkdir(directory)
+
+
+def export_learner_job_properties(learners, directory):
+    """
+    Creates a Jenkins properties file for each learner in order to make
+    a retirement slave job for each learner.
+
+    Args:
+        learners (list of dicts): List of learners for which to create properties files.
+        directory (str): Directory in which to create the properties files.
+    """
+    _recreate_directory(directory)
+
+    for learner in learners:
+        learner_name = learner['original_username'].lower()
+        filename = os.path.join(directory, 'learner_retire_{}'.format(learner_name))
+        with open(filename, 'w') as learner_prop_file:
+            learner_prop_file.write('RETIREMENT_USERNAME={}\n'.format(learner_name))
 
 
 def _poll_giveup(data):
