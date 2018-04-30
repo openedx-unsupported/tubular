@@ -38,18 +38,6 @@ class LmsApi(BaseApiClient):
     """
     LMS API client with convenience methods for making API calls.
     """
-    def __init__(self,
-                 client_id,
-                 client_secret,
-                 lms_base_url,
-                 api_base_url):
-        """
-        Inits the LMS API client.
-        """
-        super(LmsApi, self).__init__(
-            lms_base_url, api_base_url, client_id, client_secret
-        )
-
     def learners_to_retire(self, cool_off_days=7):
         """
         Retrieves a list of learners awaiting retirement actions.

@@ -70,7 +70,7 @@ def get_learners_to_retire(config_file,
         client_secret = config_yaml['client_secret']
         lms_base_url = config_yaml['base_urls']['lms']
 
-    api = LmsApi(client_id, client_secret, lms_base_url, lms_base_url)
+    api = LmsApi(lms_base_url, lms_base_url, client_id, client_secret)
 
     # Retrieve the learners to retire and export them to separate Jenkins property files.
     export_learner_job_properties(
