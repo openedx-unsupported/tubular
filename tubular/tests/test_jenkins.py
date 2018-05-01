@@ -12,7 +12,7 @@ import unittest
 
 import backoff
 import ddt
-from mock import Mock
+from mock import Mock, mock_open, patch, call
 import requests_mock
 
 from tubular.exception import BackendError
@@ -49,6 +49,31 @@ MOCK_BUILD_DATA = {
     'result': 'SUCCESS',
     'url': JOB_URL,
 }
+
+
+class TestProperties(unittest.TestCase):
+    """
+    Test the Jenkins property-creating methods.
+    """
+    def test_properties_files(self):
+        learners = [
+            {
+                'original_username': 'learnerA'
+            },
+            {
+                'original_username': 'learnerB'
+            },
+        ]
+        open_mocker = mock_open()
+        with patch('tubular.jenkins.open', open_mocker, create=True):
+            jenkins._recreate_directory = Mock()  # pylint: disable=protected-access
+            jenkins.export_learner_job_properties(learners, "tmpdir")
+        jenkins._recreate_directory.assert_called_once()  # pylint: disable=protected-access
+        self.assertTrue(call('tmpdir/learner_retire_learnera', 'w') in open_mocker.call_args_list)
+        self.assertTrue(call('tmpdir/learner_retire_learnerb', 'w') in open_mocker.call_args_list)
+        handle = open_mocker()
+        self.assertTrue(call('RETIREMENT_USERNAME=learnerA\n') in handle.write.call_args_list)
+        self.assertTrue(call('RETIREMENT_USERNAME=learnerB\n') in handle.write.call_args_list)
 
 
 @ddt.ddt

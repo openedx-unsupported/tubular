@@ -4,11 +4,12 @@ boto==2.43.0
 click>=6.2,<7.0
 click-log==0.1.8
 edx-opaque-keys==0.4.0
+edx-rest-api-client==1.7.1
 enum34 >=1.1.6, <2.0; python_version < '3.4'
 freezegun==0.3.8
 GitPython==2.1.8
 jenkinsapi==0.3.3
-lxml >= 3.7, <3.8
+lxml==3.8.0
 PyGithub==1.29
 pymongo==3.5.1
 pytz==2016.10
