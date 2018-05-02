@@ -1,8 +1,12 @@
 """
 edX API classes which call edX service REST API endpoints using the edx-rest-api-client module.
 """
-from edx_rest_api_client.client import EdxRestApiClient
+import logging
 
+from edx_rest_api_client.client import EdxRestApiClient
+from slumber.exceptions import HttpClientError
+
+LOG = logging.getLogger(__name__)
 
 OAUTH_ACCESS_TOKEN_URL = "/oauth2/access_token"
 
@@ -29,9 +33,13 @@ class BaseApiClient(object):
         Returns:
             (str, datetime)
         """
-        return EdxRestApiClient.get_oauth_access_token(
-            oauth_base_url + OAUTH_ACCESS_TOKEN_URL, client_id, client_secret, token_type='jwt'
-        )
+        try:
+            return EdxRestApiClient.get_oauth_access_token(
+                oauth_base_url + OAUTH_ACCESS_TOKEN_URL, client_id, client_secret, token_type='jwt'
+            )
+        except HttpClientError as err:
+            LOG.error("API Error: {}".format(err.content))
+            raise
 
 
 class LmsApi(BaseApiClient):
@@ -57,4 +65,8 @@ class LmsApi(BaseApiClient):
                 'LMS_COMPLETE',
             ]
         }
-        return self._client.api.user.v1.accounts.retirement_queue.get(**params)
+        try:
+            return self._client.api.user.v1.accounts.retirement_queue.get(**params)
+        except HttpClientError as err:
+            LOG.error("API Error: {}".format(err.content))
+            raise
