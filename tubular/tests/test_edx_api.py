@@ -72,7 +72,6 @@ class TestLmsApi(unittest.TestCase):
                     cool_off_days=365,
                     states=[
                         'PENDING',
-                        'LOCKING_COMPLETE',
                         'CREDENTIALS_COMPLETE',
                         'ECOM_COMPLETE',
                         'FORUMS_COMPLETE',

@@ -67,7 +67,6 @@ class LmsApi(BaseApiClient):
             'cool_off_days': cool_off_days,
             'states': [
                 'PENDING',
-                'LOCKING_COMPLETE',
                 'CREDENTIALS_COMPLETE',
                 'ECOM_COMPLETE',
                 'FORUMS_COMPLETE',

@@ -31,7 +31,6 @@ END_STATES = (ERROR_STATE, ABORTED_STATE, COMPLETE_STATE)
 
 # The retirement process definition. Tuple is (start state, end state, service, api path)
 WORKING_STATE_ORDER = [
-    ('LOCKING_ACCOUNT', 'LOCKING_COMPLETE', 'LMS', 'retirement_deactivate_logout'),
     # These do not exist yet, though the plumbing for them in edx_api should all be there.
     # ('RETIRING_CREDENTIALS', 'CREDENTIALS_COMPLETE', 'CREDENTIALS', 'retire_learner'),
     # ('RETIRING_ECOM', 'ECOM_COMPLETE', 'ECOMMERCE', 'retire_learner'),

@@ -22,7 +22,6 @@ from tubular.scripts.retire_one_learner import (
     'tubular.edx_api.LmsApi',
     get_learner_retirement_state=DEFAULT,
     update_learner_retirement_state=DEFAULT,
-    retirement_deactivate_logout=DEFAULT,
     retirement_retire_forum=DEFAULT,
     retirement_retire_mailings=DEFAULT,
     retirement_unenroll=DEFAULT,
@@ -34,7 +33,6 @@ def test_successful_retirement(*args, **kwargs):
     mock_get_access_token = args[0]
     mock_get_retirement_state = kwargs['get_learner_retirement_state']
     mock_update_learner_state = kwargs['update_learner_retirement_state']
-    mock_deactivate_logout = kwargs['retirement_deactivate_logout']
     mock_retire_forum = kwargs['retirement_retire_forum']
     mock_retire_mailings = kwargs['retirement_retire_mailings']
     mock_unenroll = kwargs['retirement_unenroll']
@@ -56,11 +54,10 @@ def test_successful_retirement(*args, **kwargs):
     # Called once per API we instantiate (LMS, ECommerce, Credentials)
     assert mock_get_access_token.call_count == 3
     mock_get_retirement_state.assert_called_once_with(username)
-    assert mock_update_learner_state.call_count == 10
+    assert mock_update_learner_state.call_count == 8
 
     # Called once per retirement
     for mock_call in (
-            mock_deactivate_logout,
             mock_retire_forum,
             mock_retire_mailings,
             mock_unenroll,
@@ -261,7 +258,6 @@ def test_user_in_end_state(*args, **kwargs):
     'tubular.edx_api.LmsApi',
     get_learner_retirement_state=DEFAULT,
     update_learner_retirement_state=DEFAULT,
-    retirement_deactivate_logout=DEFAULT,
     retirement_retire_forum=DEFAULT,
     retirement_retire_mailings=DEFAULT,
     retirement_unenroll=DEFAULT,
@@ -273,7 +269,6 @@ def test_skipping_states(*args, **kwargs):
     mock_get_access_token = args[0]
     mock_get_retirement_state = kwargs['get_learner_retirement_state']
     mock_update_learner_state = kwargs['update_learner_retirement_state']
-    mock_deactivate_logout = kwargs['retirement_deactivate_logout']
     mock_retire_forum = kwargs['retirement_retire_forum']
     mock_retire_mailings = kwargs['retirement_retire_mailings']
     mock_unenroll = kwargs['retirement_unenroll']
@@ -299,7 +294,6 @@ def test_skipping_states(*args, **kwargs):
 
     # Skipped
     for mock_call in (
-            mock_deactivate_logout,
             mock_retire_forum,
             mock_retire_mailings
     ):
@@ -315,7 +309,6 @@ def test_skipping_states(*args, **kwargs):
     assert result.exit_code == 0
 
     for required_output in (
-            'LOCKING_ACCOUNT completed in previous run',
             'RETIRING_FORUMS completed in previous run',
             'RETIRING_EMAIL_LISTS completed in previous run',
             'Starting state RETIRING_ENROLLMENTS',
