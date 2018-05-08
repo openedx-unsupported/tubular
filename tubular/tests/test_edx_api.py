@@ -45,7 +45,11 @@ class TestBaseApiClient(unittest.TestCase):
                     'the_client_id',
                     'the_client_secret'
                 )
-                mock_client.assert_called_once_with('http://localhost', jwt='THIS_IS_A_JWT', append_slash=True)
+                mock_client.assert_called_once_with(
+                    'http://localhost',
+                    jwt='THIS_IS_A_JWT',
+                    append_slash=True
+                )
 
 
 class TestLmsApi(unittest.TestCase):
@@ -68,7 +72,6 @@ class TestLmsApi(unittest.TestCase):
                     cool_off_days=365,
                     states=[
                         'PENDING',
-                        'LOCKING_COMPLETE',
                         'CREDENTIALS_COMPLETE',
                         'ECOM_COMPLETE',
                         'FORUMS_COMPLETE',

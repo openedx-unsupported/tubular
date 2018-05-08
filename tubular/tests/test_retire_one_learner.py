@@ -1,0 +1,320 @@
+"""
+Test the retire_one_learner.py script
+"""
+
+from mock import patch, DEFAULT
+
+from click.testing import CliRunner
+from tubular.scripts.retire_one_learner import (
+    END_STATES,
+    ERR_BAD_CONFIG,
+    ERR_BAD_LEARNER,
+    ERR_SETUP_FAILED,
+    ERR_UNKNOWN_STATE,
+    ERR_USER_AT_END_STATE,
+    ERR_USER_IN_WORKING_STATE,
+    retire_learner
+)
+
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    get_learner_retirement_state=DEFAULT,
+    update_learner_retirement_state=DEFAULT,
+    retirement_retire_forum=DEFAULT,
+    retirement_retire_mailings=DEFAULT,
+    retirement_unenroll=DEFAULT,
+    retirement_lms_retire=DEFAULT
+)
+def test_successful_retirement(*args, **kwargs):
+    username = 'test_username'
+
+    mock_get_access_token = args[0]
+    mock_get_retirement_state = kwargs['get_learner_retirement_state']
+    mock_update_learner_state = kwargs['update_learner_retirement_state']
+    mock_retire_forum = kwargs['retirement_retire_forum']
+    mock_retire_mailings = kwargs['retirement_retire_mailings']
+    mock_unenroll = kwargs['retirement_unenroll']
+    mock_lms_retire = kwargs['retirement_lms_retire']
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_get_retirement_state.return_value = {
+        'original_username': username,
+        'current_state': {
+            'state_name': 'PENDING'
+        }
+    }
+
+    runner = CliRunner()
+    result = runner.invoke(retire_learner, args=['--username', username])
+    print(result)
+    print(result.output)
+
+    # Called once per API we instantiate (LMS, ECommerce, Credentials)
+    assert mock_get_access_token.call_count == 3
+    mock_get_retirement_state.assert_called_once_with(username)
+    assert mock_update_learner_state.call_count == 8
+
+    # Called once per retirement
+    for mock_call in (
+            mock_retire_forum,
+            mock_retire_mailings,
+            mock_unenroll,
+            mock_lms_retire
+    ):
+        mock_call.assert_called_once_with(mock_get_retirement_state.return_value)
+
+    assert result.exit_code == 0
+    assert 'Retirement complete' in result.output
+
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    get_learner_retirement_state=DEFAULT,
+    update_learner_retirement_state=DEFAULT
+)
+def test_user_does_not_exist(*args, **kwargs):
+    username = 'test_username'
+
+    mock_get_access_token = args[0]
+    mock_get_retirement_state = kwargs['get_learner_retirement_state']
+    mock_update_learner_state = kwargs['update_learner_retirement_state']
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_get_retirement_state.side_effect = Exception
+
+    runner = CliRunner()
+    result = runner.invoke(retire_learner, args=['--username', username])
+    print(result)
+    print(result.output)
+
+    assert mock_get_access_token.call_count == 3
+    mock_get_retirement_state.assert_called_once_with(username)
+    mock_update_learner_state.assert_not_called()
+
+    assert result.exit_code == ERR_SETUP_FAILED
+    assert 'Exception' in result.output
+
+
+def test_bad_config():
+    username = 'test_username'
+
+    runner = CliRunner()
+    result = runner.invoke(retire_learner, args=['--username', username, '--config_file', 'foo.yaml'])
+    print(result)
+    print(result.output)
+
+    assert result.exit_code == ERR_BAD_CONFIG
+    assert 'foo.yaml' in result.output
+
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    get_learner_retirement_state=DEFAULT,
+    update_learner_retirement_state=DEFAULT
+)
+def test_bad_learner(*args, **kwargs):
+    username = 'test_username'
+
+    mock_get_access_token = args[0]
+    mock_get_retirement_state = kwargs['get_learner_retirement_state']
+    mock_update_learner_state = kwargs['update_learner_retirement_state']
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+
+    # Broken API call, no state returned
+    mock_get_retirement_state.return_value = {
+        'original_username': username
+    }
+
+    runner = CliRunner()
+    result = runner.invoke(retire_learner, args=['--username', username])
+    print(result)
+    print(result.output)
+
+    assert mock_get_access_token.call_count == 3
+    mock_get_retirement_state.assert_called_once_with(username)
+    mock_update_learner_state.assert_not_called()
+
+    assert result.exit_code == ERR_BAD_LEARNER
+    assert 'KeyError' in result.output
+
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    get_learner_retirement_state=DEFAULT,
+    update_learner_retirement_state=DEFAULT
+)
+def test_user_in_working_state(*args, **kwargs):
+    username = 'test_username'
+
+    mock_get_access_token = args[0]
+    mock_get_retirement_state = kwargs['get_learner_retirement_state']
+    mock_update_learner_state = kwargs['update_learner_retirement_state']
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_get_retirement_state.return_value = {
+        'original_username': username,
+        'current_state': {
+            'state_name': 'RETIRING_FORUMS'
+        }
+    }
+
+    runner = CliRunner()
+    result = runner.invoke(retire_learner, args=['--username', username])
+    print(result)
+    print(result.output)
+
+    assert mock_get_access_token.call_count == 3
+    mock_get_retirement_state.assert_called_once_with(username)
+    mock_update_learner_state.assert_not_called()
+
+    assert result.exit_code == ERR_USER_IN_WORKING_STATE
+    assert 'in a working state' in result.output
+
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    get_learner_retirement_state=DEFAULT,
+    update_learner_retirement_state=DEFAULT
+)
+def test_user_in_bad_state(*args, **kwargs):
+    username = 'test_username'
+    bad_state = 'BOGUS_STATE'
+    mock_get_access_token = args[0]
+    mock_get_retirement_state = kwargs['get_learner_retirement_state']
+    mock_update_learner_state = kwargs['update_learner_retirement_state']
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_get_retirement_state.return_value = {
+        'original_username': username,
+        'current_state': {
+            'state_name': bad_state
+        }
+    }
+
+    runner = CliRunner()
+    result = runner.invoke(retire_learner, args=['--username', username])
+    print(result)
+    print(result.output)
+
+    assert mock_get_access_token.call_count == 3
+    mock_get_retirement_state.assert_called_once_with(username)
+    mock_update_learner_state.assert_not_called()
+
+    assert result.exit_code == ERR_UNKNOWN_STATE
+    assert bad_state in result.output
+
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    get_learner_retirement_state=DEFAULT,
+    update_learner_retirement_state=DEFAULT
+)
+def test_user_in_end_state(*args, **kwargs):
+    username = 'test_username'
+
+    mock_get_access_token = args[0]
+    mock_get_retirement_state = kwargs['get_learner_retirement_state']
+    mock_update_learner_state = kwargs['update_learner_retirement_state']
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+
+    # pytest.parameterize doensn't play nicely with patch.multiple, this seemed more
+    # readable than the alternatives.
+    for end_state in END_STATES:
+        mock_get_retirement_state.return_value = {
+            'original_username': username,
+            'current_state': {
+                'state_name': end_state
+            }
+        }
+
+        runner = CliRunner()
+        result = runner.invoke(retire_learner, args=['--username', username])
+        print(result)
+        print(result.output)
+
+        assert mock_get_access_token.call_count == 3
+        mock_get_retirement_state.assert_called_once_with(username)
+        mock_update_learner_state.assert_not_called()
+
+        assert result.exit_code == ERR_USER_AT_END_STATE
+        assert end_state in result.output
+
+        # Reset our call counts for the next test
+        mock_get_access_token.reset_mock()
+        mock_get_retirement_state.reset_mock()
+
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    get_learner_retirement_state=DEFAULT,
+    update_learner_retirement_state=DEFAULT,
+    retirement_retire_forum=DEFAULT,
+    retirement_retire_mailings=DEFAULT,
+    retirement_unenroll=DEFAULT,
+    retirement_lms_retire=DEFAULT
+)
+def test_skipping_states(*args, **kwargs):
+    username = 'test_username'
+
+    mock_get_access_token = args[0]
+    mock_get_retirement_state = kwargs['get_learner_retirement_state']
+    mock_update_learner_state = kwargs['update_learner_retirement_state']
+    mock_retire_forum = kwargs['retirement_retire_forum']
+    mock_retire_mailings = kwargs['retirement_retire_mailings']
+    mock_unenroll = kwargs['retirement_unenroll']
+    mock_lms_retire = kwargs['retirement_lms_retire']
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_get_retirement_state.return_value = {
+        'original_username': username,
+        'current_state': {
+            'state_name': 'EMAIL_LISTS_COMPLETE'
+        }
+    }
+
+    runner = CliRunner()
+    result = runner.invoke(retire_learner, args=['--username', username])
+    print(result)
+    print(result.output)
+
+    # Called once per API we instantiate (LMS, ECommerce, Credentials)
+    assert mock_get_access_token.call_count == 3
+    mock_get_retirement_state.assert_called_once_with(username)
+    assert mock_update_learner_state.call_count == 4
+
+    # Skipped
+    for mock_call in (
+            mock_retire_forum,
+            mock_retire_mailings
+    ):
+        mock_call.assert_not_called()
+
+    # Called once per retirement
+    for mock_call in (
+            mock_unenroll,
+            mock_lms_retire
+    ):
+        mock_call.assert_called_once_with(mock_get_retirement_state.return_value)
+
+    assert result.exit_code == 0
+
+    for required_output in (
+            'RETIRING_FORUMS completed in previous run',
+            'RETIRING_EMAIL_LISTS completed in previous run',
+            'Starting state RETIRING_ENROLLMENTS',
+            'State RETIRING_ENROLLMENTS completed',
+            'Starting state RETIRING_LMS',
+            'State RETIRING_LMS completed',
+            'Retirement complete'
+    ):
+        assert required_output in result.output
