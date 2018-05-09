@@ -13,6 +13,7 @@ import traceback
 
 import click
 import yaml
+from slumber.exceptions import HttpNotFoundError
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -157,10 +158,14 @@ def _setup_or_fail(username, client_id, client_secret, lms_base_url, ecommerce_b
         if credentials_base_url:
             APIS['CREDENTIALS'] = CredentialsApi(lms_base_url, credentials_base_url, client_id, client_secret)
 
-        learner = APIS['LMS'].get_learner_retirement_state(username)
-        learner_state_index = _get_learner_state_index_or_fail(learner)
-
-        return learner, learner_state_index
+        try:
+            learner = APIS['LMS'].get_learner_retirement_state(username)
+            learner_state_index = _get_learner_state_index_or_fail(learner)
+            return learner, learner_state_index
+        except HttpNotFoundError:
+            _fail(ERR_BAD_LEARNER, 'Learner {} not found. Please check that the learner is present in '
+                                   'UserRetirementStatus, is not already retired, '
+                                   'and is in an appropriate state to be acted upon.'.format(username))
     except Exception as exc:  # pylint: disable=broad-except
         _fail(ERR_SETUP_FAILED, str(exc))
 
@@ -243,9 +248,6 @@ def retire_learner(
             # This does the actual API call
             start_time = time()
             response = getattr(APIS[service], method)(learner)
-
-            _log(response._store['raw'])  # pylint: disable=protected-access
-
             end_time = time()
 
             _log('State {} completed in {} seconds'.format(start_state, end_time - start_time))
