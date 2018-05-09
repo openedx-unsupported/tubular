@@ -3,7 +3,7 @@ edX API classes which call edX service REST API endpoints using the edx-rest-api
 """
 import logging
 
-from slumber.exceptions import HttpClientError
+from slumber.exceptions import HttpClientError, HttpNotFoundError
 
 from edx_rest_api_client.client import EdxRestApiClient
 
@@ -118,8 +118,15 @@ class LmsApi(BaseApiClient):
         """
         Performs the forum retirement step of learner retirement
         """
+        # api/discussion/
         params = {'data': {'username': learner['original_username']}}
-        return self._client.api.user.v1.accounts.retire_forum.post(**params)
+        try:
+            return self._client.api.discussion.v1.accounts.retire_forum.post(**params)
+        except HttpNotFoundError as exc:
+            if "User not found" in str(exc):
+                print("User not found in forums, this is expected sometimes. Overriding to success.")
+                return True
+            raise
 
     def retirement_retire_mailings(self, learner):
         """
