@@ -13,6 +13,7 @@ import traceback
 
 import click
 import yaml
+from six import text_type
 from slumber.exceptions import HttpNotFoundError
 
 # Add top-level module path to sys.path before importing tubular code.
@@ -112,7 +113,7 @@ def _config_or_fail(config_file):
             config_yaml['base_urls'].get('credentials', None)
         )
     except Exception as exc:  # pylint: disable=broad-except
-        _fail(ERR_BAD_CONFIG, 'Failed to read config file {} with error: {}'.format(config_file, str(exc)))
+        _fail(ERR_BAD_CONFIG, 'Failed to read config file {} with error: {}'.format(config_file, text_type(exc)))
 
 
 def _get_learner_state_index_or_fail(learner):
@@ -167,7 +168,7 @@ def _setup_or_fail(username, client_id, client_secret, lms_base_url, ecommerce_b
                                    'UserRetirementStatus, is not already retired, '
                                    'and is in an appropriate state to be acted upon.'.format(username))
     except Exception as exc:  # pylint: disable=broad-except
-        _fail(ERR_SETUP_FAILED, str(exc))
+        _fail(ERR_SETUP_FAILED, text_type(exc))
 
 
 @click.command()
@@ -268,10 +269,10 @@ def retire_learner(
 
         _log('Retirement complete for learner {}'.format(username))
     except Exception as exc:  # pylint: disable=broad-except
-        exc_msg = str(exc)
+        exc_msg = text_type(exc)
 
         try:
-            exc_msg += '\n' + str(exc.content)
+            exc_msg += '\n' + text_type(exc.content)
         except AttributeError:
             pass
 
