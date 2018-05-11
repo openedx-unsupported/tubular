@@ -4,7 +4,6 @@ Command-line script to drive the user retirement workflow for a single user
 """
 from __future__ import absolute_import, unicode_literals
 
-from six import text_type
 from time import time
 from os import path
 import io
@@ -14,6 +13,7 @@ import traceback
 
 import click
 import yaml
+from six import text_type
 from slumber.exceptions import HttpNotFoundError
 
 # Add top-level module path to sys.path before importing tubular code.
