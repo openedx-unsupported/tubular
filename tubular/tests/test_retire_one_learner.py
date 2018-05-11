@@ -54,7 +54,7 @@ def test_successful_retirement(*args, **kwargs):
     # Called once per API we instantiate (LMS, ECommerce, Credentials)
     assert mock_get_access_token.call_count == 3
     mock_get_retirement_state.assert_called_once_with(username)
-    assert mock_update_learner_state.call_count == 8
+    assert mock_update_learner_state.call_count == 9
 
     # Called once per retirement
     for mock_call in (
@@ -290,7 +290,7 @@ def test_skipping_states(*args, **kwargs):
     # Called once per API we instantiate (LMS, ECommerce, Credentials)
     assert mock_get_access_token.call_count == 3
     mock_get_retirement_state.assert_called_once_with(username)
-    assert mock_update_learner_state.call_count == 4
+    assert mock_update_learner_state.call_count == 5
 
     # Skipped
     for mock_call in (
