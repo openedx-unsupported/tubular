@@ -52,9 +52,6 @@ for working in WORKING_STATE_ORDER:
 for end in END_STATES:
     ALL_STATES.append(end)
 
-# Tells us when to stop iterating over working states
-LAST_WORKING_END_STATE_INDEX = ALL_STATES.index(END_STATES[0]) - 1
-
 # We'll store the access token here once retrieved
 AUTH_HEADER = {}
 
@@ -262,10 +259,7 @@ def retire_learner(
 
             _log('Progressing to state {}'.format(end_state))
 
-            if learner_state_index > LAST_WORKING_END_STATE_INDEX:
-                APIS['LMS'].update_learner_retirement_state(username, COMPLETE_STATE, 'Learner retirement complete.')
-                break
-
+        APIS['LMS'].update_learner_retirement_state(username, COMPLETE_STATE, 'Learner retirement complete.')
         _log('Retirement complete for learner {}'.format(username))
     except Exception as exc:  # pylint: disable=broad-except
         exc_msg = str(exc)
