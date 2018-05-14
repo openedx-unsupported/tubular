@@ -1,6 +1,22 @@
 #! /usr/bin/env python3
 """
 Command-line script to drive the user retirement workflow for a single user
+
+To run this script you will need a username to run against and a YAML config file in the format:
+
+client_id: <client id from LMS DOT>
+client_secret: <client secret from LMS DOT>
+base_urls:
+    lms: http://localhost:18000/
+    ecommerce: http://localhost:18130/
+    credentials: http://localhost:18150/
+retirement_pipeline:
+    - ['RETIRING_CREDENTIALS', 'CREDENTIALS_COMPLETE', 'CREDENTIALS', 'retire_learner']
+    - ['RETIRING_ECOM', 'ECOM_COMPLETE', 'ECOMMERCE', 'retire_learner']
+    - ['RETIRING_FORUMS', 'FORUMS_COMPLETE', 'LMS', 'retirement_retire_forum']
+    - ['RETIRING_EMAIL_LISTS', 'EMAIL_LISTS_COMPLETE', 'LMS', 'retirement_retire_mailings']
+    - ['RETIRING_ENROLLMENTS', 'ENROLLMENTS_COMPLETE', 'LMS', 'retirement_unenroll']
+    - ['RETIRING_LMS', 'LMS_COMPLETE', 'LMS', 'retirement_lms_retire']
 """
 from __future__ import absolute_import, unicode_literals
 
@@ -30,28 +46,6 @@ ERROR_STATE = 'ERRORED'
 COMPLETE_STATE = 'COMPLETE'
 ABORTED_STATE = 'ABORTED'
 END_STATES = (ERROR_STATE, ABORTED_STATE, COMPLETE_STATE)
-
-# The retirement process definition. Tuple is (start state, end state, service, api path)
-WORKING_STATE_ORDER = [
-    # These do not exist yet, though the plumbing for them in edx_api should all be there.
-    # ('RETIRING_CREDENTIALS', 'CREDENTIALS_COMPLETE', 'CREDENTIALS', 'retire_learner'),
-    # ('RETIRING_ECOM', 'ECOM_COMPLETE', 'ECOMMERCE', 'retire_learner'),
-    ('RETIRING_FORUMS', 'FORUMS_COMPLETE', 'LMS', 'retirement_retire_forum'),
-    ('RETIRING_EMAIL_LISTS', 'EMAIL_LISTS_COMPLETE', 'LMS', 'retirement_retire_mailings'),
-    ('RETIRING_ENROLLMENTS', 'ENROLLMENTS_COMPLETE', 'LMS', 'retirement_unenroll'),
-    ('RETIRING_LMS', 'LMS_COMPLETE', 'LMS', 'retirement_lms_retire'),
-]
-
-# List of states where an API call is currently in progress
-WORKING_STATES = [state[0] for state in WORKING_STATE_ORDER]
-
-# The full list of all of our states
-ALL_STATES = [START_STATE]
-for working in WORKING_STATE_ORDER:
-    ALL_STATES.append(working[0])
-    ALL_STATES.append(working[1])
-for end in END_STATES:
-    ALL_STATES.append(end)
 
 # We'll store the access token here once retrieved
 AUTH_HEADER = {}
@@ -99,33 +93,38 @@ def _config_or_fail(config_file):
     """
     try:
         with io.open(config_file, 'r') as config:
-            config_yaml = yaml.load(config)
+            config = yaml.load(config)
 
-        return (
-            config_yaml['client_id'],
-            config_yaml['client_secret'],
-            config_yaml['base_urls']['lms'],
-            # These two are optional
-            config_yaml['base_urls'].get('ecommerce', None),
-            config_yaml['base_urls'].get('credentials', None)
-        )
+        # List of states where an API call is currently in progress
+        retirement_pipeline = config['retirement_pipeline']
+        config['working_states'] = [state[0] for state in retirement_pipeline]
+
+        # Create the full list of all of our states
+        config['all_states'] = [START_STATE]
+        for working in config['retirement_pipeline']:
+            config['all_states'].append(working[0])
+            config['all_states'].append(working[1])
+        for end in END_STATES:
+            config['all_states'].append(end)
+
+        return config
     except Exception as exc:  # pylint: disable=broad-except
         _fail(ERR_BAD_CONFIG, 'Failed to read config file {} with error: {}'.format(config_file, text_type(exc)))
 
 
-def _get_learner_state_index_or_fail(learner):
+def _get_learner_state_index_or_fail(learner, config):
     """
     Returns the index in the ALL_STATES retirement state list, validating that it is in
     an appropriate state to work on.
     """
     try:
         learner_state = learner['current_state']['state_name']
-        learner_state_index = ALL_STATES.index(learner_state)
+        learner_state_index = config['all_states'].index(learner_state)
 
         if learner_state in END_STATES:
             _fail(ERR_USER_AT_END_STATE, 'User already in end state: {}'.format(learner_state))
 
-        if learner_state in WORKING_STATES:
+        if learner_state in config['working_states']:
             _fail(ERR_USER_IN_WORKING_STATE, 'User is already in a working state! {}'.format(learner_state))
 
         return learner_state_index
@@ -135,7 +134,7 @@ def _get_learner_state_index_or_fail(learner):
         _fail(ERR_UNKNOWN_STATE, 'Unknown learner retirement state for learner: {}'.format(learner))
 
 
-def _setup_or_fail(username, client_id, client_secret, lms_base_url, ecommerce_base_url, credentials_base_url):
+def _setup_or_fail(username, config):
     """
     Performs setup of EdxRestClientApi instances for LMS, E-Commerce, and Credentials,
     as well as fetching the learner's record from LMS and validating that it is in a
@@ -143,7 +142,13 @@ def _setup_or_fail(username, client_id, client_secret, lms_base_url, ecommerce_b
     retirement flow.
     """
     try:
-        for state in WORKING_STATE_ORDER:
+        lms_base_url = config['base_urls']['lms']
+        ecommerce_base_url = config['base_urls']['ecommerce']
+        credentials_base_url = config['base_urls']['credentials']
+        client_id = config['client_id']
+        client_secret = config['client_secret']
+
+        for state in config['retirement_pipeline']:
             if (state[2] == 'ECOMMERCE' and ecommerce_base_url is None) or \
                     (state[2] == 'CREDENTIALS' and credentials_base_url is None):
                 _fail(ERR_SETUP_FAILED, 'Service URL is not configured, but required for state {}'.format(state))
@@ -158,7 +163,7 @@ def _setup_or_fail(username, client_id, client_secret, lms_base_url, ecommerce_b
 
         try:
             learner = APIS['LMS'].get_learner_retirement_state(username)
-            learner_state_index = _get_learner_state_index_or_fail(learner)
+            learner_state_index = _get_learner_state_index_or_fail(learner, config)
             return learner, learner_state_index
         except HttpNotFoundError:
             _fail(ERR_BAD_LEARNER, 'Learner {} not found. Please check that the learner is present in '
@@ -177,65 +182,31 @@ def _setup_or_fail(username, client_id, client_secret, lms_base_url, ecommerce_b
     '--config_file',
     help='File in which YAML config exists that overrides all other params.'
 )
-@click.option(
-    '--client_id',
-    help='ID of OAuth client used in svr-to-svr client credentials grant.'
-)
-@click.option(
-    '--client_secret',
-    help='Secret associated with OAuth client used in svr-to-svr client credentials grant.'
-)
-@click.option(
-    '--lms_base_url',
-    help='Base URL of LMS from which to retrieve learner list, including :<port> if non-standard.',
-    default='http://localhost'
-)
-@click.option(
-    '--ecommerce_base_url',
-    help='Base URL of E-Commerce service, including :<port> if non-standard.',
-    default='http://localhost'
-)
-@click.option(
-    '--credentials_base_url',
-    help='Base URL of Credentials service, including :<port> if non-standard.',
-    default='http://localhost'
-)
 def retire_learner(
         username,
-        config_file,
-        client_id,
-        client_secret,
-        lms_base_url,
-        ecommerce_base_url,
-        credentials_base_url
+        config_file
 ):
     """
     Retrieves a JWT token as the retirement service learner, then performs the retirement process as
     defined in WORKING_STATE_ORDER
     """
-    _log('Starting learner retiremenet for {}'.format(username))
+    _log('Starting learner retirement for {} using config file {}'.format(username, config_file))
 
-    if config_file:
-        _log('Using config file')
-        client_id, client_secret, lms_base_url, ecommerce_base_url, credentials_base_url = _config_or_fail(config_file)
+    if not config_file:
+        _fail(ERR_BAD_CONFIG, 'No config file passed in.')
 
-    learner, learner_state_index = _setup_or_fail(
-        username,
-        client_id,
-        client_secret,
-        lms_base_url,
-        ecommerce_base_url,
-        credentials_base_url
-    )
+    config = _config_or_fail(config_file)
+
+    learner, learner_state_index = _setup_or_fail(username, config)
 
     start_state = None
     response = None
     try:
-        for start_state, end_state, service, method in WORKING_STATE_ORDER:
+        for start_state, end_state, service, method in config['retirement_pipeline']:
             response = None
 
             # Skip anything that has already been done
-            if ALL_STATES.index(start_state) < learner_state_index:
+            if config['all_states'].index(start_state) < learner_state_index:
                 _log('State {} completed in previous run, skipping'.format(start_state))
                 continue
 

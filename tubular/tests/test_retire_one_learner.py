@@ -5,6 +5,8 @@ Test the retire_one_learner.py script
 from mock import patch, DEFAULT
 
 from click.testing import CliRunner
+import yaml
+
 from tubular.scripts.retire_one_learner import (
     END_STATES,
     ERR_BAD_CONFIG,
@@ -15,6 +17,46 @@ from tubular.scripts.retire_one_learner import (
     ERR_USER_IN_WORKING_STATE,
     retire_learner
 )
+
+
+def _config_file(f):
+    """
+    Create a config file for a single test. Combined with CliRunner.isolated_filesystem() to
+    ensure the file lifetime is limited to the test. See _call_script for usage.
+    """
+
+    config = {
+        'client_id': 'bogus id',
+        'client_secret': 'supersecret',
+        'base_urls': {
+            'credentials': 'https://credentials.stage.edx.org/',
+            'lms': 'https://stage-edx-edxapp.edx.org/',
+            'ecommerce': 'https://ecommerce.stage.edx.org/'
+        },
+        'retirement_pipeline': [
+            ['RETIRING_FORUMS', 'FORUMS_COMPLETE', 'LMS', 'retirement_retire_forum'],
+            ['RETIRING_EMAIL_LISTS', 'EMAIL_LISTS_COMPLETE', 'LMS', 'retirement_retire_mailings'],
+            ['RETIRING_ENROLLMENTS', 'ENROLLMENTS_COMPLETE', 'LMS', 'retirement_unenroll'],
+            ['RETIRING_LMS', 'LMS_COMPLETE', 'LMS', 'retirement_lms_retire']
+        ]
+    }
+
+    yaml.safe_dump(config, f)
+
+
+def _call_script(username):
+    """
+    Call the retired learner script with the given username and a generic, temporary config file.
+    Returns the CliRunner.invoke results
+    """
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        with open('test_config.yml', 'w') as f:
+            _config_file(f)
+        result = runner.invoke(retire_learner, args=['--username', username, '--config_file', 'test_config.yml'])
+    print(result)
+    print(result.output)
+    return result
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
@@ -46,10 +88,7 @@ def test_successful_retirement(*args, **kwargs):
         }
     }
 
-    runner = CliRunner()
-    result = runner.invoke(retire_learner, args=['--username', username])
-    print(result)
-    print(result.output)
+    result = _call_script(username)
 
     # Called once per API we instantiate (LMS, ECommerce, Credentials)
     assert mock_get_access_token.call_count == 3
@@ -85,10 +124,7 @@ def test_user_does_not_exist(*args, **kwargs):
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
     mock_get_retirement_state.side_effect = Exception
 
-    runner = CliRunner()
-    result = runner.invoke(retire_learner, args=['--username', username])
-    print(result)
-    print(result.output)
+    result = _call_script(username)
 
     assert mock_get_access_token.call_count == 3
     mock_get_retirement_state.assert_called_once_with(username)
@@ -100,14 +136,10 @@ def test_user_does_not_exist(*args, **kwargs):
 
 def test_bad_config():
     username = 'test_username'
-
     runner = CliRunner()
-    result = runner.invoke(retire_learner, args=['--username', username, '--config_file', 'foo.yaml'])
-    print(result)
-    print(result.output)
-
+    result = runner.invoke(retire_learner, args=['--username', username, '--config_file', 'does_not_exist.yml'])
     assert result.exit_code == ERR_BAD_CONFIG
-    assert 'foo.yaml' in result.output
+    assert 'does_not_exist.yml' in result.output
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
@@ -130,10 +162,7 @@ def test_bad_learner(*args, **kwargs):
         'original_username': username
     }
 
-    runner = CliRunner()
-    result = runner.invoke(retire_learner, args=['--username', username])
-    print(result)
-    print(result.output)
+    result = _call_script(username)
 
     assert mock_get_access_token.call_count == 3
     mock_get_retirement_state.assert_called_once_with(username)
@@ -164,10 +193,7 @@ def test_user_in_working_state(*args, **kwargs):
         }
     }
 
-    runner = CliRunner()
-    result = runner.invoke(retire_learner, args=['--username', username])
-    print(result)
-    print(result.output)
+    result = _call_script(username)
 
     assert mock_get_access_token.call_count == 3
     mock_get_retirement_state.assert_called_once_with(username)
@@ -198,10 +224,7 @@ def test_user_in_bad_state(*args, **kwargs):
         }
     }
 
-    runner = CliRunner()
-    result = runner.invoke(retire_learner, args=['--username', username])
-    print(result)
-    print(result.output)
+    result = _call_script(username)
 
     assert mock_get_access_token.call_count == 3
     mock_get_retirement_state.assert_called_once_with(username)
@@ -236,10 +259,7 @@ def test_user_in_end_state(*args, **kwargs):
             }
         }
 
-        runner = CliRunner()
-        result = runner.invoke(retire_learner, args=['--username', username])
-        print(result)
-        print(result.output)
+        result = _call_script(username)
 
         assert mock_get_access_token.call_count == 3
         mock_get_retirement_state.assert_called_once_with(username)
@@ -282,10 +302,7 @@ def test_skipping_states(*args, **kwargs):
         }
     }
 
-    runner = CliRunner()
-    result = runner.invoke(retire_learner, args=['--username', username])
-    print(result)
-    print(result.output)
+    result = _call_script(username)
 
     # Called once per API we instantiate (LMS, ECommerce, Credentials)
     assert mock_get_access_token.call_count == 3
