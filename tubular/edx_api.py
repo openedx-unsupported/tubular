@@ -123,11 +123,8 @@ class LmsApi(BaseApiClient):
         params = {'data': {'username': learner['original_username']}}
         try:
             return self._client.api.discussion.v1.accounts.retire_forum.post(**params)
-        except HttpNotFoundError as exc:
-            if "User not found" in text_type(exc):
-                print("User not found in forums, this is expected sometimes. Overriding to success.")
-                return True
-            raise
+        except HttpNotFoundError:
+            return True
 
     def retirement_retire_mailings(self, learner):
         """
