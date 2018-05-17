@@ -1,0 +1,374 @@
+CHANGES
+=======
+
+* Update
+* Update tests
+* Update
+* Update script checkstep
+* Fix an issue with handling retiring users without forum accounts (#223)
+* Move the retirement pipeline definition to the config file (#222)
+* Harden move to completion state and simplify (#221)
+* Added text\_type to retirement scripts for compatibility with python 2 (#220)
+* Fixes to issues in retire\_one\_learner.py and edx\_api.py
+* fixup! Retire one learner script
+* Retire one learner script
+* Add error logging for current edx\_api calls
+* Upgrade lxml and test dependencies
+* Enable Python 3.6 testing on tox/travis
+* Add tests for new jenkins and edX API methods
+* Script to retrieve LMS learners to retire using edx-rest-api-client. Output Jenkins property files with a file for each learner-to-retire
+* Pass through the status url as well
+* Remove the restriction on override + edp
+* Pull tags from the base AMI even when building from scratch
+* Attempted to move args around to more closely mimic the original behavior. Added logging in case iteration is necessary
+* Revert "Retry search query failures on github (#208)" (#210)
+* Removing test functions for official release
+* Retry search query failures on github (#208)
+* Add empty \_\_init\_\_.py file to scripts directory to appease pylint
+* Fixing file mode
+* Responding to comments
+* Adding in all other acquia environments. Changing language to make it more clear we can deploy a branch. Adding in test file to use for new pipelines until we can deprecate the standard drupal\_deploy file. Removing format\_rsa\_key
+* upgrade gitpython
+* Revert "Adding in all other acquia environments. Changing language to make it…"
+* Always get the source from the target github repo
+* Adding in all other acquia environments. Changing language to make it more clear we can deploy a branch
+* Increase plan/prune delay from 5 to 15 seconds
+* OPS-2416 Dont wrap new\_asg as timeout exceptions with the GET can cause the POST to be executed again
+* OPS-2416 Reactivate test
+* OPS-2416 fix deploy issue with post not returning json
+* Coryleeio/fix retry (#195)
+* Coryleeio/no string retry values (#196)
+* Revert "Coryleeio/retry asgard on aws ratelimit (#194)"
+* Coryleeio/retry asgard on aws ratelimit (#194)
+* OPS-2372 Retry the message prs in range query if it fails (#191)
+* Minor fixes to help text for structures.py
+* Coryleeio/handle pr already merged (#192)
+* Add delay and batch to structures.py make\_plan
+* Change pruning delay default to 5000 ms
+* Fast pruning of modulestore MongoDB Structures
+* General Updates - addressing PR feedbacks (#7)
+* change space for edx-platform release wiki pages
+* General Updates - addressing PR feedbacks (#6)
+* Addressing PR Comments
+* [WIP] SplitMongo Pruning (#1)
+* Use argument names when calling the PR message creation methods
+* Update rollback documentation
+* Improve rollback by AMI functionality and clarity
+* updated tests for messaging staging
+* Revert "Revert "Add ability to message a PR that it broke vagrant devstack""
+* Revert "Add ability to message a PR that it broke vagrant devstack"
+* Add ability to message a PR that it broke vagrant devstack
+* Simple script to check Vagrant devstack services are online
+* Fix the name of the private-to-public script
+* Remove cleanup param in cleanup method
+* Add scripts and pin pylint dependencies
+* Add scripts for two-stage reconcile of private->public->private push
+* Remove PyGithub leakage - add custom exception when PR create fails
+* Fix requirements ordering
+* Use the github repository associated with the PullRequest object to post a message
+* Don't require --head-sha for message-prs-in-range
+* Add script guidelines to the readme
+* Allow head\_sha to be read from a file
+* Add aliases for flags that are more unix standard
+* Output test statuses when checking combined test status
+* Change name of api call to check commit combined status
+* Create artifact directory when not created
+* Show changes across all named apps (even if they have the same repo) in the release wiki page
+* Use the ssh\_url for private repos and the clone\_url for public repos in merge-approved-prs
+* Add JSON response logging on drupal check\_state failures
+* Make sure the release wiki can handle when tags are added or removed from the AMI
+* Fix merge-approved-prs so that it correctly outputs repo and sha information
+* remove RSA key formatting script
+* Allow specifying the variable for the version SHA when tagging
+* Fix the help for --source-repo in merge-approved-prs
+* Create the directory required for merge-approved-prs --out-file
+* Allow specifying variables in the output yaml file the merged sha and the merged repo
+* remove decoding for python 3 strings
+* Don't error out if the base\_sha and head\_sha are from different repos. This allows messaging against both edx-platform and edx-platform-private
+* Re-sync scripts, symlinks, and setup.cfg for all scripts
+* take a differet approach to removing delete\_on\_ts from asgs
+* Add script to find and advance pipeline. Add hipchat module for message-sending and other HipChat functions
+* Don't create empty commits when there are no branches to octopus merge
+* instance termination logging cleanup
+* add cleanup\_instances to the pbr config
+* link instance cleanup script
+* Fix git tag fetching when tag is already created
+* Only pass reference repo to git clone when it's available
+* Improve logging on update\_release\_page.py
+* Allow the use of reference repos to speed up cloning
+* Cleanup instances remaining from abandoned GoCD runs
+* Don't override the repo variable in merge\_branch.py
+* Improve the documentation of git\_repo.py and merge\_approved\_prs.py
+* Record the results of the octo-merge for later consumption
+* Make merge-approved-prs force-push to the target branch
+* Rename public to source and private to target in merge-approved-prs
+* Make merge-approved-prs actually merge to a branch and push
+* Make repository-deletion an opt-in function of LocalGitAPI
+* Allow pushes to non-origin repos
+* Make the local git api a class
+* Add a function for doing octopus merges onto a checked out branch
+* Handle cases when finding pipeline instances that already advanced
+* Add code/tests which interact with the GoCD API. Finds the release pipeline instance to deploy to production. Use yagocd as the Python wrapper to communicate with GoCD API
+* Add a demonstration script to test octo-merging in the private repo
+* Sort entry\_points
+* Add a function that finds approved and not closed PRs in a github repo
+* Add a function that checks if one commit has been merged into another
+* fixup! No exception when creating a tag already created on correct SHA
+* No exception when creating a tag already created on correct SHA
+* Disambiguate git ref to be a branch
+* Remove all the old gocd code
+* Add instructions on how to install python environments using pyenv
+* Don't run tests in parallel on travis
+* Convert to using pytest-pylint and pytest-pep8 for linting. Also, remove testing of python2.7
+* Add a function to add a remote an existing repository
+* Switch to GitPython for local git manipulation
+* Upon socket.timeout, retry and continue to poll
+* Use 10am EST as the release cutoff time
+* Given cleanup-asgs.py a proper python module name
+* Improve release wiki formatting of AMI identifiers
+* Improve release wiki formatting of repos with no code changes
+* Handle error if authentication to confluence fails
+* Handle empty PR bodies when writing wiki pages
+* Convert all \*() to \*[]
+* Force the TypeError to happen even earlier
+* Use a sequence not a generator for \*args
+* Put pathing logic back for now
+* Update based on review
+* Revert "Merge pull request #124 from edx/cale/fix-sys-path-hacks"
+* Remove sys.path hackery
+* Use click-log to add in logging configuration to jenkins\_trigger\_build.py, even when called directly
+* Add a script for approving a stage in GoCD
+* Bail on empty lists. Fix logging upon some errors
+* Modify script to use newest tubular best practices
+* Use tubular.scripts rather than tubular.script when pointing to executable scripts
+* Poll jenkins every minute when waiting for updates on tests
+* Actually exit with a failure if the jenkins status isn't what is expected
+* Upgrade setuptools in the base travis install
+* Upgrade pip during travis builds
+* Use pbr to setup.py, and make all scripts available via installation
+* Fail jenkins\_trigger\_build.py if the build status isn't the expected result
+* Pin the backoff version (because 1.4.0 breaks under python 3.4 and 3.5 right now)
+* Add a script to publish a release page
+* Migration output is a list with one element - read it correctly
+* add retry attempts to ec2 calls when throttled
+* Remove jitter from wait times when waiting for jenkins test runs
+* Add email sending functionality and migrate alert script
+* Open key file in binary mode when writing the RSA key to it
+* Disambiguate git ref to be a branch only
+* Run both tests and quality via tox
+* Make scripts use python3 by default
+* Enable --py3k in quality tests
+* Enable testing on python 3.4 and 3.5
+* Add possibility of not creating PR if nothing to merge. Gracefully handle the non-creation of a PR in other scripts. Pull the exactly\_one\_set method out into common util code
+* Add have\_branches\_diverged method and tests
+* Add a default timeout for calls to jenkins
+* Clone from the target\_branch, when merging branches
+* Record and use the deploy time in tagging a release
+* Be explicit about pushing git branches (rather than tags)
+* Add a timeout parameter to the jenkins\_trigger\_build script
+* Fix exactly-one-cmd-line-param checking
+* Capture the commit SHA of the merged branch at time of merge. Output an artifact containing the commit SHA for later consumption. Add scripts to: - call create\_tag. - poll for GitHub commit/PR test status via backoff module
+* TE-1936
+* Allow message\_prs\_in\_range to read from an AMI tag yaml file
+* Make PR message filtering more strict
+* Capture tags for the base AMIs
+* Add logging about messages being posted to github
+* Add the ability to specify an explicit SHA to cut a branch at in cut\_branch.py
+* Remove the @user tagging in PR messages. It's redundant (the author of the PR will get notified anyway)
+* Add the expected release date to the message posted to PRs for staging deploys
+* Add an easily searchable tag to identify edX release process messages
+* Add script to message PRs in a range
+* PR messaging
+* Create the tagging functionality TE-1926
+* Remove separate GitRelease files
+* Add tests for git repository code
+* fixup: remove short cmdline options
+* Add default of True for fast-forward-only merging
+* Fail if both PR number and commit hash specified. Better docstring
+* fixup: remove short cmdline option
+* Add general git repo utils. Add branch-merging script
+* Add create/merge\_pr scripts. Add PR merging call
+* Update README and add LICENSE.txt file
+* Break apart the GitHub and release functionality in release.py. Remove/relocate/fix all files under tubular/scripts. Fix all scripts and tests to reflect the refactor
+* increase the number of attempts when checking the state of drupal calls
+* Add SHA\_LENGHT and BATCH\_SIZE to the README file
+* Add method for finding PRs given a commit range
+* New version of pygithub is raising a different Exception class when a deleted branch does not exist
+* Increasing timeout for drupal, as DB backup currently takes more than 100 seconds
+* Fix unicode strings to clean up output for the jenkins script
+* Configure logging for jenkins jobs
+* Install PyGithub from PyPI
+* Implement polling for jenkins build results
+* Use pytest to conform to OEP-8
+* Update log messaging when branch can not be created
+* create branch now returns github.GitRef.GitRef, prevents sync errors with github when a new branch may not be available for a few seconds after creation
+* Remove length check
+* do not check the CI of a commit when creating a branch
+* script that will create a branch on a github repository
+* Updates per code review, will squash
+* Add method to extract last base AMI ID used from a particular EDP. Update boto/moto requirement versions. Add script to call new method
+* Refactor custom github api code to use the pygithub library
+* Improve error messaging when new ASG is set to 0 instances
+* move code to cut branches/PRs from the testeng-ci repo
+* Add a tubular script for triggering a jenkins job  TE-1854
+* Bump ASG creation timeout up to 26 minutes
+* Change name of ASG creation timeout var. Change default to 20 minutes
+* Rollback now respects 404 from asgard when an ASG does not exist
+* new ASG now ensures the default and min size is > 0
+* add methods to fetch all ASGs and ELBs in paged calls
+* Add safeguard against specifying different AMI ids
+* asgs\_for\_edp is no longer a generator, simply returns a list
+* When fetching ASGs for an EDP, continue fetching if there are > 50 items
+* Fix error when no config file or ami\_id sent in
+* Don't add newest ASG to dict until new\_asg() completes without failure
+* Add PEP8/pylint checking to testing. Fix PEP8/pylint errors. Add PEP8/pylint checking to Makefile. Add quality checking to travis testing
+* Make methods protected to show clearly they are local
+* Address more review comments
+* Respond to review comments: Upgrade version of moto. Add EC2 method to remove tags from an ASG. Add checks before rollback to ensure existing ASGs are healthy. Allow red/black deployment method to report back state of ASGs. Add tests for all rollback/deploy code paths
+* Add rollback functionality to asgard module. Add click script to rollback to ASGs. Add tests for rollback and failed rollback
+* Revert "Put deploys in to debug mode."
+* Put deploys in to debug mode
+* return dicts so yaml serialization works properly
+* Handle HTML sent from any Asgard API call. Add tests
+* Fixup: Feedback from review
+* Fix defect where if one of many asgs did not come in to service, some would be left active
+* Fixing tests to test the response value from an asgard deployment
+* asgard deployments now return information about what ASGs were added and what ASGs were disabled
+* pylint fixes
+* improved error message when AMI is not for when looking up EDC
+* no longer raise exception when trying to tag an ASG that does not exist
+* no longer raise exception when trying to tag an ASG that does not exist
+* Changed clear varnish cache to clear all domains in the environments
+* Changed fetch tag to not strip off tags/ and the deploy url to be able to deploy any name
+* Deal with the case where this has been partially run
+* Add options, and input workflow
+* moved wait\_sleep\_time to utils and added the sleep time to ec2
+* Added in path before importing tubular code and changed fetch\_deployed\_tag to write to the file
+* Added in a script to fetch the currently deployed tag name for use in reverting deploys
+* Add boto script to add go-agent ingress into apps
+* Added in scripts to clear varnish cache, backup database, and deploy code to stage or prod
+* Get rid of extra retries
+* Import all exception types that we use, explicitly
+* Add a test to ensure we don't delete the last ASG in a cluster
+* Fix existing tests
+* Change function to only look for last asg since there is already a function for active asg
+* Prevent last active ASG from being disabled and from being deleted
+* Add a general method for getting json info out of asgard
+* trim whitespace from sensitive input
+* Respond to review suggestions
+* We don't care about deletion when trying to determine clusters
+* Better handle when ASGs have been deleted
+* Handle the case where too many ASGs already exist for a culster
+* File is optional, don't try to load it if it doesn't exist
+* Add the ability to dry\_run the deploy script
+* Be able to read ami ID from a yaml config file
+* Checking the right vars
+* Earlier error checking
+* Handle empty channel names and respond to review feedback
+* incremented version number
+* Shorten the ASG delete tag to 30 minutes
+* Accept multiple channels to send the message to
+* Fix some nits
+* Don't retry creating new ASGs if it fails
+* Get a better error when we fail to decode json
+* Make the color of the message configurable
+* Move to the top-level scripts directory
+* Change script to reflect new pattern. Add more output
+* delete\_asg expects a string not a boto AutoScale object
+* Script that will correctly format the mangled RSA key that is passed from gocd using secure variables
+* Import cleanup and python 3 compatibility fixes
+* asgs\_for\_edp now filters out ASGs pending delete
+* Use an environment variable to enable/disable the retry decorator
+* first pass at retry decorator
+* Add scripts/tests to validate EDP and restrict to stage. Add environment variables to script args. Fix PEP8 issues
+* moved util.py location
+* Readme now includes the description of the project along with information about the Environemnt variables that can be specified
+* fixed imports in cleanup-asgs.py
+* Added ability to set the sleep time while waiting for tasks to complete
+* use @mock.patch in tests instead of manually monkey patching
+* added test to ensure the timestamp attached a deletion tag has the correct time delta
+* Monkey patch create\_or\_update\_tags as moto does not implement this function
+* Add deletion tag to ASGs being disabled/pending delete after deploy
+* better use of constants for ASG key name
+* improved testing of ASG membership
+* more fine grained logging in get\_asgs\_pending\_delete
+* Added test to verify an ASG with a bad timestamp will still return when get\_asgs\_pending\_delete is called
+* ec2 scripts now have the ability to tag an ASG with a time to delete and to fetch a list of ASGs who's deletion timestamp have passed
+* fixed typo in delete-asg.py script
+* Improved documentation about asgard actions
+* Added boolean to delete\_asg method that will prevent an ASG from being deleted if it is currently active
+* 5 minutes is not enough time sometimes
+* Script to delete an ASG
+* Added ability to delete ASGs via asgard
+* New ASGs are now checked to see if they are disabled or deleted before disabling existing ASGs
+* Revert "Ensure the new ASG(s) is not being deleted before deleting existing ASG(s)"
+* Added new exception type ASGDoesNotExistException, thrown when a 404 is returned when looking up info on an ASG
+* Adding is\_asg\_enabled call. This is now checked on new ASGs during deployment to ensure the new ASG is healthy before disabling old ASGs
+* Improved way of checking for a disabled ASG
+* Print the traceback as well for debugging purposes
+* boto.autoscale.get\_all\_groups expects a list as a filter
+* TE-1281: Fix failure in ASG disabling. When an ASG is pending deletion, skip disabling it. Combine two tests into a single test
+* Add top-level module path before tubular import
+* Use all command args
+* Change EDP to edc
+* Fix asgard w.r.t clusters/play
+* Convert ec2.py to know about the 'play' tag
+* Fixes for TE-1273. AMIs will now deploy correctly and tests related to health checks on ELB instances have been expanded
+* Add external script to Makefile for venv source
+* Call source/deactivate via the shell. Use correct indentation
+* Allow INFO level logging
+* Initial version of Makefile
+* Allow INFO level logging
+* Minor README change
+* Minor README change
+* Minor README edit for trigger
+* Minor README edit
+* Bug Fix: Requests Timeout
+* Don't pct encode the token
+* Use environment var for AMI\_ID
+* removed click requirement from the test\_requirements file
+* Adding executable python script to deploy AMIs
+* Update timeout and fix old\_asg\_disabling
+* Pull out asg\_info function and add tests
+* Improve import and logging
+* Add timeouts to api requests
+* Namespace imports
+* Delete print statements
+* Pull out the function to create autoscaling groups and ELBs
+* Add deploy function
+* Add wait\_for\_healthy\_elbs function
+* Add new function to disable asgs
+* Add an enable\_asg function
+* Speed up test runs
+* Add new wait\_for\_in\_service function
+* Update asgard documentation
+* Add new\_asg function
+* Simplify bad JSON tests
+* Test asgs\_for\_clusters and task\_completion monitoring
+* Use DDT to reduce copied code
+* Round out the comment
+* Don't obscure requests exceptions that are useful
+* Move exceptions exception module
+* Add asgard ASG function
+* Split edc\_for\_ami tests into three separate tests
+* Correct travis.yml
+* Re-organize the requirements
+* Use DDT for asgs\_for\_edc tests
+* Remove dict\_from\_tag\_list
+* Rename test class
+* Update docs
+* Get all ASGs that match an EDC
+* Latest version of test config with installable module
+* Add versions to required modules. Refer to tubular itself from requirements.pip
+* Add ability to set HipChat message contents
+* Add GoCD-specific code
+* Make tubular installable
+* Move exceptions into their own module
+* Cleanup documentation
+* Add a travis file and a requirements file
+* Add an ec2 utility function for getting AMI Info
+* Add delay and HipChat posting scripts
+* Read parameters from environment variables. Add some prints for logging. Return the correct exit status code on success/failure
+* Change import filename - oops
+* Initial script implementation
+* Initial commit

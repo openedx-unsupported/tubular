@@ -793,12 +793,12 @@ class GitHubAPI(object):
 
             """
             new_message = new_message.lower()
-            result = False
+            result = True
             for comment in pr_messages:
-                if new_message in comment.body.lower():
-                    break
-            else:
+                # An attempt to get the last message of the PaginatedList object returned by Github.
                 result = True
+                if new_message in comment.body.lower():
+                    result = False
             return result
 
         if not isinstance(pull_request, PullRequest):
