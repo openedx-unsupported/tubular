@@ -140,6 +140,14 @@ class LmsApi(BaseApiClient):
         params = {'data': {'username': learner['original_username']}}
         return self._client.api.enrollment.v1.unenroll.post(**params)
 
+    def retirement_lms_retire_misc(self, learner):
+        """
+        Deletes, blanks, or one-way hashes personal information in LMS as
+        defined in EDUCATOR-2802 and sub-tasks.
+        """
+        params = {'data': {'username': learner['original_username']}}
+        return self._client.api.user.v1.accounts.retire_misc.post(**params)
+
     def retirement_lms_retire(self, learner):
         """
         Deletes, blanks, or one-way hashes all remaining personal information in LMS
