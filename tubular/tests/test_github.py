@@ -350,12 +350,12 @@ class GitHubApiTestCase(TestCase):
             self.assertIsInstance(pull, PullRequest)
 
     @ddt.data(
-        ('Deployed to PROD', [':+1:', ':+1:', ':ship: :it:'], False, IssueComment),
-        ('Deployed to stage', ['wahoo', 'want BLT', 'Deployed, to PROD, JK'], False, IssueComment),
-        ('Deployed to PROD', [':+1:', 'law school man', '@macdiesel Deployed to PROD'], False, None),
+        ('Deployed to PROD', [':+1:', ':+1:', ':ship: :it:'], True, IssueComment),
+        ('Deployed to stage', ['wahoo', 'want BLT', 'Deployed, to PROD'], False, IssueComment),
+        ('Deployed to PROD', [':+1:', 'law school man', '@macdiesel Deployed to PROD'], True, IssueComment),
         ('Deployed to stage', [':+1:', ':+1:', '@macdiesel dEpLoYeD tO stage'], False, None),
-        ('Deployed to stage', ['@macdiesel dEpLoYeD tO stage', ':+1:', ':+1:'], False, None),
-        ('Deployed to PROD', [':+1:', ':+1:', '@macdiesel Deployed to PROD'], True, IssueComment),
+        ('Deployed to stage', ['@macdiesel dEpLoYeD tO stage', ':+1:', ':+1:'], False, IssueComment),
+        ('Deployed to PROD', [':+1:', ':+1:', '@macdiesel Deployed to PROD'], False, None),
     )
     @ddt.unpack
     def test_message_pull_request(self, new_message, existing_messages, force_message, expected_result):
@@ -402,6 +402,7 @@ class GitHubApiTestCase(TestCase):
             with patch.object(github_api, 'datetime', Mock(wraps=datetime)) as mock_datetime:
                 mock_datetime.now.return_value = message_date
                 self.api.message_pr_deployed_stage(1)
+
                 mock.assert_called_with(
                     1,
                     (github_api.PR_ON_STAGE_BASE_MESSAGE + github_api.PR_ON_STAGE_DATE_MESSAGE).format(
