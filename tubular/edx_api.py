@@ -3,8 +3,9 @@ edX API classes which call edX service REST API endpoints using the edx-rest-api
 """
 import logging
 
+import backoff
 from six import text_type
-from slumber.exceptions import HttpClientError, HttpNotFoundError
+from slumber.exceptions import HttpClientError, HttpServerError, HttpNotFoundError
 
 from edx_rest_api_client.client import EdxRestApiClient
 
@@ -126,6 +127,25 @@ class LmsApi(BaseApiClient):
         except HttpNotFoundError:
             return True
 
+    @staticmethod
+    def _backoff_handler(details):
+        """
+        Simple logging handler for when timeout backoff occurs.
+        """
+        LOG.info('Trying again in {wait:0.1f} seconds after {tries} tries calling {target}'.format(**details))
+
+    @staticmethod
+    def _not_a_timeout(exc):
+        """
+        Return True if the exception was *not* caused by a timeout.
+        """
+        return not (exc.response.status_code == 500 and text_type('timed out') in text_type(exc.content))
+
+    @backoff.on_exception(backoff.expo,
+                          HttpServerError,
+                          max_time=600,  # Only 10 minutes of trying
+                          giveup=_not_a_timeout,  # Stop trying if exception is *not* a timeout.
+                          on_backoff=_backoff_handler)
     def retirement_retire_mailings(self, learner):
         """
         Performs the email list retirement step of learner retirement
