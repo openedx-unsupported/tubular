@@ -64,11 +64,11 @@ def _backoff_handler(details):
     LOG.info('Trying again in {wait:0.1f} seconds after {tries} tries calling {target}'.format(**details))
 
 
-def _not_a_timeout(exc):
+def _not_a_500(exc):
     """
-    Return True if the exception was *not* caused by a timeout.
+    Return True if the exception was *not* caused by a HTTP 500 error.
     """
-    return not (exc.response.status_code == 500 and text_type('timed out') in text_type(exc.content))
+    return exc.response.status_code != 500
 
 
 class LmsApi(BaseApiClient):
@@ -141,7 +141,7 @@ class LmsApi(BaseApiClient):
     @backoff.on_exception(backoff.expo,
                           HttpServerError,
                           max_time=600,  # Only 10 minutes of trying
-                          giveup=_not_a_timeout,  # Stop trying if exception is *not* a timeout.
+                          giveup=_not_a_500,  # Stop trying if exception is *not* a 500 error.
                           on_backoff=_backoff_handler)
     def retirement_retire_mailings(self, learner):
         """
