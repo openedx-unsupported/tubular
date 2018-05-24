@@ -57,6 +57,20 @@ class BaseApiClient(object):
             raise
 
 
+def _backoff_handler(details):
+    """
+    Simple logging handler for when timeout backoff occurs.
+    """
+    LOG.info('Trying again in {wait:0.1f} seconds after {tries} tries calling {target}'.format(**details))
+
+
+def _not_a_timeout(exc):
+    """
+    Return True if the exception was *not* caused by a timeout.
+    """
+    return not (exc.response.status_code == 500 and text_type('timed out') in text_type(exc.content))
+
+
 class LmsApi(BaseApiClient):
     """
     LMS API client with convenience methods for making API calls.
@@ -126,20 +140,6 @@ class LmsApi(BaseApiClient):
             return self._client.api.discussion.v1.accounts.retire_forum.post(**params)
         except HttpNotFoundError:
             return True
-
-    @staticmethod
-    def _backoff_handler(details):
-        """
-        Simple logging handler for when timeout backoff occurs.
-        """
-        LOG.info('Trying again in {wait:0.1f} seconds after {tries} tries calling {target}'.format(**details))
-
-    @staticmethod
-    def _not_a_timeout(exc):
-        """
-        Return True if the exception was *not* caused by a timeout.
-        """
-        return not (exc.response.status_code == 500 and text_type('timed out') in text_type(exc.content))
 
     @backoff.on_exception(backoff.expo,
                           HttpServerError,
