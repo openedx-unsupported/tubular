@@ -83,13 +83,10 @@ class LmsApi(BaseApiClient):
             'cool_off_days': cool_off_days,
             'states': [
                 'PENDING',
-                'CREDENTIALS_COMPLETE',
-                'ECOM_COMPLETE',
                 'FORUMS_COMPLETE',
                 'EMAIL_LISTS_COMPLETE',
                 'ENROLLMENTS_COMPLETE',
-                'NOTES_COMPLETE',
-                'PARTNERS_NOTIFIED',
+                'LMS_MISC_COMPLETE',
                 'LMS_COMPLETE',
             ]
         }
