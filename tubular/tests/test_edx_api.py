@@ -9,6 +9,7 @@ import unittest
 from mock import patch
 
 import tubular.edx_api as edx_api
+from tubular.tests.retirement_helpers import TEST_RETIREMENT_QUEUE_STATES
 
 
 class TestBaseApiClient(unittest.TestCase):
@@ -66,16 +67,9 @@ class TestLmsApi(unittest.TestCase):
                     'the_client_id',
                     'the_client_secret'
                 )
-                lms_api.learners_to_retire(cool_off_days=365)
+                lms_api.learners_to_retire(TEST_RETIREMENT_QUEUE_STATES, cool_off_days=365)
                 # pylint: disable=protected-access
                 lms_api._client.api.user.v1.accounts.retirement_queue.get.assert_called_once_with(
                     cool_off_days=365,
-                    states=[
-                        'PENDING',
-                        'FORUMS_COMPLETE',
-                        'EMAIL_LISTS_COMPLETE',
-                        'ENROLLMENTS_COMPLETE',
-                        'LMS_MISC_COMPLETE',
-                        'LMS_COMPLETE'
-                    ]
+                    states=TEST_RETIREMENT_QUEUE_STATES
                 )

@@ -5,7 +5,6 @@ Test the retire_one_learner.py script
 from mock import patch, DEFAULT
 
 from click.testing import CliRunner
-import yaml
 
 from tubular.scripts.retire_one_learner import (
     END_STATES,
@@ -17,31 +16,7 @@ from tubular.scripts.retire_one_learner import (
     ERR_USER_IN_WORKING_STATE,
     retire_learner
 )
-
-
-def _config_file(f):
-    """
-    Create a config file for a single test. Combined with CliRunner.isolated_filesystem() to
-    ensure the file lifetime is limited to the test. See _call_script for usage.
-    """
-
-    config = {
-        'client_id': 'bogus id',
-        'client_secret': 'supersecret',
-        'base_urls': {
-            'credentials': 'https://credentials.stage.edx.org/',
-            'lms': 'https://stage-edx-edxapp.edx.org/',
-            'ecommerce': 'https://ecommerce.stage.edx.org/'
-        },
-        'retirement_pipeline': [
-            ['RETIRING_FORUMS', 'FORUMS_COMPLETE', 'LMS', 'retirement_retire_forum'],
-            ['RETIRING_EMAIL_LISTS', 'EMAIL_LISTS_COMPLETE', 'LMS', 'retirement_retire_mailings'],
-            ['RETIRING_ENROLLMENTS', 'ENROLLMENTS_COMPLETE', 'LMS', 'retirement_unenroll'],
-            ['RETIRING_LMS', 'LMS_COMPLETE', 'LMS', 'retirement_lms_retire']
-        ]
-    }
-
-    yaml.safe_dump(config, f)
+from tubular.tests.retirement_helpers import fake_config_file
 
 
 def _call_script(username):
@@ -52,7 +27,7 @@ def _call_script(username):
     runner = CliRunner()
     with runner.isolated_filesystem():
         with open('test_config.yml', 'w') as f:
-            _config_file(f)
+            fake_config_file(f)
         result = runner.invoke(retire_learner, args=['--username', username, '--config_file', 'test_config.yml'])
     print(result)
     print(result.output)
