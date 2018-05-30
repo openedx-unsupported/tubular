@@ -1,9 +1,12 @@
 CHANGES
 =======
 
-* Update
-* Update tests
-* Update
+* Remove deletion tags from ASGs that should not be removed
+* Relax Sailthru retire retry to be any non-500 error
+* Fix hard coded states to fetch retirement users for (#228)
+* Move static methods outside of class to work properly
+* Add retry logic around mailing retirement call
+* Add lms\_retire\_misc endpoint to edx\_api (#225)
 * Update script checkstep
 * Fix an issue with handling retiring users without forum accounts (#223)
 * Move the retirement pipeline definition to the config file (#222)

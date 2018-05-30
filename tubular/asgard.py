@@ -33,6 +33,8 @@ from tubular.exception import (
 )
 from tubular.utils import WAIT_SLEEP_TIME, DISABLE_OLD_ASG_WAIT_TIME
 
+from boto.exception import EC2ResponseError
+
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091/us-east-1")
 ASGARD_API_TOKEN = "asgardApiToken={}".format(os.environ.get("ASGARD_API_TOKEN", "dummy-token"))
 # Asgard's ASG creation times out at 25 minutes - set tubular's timeout to 26 minutes (1560 seconds).
@@ -527,11 +529,19 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True):
     if fail_if_active and is_asg_enabled(asg):
         msg = "Not deleting ASG {} as it is currently active.".format(asg)
         LOG.warning(msg)
+        try:
+            ec2.remove_asg_deletion_tag(asg)
+        except EC2ResponseError as tagging_error:
+            LOG.warning("Failed to remove deletion tag from asg {}. Ignoring: {}".format(asg, tagging_error))
         raise CannotDeleteActiveASG(msg)
 
     if fail_if_last and is_last_asg(asg):
         msg = "Not deleting ASG {} since it is the last ASG in this cluster."
         LOG.warning(msg)
+        try:
+            ec2.remove_asg_deletion_tag(asg)
+        except EC2ResponseError as tagging_error:
+            LOG.warning("Failed to remove deletion tag from asg {}. Ignoring: {}".format(asg, tagging_error))
         raise CannotDeleteLastASG(msg)
 
     payload = {"name": asg}
