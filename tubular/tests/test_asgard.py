@@ -821,7 +821,8 @@ class TestAsgard(unittest.TestCase):
             asgard.ASG_DELETE_URL,
             json=post_callback
         )
-        self.assertRaises(CannotDeleteActiveASG, asgard.delete_asg, asg, True)
+        with mock.patch("tubular.ec2.remove_asg_deletion_tag"):
+            self.assertRaises(CannotDeleteActiveASG, asgard.delete_asg, asg, True)
 
     def test_delete_asg_pending_delete(self, req_mock):
         asg = "loadtest-edx-edxapp-v060"
@@ -843,7 +844,8 @@ class TestAsgard(unittest.TestCase):
             json=VALID_SINGLE_ASG_CLUSTER_INFO_JSON
         )
 
-        self.assertRaises(CannotDeleteLastASG, asgard.delete_asg, asg)
+        with mock.patch("tubular.ec2.remove_asg_deletion_tag"):
+            self.assertRaises(CannotDeleteLastASG, asgard.delete_asg, asg)
 
     @mock_autoscaling
     @mock_ec2
