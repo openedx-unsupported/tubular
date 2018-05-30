@@ -75,20 +75,13 @@ class LmsApi(BaseApiClient):
     """
     LMS API client with convenience methods for making API calls.
     """
-    def learners_to_retire(self, cool_off_days=7):
+    def learners_to_retire(self, states_to_request, cool_off_days=7):
         """
         Retrieves a list of learners awaiting retirement actions.
         """
         params = {
             'cool_off_days': cool_off_days,
-            'states': [
-                'PENDING',
-                'FORUMS_COMPLETE',
-                'EMAIL_LISTS_COMPLETE',
-                'ENROLLMENTS_COMPLETE',
-                'LMS_MISC_COMPLETE',
-                'LMS_COMPLETE',
-            ]
+            'states': states_to_request
         }
         try:
             return self._client.api.user.v1.accounts.retirement_queue.get(**params)

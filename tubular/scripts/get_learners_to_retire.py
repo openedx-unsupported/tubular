@@ -30,19 +30,6 @@ LOG = logging.getLogger(__name__)
     help='File in which YAML config exists that overrides all other params.'
 )
 @click.option(
-    '--client_id',
-    help='ID of OAuth client used in svr-to-svr client credentials grant.'
-)
-@click.option(
-    '--client_secret',
-    help='Secret associated with OAuth client used in svr-to-svr client credentials grant.'
-)
-@click.option(
-    '--lms_base_url',
-    help='Base URL of LMS from which to retrieve learner list, including :<port> if non-standard.',
-    default='http://localhost'
-)
-@click.option(
     '--cool_off_days',
     help='Number of days a learner should be in the retirement queue before being actually retired.',
     default='7'
@@ -53,28 +40,31 @@ LOG = logging.getLogger(__name__)
     default='./jenkins_props'
 )
 def get_learners_to_retire(config_file,
-                           client_id,
-                           client_secret,
-                           lms_base_url,
                            cool_off_days,
                            output_dir):
     """
     Retrieves a JWT token as the retirement service user, then calls the LMS
     endpoint to retrieve the list of learners awaiting retirement.
     """
-    if config_file:
-        # If a config file is present, it overrides all passed-in params.
-        with io.open(config_file, 'r') as config:
-            config_yaml = yaml.load(config)
-        client_id = config_yaml['client_id']
-        client_secret = config_yaml['client_secret']
-        lms_base_url = config_yaml['base_urls']['lms']
+    if not config_file:
+        click.echo('A config file is required.')
+
+    # If a config file is present, it overrides all passed-in params.
+    with io.open(config_file, 'r') as config:
+        config_yaml = yaml.load(config)
+
+    client_id = config_yaml['client_id']
+    client_secret = config_yaml['client_secret']
+    lms_base_url = config_yaml['base_urls']['lms']
+    retirement_pipeline = config['retirement_pipeline']
+    end_states = [state[1] for state in retirement_pipeline]
+    states_to_request = ['PENDING'] + end_states
 
     api = LmsApi(lms_base_url, lms_base_url, client_id, client_secret)
 
     # Retrieve the learners to retire and export them to separate Jenkins property files.
     export_learner_job_properties(
-        api.learners_to_retire(cool_off_days),
+        api.learners_to_retire(states_to_request, cool_off_days),
         output_dir
     )
 
