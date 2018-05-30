@@ -7,6 +7,8 @@ from __future__ import unicode_literals
 
 import unittest
 from mock import patch
+from slumber.exceptions import HttpServerError
+import requests
 
 import tubular.edx_api as edx_api
 from tubular.tests.retirement_helpers import TEST_RETIREMENT_QUEUE_STATES
@@ -53,6 +55,13 @@ class TestBaseApiClient(unittest.TestCase):
                 )
 
 
+class BackoffTriedException(Exception):
+    """
+    Raise this from a backoff handler to indicate that backoff was tried.
+    """
+    pass
+
+
 class TestLmsApi(unittest.TestCase):
     """
     Test the edX LMS API client.
@@ -73,3 +82,23 @@ class TestLmsApi(unittest.TestCase):
                     cool_off_days=365,
                     states=TEST_RETIREMENT_QUEUE_STATES
                 )
+
+    @patch('tubular.edx_api._backoff_handler')
+    def test_retrieve_learner_queue_backoff_on_504(self, mock_backoff_handler):
+        mock_backoff_handler.side_effect = BackoffTriedException
+        with patch('tubular.edx_api.BaseApiClient.get_access_token') as mock_get_access_token:
+            mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+            with patch('tubular.edx_api.EdxRestApiClient'):
+                lms_api = edx_api.LmsApi(
+                    'http://localhost:18000',
+                    'http://localhost',
+                    'the_client_id',
+                    'the_client_secret'
+                )
+                response = requests.Response()
+                response.status_code = 504
+                # pylint: disable=protected-access
+                lms_api._client.api.user.v1.accounts.retirement_queue.get.side_effect = \
+                    HttpServerError(response=response)
+                with self.assertRaises(BackoffTriedException):
+                    lms_api.learners_to_retire(TEST_RETIREMENT_QUEUE_STATES, cool_off_days=365)
