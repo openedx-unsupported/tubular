@@ -48,8 +48,8 @@ def get_learners_to_retire(config_file,
     """
     if not config_file:
         click.echo('A config file is required.')
+        exit(-1)
 
-    # If a config file is present, it overrides all passed-in params.
     with io.open(config_file, 'r') as config:
         config_yaml = yaml.load(config)
 
