@@ -39,9 +39,16 @@ LOG = logging.getLogger(__name__)
     help="Directory in which to write the Jenkins properties files.",
     default='./jenkins_props'
 )
+@click.option(
+    '--user_count_error_threshold',
+    help="If more users than this number are returned we will error out instead of retiring. This is a failsafe"
+         "against attacks that somehow manage to add users to the retirement queue.",
+    default='200'
+)
 def get_learners_to_retire(config_file,
                            cool_off_days,
-                           output_dir):
+                           output_dir,
+                           user_count_error_threshold):
     """
     Retrieves a JWT token as the retirement service user, then calls the LMS
     endpoint to retrieve the list of learners awaiting retirement.
@@ -63,8 +70,20 @@ def get_learners_to_retire(config_file,
     api = LmsApi(lms_base_url, lms_base_url, client_id, client_secret)
 
     # Retrieve the learners to retire and export them to separate Jenkins property files.
+    learners_to_retire = api.learners_to_retire(states_to_request, cool_off_days)
+    learners_to_retire_cnt = len(learners_to_retire)
+
+    if learners_to_retire_cnt > user_count_error_threshold:
+        click.echo(
+            'Too many learners to retire! Expected {} or fewer, got {}!'.format(
+                user_count_error_threshold,
+                learners_to_retire_cnt
+            )
+        )
+        exit(-1)
+
     export_learner_job_properties(
-        api.learners_to_retire(states_to_request, cool_off_days),
+        learners_to_retire,
         output_dir
     )
 
