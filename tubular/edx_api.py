@@ -181,6 +181,15 @@ class LmsApi(BaseApiClient):
         params = {'data': {'username': learner['original_username']}}
         return self._client.api.enrollment.v1.unenroll.post(**params)
 
+    # This endpoint additionaly returns 500 when the EdxNotes backend service is unavailable.
+    @_retry_lms_api(retry_statuses=[500, 504])
+    def retirement_retire_notes(self, learner):
+        """
+        Deletes all the user's notes (aka. annotations)
+        """
+        params = {'data': {'username': learner['original_username']}}
+        return self._client.api.edxnotes.v1.retire_user.post(**params)
+
     @_retry_lms_api()
     def retirement_lms_retire_misc(self, learner):
         """
