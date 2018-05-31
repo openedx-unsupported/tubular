@@ -56,7 +56,7 @@ def get_learners_to_retire(config_file,
     client_id = config_yaml['client_id']
     client_secret = config_yaml['client_secret']
     lms_base_url = config_yaml['base_urls']['lms']
-    retirement_pipeline = config['retirement_pipeline']
+    retirement_pipeline = config_yaml['retirement_pipeline']
     end_states = [state[1] for state in retirement_pipeline]
     states_to_request = ['PENDING'] + end_states
 
