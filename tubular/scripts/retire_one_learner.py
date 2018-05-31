@@ -237,7 +237,9 @@ def retire_learner(
         exc_msg = text_type(exc)
 
         try:
-            exc_msg += '\n' + text_type(exc.content)
+            # Slumber inconveniently discards the decoded .text attribute from the Response object, and instead gives us
+            # the raw encoded .content attribute, so we need to decode it first.
+            exc_msg += '\n' + exc.content.decode('utf-8')
         except AttributeError:
             pass
 
