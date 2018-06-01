@@ -14,7 +14,7 @@ from tubular.scripts.get_learners_to_retire import (
 from tubular.tests.retirement_helpers import fake_config_file
 
 
-def _call_script(expected_user_files, cool_off_days=1, output_dir='test'):
+def _call_script(expected_user_files, cool_off_days=1, output_dir='test', user_count_error_threshold=200):
     """
     Call the retired learner script with the given username and a generic, temporary config file.
     Returns the CliRunner.invoke results
@@ -25,7 +25,13 @@ def _call_script(expected_user_files, cool_off_days=1, output_dir='test'):
             fake_config_file(f)
         result = runner.invoke(
             get_learners_to_retire,
-            args=['--config_file', 'test_config.yml', '--cool_off_days', cool_off_days, '--output_dir', output_dir])
+            args=[
+                '--config_file', 'test_config.yml',
+                '--cool_off_days', cool_off_days,
+                '--output_dir', output_dir,
+                '--user_count_error_threshold', user_count_error_threshold
+            ]
+        )
         print(result)
         print(result.output)
 
@@ -102,3 +108,28 @@ def test_misconfigured(*args, **kwargs):
     mock_get_learners_to_retire.assert_called_once()
 
     assert result.exit_code == -1
+
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    learners_to_retire=DEFAULT
+)
+def test_too_many_users(*args, **kwargs):
+    mock_get_access_token = args[0]
+    mock_get_learners_to_retire = kwargs['learners_to_retire']
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_get_learners_to_retire.return_value = [
+        {'original_username': 'test_user1'},
+        {'original_username': 'test_user2'},
+    ]
+
+    result = _call_script(0, user_count_error_threshold=1)
+
+    # Called once per API we instantiate (LMS, ECommerce, Credentials)
+    assert mock_get_access_token.call_count == 1
+    mock_get_learners_to_retire.assert_called_once()
+
+    assert result.exit_code == -1
+    assert 'Too many learners' in result.output
