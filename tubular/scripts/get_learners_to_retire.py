@@ -32,7 +32,7 @@ LOG = logging.getLogger(__name__)
 @click.option(
     '--cool_off_days',
     help='Number of days a learner should be in the retirement queue before being actually retired.',
-    default='7'
+    default=7
 )
 @click.option(
     '--output_dir',
@@ -43,7 +43,7 @@ LOG = logging.getLogger(__name__)
     '--user_count_error_threshold',
     help="If more users than this number are returned we will error out instead of retiring. This is a failsafe"
          "against attacks that somehow manage to add users to the retirement queue.",
-    default='200'
+    default=200
 )
 def get_learners_to_retire(config_file,
                            cool_off_days,
@@ -59,6 +59,9 @@ def get_learners_to_retire(config_file,
 
     with io.open(config_file, 'r') as config:
         config_yaml = yaml.load(config)
+
+    user_count_error_threshold = int(user_count_error_threshold)
+    cool_off_days = int(cool_off_days)
 
     client_id = config_yaml['client_id']
     client_secret = config_yaml['client_secret']
