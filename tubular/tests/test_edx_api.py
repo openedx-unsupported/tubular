@@ -6,6 +6,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import unittest
+from ddt import ddt, data
 from mock import patch
 from slumber.exceptions import HttpServerError
 import requests
@@ -62,6 +63,7 @@ class BackoffTriedException(Exception):
     pass
 
 
+@ddt
 class TestLmsApi(unittest.TestCase):
     """
     Test the edX LMS API client.
@@ -83,8 +85,9 @@ class TestLmsApi(unittest.TestCase):
                     states=TEST_RETIREMENT_QUEUE_STATES
                 )
 
+    @data(504, 500)
     @patch('tubular.edx_api._backoff_handler')
-    def test_retrieve_learner_queue_backoff_on_504(self, mock_backoff_handler):
+    def test_retrieve_learner_queue_backoff(self, svr_status_code, mock_backoff_handler):
         mock_backoff_handler.side_effect = BackoffTriedException
         with patch('tubular.edx_api.BaseApiClient.get_access_token') as mock_get_access_token:
             mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
@@ -96,7 +99,7 @@ class TestLmsApi(unittest.TestCase):
                     'the_client_secret'
                 )
                 response = requests.Response()
-                response.status_code = 504
+                response.status_code = svr_status_code
                 # pylint: disable=protected-access
                 lms_api._client.api.user.v1.accounts.retirement_queue.get.side_effect = \
                     HttpServerError(response=response)

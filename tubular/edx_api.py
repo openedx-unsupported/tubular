@@ -2,6 +2,7 @@
 edX API classes which call edX service REST API endpoints using the edx-rest-api-client module.
 """
 import logging
+from contextlib import contextmanager
 
 import backoff
 from six import text_type
@@ -13,6 +14,14 @@ from edx_rest_api_client.client import EdxRestApiClient
 LOG = logging.getLogger(__name__)
 
 OAUTH_ACCESS_TOKEN_URL = "/oauth2/access_token"
+
+
+class EdxGatewayTimeoutError(Exception):
+    """
+    Exception used to indicate a 504 server error was returned.
+    Differentiates from other 5xx errors.
+    """
+    pass
 
 
 class BaseApiClient(object):
@@ -64,40 +73,68 @@ def _backoff_handler(details):
     LOG.info('Trying again in {wait:0.1f} seconds after {tries} tries calling {target}'.format(**details))
 
 
-def _exception_not_like(statuses=None):
+def _wait_one_minute():
     """
-    Parameterized callback for backoff's "giveup" argument which checks that the exception does NOT have any of the
-    given statuses.
+    Backoff generator that waits for 60 seconds.
     """
-    def inner(exc):  # pylint: disable=missing-docstring
-        return exc.response.status_code not in statuses
-    return inner
+    return backoff.constant(interval=60)
 
 
-def _retry_lms_api(retry_statuses=None):
+def _exception_not_internal_svr_error(exc):
+    """
+    Giveup method that gives up backoff upon any non-5xx and 504 server errors.
+    """
+    return not (500 <= exc.response.status_code < 600 and exc.response.status_code != 504)
+
+
+def _retry_lms_api():
     """
     Decorator which enables retries with sane backoff defaults for LMS APIs.
     """
-    # At the very least, retry on 504 response status which is used by Nginx/gunicorn to indicate backend python workers
-    # are occupied or otherwise unavailable.
-    if not retry_statuses:
-        retry_statuses = [504]
-    elif 504 not in retry_statuses:
-        retry_statuses.append(504)
-
     def inner(func):  # pylint: disable=missing-docstring
         func_with_backoff = backoff.on_exception(
             backoff.expo,
             HttpServerError,
             max_time=600,  # 10 minutes
-            giveup=_exception_not_like(statuses=retry_statuses),
+            giveup=_exception_not_internal_svr_error,
             # Wrap the actual _backoff_handler so that we can patch the real one in unit tests.  Otherwise, the func
             # will get decorated on import, embedding this handler as a python object reference, precluding our ability
             # to patch it in tests.
             on_backoff=lambda details: _backoff_handler(details)  # pylint: disable=unnecessary-lambda
-        )(func)
-        return func_with_backoff
+        )
+        func_with_timeout_backoff = backoff.on_exception(
+            _wait_one_minute,
+            EdxGatewayTimeoutError,
+            max_tries=2,
+            # Wrap the actual _backoff_handler so that we can patch the real one in unit tests.  Otherwise, the func
+            # will get decorated on import, embedding this handler as a python object reference, precluding our ability
+            # to patch it in tests.
+            on_backoff=lambda details: _backoff_handler(details)  # pylint: disable=unnecessary-lambda
+        )
+        return func_with_backoff(func_with_timeout_backoff(func))
     return inner
+
+
+@contextmanager
+def correct_exception():
+    """
+    Context manager that differentiates 504 gateway timeouts from other 5xx server errors.
+    Re-raises any unhandled exceptions.
+    """
+    try:
+        yield
+    except HttpServerError as err:
+        if err.response.status_code == 504:  # pylint: disable=no-member
+            # Differentiate gateway errors so different backoff can be used.
+            raise EdxGatewayTimeoutError(text_type(err))
+        else:
+            raise err
+    except HttpClientError as err:
+        try:
+            LOG.error("API Error: {}".format(err.content))
+        except AttributeError:
+            LOG.error("API Error: {}".format(text_type(err)))
+        raise err
 
 
 class LmsApi(BaseApiClient):
@@ -113,21 +150,16 @@ class LmsApi(BaseApiClient):
             'cool_off_days': cool_off_days,
             'states': states_to_request
         }
-        try:
+        with correct_exception():
             return self._client.api.user.v1.accounts.retirement_queue.get(**params)
-        except HttpClientError as err:
-            try:
-                LOG.error("API Error: {}".format(err.content))
-            except AttributeError:
-                LOG.error("API Error: {}".format(text_type(err)))
-            raise err
 
     @_retry_lms_api()
     def get_learner_retirement_state(self, username):
         """
         Retrieves the given learner's retirement state.
         """
-        return self._client.api.user.v1.accounts(username).retirement_status.get()
+        with correct_exception():
+            return self._client.api.user.v1.accounts(username).retirement_status.get()
 
     @_retry_lms_api()
     def update_learner_retirement_state(self, username, new_state_name, message):
@@ -142,8 +174,8 @@ class LmsApi(BaseApiClient):
                 'response': message
             },
         }
-
-        return self._client.api.user.v1.accounts.update_retirement_status.patch(**params)
+        with correct_exception():
+            return self._client.api.user.v1.accounts.update_retirement_status.patch(**params)
 
     @_retry_lms_api()
     def retirement_deactivate_logout(self, learner):
@@ -151,7 +183,8 @@ class LmsApi(BaseApiClient):
         Performs the user deactivation and forced logout step of learner retirement
         """
         params = {'data': {'username': learner['original_username']}}
-        return self._client.api.user.v1.accounts.deactivate_logout.post(**params)
+        with correct_exception():
+            return self._client.api.user.v1.accounts.deactivate_logout.post(**params)
 
     @_retry_lms_api()
     def retirement_retire_forum(self, learner):
@@ -161,17 +194,19 @@ class LmsApi(BaseApiClient):
         # api/discussion/
         params = {'data': {'username': learner['original_username']}}
         try:
-            return self._client.api.discussion.v1.accounts.retire_forum.post(**params)
+            with correct_exception():
+                return self._client.api.discussion.v1.accounts.retire_forum.post(**params)
         except HttpNotFoundError:
             return True
 
-    @_retry_lms_api(retry_statuses=[500, 504])
+    @_retry_lms_api()
     def retirement_retire_mailings(self, learner):
         """
         Performs the email list retirement step of learner retirement
         """
         params = {'data': {'username': learner['original_username']}}
-        return self._client.api.user.v1.accounts.retire_mailings.post(**params)
+        with correct_exception():
+            return self._client.api.user.v1.accounts.retire_mailings.post(**params)
 
     @_retry_lms_api()
     def retirement_unenroll(self, learner):
@@ -179,16 +214,18 @@ class LmsApi(BaseApiClient):
         Unenrolls the user from all courses
         """
         params = {'data': {'username': learner['original_username']}}
-        return self._client.api.enrollment.v1.unenroll.post(**params)
+        with correct_exception():
+            return self._client.api.enrollment.v1.unenroll.post(**params)
 
     # This endpoint additionaly returns 500 when the EdxNotes backend service is unavailable.
-    @_retry_lms_api(retry_statuses=[500, 504])
+    @_retry_lms_api()
     def retirement_retire_notes(self, learner):
         """
         Deletes all the user's notes (aka. annotations)
         """
         params = {'data': {'username': learner['original_username']}}
-        return self._client.api.edxnotes.v1.retire_user.post(**params)
+        with correct_exception():
+            return self._client.api.edxnotes.v1.retire_user.post(**params)
 
     @_retry_lms_api()
     def retirement_lms_retire_misc(self, learner):
@@ -197,7 +234,8 @@ class LmsApi(BaseApiClient):
         defined in EDUCATOR-2802 and sub-tasks.
         """
         params = {'data': {'username': learner['original_username']}}
-        return self._client.api.user.v1.accounts.retire_misc.post(**params)
+        with correct_exception():
+            return self._client.api.user.v1.accounts.retire_misc.post(**params)
 
     @_retry_lms_api()
     def retirement_lms_retire(self, learner):
@@ -205,7 +243,8 @@ class LmsApi(BaseApiClient):
         Deletes, blanks, or one-way hashes all remaining personal information in LMS
         """
         params = {'data': {'username': learner['original_username']}}
-        return self._client.api.user.v1.accounts.retire.post(**params)
+        with correct_exception():
+            return self._client.api.user.v1.accounts.retire.post(**params)
 
 
 class EcommerceApi(BaseApiClient):
@@ -218,7 +257,8 @@ class EcommerceApi(BaseApiClient):
         Performs the learner retirement step for Ecommerce
         """
         params = {'data': {'username': learner['original_username']}}
-        return self._client.api.v2.user.retire.post(**params)
+        with correct_exception():
+            return self._client.api.v2.user.retire.post(**params)
 
 
 class CredentialsApi(BaseApiClient):
@@ -231,4 +271,5 @@ class CredentialsApi(BaseApiClient):
         Performs the learner retiement step for Credentials
         """
         params = {'data': {'username': learner['original_username']}}
-        return self._client.user.retire.post(**params)
+        with correct_exception():
+            return self._client.user.retire.post(**params)

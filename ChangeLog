@@ -1,6 +1,16 @@
 CHANGES
 =======
 
+* PLAT-2177: Use different backoff for 504 gateway timeout errors. Test both 500 and 504 errors. Update Changelog
+* Force integer inputs to be... integers. (#238)
+* Error if an unexpectedly high number of users are being retired (#236)
+* Correctly decode unicode response content
+* Add retirement\_retire\_notes endpoint to edx\_api
+* Minimal tests to smoke out simple errors in get\_learners\_to\_retire.py (#234)
+* Fix typo in get\_learners\_to\_retire.py (#233)
+* edx API clients retry on 504 from the LMS
+* Consolidate retirement states to make updates easier (#231)
+* Update changelog and authors
 * Remove deletion tags from ASGs that should not be removed
 * Relax Sailthru retire retry to be any non-500 error
 * Fix hard coded states to fetch retirement users for (#228)
