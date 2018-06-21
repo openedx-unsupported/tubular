@@ -760,6 +760,7 @@ class GitHubAPI(object):
 
         return list(pulls.values())
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=5)
     def message_pull_request(self, pull_request, message, message_filter, force_message=False):
         """
         Messages a pull request. Will only message the PR if the message has not already been posted to the discussion
