@@ -23,7 +23,6 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
-@backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=5)
 @click.command()
 @click.option(
     u'--org',
@@ -85,6 +84,7 @@ LOG = logging.getLogger(__name__)
 @click.option(
     u'--extra_text', u'extra_text', default=''
 )
+@backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=5)
 def message_pull_requests(org,
                           repo,
                           token,
