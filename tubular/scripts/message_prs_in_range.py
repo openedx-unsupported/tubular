@@ -17,7 +17,7 @@ import yaml
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.github_api import GitHubAPI  # pylint: disable=wrong-import-position
-from github.GithubException import RateLimitExceededException  # pylint: disable=wrong-import-position
+from github.GithubException import RateLimitExceededException, GithubException  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -172,7 +172,7 @@ def retrieve_pull_requests(api, base_sha, head_sha):
     return pull_requests
 
 
-@backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7)
+@backoff.on_exception(backoff.expo, GithubException, max_tries=5)
 def message_prs(api, message_type, pull_request, extra_text):
     u"""
     Send a Message for a Pull request.
