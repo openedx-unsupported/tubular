@@ -246,6 +246,15 @@ class LmsApi(BaseApiClient):
         with correct_exception():
             return self._client.api.user.v1.accounts.retire.post(**params)
 
+    @_retry_lms_api()
+    def retirement_partner_queue(self, learner):
+        """
+        Deletes, blanks, or one-way hashes all remaining personal information in LMS
+        """
+        params = {'data': {'username': learner['original_username']}}
+        with correct_exception():
+            return self._client.api.user.v1.accounts.retirement_partner_report.put(**params)
+
 
 class EcommerceApi(BaseApiClient):
     """
