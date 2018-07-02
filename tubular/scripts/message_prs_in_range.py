@@ -79,7 +79,10 @@ LOG = logging.getLogger(__name__)
     u'--release_vagrant_broken', u'message_type', flag_value=u'broke_vagrant'
 )
 @click.option(
-    u'--release', u'message_type', type=click.Choice(['stage', 'prod', 'rollback', 'broke_vagrant']),
+    u'--release_e2e_failed', u'message_type', flag_value=u'e2e_failed'
+)
+@click.option(
+    u'--release', u'message_type', type=click.Choice(['stage', 'prod', 'rollback', 'broke_vagrant', 'e2e_failed']),
 )
 @click.option(
     u'--extra_text', u'extra_text', default=''
@@ -196,6 +199,7 @@ def message_prs(api, message_type, pull_request, extra_text):
         u'prod': u'message_pr_deployed_prod',
         u'rollback': u'message_pr_release_canceled',
         u'broke_vagrant': u'message_pr_broke_vagrant',
+        u'e2e_failed': u'message_pr_e2e_failed',
     }
     LOG.info(u"Posting message type %r to %d.", message_type, pull_request.number)
     getattr(api, methods[message_type])(pr_number=pull_request, extra_text=extra_text)
