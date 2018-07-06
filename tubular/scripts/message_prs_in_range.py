@@ -54,6 +54,10 @@ LOG = logging.getLogger(__name__)
     help=u'The name of the app to read the base_sha from',
 )
 @click.option(
+    u'--base-ami-tag-deployment', 'base_ami_tag_deployment',
+    help=u'The name of the deployment to read the base_sha from',
+)
+@click.option(
     u'--head_sha', u'--head-sha',
     help=u'The HEAD SHA of the range',
 )
@@ -65,6 +69,10 @@ LOG = logging.getLogger(__name__)
 @click.option(
     u'--head-ami-tag-app', 'head_ami_tag_app',
     help=u'The name of the app to read the head_sha from',
+)
+@click.option(
+    u'--head-ami-tag-deployment', 'head_ami_tag_deployment',
+    help=u'The name of the deployment to read the head_sha from',
 )
 @click.option(
     u'--release_stage', u'message_type', flag_value=u'stage'
@@ -110,9 +118,11 @@ def message_pull_requests(org,
         base_sha (str): The starting SHA
         base_ami_tags (str): An open YAML file containing the base AMI tags
         base_ami_tag_app (str): The app name to read the the base_ami_tags
+        head_ami_tag_deployment (str): the app name to read the base_ami_tags
         head_sha (str): The ending SHA
         head_ami_tags (str): Yaml file containing the head AMI tags
         head_ami_tag_app (str): the app name to read the head_ami_tags
+        head_ami_tag_deployment (str): the deployment name to read the head_ami_tags
         message_type (str): type of message to send
         extra_text (str): Extra text to be inserted in the PR message
 
@@ -120,13 +130,13 @@ def message_pull_requests(org,
         None
     """
 
-    if base_sha is None and base_ami_tags and base_ami_tag_app:
+    if base_sha is None and base_ami_tags and base_ami_tag_app and base_ami_tag_deployment:
         base_ami_tags = yaml.safe_load(base_ami_tags)
         tag = u'version:{}'.format(base_ami_tag_app)
         version = base_ami_tags[tag]
         _, _, base_sha = version.partition(u' ')
 
-    if head_sha is None and head_ami_tags and head_ami_tag_app:
+    if head_sha is None and head_ami_tags and head_ami_tag_app and head_ami_tag_deployment:
         head_ami_tags = yaml.safe_load(head_ami_tags)
         tag = u'version:{}'.format(head_ami_tag_app)
         version = head_ami_tags[tag]
