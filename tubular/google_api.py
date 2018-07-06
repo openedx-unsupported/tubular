@@ -74,7 +74,12 @@ class DriveApi(BaseApiClient):
     """
     _api_name = 'drive'
     _api_version = 'v3'
-    _api_scopes = ['https://www.googleapis.com/auth/drive.file']
+    _api_scopes = [
+        # basic file read-write functionality.
+        'https://www.googleapis.com/auth/drive.file',
+        # additional scope for being able to see folders not owned by this account.
+        'https://www.googleapis.com/auth/drive.metadata',
+    ]
 
     @backoff.on_exception(
         backoff.expo,
