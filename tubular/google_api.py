@@ -101,7 +101,7 @@ class DriveApi(BaseApiClient):
         Returns: file ID (str).
 
         Throws:
-            apiclient.errors.HttpError:
+            googleapiclient.errors.HttpError:
                 For some non-retryable 4xx or 5xx error.  See the full list here:
                 https://developers.google.com/drive/api/v3/handle-errors
         """
@@ -144,3 +144,49 @@ class DriveApi(BaseApiClient):
         for file_id in file_ids:
             batched_requests.add(self._client.files().delete(fileId=file_id))  # pylint: disable=no-member
         batched_requests.execute()
+
+    @backoff.on_exception(
+        backoff.expo,
+        HttpError,
+        max_time=600,  # 10 minutes
+        giveup=lambda e: not _should_retry_google_api(e),
+        on_backoff=lambda details: _backoff_handler(details),  # pylint: disable=unnecessary-lambda
+    )
+    def list_subfolders(self, top_level, file_fields='id, name'):
+        """
+        List all subfolders of a given top level folder
+
+        This function may make multiple HTTP requests depending on how many pages the response contains.  The default
+        page size for the python google API client is 100 items.
+
+        Args:
+            top_level (str): ID of top level folder.
+            file_fields (str): comma separated list of metadata fields to return for each folder. For a full list of
+                file metadata fields, see https://developers.google.com/drive/api/v3/reference/files
+
+        Returns: list of dicts, where each dict contains file metadata and each dict key corresponds to fields specified
+            in the `file_fields` arg.
+
+        Throws:
+            googleapiclient.errors.HttpError:
+                For some non-retryable 4xx or 5xx error.  See the full list here:
+                https://developers.google.com/drive/api/v3/handle-errors
+        """
+        extra_kwargs = {}  # only used for carrying the pageToken.
+        results = []
+        while True:
+            resp = self._client.files().list(  # pylint: disable=no-member
+                q="mimeType = 'application/vnd.google-apps.folder' and '{}' in parents".format(top_level),
+                fields='nextPageToken, files({})'.format(file_fields),
+                **extra_kwargs
+            ).execute()
+            page_results = resp.get('files', [])
+            results.extend(page_results)
+            if page_results and 'nextPageToken' in resp and resp['nextPageToken']:
+                # The presence of nextPageToken implies there are more pages, so another call is required to fetch the
+                # next page.  Also, page_results must be nonempty since a provided nextPageToken coupled with empty page
+                # list is wrong and we just interpret that as the last page.
+                extra_kwargs['pageToken'] = resp['nextPageToken']
+            else:
+                break
+        return results
