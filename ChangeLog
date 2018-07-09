@@ -1,7 +1,13 @@
 CHANGES
 =======
 
+* changelog and authors maintenance
+* add DriveApi.list\_subfolders() for listing partner folders
+* add the drive.metadata scope for listing drive folders
 * add google\_api.py
+* Adds a new type of PR message that says the tests failed
+* Add partner queue retirement API endpoint to edx\_api (#242)
+* Backoff after hitting API rate limit when messaging PRs (#241)
 * PLAT-2177: Use different backoff for 504 gateway timeout errors. Test both 500 and 504 errors. Update Changelog
 * Force integer inputs to be... integers. (#238)
 * Error if an unexpectedly high number of users are being retired (#236)
