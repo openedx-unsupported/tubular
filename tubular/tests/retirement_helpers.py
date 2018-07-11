@@ -16,7 +16,7 @@ TEST_RETIREMENT_END_STATES = [state[1] for state in TEST_RETIREMENT_PIPELINE]
 TEST_RETIREMENT_QUEUE_STATES = ['PENDING'] + TEST_RETIREMENT_END_STATES
 
 
-def fake_config_file(f, orgs=None, partner_folder_mapping=None):
+def fake_config_file(f, orgs=None, partner_folder_mapping=None, drive_partners_folder=None):
     """
     Create a config file for a single test. Combined with CliRunner.isolated_filesystem() to
     ensure the file lifetime is limited to the test. See _call_script for usage.
@@ -36,6 +36,9 @@ def fake_config_file(f, orgs=None, partner_folder_mapping=None):
             'Org3X': 'Org3X_folder',
         }
 
+    if drive_partners_folder is None:
+        drive_partners_folder = 'FakeDriveID'
+
     config = {
         'client_id': 'bogus id',
         'client_secret': 'supersecret',
@@ -46,7 +49,8 @@ def fake_config_file(f, orgs=None, partner_folder_mapping=None):
         },
         'retirement_pipeline': TEST_RETIREMENT_PIPELINE,
         'org_partner_mapping': orgs,
-        'partner_folder_mapping': partner_folder_mapping
+        'partner_folder_mapping': partner_folder_mapping,
+        'drive_partners_folder': drive_partners_folder
     }
 
     yaml.safe_dump(config, f)

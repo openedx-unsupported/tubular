@@ -120,6 +120,7 @@ def _fake_retirement_report(num_users=10):
 
 @patch('tubular.google_api.DriveApi.__init__')
 @patch('tubular.google_api.DriveApi.create_file_in_folder')
+@patch('tubular.google_api.DriveApi.list_subfolders')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
@@ -128,12 +129,18 @@ def _fake_retirement_report(num_users=10):
 )
 def test_successful_report(*args, **kwargs):
     mock_get_access_token = args[0]
-    mock_create_files = args[1]
-    mock_driveapi = args[2]
+    mock_list_folders = args[1]
+    mock_create_files = args[2]
+    mock_driveapi = args[3]
     mock_retirement_report = kwargs['retirement_partner_report']
     mock_retirement_cleanup = kwargs['retirement_partner_cleanup']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_list_folders.return_value = [
+        {'name': 'Org1X', 'id': 'folder1'},
+        {'name': 'Org2X', 'id': 'folder2'},
+        {'name': 'Org3X', 'id': 'folder3'},
+    ]
     mock_create_files.return_value = True
     mock_driveapi.return_value = None
     mock_retirement_report.return_value = _fake_retirement_report()
@@ -288,15 +295,21 @@ def test_setup_failed(*args):
     assert result.exit_code == ERR_SETUP_FAILED
 
 
+@patch('tubular.google_api.DriveApi.__init__')
+@patch('tubular.google_api.DriveApi.list_subfolders')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
     retirement_partner_report=DEFAULT)
 def test_fetching_learners_failed(*args, **kwargs):
     mock_get_access_token = args[0]
+    mock_list_subfolders = args[1]
+    mock_drive_init = args[2]
     mock_retirement_report = kwargs['retirement_partner_report']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_list_subfolders.return_value = []
+    mock_drive_init.return_value = None
     mock_retirement_report.side_effect = Exception('failed to get learners')
 
     result = _call_script(expect_success=False)
@@ -305,14 +318,18 @@ def test_fetching_learners_failed(*args, **kwargs):
     assert 'failed to get learners' in result.output
 
 
+@patch('tubular.google_api.DriveApi.__init__')
+@patch('tubular.google_api.DriveApi.list_subfolders')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
     retirement_partner_report=DEFAULT)
 def test_unknown_org(*args, **kwargs):
     mock_get_access_token = args[0]
+    mock_drive_init = args[2]
     mock_retirement_report = kwargs['retirement_partner_report']
 
+    mock_drive_init.return_value = None
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
 
     orgs = ['orgA', 'orgB']
@@ -325,6 +342,8 @@ def test_unknown_org(*args, **kwargs):
     assert 'orgA' in result.output
 
 
+@patch('tubular.google_api.DriveApi.__init__')
+@patch('tubular.google_api.DriveApi.list_subfolders')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
 @patch('csv.DictWriter')
 @patch('tubular.edx_api.LmsApi.retirement_partner_report')
@@ -332,11 +351,13 @@ def test_reporting_error(*args):
     mock_retirement_report = args[0]
     mock_dictwriter = args[1]
     mock_get_access_token = args[2]
+    mock_drive_init = args[4]
 
     error_msg = 'Fake unable to write csv'
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
     mock_dictwriter.side_effect = Exception(error_msg)
+    mock_drive_init.return_value = None
     mock_retirement_report.return_value = _fake_retirement_report()
 
     result = _call_script(expect_success=False)
@@ -345,6 +366,7 @@ def test_reporting_error(*args):
     assert error_msg in result.output
 
 
+@patch('tubular.google_api.DriveApi.list_subfolders')
 @patch('tubular.google_api.DriveApi.__init__')
 @patch('tubular.google_api.DriveApi.create_file_in_folder')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
@@ -357,12 +379,18 @@ def test_cleanup_error(*args, **kwargs):
     mock_get_access_token = args[0]
     mock_create_files = args[1]
     mock_driveapi = args[2]
+    mock_list_subfolders = args[3]
     mock_retirement_report = kwargs['retirement_partner_report']
     mock_retirement_cleanup = kwargs['retirement_partner_cleanup']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
     mock_create_files.return_value = True
     mock_driveapi.return_value = None
+    mock_list_subfolders.return_value = [
+        {'name': 'Org1X', 'id': 'folder1'},
+        {'name': 'Org2X', 'id': 'folder2'},
+        {'name': 'Org3X', 'id': 'folder3'},
+    ]
     mock_retirement_report.return_value = _fake_retirement_report()
     mock_retirement_cleanup.side_effect = Exception('Mock cleanup exception')
 

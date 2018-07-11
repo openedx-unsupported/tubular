@@ -4,7 +4,7 @@ Command-line script to drive the partner reporting part of the retirement proces
 """
 from __future__ import absolute_import, unicode_literals
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from datetime import date
 import csv
 import json
@@ -42,6 +42,7 @@ ERR_UNKNOWN_ORG = -8
 ERR_REPORTING = -9
 ERR_DRIVE_UPLOAD = -10
 ERR_CLEANUP = -11
+ERR_DRIVE_LISTING = -12
 
 
 class PartnerDoesNotExist(Exception):
@@ -101,11 +102,10 @@ def _config_or_fail(config_file, google_secrets_file):
         with io.open(config_file, 'r') as config:
             config = yaml.load(config)
 
-        # Check partner mapping
-        if 'org_partner_mapping' not in config or not config['org_partner_mapping']:
-            _fail(ERR_BAD_CONFIG, 'No org_partner_mapping in config, or it is empty!')
-        if 'partner_folder_mapping' not in config or not config['partner_folder_mapping']:
-            _fail(ERR_BAD_CONFIG, 'No partner_folder_mapping in config, or it is empty!')
+        # Check required values
+        for var in ('org_partner_mapping', 'drive_partners_folder'):
+            if var not in config or not config[var]:
+                _fail(ERR_BAD_CONFIG, 'No {} in config, or it is empty!'.format(var))
     except Exception as exc:  # pylint: disable=broad-except
         _fail_exception(ERR_BAD_CONFIG, exc, 'Failed to read config file {}'.format(config_file))
 
@@ -201,12 +201,38 @@ def _generate_report_files_or_fail(report_data, output_dir):
     return partner_filenames
 
 
-def _push_files_to_google(config, partner_filenames):  # pylint: disable=unused-argument
+def _config_drive_folder_map_or_fail(config):
+    """
+    Lists folders under our top level parent for this environment and returns
+    a dict of {partner name: folder id}. Partner names should match the values
+    in config['org_partner_mapping']
+    """
+    drive = DriveApi(config['google_secrets_file'])
+
+    try:
+        folders = drive.list_subfolders(config['drive_partners_folder'])
+    except Exception as exc:  # pylint: disable=broad-except
+        _fail_exception(ERR_DRIVE_LISTING, exc, 'Finding partner directories on Drive failed.')
+
+    config['partner_folder_mapping'] = OrderedDict({folder['name']: folder['id'] for folder in folders})
+
+
+def _push_files_to_google(config, partner_filenames):
     """
     Copy the file to Google drive for this partner
     """
+    # First make sure we have Drive folders for all partners
+    failed_partners = []
+    for partner in partner_filenames:
+        if partner not in config['partner_folder_mapping']:
+            failed_partners.append(partner)
+
+    if failed_partners:
+        _fail(ERR_BAD_CONFIG, 'These partners have retiring learners, but no Drive mapping: {}'.format(failed_partners))
+
     drive = DriveApi(config['google_secrets_file'])
     for partner in partner_filenames:
+        # This is populated on the fly in _config_drive_folder_map_or_fail
         folder_id = config['partner_folder_mapping'][partner]
         with open(partner_filenames[partner], 'rb') as f:
             try:
@@ -241,25 +267,26 @@ def generate_report(config_file, google_secrets_file, output_dir):
     """
     _log('Starting partner report using config file {} and Google config {}'.format(config_file, google_secrets_file))
 
-    if not config_file:
-        _fail(ERR_NO_CONFIG, 'No config file passed in.')
-
-    if not google_secrets_file:
-        _fail(ERR_NO_SECRETS, 'No secrets file passed in.')
-
-    if not output_dir or not os.path.exists(output_dir):
-        _fail(ERR_NO_OUTPUT_DIR, 'No output_dir passed in or path does not exist.')
-
-    config = _config_or_fail(config_file, google_secrets_file)
-    _setup_lms_or_fail(config)
-    report_data, all_usernames = _get_orgs_and_learners_or_fail(config)
-    partner_filenames = _generate_report_files_or_fail(report_data, output_dir)
-
-    # All files generated successfully, now push them to Google
-    _push_files_to_google(config, partner_filenames)
-
-    # Success, tell LMS to remove these users from the queue
     try:
+        if not config_file:
+            _fail(ERR_NO_CONFIG, 'No config file passed in.')
+
+        if not google_secrets_file:
+            _fail(ERR_NO_SECRETS, 'No secrets file passed in.')
+
+        if not output_dir or not os.path.exists(output_dir):
+            _fail(ERR_NO_OUTPUT_DIR, 'No output_dir passed in or path does not exist.')
+
+        config = _config_or_fail(config_file, google_secrets_file)
+        _setup_lms_or_fail(config)
+        _config_drive_folder_map_or_fail(config)
+        report_data, all_usernames = _get_orgs_and_learners_or_fail(config)
+        partner_filenames = _generate_report_files_or_fail(report_data, output_dir)
+
+        # All files generated successfully, now push them to Google
+        _push_files_to_google(config, partner_filenames)
+
+        # Success, tell LMS to remove these users from the queue
         config['lms_api'].retirement_partner_cleanup(all_usernames)
         _log('All reports completed and uploaded to Google.')
     except Exception as exc:  # pylint: disable=broad-except
