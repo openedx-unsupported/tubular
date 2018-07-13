@@ -3,19 +3,18 @@ Test google API
 """
 from __future__ import unicode_literals
 
+import json
 import sys
 import unittest
 from io import BytesIO
-import json
-
-import six
-from six.moves import range  # use the range function introduced in python 3
 
 from googleapiclient.http import HttpMockSequence
-
 from mock import patch
+import six
+from six.moves import range  # use the range function introduced in python 3
 from tubular.google_api import DriveApi
 
+# For info about this file, see tubular/tests/discovery-drive.json.README.rst
 DISCOVERY_DRIVE_RESPONSE_FILE = 'tubular/tests/discovery-drive.json'
 
 
@@ -286,3 +285,125 @@ ETag: "etag/sheep"\r\n\r\n
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
         response = test_client.list_subfolders('fake-folder-id')
         six.assertCountEqual(self, response, fake_files)
+
+    @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
+    def test_comment_files_success(self, mock_from_service_account_file):  # pylint: disable=unused-argument
+        """
+        Test normal case for commenting on files.
+        """
+        fake_file_ids = ['fake-file-id0', 'fake-file-id1']
+        batch_response = b'''--batch_foobarbaz
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <response+0>
+
+HTTP/1.1 204 OK
+ETag: "etag/pony"\r\n\r\n{"id": "fake-comment-id0"}
+
+--batch_foobarbaz
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <response+1>
+
+HTTP/1.1 204 OK
+ETag: "etag/sheep"\r\n\r\n{"id": "fake-comment-id1"}
+--batch_foobarbaz--'''
+        http_mock_sequence = HttpMockSequence([
+            # First, a request is made to the discovery API to construct a client object for Drive.
+            ({'status': '200'}, self.mock_discovery_response_content),
+            # Then, a request is made to add comments to the files.
+            ({'status': '200', 'content-type': 'multipart/mixed; boundary="batch_foobarbaz"'}, batch_response),
+        ])
+        test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
+        resp = test_client.create_comments_for_files(fake_file_ids, 'some comment message')
+        six.assertCountEqual(
+            self,
+            resp,
+            {
+                'fake-file-id0': {'id': 'fake-comment-id0'},
+                'fake-file-id1': {'id': 'fake-comment-id1'},
+            },
+        )
+
+    @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
+    def test_comment_files_with_nonexistent_file(self, mock_from_service_account_file):  # pylint: disable=unused-argument
+        """
+        Test case for commenting on files, where some files are nonexistent.
+        """
+        fake_file_ids = ['fake-file-id0', 'fake-file-id1']
+        batch_response = b'''--batch_foobarbaz
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <response+0>
+
+HTTP/1.1 404 NOT FOUND
+Content-Type: application/json
+Content-length: 266
+ETag: "etag/pony"\r\n\r\n{
+ "error": {
+  "errors": [
+   {
+    "domain": "global",
+    "reason": "notFound",
+    "message": "File not found: fake-file-id0.",
+    "locationType": "parameter",
+    "location": "fileId"
+   }
+  ],
+  "code": 404,
+  "message": "File not found: fake-file-id0."
+ }
+}
+
+--batch_foobarbaz
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <response+1>
+
+HTTP/1.1 204 OK
+ETag: "etag/sheep"\r\n\r\n{"id": "fake-comment-id1"}
+--batch_foobarbaz--'''
+        http_mock_sequence = HttpMockSequence([
+            # First, a request is made to the discovery API to construct a client object for Drive.
+            ({'status': '200'}, self.mock_discovery_response_content),
+            # Then, a request is made to add comments to the files.
+            ({'status': '200', 'content-type': 'multipart/mixed; boundary="batch_foobarbaz"'}, batch_response),
+        ])
+        test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
+        resp = test_client.create_comments_for_files(fake_file_ids, 'some comment message')
+        six.assertCountEqual(
+            self,
+            resp,
+            {
+                'fake-file-id0': {
+                    "error": {
+                        "errors": [
+                            {
+                                "domain": "global",
+                                "reason": "notFound",
+                                "message": "File not found: fake-file-id0.",
+                                "locationType": "parameter",
+                                "location": "fileId"
+                            }
+                        ],
+                        "code": 404,
+                        "message": "File not found: fake-file-id0."
+                    }
+                },
+                'fake-file-id1': {'id': 'fake-comment-id1'},
+            },
+        )
+
+    @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
+    def test_comment_files_with_duplicate_file(self, mock_from_service_account_file):  # pylint: disable=unused-argument
+        """
+        Test case for duplicate file IDs.
+        """
+        fake_file_ids = ['fake-file-id0', 'fake-file-id1', 'fake-file-id0']
+        http_mock_sequence = HttpMockSequence([
+            # First, a request is made to the discovery API to construct a client object for Drive.
+            ({'status': '200'}, self.mock_discovery_response_content),
+        ])
+        test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
+        with self.assertRaises(ValueError):
+            test_client.create_comments_for_files(fake_file_ids, 'some comment message')

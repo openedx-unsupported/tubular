@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* add create\_comments\_for\_files to DriveApi
 * changelog and authors maintenance
 * add DriveApi.list\_subfolders() for listing partner folders
 * add the drive.metadata scope for listing drive folders

@@ -3,18 +3,20 @@ Helper API classes for calling google APIs.
 
 DriveApi is for managing files in google drive.
 """
-import logging
+from itertools import count
 
+import logging
+from six import iteritems
 import backoff
 
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from googleapiclient.http import MediaIoBaseUpload
 # I'm not super happy about this since the function is protected with a leading
 # underscore, but the next best thing is literally copying this ~40 line
 # function verbatim.
 from googleapiclient.http import _should_retry_response
-from googleapiclient.http import MediaIoBaseUpload
-from google.oauth2 import service_account
 
 LOG = logging.getLogger(__name__)
 
@@ -190,3 +192,60 @@ class DriveApi(BaseApiClient):
             else:
                 break
         return results
+
+    @backoff.on_exception(
+        backoff.expo,
+        HttpError,
+        max_time=600,  # 10 minutes
+        giveup=lambda e: not _should_retry_google_api(e),
+        on_backoff=lambda details: _backoff_handler(details),  # pylint: disable=unnecessary-lambda
+    )
+    def create_comments_for_files(self, file_ids, content, fields="id"):
+        """
+        Create the same comment for each file in the given list
+
+        Args:
+            file_ids (list of str): list of file_ids for which to add comments.
+            content (str): content/message of the comment for every file.
+            fields (str): comma separated list of fields to describe each comment resource in the response.
+
+        Returns: dict mapping of file_id to comment resource (dict).  The contents of the comment resources is dictated
+            by the `fields` arg.
+
+        Throws:
+            googleapiclient.errors.HttpError:
+                For some non-retryable 4xx or 5xx error.  See the full list here:
+                https://developers.google.com/drive/api/v3/handle-errors
+        """
+        if len(set(file_ids)) != len(file_ids):
+            raise ValueError('Duplicates detected in the file_ids list.')
+
+        # Generate arbitrary (but unique in this batch request) IDs for each file, so that we can recall the
+        # corresponding file_id for a batch response item.
+        file_id_to_request_id = dict(zip(
+            file_ids,
+            (str(n) for n in count()),
+        ))
+        # Create a flipped mapping for convenience.
+        request_id_to_file_id = {v: k for k, v in iteritems(file_id_to_request_id)}
+
+        # Mapping of file_id to the new comment resource returned in the response.
+        responses = {}
+
+        def callback(request_id, response, exception):  # pylint: disable=unused-argument,missing-docstring
+            file_id = request_id_to_file_id[request_id]
+            responses[file_id] = response
+            if exception:
+                LOG.error('Error creating comment on file "{}": {}'.format(file_id, exception))
+            else:
+                LOG.info('Successfully created comment on file "{}".'.format(file_id))
+
+        batched_requests = self._client.new_batch_http_request(callback=callback)  # pylint: disable=no-member
+        for file_id in file_ids:
+            batched_requests.add(
+                self._client.comments().create(fileId=file_id, body={u'content': content}, fields=fields),  # pylint: disable=no-member
+                request_id=file_id_to_request_id[file_id]
+            )
+        batched_requests.execute()
+
+        return responses
