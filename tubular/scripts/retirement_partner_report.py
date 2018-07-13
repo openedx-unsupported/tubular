@@ -6,13 +6,13 @@ from __future__ import absolute_import, unicode_literals
 
 from collections import defaultdict, OrderedDict
 from datetime import date
+from functools import partial
 import csv
 import json
 import io
 import logging
 import os
 import sys
-import traceback
 import unicodedata
 
 import click
@@ -24,9 +24,17 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tubular.edx_api import LmsApi  # pylint: disable=wrong-import-position
 from tubular.google_api import DriveApi  # pylint: disable=wrong-import-position
+from tubular.scripts.helpers import _log, _fail, _fail_exception  # pylint: disable=wrong-import-position
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-LOG = logging.getLogger(__name__)
+SCRIPT_SHORTNAME = 'Partner report'
+LOG = partial(_log, SCRIPT_SHORTNAME)
+FAIL = partial(_fail, SCRIPT_SHORTNAME)
+FAIL_EXCEPTION = partial(_fail_exception, SCRIPT_SHORTNAME)
+
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
+# Prefix which starts all generated report filenames.
+REPORTING_FILENAME_PREFIX = 'user_retirement'
 
 # We'll store the access token here once retrieved
 AUTH_HEADER = {}
@@ -57,46 +65,6 @@ class PartnerDoesNotExist(Exception):
     pass
 
 
-def _log(info):
-    """
-    Convenience method to log text.  The prepended text would make finding
-    these entries easier in logging aggratation services.
-    """
-    click.echo('Partner report: {}'.format(info))
-
-
-def _fail(code, message):
-    """
-    Convenience method to fail out of the command with a message and traceback.
-    """
-    _log(message)
-
-    # Try to get a traceback, if there is one. On Python 3.4 this raises an AttributeError
-    # if there is no current exception, so we eat that here.
-    try:
-        _log(traceback.format_exc())
-    except AttributeError:
-        pass
-
-    exit(code)
-
-
-def _fail_exception(code, exc, message):
-    """
-    A version of fail that takes an exception to be utf-8 decoded
-    """
-    exc_msg = text_type(exc)
-
-    # Slumber inconveniently discards the decoded .text attribute from the Response object, and
-    # instead gives us the raw encoded .content attribute, so we need to decode it first. Using
-    # hasattr here instead of try/except to keep our original exception intact.
-    if hasattr(exc, 'content'):
-        exc_msg += '\n' + exc.content.decode('utf-8')
-
-    message += '\n' + exc_msg
-    _fail(code, message)
-
-
 def _config_or_exit(config_file, google_secrets_file):
     """
     Returns the config values from the given file, allows overriding of passed in values.
@@ -108,7 +76,7 @@ def _config_or_exit(config_file, google_secrets_file):
         # Check required values
         for var in ('org_partner_mapping', 'drive_partners_folder'):
             if var not in config or not config[var]:
-                _fail(ERR_BAD_CONFIG, 'No {} in config, or it is empty!'.format(var))
+                FAIL(ERR_BAD_CONFIG, 'No {} in config, or it is empty!'.format(var))
 
         # Force the partner names into NFKC here and when we get the folders to ensure
         # they are using the same characters. Otherwise accented characters will not match.
@@ -118,7 +86,7 @@ def _config_or_exit(config_file, google_secrets_file):
                 partner = partner.decode('utf-8')
             config['org_partner_mapping'][org] = unicodedata.normalize('NFKC', partner)
     except Exception as exc:  # pylint: disable=broad-except
-        _fail_exception(ERR_BAD_CONFIG, exc, 'Failed to read config file {}'.format(config_file))
+        FAIL_EXCEPTION(ERR_BAD_CONFIG, 'Failed to read config file {}'.format(config_file), exc)
 
     try:
         # Just load and parse the file to make sure it's legit JSON before doing
@@ -129,7 +97,7 @@ def _config_or_exit(config_file, google_secrets_file):
         config['google_secrets_file'] = google_secrets_file
         return config
     except Exception as exc:  # pylint: disable=broad-except
-        _fail_exception(ERR_BAD_SECRETS, exc, 'Failed to read secrets file {}'.format(google_secrets_file))
+        FAIL_EXCEPTION(ERR_BAD_SECRETS, 'Failed to read secrets file {}'.format(google_secrets_file), exc)
 
 
 def _setup_lms_or_exit(config):
@@ -143,7 +111,7 @@ def _setup_lms_or_exit(config):
 
         config['lms_api'] = LmsApi(lms_base_url, lms_base_url, client_id, client_secret)
     except Exception as exc:  # pylint: disable=broad-except
-        _fail(ERR_SETUP_FAILED, text_type(exc))
+        FAIL_EXCEPTION(ERR_SETUP_FAILED, 'Unexpected exception occurred!', exc)
 
 
 def _get_orgs_and_learners_or_exit(config):
@@ -170,9 +138,9 @@ def _get_orgs_and_learners_or_exit(config):
                 orgs[reporting_org].append(learner)
         return orgs, usernames
     except PartnerDoesNotExist as exc:
-        _fail(ERR_UNKNOWN_ORG, 'Partner for organization "{}" does not exist in configuration.'.format(text_type(exc)))
+        FAIL(ERR_UNKNOWN_ORG, 'Partner for organization "{}" does not exist in configuration.'.format(text_type(exc)))
     except Exception as exc:  # pylint: disable=broad-except
-        _fail(ERR_FETCHING_LEARNERS, text_type(exc))
+        FAIL_EXCEPTION(ERR_FETCHING_LEARNERS, 'Unexpected exception occurred!', exc)
 
 
 def _generate_report_files_or_exit(report_data, output_dir):
@@ -185,12 +153,14 @@ def _generate_report_files_or_exit(report_data, output_dir):
     partner_filenames = {}
 
     for partner in report_data:
-        _log('Starting report for partner {}: {} learners to add'.format(partner, len(report_data[partner])))
+        LOG('Starting report for partner {}: {} learners to add'.format(partner, len(report_data[partner])))
 
         try:
             # Fields for each learner to write, in order these are also the header names
             fields = ['original_username', 'original_email', 'original_name']
-            outfile = os.path.join(output_dir, '{}_{}.csv'.format(partner, date.today().isoformat()))
+            outfile = os.path.join(output_dir, '{}_{}_{}.csv'.format(
+                REPORTING_FILENAME_PREFIX, partner, date.today().isoformat()
+            ))
 
             # If there is already a file for this date, assume it is bad and replace it
             try:
@@ -204,9 +174,9 @@ def _generate_report_files_or_exit(report_data, output_dir):
                 writer.writerows(report_data[partner])
 
             partner_filenames[partner] = outfile
-            _log('Report complete for partner {}'.format(partner))
+            LOG('Report complete for partner {}'.format(partner))
         except Exception as exc:  # pylint: disable=broad-except
-            _fail_exception(ERR_REPORTING, exc, 'Error reporting retirement for partner {}'.format(partner))
+            FAIL_EXCEPTION(ERR_REPORTING, 'Error reporting retirement for partner {}'.format(partner), exc)
 
     return partner_filenames
 
@@ -220,9 +190,13 @@ def _config_drive_folder_map_or_exit(config):
     drive = DriveApi(config['google_secrets_file'])
 
     try:
-        folders = drive.list_subfolders(config['drive_partners_folder'])
+        folders = drive.walk_files(
+            config['drive_partners_folder'],
+            mimetype='application/vnd.google-apps.folder',
+            recurse=False
+        )
     except Exception as exc:  # pylint: disable=broad-except
-        _fail_exception(ERR_DRIVE_LISTING, exc, 'Finding partner directories on Drive failed.')
+        FAIL_EXCEPTION(ERR_DRIVE_LISTING, 'Finding partner directories on Drive failed.', exc)
 
     # As in _config_or_exit we force normalize the unicode here to make sure the keys
     # match. Otherwise the name we get back from Google won't match what's in the YAML config.
@@ -248,7 +222,7 @@ def _push_files_to_google(config, partner_filenames):
             failed_partners.append(partner)
 
     if failed_partners:
-        _fail(ERR_BAD_CONFIG, 'These partners have retiring learners, but no Drive folder: {}'.format(failed_partners))
+        FAIL(ERR_BAD_CONFIG, 'These partners have retiring learners, but no Drive folder: {}'.format(failed_partners))
 
     file_ids = []
     drive = DriveApi(config['google_secrets_file'])
@@ -258,10 +232,10 @@ def _push_files_to_google(config, partner_filenames):
         file_id = None
         with open(partner_filenames[partner], 'rb') as f:
             try:
-                _log('Attempting to upload {} to {} Drive folder.'.format(partner_filenames[partner], partner))
+                LOG('Attempting to upload {} to {} Drive folder.'.format(partner_filenames[partner], partner))
                 file_id = drive.create_file_in_folder(folder_id, partner_filenames[partner], f, "text/csv")
             except Exception as exc:  # pylint: disable=broad-except
-                _fail_exception(ERR_DRIVE_UPLOAD, exc, 'Drive upload failed for: {}'.format(partner_filenames[partner]))
+                FAIL_EXCEPTION(ERR_DRIVE_UPLOAD, 'Drive upload failed for: {}'.format(partner_filenames[partner]), exc)
         file_ids.append(file_id)
     return file_ids
 
@@ -275,11 +249,11 @@ def _add_comments_to_files(config, file_ids):
     """
     drive = DriveApi(config['google_secrets_file'])
     try:
-        _log('Attempting to add notification comments to uploaded csv files.')
+        LOG('Attempting to add notification comments to uploaded csv files.')
         drive.create_comments_for_files(file_ids, NOTIFICATION_MESSAGE)
     except Exception as exc:  # pylint: disable=broad-except
         # do not fail the script here, since comment errors are non-critical
-        _log('WARNING: there was an error adding Google Drive comments to the csv files: {}'.format(exc))
+        LOG('WARNING: there was an error adding Google Drive comments to the csv files: {}'.format(exc))
 
 
 @click.command()
@@ -310,18 +284,18 @@ def generate_report(config_file, google_secrets_file, output_dir, comments):
     - Pushes the reports to Google Drive
     - On success tells LMS to remove the users who succeeded from the reporting queue
     """
-    _log('Starting partner report using config file {} and Google config {}'.format(config_file, google_secrets_file))
+    LOG('Starting partner report using config file {} and Google config {}'.format(config_file, google_secrets_file))
 
     try:
         if not config_file:
-            _fail(ERR_NO_CONFIG, 'No config file passed in.')
+            FAIL(ERR_NO_CONFIG, 'No config file passed in.')
 
         if not google_secrets_file:
-            _fail(ERR_NO_SECRETS, 'No secrets file passed in.')
+            FAIL(ERR_NO_SECRETS, 'No secrets file passed in.')
 
         # The Jenkins DSL is supposed to create this path for us
         if not output_dir or not os.path.exists(output_dir):
-            _fail(ERR_NO_OUTPUT_DIR, 'No output_dir passed in or path does not exist.')
+            FAIL(ERR_NO_OUTPUT_DIR, 'No output_dir passed in or path does not exist.')
 
         config = _config_or_exit(config_file, google_secrets_file)
         _setup_lms_or_exit(config)
@@ -338,9 +312,9 @@ def generate_report(config_file, google_secrets_file, output_dir, comments):
 
         # Success, tell LMS to remove these users from the queue
         config['lms_api'].retirement_partner_cleanup(all_usernames)
-        _log('All reports completed and uploaded to Google.')
+        LOG('All reports completed and uploaded to Google.')
     except Exception as exc:  # pylint: disable=broad-except
-        _fail_exception(ERR_CLEANUP, exc, 'Unexpected error occurred! Users may be stuck in the processing state!')
+        FAIL_EXCEPTION(ERR_CLEANUP, 'Unexpected error occurred! Users may be stuck in the processing state!', exc)
 
 
 if __name__ == '__main__':

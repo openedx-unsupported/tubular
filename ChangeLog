@@ -1,9 +1,13 @@
 CHANGES
 =======
 
-* Cleanup partner reporting script and normalize Unicode for comparisons
-* Retrieve partner - folder id mapping from Drive
-* Add a script to perform the retirement partner reporting operations
+* Add script to delete expired partner reports
+* Correct test\_get\_pr\_in\_range mock for search\_issues
+* search github prs using string
+* integrate file commenting into partner reporting script
+* Correct the search query for finding approved open PRs
+* Fix flaky test randomization (#249)
+* Add a script to perform the retirement partner reporting operations (#244)
 * add create\_comments\_for\_files to DriveApi
 * changelog and authors maintenance
 * add DriveApi.list\_subfolders() for listing partner folders
