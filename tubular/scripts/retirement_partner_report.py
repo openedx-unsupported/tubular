@@ -13,10 +13,11 @@ import logging
 import os
 import sys
 import traceback
+import unicodedata
 
 import click
 import yaml
-from six import text_type
+from six import PY2, text_type
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -83,18 +84,17 @@ def _fail_exception(code, exc, message):
     """
     exc_msg = text_type(exc)
 
-    try:
-        # Slumber inconveniently discards the decoded .text attribute from the Response object, and
-        # instead gives us the raw encoded .content attribute, so we need to decode it first.
+    # Slumber inconveniently discards the decoded .text attribute from the Response object, and
+    # instead gives us the raw encoded .content attribute, so we need to decode it first. Using
+    # hasattr here instead of try/except to keep our original exception intact.
+    if hasattr(exc, 'content'):
         exc_msg += '\n' + exc.content.decode('utf-8')
-    except AttributeError:
-        pass
 
     message += '\n' + exc_msg
     _fail(code, message)
 
 
-def _config_or_fail(config_file, google_secrets_file):
+def _config_or_exit(config_file, google_secrets_file):
     """
     Returns the config values from the given file, allows overriding of passed in values.
     """
@@ -106,6 +106,14 @@ def _config_or_fail(config_file, google_secrets_file):
         for var in ('org_partner_mapping', 'drive_partners_folder'):
             if var not in config or not config[var]:
                 _fail(ERR_BAD_CONFIG, 'No {} in config, or it is empty!'.format(var))
+
+        # Force the partner names into NFKC here and when we get the folders to ensure
+        # they are using the same characters. Otherwise accented characters will not match.
+        for org in config['org_partner_mapping']:
+            partner = config['org_partner_mapping'][org]
+            if PY2:
+                partner = partner.decode('utf-8')
+            config['org_partner_mapping'][org] = unicodedata.normalize('NFKC', partner)
     except Exception as exc:  # pylint: disable=broad-except
         _fail_exception(ERR_BAD_CONFIG, exc, 'Failed to read config file {}'.format(config_file))
 
@@ -121,7 +129,7 @@ def _config_or_fail(config_file, google_secrets_file):
         _fail_exception(ERR_BAD_SECRETS, exc, 'Failed to read secrets file {}'.format(google_secrets_file))
 
 
-def _setup_lms_or_fail(config):
+def _setup_lms_or_exit(config):
     """
     Performs setup of EdxRestClientApi for LMS and returns the validated, sorted list of users to report on.
     """
@@ -135,7 +143,7 @@ def _setup_lms_or_fail(config):
         _fail(ERR_SETUP_FAILED, text_type(exc))
 
 
-def _get_orgs_and_learners_or_fail(config):
+def _get_orgs_and_learners_or_exit(config):
     """
     Contacts LMS to get the list of learners to report on and the orgs they belong to.
     Reformats them into dicts with keys of the orgs and lists of learners as the value
@@ -157,7 +165,6 @@ def _get_orgs_and_learners_or_fail(config):
                     raise PartnerDoesNotExist(org)
 
                 orgs[reporting_org].append(learner)
-
         return orgs, usernames
     except PartnerDoesNotExist as exc:
         _fail(ERR_UNKNOWN_ORG, 'Partner for organization "{}" does not exist in configuration.'.format(text_type(exc)))
@@ -165,7 +172,7 @@ def _get_orgs_and_learners_or_fail(config):
         _fail(ERR_FETCHING_LEARNERS, text_type(exc))
 
 
-def _generate_report_files_or_fail(report_data, output_dir):
+def _generate_report_files_or_exit(report_data, output_dir):
     """
     Spins through the partners, creating a single CSV file for each
     """
@@ -201,7 +208,7 @@ def _generate_report_files_or_fail(report_data, output_dir):
     return partner_filenames
 
 
-def _config_drive_folder_map_or_fail(config):
+def _config_drive_folder_map_or_exit(config):
     """
     Lists folders under our top level parent for this environment and returns
     a dict of {partner name: folder id}. Partner names should match the values
@@ -214,7 +221,14 @@ def _config_drive_folder_map_or_fail(config):
     except Exception as exc:  # pylint: disable=broad-except
         _fail_exception(ERR_DRIVE_LISTING, exc, 'Finding partner directories on Drive failed.')
 
-    config['partner_folder_mapping'] = OrderedDict({folder['name']: folder['id'] for folder in folders})
+    # As in _config_or_exit we force normalize the unicode here to make sure the keys
+    # match. Otherwise the name we get back from Google won't match what's in the YAML config.
+    config['partner_folder_mapping'] = OrderedDict()
+    for folder in folders:
+        if PY2:
+            folder['name'] = folder['name'].decode('utf-8')
+        folder['name'] = unicodedata.normalize('NFKC', folder['name'])
+        config['partner_folder_mapping'][folder['name']] = folder['id']
 
 
 def _push_files_to_google(config, partner_filenames):
@@ -228,11 +242,11 @@ def _push_files_to_google(config, partner_filenames):
             failed_partners.append(partner)
 
     if failed_partners:
-        _fail(ERR_BAD_CONFIG, 'These partners have retiring learners, but no Drive mapping: {}'.format(failed_partners))
+        _fail(ERR_BAD_CONFIG, 'These partners have retiring learners, but no Drive folder: {}'.format(failed_partners))
 
     drive = DriveApi(config['google_secrets_file'])
     for partner in partner_filenames:
-        # This is populated on the fly in _config_drive_folder_map_or_fail
+        # This is populated on the fly in _config_drive_folder_map_or_exit
         folder_id = config['partner_folder_mapping'][partner]
         with open(partner_filenames[partner], 'rb') as f:
             try:
@@ -274,14 +288,15 @@ def generate_report(config_file, google_secrets_file, output_dir):
         if not google_secrets_file:
             _fail(ERR_NO_SECRETS, 'No secrets file passed in.')
 
+        # The Jenkins DSL is supposed to create this path for us
         if not output_dir or not os.path.exists(output_dir):
             _fail(ERR_NO_OUTPUT_DIR, 'No output_dir passed in or path does not exist.')
 
-        config = _config_or_fail(config_file, google_secrets_file)
-        _setup_lms_or_fail(config)
-        _config_drive_folder_map_or_fail(config)
-        report_data, all_usernames = _get_orgs_and_learners_or_fail(config)
-        partner_filenames = _generate_report_files_or_fail(report_data, output_dir)
+        config = _config_or_exit(config_file, google_secrets_file)
+        _setup_lms_or_exit(config)
+        _config_drive_folder_map_or_exit(config)
+        report_data, all_usernames = _get_orgs_and_learners_or_exit(config)
+        partner_filenames = _generate_report_files_or_exit(report_data, output_dir)
 
         # All files generated successfully, now push them to Google
         _push_files_to_google(config, partner_filenames)
@@ -290,8 +305,7 @@ def generate_report(config_file, google_secrets_file, output_dir):
         config['lms_api'].retirement_partner_cleanup(all_usernames)
         _log('All reports completed and uploaded to Google.')
     except Exception as exc:  # pylint: disable=broad-except
-        _fail_exception(ERR_CLEANUP, exc, 'Error trying to cleanup partner reporting entries! '
-                                          'Rows may be stuck in processing state!')
+        _fail_exception(ERR_CLEANUP, exc, 'Unexpected error occurred! Users may be stuck in the processing state!')
 
 
 if __name__ == '__main__':

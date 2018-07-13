@@ -1,7 +1,11 @@
+# coding=utf-8
+
 """
 Common functionality for retirement related tests
 """
 import json
+import unicodedata
+
 import yaml
 
 
@@ -15,29 +19,21 @@ TEST_RETIREMENT_PIPELINE = [
 TEST_RETIREMENT_END_STATES = [state[1] for state in TEST_RETIREMENT_PIPELINE]
 TEST_RETIREMENT_QUEUE_STATES = ['PENDING'] + TEST_RETIREMENT_END_STATES
 
+FAKE_ORGS = {
+    # Make sure unicode names, as they should come in from the yaml config, work
+    'org1': unicodedata.normalize('NFKC', u'TéstX'),
+    'org2': 'Org2X',
+    'org3': 'Org3X',
+}
 
-def fake_config_file(f, orgs=None, partner_folder_mapping=None, drive_partners_folder=None):
+
+def fake_config_file(f, orgs=None):
     """
     Create a config file for a single test. Combined with CliRunner.isolated_filesystem() to
     ensure the file lifetime is limited to the test. See _call_script for usage.
     """
-
     if orgs is None:
-        orgs = {
-            'org1': 'Org1X',
-            'org2': 'Org2X',
-            'org3': 'Org3X',
-        }
-
-    if partner_folder_mapping is None:
-        partner_folder_mapping = {
-            'Org1X': 'Org1X_folder',
-            'Org2X': 'Org2X_folder',
-            'Org3X': 'Org3X_folder',
-        }
-
-    if drive_partners_folder is None:
-        drive_partners_folder = 'FakeDriveID'
+        orgs = FAKE_ORGS
 
     config = {
         'client_id': 'bogus id',
@@ -49,8 +45,7 @@ def fake_config_file(f, orgs=None, partner_folder_mapping=None, drive_partners_f
         },
         'retirement_pipeline': TEST_RETIREMENT_PIPELINE,
         'org_partner_mapping': orgs,
-        'partner_folder_mapping': partner_folder_mapping,
-        'drive_partners_folder': drive_partners_folder
+        'drive_partners_folder': 'FakeDriveID'
     }
 
     yaml.safe_dump(config, f)
