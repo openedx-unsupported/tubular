@@ -8,7 +8,6 @@ import csv
 import os
 import unicodedata
 from datetime import date
-from random import randrange
 
 from click.testing import CliRunner
 from mock import patch, DEFAULT
@@ -106,19 +105,15 @@ def _call_script(expect_success=True, config_orgs=None):
     return result
 
 
-def _fake_retirement_report_user(seed_val, rand_orgs=None):
+def _fake_retirement_report_user(seed_val, user_orgs=None):
     """
     Creates unique user to populate a fake report with.
     - seed_val is a number or other unique value for this user, will be formatted into
       user values to make sure they're distinct.
-    - rand_orgs, if given, should be a list of orgs that will be chosen from randomly
-      for the user. Between 1 and len(rand_orgs) orgs will be chosen.
+    - user_orgs, if given, should be a list of orgs that will be associated with the user.
     """
-    if rand_orgs is None:
-        rand_orgs = list(FAKE_ORGS.keys())
-
-    num_user_orgs = randrange(0, len(rand_orgs))
-    user_orgs = rand_orgs[:num_user_orgs + 1]
+    if user_orgs is None:
+        user_orgs = list(FAKE_ORGS.keys())
 
     return {
         'original_username': 'username_{}'.format(seed_val),
