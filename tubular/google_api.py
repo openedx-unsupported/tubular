@@ -18,7 +18,12 @@ from googleapiclient.http import MediaIoBaseUpload
 # function verbatim.
 from googleapiclient.http import _should_retry_response
 
+from .utils import batch
+
 LOG = logging.getLogger(__name__)
+
+# Maximum number of requests per batch, according to the google API docs.
+GOOGLE_API_MAX_BATCH_SIZE = 100
 
 
 class BaseApiClient(object):
@@ -200,25 +205,17 @@ class DriveApi(BaseApiClient):
         giveup=lambda e: not _should_retry_google_api(e),
         on_backoff=lambda details: _backoff_handler(details),  # pylint: disable=unnecessary-lambda
     )
-    def create_comments_for_files(self, file_ids, content, fields="id"):
+    def _create_comments_for_files(self, file_ids, content, fields='id'):
         """
-        Create the same comment for each file in the given list
+        Retryable helper function for create_comments_for_files()
 
         Args:
-            file_ids (list of str): list of file_ids for which to add comments.
-            content (str): content/message of the comment for every file.
-            fields (str): comma separated list of fields to describe each comment resource in the response.
-
-        Returns: dict mapping of file_id to comment resource (dict).  The contents of the comment resources is dictated
-            by the `fields` arg.
-
+        Returns:
         Throws:
-            googleapiclient.errors.HttpError:
-                For some non-retryable 4xx or 5xx error.  See the full list here:
-                https://developers.google.com/drive/api/v3/handle-errors
+            See the `create_comments_for_files` docstring.
         """
-        if len(set(file_ids)) != len(file_ids):
-            raise ValueError('Duplicates detected in the file_ids list.')
+        # Mapping of file_id to the new comment resource returned in the response.
+        responses = {}
 
         # Generate arbitrary (but unique in this batch request) IDs for each file, so that we can recall the
         # corresponding file_id for a batch response item.
@@ -228,9 +225,6 @@ class DriveApi(BaseApiClient):
         ))
         # Create a flipped mapping for convenience.
         request_id_to_file_id = {v: k for k, v in iteritems(file_id_to_request_id)}
-
-        # Mapping of file_id to the new comment resource returned in the response.
-        responses = {}
 
         def callback(request_id, response, exception):  # pylint: disable=unused-argument,missing-docstring
             file_id = request_id_to_file_id[request_id]
@@ -247,5 +241,39 @@ class DriveApi(BaseApiClient):
                 request_id=file_id_to_request_id[file_id]
             )
         batched_requests.execute()
+
+        return responses
+
+    # NOTE: Do not decorate this function with backoff since it already calls other retryable methods.
+    def create_comments_for_files(self, file_ids, content, fields='id'):
+        """
+        Create the same comment for each file in the given list
+
+        This function is NOT idempotent.  It will blindly create the comments it was asked to create, regardless of the
+        existence of other identical comments.
+
+        Args:
+            file_ids (list of str): list of file_ids for which to add comments.
+            content (str): content/message of the comment for every file.
+            fields (str): comma separated list of fields to describe each comment resource in the response.
+
+        Returns: dict mapping of file_id to comment resource (dict).  The contents of the comment resources are dictated
+            by the `fields` arg.
+
+        Throws:
+            googleapiclient.errors.HttpError:
+                For some non-retryable 4xx or 5xx error.  See the full list here:
+                https://developers.google.com/drive/api/v3/handle-errors
+        """
+        if len(set(file_ids)) != len(file_ids):
+            raise ValueError('Duplicates detected in the file_ids list.')
+
+        # Mapping of file_id to the new comment resource returned in the response.
+        responses = {}
+
+        # Process the list of file IDs in batches of size GOOGLE_API_MAX_BATCH_SIZE.
+        for file_ids_batch in batch(file_ids, batch_size=GOOGLE_API_MAX_BATCH_SIZE):
+            responses_batch = self._create_comments_for_files(file_ids_batch, content, fields=fields)
+            responses.update(responses_batch)
 
         return responses

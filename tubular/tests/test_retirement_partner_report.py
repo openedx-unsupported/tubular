@@ -11,7 +11,7 @@ from datetime import date
 from random import randrange
 
 from click.testing import CliRunner
-from mock import patch, DEFAULT
+from mock import ANY, DEFAULT, patch
 from six import PY2
 
 from tubular.scripts.retirement_partner_report import (
@@ -138,6 +138,7 @@ def _fake_retirement_report(num_users=10):
 @patch('tubular.google_api.DriveApi.__init__')
 @patch('tubular.google_api.DriveApi.create_file_in_folder')
 @patch('tubular.google_api.DriveApi.list_subfolders')
+@patch('tubular.google_api.DriveApi.create_comments_for_files')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
@@ -146,32 +147,37 @@ def _fake_retirement_report(num_users=10):
 )
 def test_successful_report(*args, **kwargs):
     mock_get_access_token = args[0]
-    mock_list_folders = args[1]
-    mock_create_files = args[2]
-    mock_driveapi = args[3]
+    mock_create_comments = args[1]
+    mock_list_folders = args[2]
+    mock_create_files = args[3]
+    mock_driveapi = args[4]
     mock_retirement_report = kwargs['retirement_partner_report']
     mock_retirement_cleanup = kwargs['retirement_partner_cleanup']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_create_comments.return_value = None
     mock_list_folders.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in FAKE_ORGS.values()]
-    mock_create_files.return_value = True
+    mock_create_files.side_effect = ['foo', 'bar', 'baz']
     mock_driveapi.return_value = None
     mock_retirement_report.return_value = _fake_retirement_report()
 
     result = _call_script()
 
     # Make sure we're getting the LMS token
-    assert mock_get_access_token.called_once()
+    mock_get_access_token.assert_called_once()
 
     # Make sure that we get the report
-    assert mock_retirement_report.called_once()
+    mock_retirement_report.assert_called_once()
 
     # Make sure we tried to upload the files
     assert mock_create_files.call_count == 3
 
+    # Make sure we tried to add comments to the files
+    assert mock_create_comments.call_count == 1
+    mock_create_comments.assert_called_with(['foo', 'bar', 'baz'], ANY)
+
     # Make sure we tried to remove the users from the queue
-    assert mock_retirement_report.called_once()
-    assert mock_retirement_cleanup.called_with(
+    mock_retirement_cleanup.assert_called_with(
         [user['original_username'] for user in mock_retirement_report.return_value]
     )
 
@@ -304,7 +310,7 @@ def test_setup_failed(*args):
     mock_get_access_token.side_effect = Exception('boom')
 
     result = _call_script(expect_success=False)
-    assert mock_get_access_token.called_once()
+    mock_get_access_token.assert_called_once()
     assert result.exit_code == ERR_SETUP_FAILED
 
 
@@ -417,6 +423,7 @@ def test_cleanup_error(*args, **kwargs):
 @patch('tubular.google_api.DriveApi.__init__')
 @patch('tubular.google_api.DriveApi.create_file_in_folder')
 @patch('tubular.google_api.DriveApi.list_subfolders')
+@patch('tubular.google_api.DriveApi.create_comments_for_files')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
@@ -425,9 +432,10 @@ def test_cleanup_error(*args, **kwargs):
 )
 def test_google_unicode_folder_names(*args, **kwargs):
     mock_get_access_token = args[0]
-    mock_list_folders = args[1]
-    mock_create_files = args[2]
-    mock_driveapi = args[3]
+    mock_create_comments = args[1]
+    mock_list_folders = args[2]
+    mock_create_files = args[3]
+    mock_driveapi = args[4]
     mock_retirement_report = kwargs['retirement_partner_report']
     mock_retirement_cleanup = kwargs['retirement_partner_cleanup']
 
@@ -437,7 +445,7 @@ def test_google_unicode_folder_names(*args, **kwargs):
         {'name': unicodedata.normalize('NFKC', u'TéstX2'), 'id': 'org2'},
         {'name': unicodedata.normalize('NFKC', u'TéstX3'), 'id': 'org3'},
     ]
-    mock_create_files.return_value = True
+    mock_create_files.side_effect = ['foo', 'bar', 'baz']
     mock_driveapi.return_value = None
     mock_retirement_report.return_value = _fake_retirement_report()
 
@@ -450,17 +458,20 @@ def test_google_unicode_folder_names(*args, **kwargs):
     result = _call_script(config_orgs=config_orgs)
 
     # Make sure we're getting the LMS token
-    assert mock_get_access_token.called_once()
+    mock_get_access_token.assert_called_once()
 
     # Make sure that we get the report
-    assert mock_retirement_report.called_once()
+    mock_retirement_report.assert_called_once()
 
     # Make sure we tried to upload the files
     assert mock_create_files.call_count == 3
 
+    # Make sure we tried to add comments to the files
+    assert mock_create_comments.call_count == 1
+    mock_create_comments.assert_called_with(['foo', 'bar', 'baz'], ANY)
+
     # Make sure we tried to remove the users from the queue
-    assert mock_retirement_report.called_once()
-    assert mock_retirement_cleanup.called_with(
+    mock_retirement_cleanup.assert_called_with(
         [user['original_username'] for user in mock_retirement_report.return_value]
     )
 
