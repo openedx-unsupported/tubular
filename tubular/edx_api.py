@@ -249,11 +249,29 @@ class LmsApi(BaseApiClient):
     @_retry_lms_api()
     def retirement_partner_queue(self, learner):
         """
-        Deletes, blanks, or one-way hashes all remaining personal information in LMS
+        Calls LMS to add the given user to the retirement reporting queue
         """
         params = {'data': {'username': learner['original_username']}}
         with correct_exception():
             return self._client.api.user.v1.accounts.retirement_partner_report.put(**params)
+
+    @_retry_lms_api()
+    def retirement_partner_report(self):
+        """
+        Retrieves the list of users to create partner reports for and set their status to
+        processing
+        """
+        with correct_exception():
+            return self._client.api.user.v1.accounts.retirement_partner_report.post()
+
+    @_retry_lms_api()
+    def retirement_partner_cleanup(self, usernames):
+        """
+        Removes the given users from the partner reporting queue
+        """
+        params = {'data': usernames}
+        with correct_exception():
+            return self._client.api.user.v1.accounts.retirement_partner_report.delete(**params)
 
 
 class EcommerceApi(BaseApiClient):

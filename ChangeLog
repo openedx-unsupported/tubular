@@ -1,6 +1,9 @@
 CHANGES
 =======
 
+* Cleanup partner reporting script and normalize Unicode for comparisons
+* Retrieve partner - folder id mapping from Drive
+* Add a script to perform the retirement partner reporting operations
 * add create\_comments\_for\_files to DriveApi
 * changelog and authors maintenance
 * add DriveApi.list\_subfolders() for listing partner folders

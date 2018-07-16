@@ -1,6 +1,10 @@
+# coding=utf-8
+
 """
 Common functionality for retirement related tests
 """
+import json
+import unicodedata
 
 import yaml
 
@@ -15,12 +19,21 @@ TEST_RETIREMENT_PIPELINE = [
 TEST_RETIREMENT_END_STATES = [state[1] for state in TEST_RETIREMENT_PIPELINE]
 TEST_RETIREMENT_QUEUE_STATES = ['PENDING'] + TEST_RETIREMENT_END_STATES
 
+FAKE_ORGS = {
+    # Make sure unicode names, as they should come in from the yaml config, work
+    'org1': unicodedata.normalize('NFKC', u'TéstX'),
+    'org2': 'Org2X',
+    'org3': 'Org3X',
+}
 
-def fake_config_file(f):
+
+def fake_config_file(f, orgs=None):
     """
     Create a config file for a single test. Combined with CliRunner.isolated_filesystem() to
     ensure the file lifetime is limited to the test. See _call_script for usage.
     """
+    if orgs is None:
+        orgs = FAKE_ORGS
 
     config = {
         'client_id': 'bogus id',
@@ -30,7 +43,34 @@ def fake_config_file(f):
             'lms': 'https://stage-edx-edxapp.edx.org/',
             'ecommerce': 'https://ecommerce.stage.edx.org/'
         },
-        'retirement_pipeline': TEST_RETIREMENT_PIPELINE
+        'retirement_pipeline': TEST_RETIREMENT_PIPELINE,
+        'org_partner_mapping': orgs,
+        'drive_partners_folder': 'FakeDriveID'
     }
 
     yaml.safe_dump(config, f)
+
+
+def fake_google_secrets_file(f):
+    """
+    Create a fake google secrets file for a single test.
+    """
+    fake_private_key = """
+-----BEGIN PRIVATE KEY-----
+-----END PRIVATE KEY-----
+    r"""
+
+    secrets = {
+        "type": "service_account",
+        "project_id": "partner-reporting-automation",
+        "private_key_id": "foo",
+        "private_key": fake_private_key,
+        "client_email": "bogus@serviceacct.invalid",
+        "client_id": "411",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://accounts.google.com/o/oauth2/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/foo"
+    }
+
+    json.dump(secrets, f)
