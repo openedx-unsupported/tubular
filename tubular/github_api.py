@@ -933,6 +933,6 @@ class GitHubAPI(object):
         """
         Yield all pull requests in the repo against ``pr_base`` that are approved and not closed.
         """
-        query = "review:approved state:open state:merged"
+        query = "review:approved state:open"
         for issue in self.search_issues(query, 'pr', pr_base, '', ''):
             yield self.github_repo.get_pull(issue.number)
