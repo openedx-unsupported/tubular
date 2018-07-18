@@ -6,6 +6,8 @@ from __future__ import unicode_literals
 import os
 from collections import namedtuple
 
+from six.moves import range
+
 # Time in seconds to wait between polls of Asgard or AWS.
 WAIT_SLEEP_TIME = int(os.environ.get("WAIT_SLEEP_TIME", 5))
 
@@ -29,3 +31,18 @@ def envvar_get_int(var_name, default):
     If the environment variable does not exist, return the default.
     """
     return int(os.environ.get(var_name, default))
+
+
+def batch(batchable, batch_size=1):
+    """
+    Utility to facilitate batched iteration over a list.
+
+    Arguments:
+        batchable (list): The list to break into batches.
+
+    Yields:
+        list
+    """
+    length = len(batchable)
+    for index in range(0, length, batch_size):
+        yield batchable[index:index + batch_size]

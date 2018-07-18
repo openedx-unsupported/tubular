@@ -45,6 +45,9 @@ ERR_DRIVE_UPLOAD = -10
 ERR_CLEANUP = -11
 ERR_DRIVE_LISTING = -12
 
+# This text will be the comment body for all new CSV uploads.
+NOTIFICATION_MESSAGE = 'Your learner retirement report from edX has been published to Drive.'
+
 
 class PartnerDoesNotExist(Exception):
     """
@@ -56,8 +59,8 @@ class PartnerDoesNotExist(Exception):
 
 def _log(info):
     """
-    Convenience method to log text. We're currently not sending these to, ex, Splunk, but the
-    prepended text would make finding these entries easier if we go that route.
+    Convenience method to log text.  The prepended text would make finding
+    these entries easier in logging aggratation services.
     """
     click.echo('Partner report: {}'.format(info))
 
@@ -234,6 +237,9 @@ def _config_drive_folder_map_or_exit(config):
 def _push_files_to_google(config, partner_filenames):
     """
     Copy the file to Google drive for this partner
+
+    Returns:
+        List of file IDs for the uploaded csv files.
     """
     # First make sure we have Drive folders for all partners
     failed_partners = []
@@ -244,16 +250,36 @@ def _push_files_to_google(config, partner_filenames):
     if failed_partners:
         _fail(ERR_BAD_CONFIG, 'These partners have retiring learners, but no Drive folder: {}'.format(failed_partners))
 
+    file_ids = []
     drive = DriveApi(config['google_secrets_file'])
     for partner in partner_filenames:
         # This is populated on the fly in _config_drive_folder_map_or_exit
         folder_id = config['partner_folder_mapping'][partner]
+        file_id = None
         with open(partner_filenames[partner], 'rb') as f:
             try:
                 _log('Attempting to upload {} to {} Drive folder.'.format(partner_filenames[partner], partner))
-                drive.create_file_in_folder(folder_id, partner_filenames[partner], f, "text/csv")
+                file_id = drive.create_file_in_folder(folder_id, partner_filenames[partner], f, "text/csv")
             except Exception as exc:  # pylint: disable=broad-except
                 _fail_exception(ERR_DRIVE_UPLOAD, exc, 'Drive upload failed for: {}'.format(partner_filenames[partner]))
+        file_ids.append(file_id)
+    return file_ids
+
+
+def _add_comments_to_files(config, file_ids):
+    """
+    Add comments to the uploaded csv files, triggering email notification.
+
+    Args:
+        file_ids (list of str): Drive file IDs corresponding to the list of newly uploaded csv files.
+    """
+    drive = DriveApi(config['google_secrets_file'])
+    try:
+        _log('Attempting to add notification comments to uploaded csv files.')
+        drive.create_comments_for_files(file_ids, NOTIFICATION_MESSAGE)
+    except Exception as exc:  # pylint: disable=broad-except
+        # do not fail the script here, since comment errors are non-critical
+        _log('WARNING: there was an error adding Google Drive comments to the csv files: {}'.format(exc))
 
 
 @click.command()
@@ -269,7 +295,12 @@ def _push_files_to_google(config, partner_filenames):
     '--output_dir',
     help='The local directory that the script will write the reports to.'
 )
-def generate_report(config_file, google_secrets_file, output_dir):
+@click.option(
+    '--comments/--no_comments',
+    default=True,
+    help='Do or skip adding notification comments to the reports.'
+)
+def generate_report(config_file, google_secrets_file, output_dir, comments):
     """
     Retrieves a JWT token as the retirement service learner, then performs the reporting process as that user.
 
@@ -299,7 +330,11 @@ def generate_report(config_file, google_secrets_file, output_dir):
         partner_filenames = _generate_report_files_or_exit(report_data, output_dir)
 
         # All files generated successfully, now push them to Google
-        _push_files_to_google(config, partner_filenames)
+        report_file_ids = _push_files_to_google(config, partner_filenames)
+
+        if comments:
+            # All files uploaded successfully, now add comments to them to trigger notifications
+            _add_comments_to_files(config, report_file_ids)
 
         # Success, tell LMS to remove these users from the queue
         config['lms_api'].retirement_partner_cleanup(all_usernames)

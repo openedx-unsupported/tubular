@@ -19,7 +19,7 @@ import six
 from validators import url as url_validator
 
 from .exception import InvalidUrlException
-from .utils import envvar_get_int
+from .utils import batch, envvar_get_int
 from .git_repo import LocalGitAPI
 
 LOGGER = logging.getLogger(__name__)
@@ -727,25 +727,11 @@ class GitHubAPI(object):
         sha_length = int(os.environ.get('SHA_LENGTH', 10))
         batch_size = int(os.environ.get('BATCH_SIZE', 18))
 
-        def batch(batchable):
-            """
-            Utility to facilitate batched iteration over a list.
-
-            Arguments:
-                batchable (list): The list to break into batches.
-
-            Yields:
-                list
-            """
-            length = len(batchable)
-            for index in range(0, length, batch_size):
-                yield batchable[index:index + batch_size]
-
         comparison = self.github_repo.compare(start_sha, end_sha)
         shas = [commit.sha[:sha_length] for commit in comparison.commits]
 
         issues = []
-        for sha_batch in batch(shas):
+        for sha_batch in batch(shas, batch_size=batch_size):
             # For more about searching issues,
             # see https://help.github.com/articles/searching-issues.
             query = ' '.join(sha_batch)

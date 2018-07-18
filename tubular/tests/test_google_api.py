@@ -326,6 +326,56 @@ ETag: "etag/sheep"\r\n\r\n{"id": "fake-comment-id1"}
         )
 
     @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
+    def test_comment_files_batching(self, mock_from_service_account_file):  # pylint: disable=unused-argument
+        """
+        Test commenting on more files than the google API batch limit (100).
+        """
+        num_files = 150  # >100
+        fake_file_ids = ['fake-file-id{}'.format(n) for n in range(0, num_files)]
+        batch_response_0 = '\n'.join(
+            '''--batch_foobarbaz
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <response+{idx}>
+
+HTTP/1.1 204 OK
+ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
+'''.format(idx=n)
+            for n in range(0, 100)
+        )
+        batch_response_0 += '--batch_foobarbaz--'
+        batch_response_1 = '\n'.join(
+            '''--batch_foobarbaz
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <response+{idx}>
+
+HTTP/1.1 204 OK
+ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
+'''.format(idx=n)
+            for n in range(0, 50)
+        )
+        batch_response_1 += '--batch_foobarbaz--'
+        http_mock_sequence = HttpMockSequence([
+            # First, a request is made to the discovery API to construct a client object for Drive.
+            ({'status': '200'}, self.mock_discovery_response_content),
+            # Then, a request is made to add comments to the files, first batch. Return 100 results.
+            ({'status': '200', 'content-type': 'multipart/mixed; boundary="batch_foobarbaz"'}, batch_response_0),
+            # Then, a request is made to add comments to the files, second batch. Return the last 50 results.
+            ({'status': '200', 'content-type': 'multipart/mixed; boundary="batch_foobarbaz"'}, batch_response_1),
+        ])
+        test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
+        resp = test_client.create_comments_for_files(fake_file_ids, 'some comment message')
+        six.assertCountEqual(
+            self,
+            resp,
+            {
+                'fake-file-id{}'.format(n): {'id': 'fake-comment-id{}'.format(n)}
+                for n in range(0, num_files)
+            },
+        )
+
+    @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
     def test_comment_files_with_nonexistent_file(self, mock_from_service_account_file):  # pylint: disable=unused-argument
         """
         Test case for commenting on files, where some files are nonexistent.
