@@ -574,13 +574,17 @@ class GitHubAPI(object):
         """
 
         try:
-            log_str = 'Performing github search: query: {} type: {} base: {} user: {} repo: {}'
-            LOGGER.info(log_str.format(query, github_type, base, user, repo))
-            return self.github_connection.search_issues(query,
-                                                        type=github_type,
-                                                        base=base,
-                                                        user=user,
-                                                        repo=repo)
+            query_str = [query]
+            if github_type:
+                query_str.append("type:{}".format(github_type))
+            if base:
+                query_str.append("base:{}".format(base))
+            if user:
+                query_str.append("user:{}".format(user))
+            if repo:
+                query_str.append("repo:{}".format(repo))
+            LOGGER.info(' '.join(query_str))
+            return self.github_connection.search_issues(' '.join(query_str))
         except GithubException as exc:
             message = str(exc.data)
             if 'you have triggered an abuse detection mechanism' in message.lower():
