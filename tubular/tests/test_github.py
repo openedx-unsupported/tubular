@@ -321,15 +321,20 @@ class GitHubApiTestCase(TestCase):
         commits = [Mock(spec=Commit, sha=sha) for sha in shas]
         self.repo_mock.compare.return_value = Mock(spec=Comparison, commits=commits)
 
-        def search_issues_side_effect(shas, **kwargs):  # pylint: disable=unused-argument
+        def search_issues_side_effect(query, **kwargs):  # pylint: disable=unused-argument
             """
             Stub implementation of GitHub issue search.
             """
             return [Mock(
                 spec=Issue,
-                number=TRIMMED_SHA_MAP[sha],
+                number=TRIMMED_SHA_MAP[query_item],
                 repository=self.repo_mock,
-            ) for sha in shas.split()]
+            ) for query_item in query.split() if query_item in TRIMMED_SHA_MAP]
+            # The query is all the shas + params to narry the query to PRs and repo.
+            # This shouldn't break the intent of the test because we are still pulling
+            # in all the params that are relevant to this test which are the passed in
+            # shas.  And it's ignoring other parameters that search_issues might add
+            # to the test.
 
         mock_search_issues.side_effect = search_issues_side_effect
 
