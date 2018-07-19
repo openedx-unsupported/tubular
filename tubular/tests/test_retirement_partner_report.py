@@ -24,6 +24,7 @@ from tubular.scripts.retirement_partner_report import (
     ERR_REPORTING,
     ERR_SETUP_FAILED,
     ERR_UNKNOWN_ORG,
+    REPORTING_FILENAME_PREFIX,
     generate_report
 )
 from tubular.tests.retirement_helpers import fake_config_file, fake_google_secrets_file, FAKE_ORGS
@@ -82,7 +83,9 @@ def _call_script(expect_success=True, config_orgs=None):
             config_org_vals = [unicodedata.normalize('NFKC', org) for org in config_org_vals]
 
             for org in config_org_vals:
-                outfile = os.path.join(tmp_output_dir, '{}_{}.csv'.format(org, date.today().isoformat()))
+                outfile = os.path.join(tmp_output_dir, '{}_{}_{}.csv'.format(
+                    REPORTING_FILENAME_PREFIX, org, date.today().isoformat()
+                ))
 
                 with open(outfile, 'r') as csvfile:
                     reader = csv.DictReader(csvfile)
@@ -132,7 +135,7 @@ def _fake_retirement_report(num_users=10):
 
 @patch('tubular.google_api.DriveApi.__init__')
 @patch('tubular.google_api.DriveApi.create_file_in_folder')
-@patch('tubular.google_api.DriveApi.list_subfolders')
+@patch('tubular.google_api.DriveApi.walk_files')
 @patch('tubular.google_api.DriveApi.create_comments_for_files')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
 @patch.multiple(
@@ -143,7 +146,7 @@ def _fake_retirement_report(num_users=10):
 def test_successful_report(*args, **kwargs):
     mock_get_access_token = args[0]
     mock_create_comments = args[1]
-    mock_list_folders = args[2]
+    mock_walk_files = args[2]
     mock_create_files = args[3]
     mock_driveapi = args[4]
     mock_retirement_report = kwargs['retirement_partner_report']
@@ -151,7 +154,7 @@ def test_successful_report(*args, **kwargs):
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
     mock_create_comments.return_value = None
-    mock_list_folders.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in FAKE_ORGS.values()]
+    mock_walk_files.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in FAKE_ORGS.values()]
     mock_create_files.side_effect = ['foo', 'bar', 'baz']
     mock_driveapi.return_value = None
     mock_retirement_report.return_value = _fake_retirement_report()
@@ -310,19 +313,19 @@ def test_setup_failed(*args):
 
 
 @patch('tubular.google_api.DriveApi.__init__')
-@patch('tubular.google_api.DriveApi.list_subfolders')
+@patch('tubular.google_api.DriveApi.walk_files')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
     retirement_partner_report=DEFAULT)
 def test_fetching_learners_failed(*args, **kwargs):
     mock_get_access_token = args[0]
-    mock_list_subfolders = args[1]
+    mock_walk_files = args[1]
     mock_drive_init = args[2]
     mock_retirement_report = kwargs['retirement_partner_report']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
-    mock_list_subfolders.return_value = []
+    mock_walk_files.return_value = []
     mock_drive_init.return_value = None
     mock_retirement_report.side_effect = Exception('failed to get learners')
 
@@ -333,7 +336,7 @@ def test_fetching_learners_failed(*args, **kwargs):
 
 
 @patch('tubular.google_api.DriveApi.__init__')
-@patch('tubular.google_api.DriveApi.list_subfolders')
+@patch('tubular.google_api.DriveApi.walk_files')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
@@ -357,7 +360,7 @@ def test_unknown_org(*args, **kwargs):
 
 
 @patch('tubular.google_api.DriveApi.__init__')
-@patch('tubular.google_api.DriveApi.list_subfolders')
+@patch('tubular.google_api.DriveApi.walk_files')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
 @patch('csv.DictWriter')
 @patch('tubular.edx_api.LmsApi.retirement_partner_report')
@@ -380,7 +383,7 @@ def test_reporting_error(*args):
     assert error_msg in result.output
 
 
-@patch('tubular.google_api.DriveApi.list_subfolders')
+@patch('tubular.google_api.DriveApi.walk_files')
 @patch('tubular.google_api.DriveApi.__init__')
 @patch('tubular.google_api.DriveApi.create_file_in_folder')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
@@ -393,14 +396,14 @@ def test_cleanup_error(*args, **kwargs):
     mock_get_access_token = args[0]
     mock_create_files = args[1]
     mock_driveapi = args[2]
-    mock_list_folders = args[3]
+    mock_walk_files = args[3]
     mock_retirement_report = kwargs['retirement_partner_report']
     mock_retirement_cleanup = kwargs['retirement_partner_cleanup']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
     mock_create_files.return_value = True
     mock_driveapi.return_value = None
-    mock_list_folders.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in FAKE_ORGS.values()]
+    mock_walk_files.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in FAKE_ORGS.values()]
 
     mock_retirement_report.return_value = _fake_retirement_report()
     mock_retirement_cleanup.side_effect = Exception('Mock cleanup exception')
@@ -417,7 +420,7 @@ def test_cleanup_error(*args, **kwargs):
 
 @patch('tubular.google_api.DriveApi.__init__')
 @patch('tubular.google_api.DriveApi.create_file_in_folder')
-@patch('tubular.google_api.DriveApi.list_subfolders')
+@patch('tubular.google_api.DriveApi.walk_files')
 @patch('tubular.google_api.DriveApi.create_comments_for_files')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
 @patch.multiple(
@@ -428,14 +431,14 @@ def test_cleanup_error(*args, **kwargs):
 def test_google_unicode_folder_names(*args, **kwargs):
     mock_get_access_token = args[0]
     mock_create_comments = args[1]
-    mock_list_folders = args[2]
+    mock_walk_files = args[2]
     mock_create_files = args[3]
     mock_driveapi = args[4]
     mock_retirement_report = kwargs['retirement_partner_report']
     mock_retirement_cleanup = kwargs['retirement_partner_cleanup']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
-    mock_list_folders.return_value = [
+    mock_walk_files.return_value = [
         {'name': unicodedata.normalize('NFKC', u'TéstX'), 'id': 'org1'},
         {'name': unicodedata.normalize('NFKC', u'TéstX2'), 'id': 'org2'},
         {'name': unicodedata.normalize('NFKC', u'TéstX3'), 'id': 'org3'},

@@ -9,6 +9,7 @@ import logging
 from six import iteritems
 import backoff
 
+from dateutil.parser import parse
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -24,6 +25,9 @@ LOG = logging.getLogger(__name__)
 
 # Maximum number of requests per batch, according to the google API docs.
 GOOGLE_API_MAX_BATCH_SIZE = 100
+
+# Mimetype used for Google Drive folders.
+FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
 
 
 class BaseApiClient(object):
@@ -152,6 +156,26 @@ class DriveApi(BaseApiClient):
             batched_requests.add(self._client.files().delete(fileId=file_id))  # pylint: disable=no-member
         batched_requests.execute()
 
+    def delete_files_older_than(self, top_level, delete_before_dt, mimetype=None, prefix=None):
+        """
+        Delete all files beneath a given top level folder that are older than a certain datetime.
+        Optionally, specify a file mimetype and a filename prefix.
+
+        Args:
+            top_level (str): ID of top level folder.
+            delete_before_dt (datetime.datetime): Datetime to use for file age. All files created before this datetime
+                will be permanently deleted. Should be timezone offset-aware.
+            mimetype (str): Mimetype of files to delete. If not specified, all non-folders will be found.
+            prefix (str): Filename prefix - only files started with this prefix will be deleted.
+        """
+        all_files = self.walk_files(top_level, 'id, name, createdTime', mimetype)
+        file_ids_to_delete = []
+        for file in all_files:
+            if (not prefix or file['name'].startswith(prefix)) and parse(file['createdTime']) < delete_before_dt:
+                file_ids_to_delete.append(file['id'])
+        if file_ids_to_delete:
+            self.delete_files(file_ids_to_delete)
+
     @backoff.on_exception(
         backoff.expo,
         HttpError,
@@ -159,43 +183,81 @@ class DriveApi(BaseApiClient):
         giveup=lambda e: not _should_retry_google_api(e),
         on_backoff=lambda details: _backoff_handler(details),  # pylint: disable=unnecessary-lambda
     )
-    def list_subfolders(self, top_level, file_fields='id, name'):
+    def walk_files(self, top_folder_id, file_fields='id, name', mimetype=None, recurse=True):
         """
-        List all subfolders of a given top level folder
+        List all files of a particular mimetype within a given top level folder, traversing all folders recursively.
 
         This function may make multiple HTTP requests depending on how many pages the response contains.  The default
         page size for the python google API client is 100 items.
 
         Args:
-            top_level (str): ID of top level folder.
-            file_fields (str): comma separated list of metadata fields to return for each folder. For a full list of
-                file metadata fields, see https://developers.google.com/drive/api/v3/reference/files
+            top_folder_id (str): ID of top level folder.
+            file_fields (str): Comma-separated list of metadata fields to return for each folder/file.
+                For a full list of file metadata fields, see https://developers.google.com/drive/api/v3/reference/files
+            mimetype (str): Mimetype of files to find. If not specified, all items will be returned, including folders.
+            recurse (bool): True to recurse into all found folders for items, False to only return top-level items.
 
-        Returns: list of dicts, where each dict contains file metadata and each dict key corresponds to fields specified
-            in the `file_fields` arg.
+        Returns: List of dicts, where each dict contains file metadata and each dict key corresponds to fields
+            specified in the `file_fields` arg.
 
         Throws:
             googleapiclient.errors.HttpError:
                 For some non-retryable 4xx or 5xx error.  See the full list here:
                 https://developers.google.com/drive/api/v3/handle-errors
         """
-        extra_kwargs = {}  # only used for carrying the pageToken.
+        # Sent to list() call and used only for sending the pageToken.
+        extra_kwargs = {}
+        # Cumulative list of file metadata dicts for found files.
         results = []
-        while True:
-            resp = self._client.files().list(  # pylint: disable=no-member
-                q="mimeType = 'application/vnd.google-apps.folder' and '{}' in parents".format(top_level),
-                fields='nextPageToken, files({})'.format(file_fields),
-                **extra_kwargs
-            ).execute()
-            page_results = resp.get('files', [])
-            results.extend(page_results)
-            if page_results and 'nextPageToken' in resp and resp['nextPageToken']:
-                # The presence of nextPageToken implies there are more pages, so another call is required to fetch the
-                # next page.  Also, page_results must be nonempty since a provided nextPageToken coupled with empty page
-                # list is wrong and we just interpret that as the last page.
-                extra_kwargs['pageToken'] = resp['nextPageToken']
-            else:
-                break
+        # List of IDs of all visited folders.
+        visited_folders = []
+        # List of IDs of all found files.
+        found_ids = []
+        # List of folder IDs remaining to be listed.
+        folders_to_visit = [top_folder_id]
+        # Mimetype part of file-listing query.
+        mimetype_clause = ""
+        if mimetype:
+            # Return both folders and the specified mimetype.
+            mimetype_clause = "( mimeType = '{}' or mimeType = '{}') and ".format(FOLDER_MIMETYPE, mimetype)
+
+        while folders_to_visit:
+            current_folder = folders_to_visit.pop()
+            visited_folders.append(current_folder)
+            while True:
+                resp = self._client.files().list(  # pylint: disable=no-member
+                    q="{}'{}' in parents".format(mimetype_clause, current_folder),
+                    fields='nextPageToken, files({})'.format(
+                        file_fields + ', mimeType, parents'
+                    ),
+                    **extra_kwargs
+                ).execute()
+                page_results = resp.get('files', [])
+
+                LOG.debug("walk_files: Returned %s results.", len(page_results))
+
+                # Examine returned results to separate folders from non-folders.
+                for result in page_results:
+                    LOG.debug("walk_files: Result: %s", result)
+                    # Folders contain files - and get special treatment.
+                    if result['mimeType'] == FOLDER_MIMETYPE:
+                        if recurse and result['id'] not in visited_folders:
+                            # Add any undiscovered folders to the list of folders to check.
+                            folders_to_visit.append(result['id'])
+                    # Determine if this result is a file to return.
+                    if result['id'] not in found_ids and (not mimetype or result['mimeType'] == mimetype):
+                        found_ids.append(result['id'])
+                        # Return only the fields specified in file_fields.
+                        results.append({k.strip(): result.get(k.strip(), None) for k in file_fields.split(',')})
+
+                LOG.debug("walk_files: %s files found and %s folders to check.", len(results), len(folders_to_visit))
+
+                if page_results and 'nextPageToken' in resp and resp['nextPageToken']:
+                    # Only call for more result pages if results were actually returned -and
+                    # a nextPageToken is returned.
+                    extra_kwargs['pageToken'] = resp['nextPageToken']
+                else:
+                    break
         return results
 
     @backoff.on_exception(

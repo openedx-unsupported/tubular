@@ -3,6 +3,7 @@ Test google API
 """
 from __future__ import unicode_literals
 
+from datetime import datetime, timedelta
 import json
 import sys
 import unittest
@@ -10,9 +11,10 @@ from io import BytesIO
 
 from googleapiclient.http import HttpMockSequence
 from mock import patch
+from pytz import UTC
 import six
 from six.moves import range  # use the range function introduced in python 3
-from tubular.google_api import DriveApi
+from tubular.google_api import DriveApi, FOLDER_MIMETYPE
 
 # For info about this file, see tubular/tests/discovery-drive.json.README.rst
 DISCOVERY_DRIVE_RESPONSE_FILE = 'tubular/tests/discovery-drive.json'
@@ -22,6 +24,8 @@ class TestDriveApi(unittest.TestCase):
     """
     Test the DriveApi class.
     """
+    maxDiff = None
+
     def setUp(self):
         with open(DISCOVERY_DRIVE_RESPONSE_FILE, 'r') as f:
             self.mock_discovery_response_content = f.read()
@@ -202,12 +206,176 @@ ETag: "etag/sheep"\r\n\r\n
             )
 
     @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
-    def test_list_subfolders_one_page(self, mock_from_service_account_file):  # pylint: disable=unused-argument
+    def test_delete_files_older_than(self, mock_from_service_account_file):  # pylint: disable=unused-argument
+        """
+        Tests the logic to delete files older than a certain age.
+        """
+        five_days_ago = datetime.now(UTC) - timedelta(days=5)
+        fake_newish_files = [
+            {
+                'id': 'fake-text-file-id-{}'.format(idx),
+                'createdTime': five_days_ago + timedelta(days=1),
+                'mimeType': 'text/plain'
+            }
+            for idx in range(1, 10, 2)
+        ]
+        fake_old_files = [
+            {
+                'id': 'fake-text-file-id-{}'.format(idx),
+                'createdTime': five_days_ago - timedelta(days=14),
+                'mimeType': 'text/plain'
+            }
+            for idx in range(2, 10, 2)
+        ]
+        fake_files = fake_newish_files + fake_old_files
+        http_mock_sequence = HttpMockSequence([
+            # First, a request is made to the discovery API to construct a client object for Drive.
+            (
+                {'status': '200'},
+                self.mock_discovery_response_content,
+            ),
+            # Then, a request is made to list files.
+            (
+                {'status': '200', 'content-type': 'application/json'},
+                json.dumps({'files': fake_files}, default=lambda x: x.isoformat()).encode('utf-8'),
+            ),
+        ])
+        with patch.object(DriveApi, 'delete_files', return_value=None) as mock_delete_files:
+            test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
+            test_client.delete_files_older_than('fake-folder-id', five_days_ago)
+        # Verify that the correct files were requested to be deleted.
+        mock_delete_files.assert_called_once_with(['fake-text-file-id-{}'.format(idx) for idx in range(2, 10, 2)])
+
+    @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
+    def test_walk_files_multi_page_all_types(self, mock_from_service_account_file):  # pylint: disable=unused-argument
+        """
+        Files are searched for - and returned in two pages.
+        """
+        fake_folder = [
+            {
+                'id': 'fake-folder-id-0',
+                'name': 'fake-folder-name-0',
+                'mimeType': 'application/vnd.google-apps.folder'
+            }
+        ]
+        fake_text_files = [
+            {
+                'id': 'fake-text-file-id-{}'.format(idx),
+                'name': 'fake-text-file-name-{}'.format(idx),
+                'mimeType': 'text/plain'
+            }
+            for idx in range(10)
+        ]
+        fake_csv_files = [
+            {
+                'id': 'fake-csv-file-id-{}'.format(idx),
+                'name': 'fake-csv-file-name-{}'.format(idx),
+                'mimeType': 'application/csv'
+            }
+            for idx in range(10)
+        ]
+        fake_files_part_1 = fake_folder + fake_text_files[:3] + fake_csv_files[:3]
+        fake_files_part_2 = fake_text_files[3:7] + fake_csv_files[3:8]
+        fake_files_part_3 = fake_text_files[7:] + fake_csv_files[8:]
+        http_mock_sequence = HttpMockSequence([
+            # First, a request is made to the discovery API to construct a client object for Drive.
+            (
+                {'status': '200'},
+                self.mock_discovery_response_content,
+            ),
+            # Then, a request is made to list files.  The response contains a single folder and other files.
+            (
+                {'status': '200', 'content-type': 'application/json'},
+                json.dumps({'files': fake_files_part_1}).encode('utf-8'),
+            ),
+            # Then, a request is made to list files from the single found folder.
+            # The response contains a nextPageToken indicating there are more pages.
+            (
+                {'status': '200', 'content-type': 'application/json'},
+                json.dumps({'files': fake_files_part_2, 'nextPageToken': 'fake-next-page-token'}).encode('utf-8'),
+            ),
+            # Finally, another list request is made.  This time, no nextPageToken is present in the response,
+            # indicating there are no more pages.
+            (
+                {'status': '200', 'content-type': 'application/json'},
+                json.dumps({'files': fake_files_part_3}).encode('utf-8'),
+            ),
+        ])
+        test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
+        response = test_client.walk_files('fake-folder-id')
+        # Remove all the mimeTypes for comparison purposes.
+        del fake_folder[0]['mimeType']
+        for fake_file in fake_text_files:
+            del fake_file['mimeType']
+        for fake_file in fake_csv_files:
+            del fake_file['mimeType']
+        six.assertCountEqual(self, response, fake_folder + fake_text_files + fake_csv_files)
+
+    @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
+    def test_walk_files_multi_page_csv_only(self, mock_from_service_account_file):  # pylint: disable=unused-argument
+        """
+        Files are searched for - and returned in two pages.
+        """
+        fake_folder = [
+            {
+                'id': 'fake-folder-id-0',
+                'name': 'fake-folder-name-0',
+                'mimeType': 'application/vnd.google-apps.folder'
+            }
+        ]
+        fake_csv_files = [
+            {
+                'id': 'fake-csv-file-id-{}'.format(idx),
+                'name': 'fake-csv-file-name-{}'.format(idx),
+                'mimeType': 'application/csv'
+            }
+            for idx in range(10)
+        ]
+        fake_files_part_1 = fake_folder + fake_csv_files[:3]
+        fake_files_part_2 = fake_csv_files[3:8]
+        fake_files_part_3 = fake_csv_files[8:]
+        http_mock_sequence = HttpMockSequence([
+            # First, a request is made to the discovery API to construct a client object for Drive.
+            (
+                {'status': '200'},
+                self.mock_discovery_response_content,
+            ),
+            # Then, a request is made to list files.  The response contains a single folder and other files.
+            (
+                {'status': '200', 'content-type': 'application/json'},
+                json.dumps({'files': fake_files_part_1}).encode('utf-8'),
+            ),
+            # Then, a request is made to list files from the single found folder.
+            # The response contains a nextPageToken indicating there are more pages.
+            (
+                {'status': '200', 'content-type': 'application/json'},
+                json.dumps({'files': fake_files_part_2, 'nextPageToken': 'fake-next-page-token'}).encode('utf-8'),
+            ),
+            # Finally, another list request is made.  This time, no nextPageToken is present in the response,
+            # indicating there are no more pages.
+            (
+                {'status': '200', 'content-type': 'application/json'},
+                json.dumps({'files': fake_files_part_3}).encode('utf-8'),
+            ),
+        ])
+        test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
+        response = test_client.walk_files('fake-folder-id', mimetype='application/csv')
+        # Remove all the mimeTypes for comparison purposes.
+        for fake_file in fake_csv_files:
+            del fake_file['mimeType']
+        six.assertCountEqual(self, response, fake_csv_files)
+
+    @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
+    def test_walk_files_one_page(self, mock_from_service_account_file):  # pylint: disable=unused-argument
         """
         Simple case where subfolders are requested, and the response contains one page.
         """
-        fake_files = [
-            {'id': 'fake-folder-id-{}'.format(idx), 'name': 'fake-folder-name-{}'.format(idx)}
+        fake_folders = [
+            {
+                'id': 'fake-folder-id-{}'.format(idx),
+                'name': 'fake-folder-name-{}'.format(idx),
+                'mimeType': 'application/vnd.google-apps.folder'
+            }
             for idx in range(10)
         ]
         http_mock_sequence = HttpMockSequence([
@@ -219,24 +387,31 @@ ETag: "etag/sheep"\r\n\r\n
             # Then, a request is made to list files.
             (
                 {'status': '200', 'content-type': 'application/json'},
-                json.dumps({'files': fake_files}).encode('utf-8'),
+                json.dumps({'files': fake_folders}).encode('utf-8'),
             ),
         ])
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
-        response = test_client.list_subfolders('fake-folder-id')
-        six.assertCountEqual(self, response, fake_files)
+        response = test_client.walk_files('fake-folder-id', mimetype=FOLDER_MIMETYPE, recurse=False)
+        # Remove all the mimeTypes for comparison purposes.
+        for fake_folder in fake_folders:
+            del fake_folder['mimeType']
+        six.assertCountEqual(self, response, fake_folders)
 
     @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
-    def test_list_subfolders_two_page(self, mock_from_service_account_file):  # pylint: disable=unused-argument
+    def test_walk_files_two_page(self, mock_from_service_account_file):  # pylint: disable=unused-argument
         """
         Subfolders are requested, but the response is paginated.
         """
-        fake_files = [
-            {'id': 'fake-folder-id-{}'.format(idx), 'name': 'fake-folder-name-{}'.format(idx)}
+        fake_folders = [
+            {
+                'id': 'fake-folder-id-{}'.format(idx),
+                'name': 'fake-folder-name-{}'.format(idx),
+                'mimeType': 'application/vnd.google-apps.folder'
+            }
             for idx in range(10)
         ]
-        fake_files_part_1 = fake_files[:7]
-        fake_files_part_2 = fake_files[7:]
+        fake_files_part_1 = fake_folders[:7]
+        fake_files_part_2 = fake_folders[7:]
         http_mock_sequence = HttpMockSequence([
             # First, a request is made to the discovery API to construct a client object for Drive.
             (
@@ -257,16 +432,23 @@ ETag: "etag/sheep"\r\n\r\n
             ),
         ])
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
-        response = test_client.list_subfolders('fake-folder-id')
-        six.assertCountEqual(self, response, fake_files)
+        response = test_client.walk_files('fake-folder-id', mimetype=FOLDER_MIMETYPE, recurse=False)
+        # Remove all the mimeTypes for comparison purposes.
+        for fake_folder in fake_folders:
+            del fake_folder['mimeType']
+        six.assertCountEqual(self, response, fake_folders)
 
     @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
-    def test_list_subfolders_retry(self, mock_from_service_account_file):  # pylint: disable=unused-argument
+    def test_walk_files_retry(self, mock_from_service_account_file):  # pylint: disable=unused-argument
         """
         Subfolders are requested, but there is rate limiting causing a retry.
         """
-        fake_files = [
-            {'id': 'fake-folder-id-{}'.format(idx), 'name': 'fake-folder-name-{}'.format(idx)}
+        fake_folders = [
+            {
+                'id': 'fake-folder-id-{}'.format(idx),
+                'name': 'fake-folder-name-{}'.format(idx),
+                'mimeType': 'application/vnd.google-apps.folder'
+            }
             for idx in range(10)
         ]
         http_mock_sequence = HttpMockSequence([
@@ -279,12 +461,15 @@ ETag: "etag/sheep"\r\n\r\n
             # Finally, the request is retried, and the response is OK.
             (
                 {'status': '200', 'content-type': 'application/json'},
-                json.dumps({'files': fake_files}).encode('utf-8'),
+                json.dumps({'files': fake_folders}).encode('utf-8'),
             ),
         ])
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
-        response = test_client.list_subfolders('fake-folder-id')
-        six.assertCountEqual(self, response, fake_files)
+        response = test_client.walk_files('fake-folder-id', mimetype=FOLDER_MIMETYPE, recurse=False)
+        # Remove all the mimeTypes for comparison purposes.
+        for fake_folder in fake_folders:
+            del fake_folder['mimeType']
+        six.assertCountEqual(self, response, fake_folders)
 
     @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
     def test_comment_files_success(self, mock_from_service_account_file):  # pylint: disable=unused-argument
