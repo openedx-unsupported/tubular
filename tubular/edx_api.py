@@ -154,6 +154,21 @@ class LmsApi(BaseApiClient):
             return self._client.api.user.v1.accounts.retirement_queue.get(**params)
 
     @_retry_lms_api()
+    def get_learners_by_date_and_status(self, state_to_request, start_date, end_date):
+        """
+        Retrieves a list of learners in the given retirement state that were
+        created in the retirement queue between the dates given. Date range
+        is inclusive, so to get one day you would set both dates to that day.
+        """
+        params = {
+            'start_date': start_date.strftime('%Y-%m-%d'),
+            'end_date': end_date.strftime('%Y-%m-%d'),
+            'state': state_to_request
+        }
+        with correct_exception():
+            return self._client.api.user.v1.accounts.retirements_by_status_and_date.get(**params)
+
+    @_retry_lms_api()
     def get_learner_retirement_state(self, username):
         """
         Retrieves the given learner's retirement state.
@@ -162,7 +177,7 @@ class LmsApi(BaseApiClient):
             return self._client.api.user.v1.accounts(username).retirement_status.get()
 
     @_retry_lms_api()
-    def update_learner_retirement_state(self, username, new_state_name, message):
+    def update_learner_retirement_state(self, username, new_state_name, message, force=False):
         """
         Updates the given learner's retirement state to the retirement state name new_string
         with the additional string information in message (for logging purposes).
@@ -172,8 +187,12 @@ class LmsApi(BaseApiClient):
                 'username': username,
                 'new_state': new_state_name,
                 'response': message
-            },
+            }
         }
+
+        if force:
+            params['data']['force'] = True
+
         with correct_exception():
             return self._client.api.user.v1.accounts.update_retirement_status.patch(**params)
 
