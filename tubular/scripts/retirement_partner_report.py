@@ -8,36 +8,27 @@ from collections import defaultdict, OrderedDict
 from datetime import date
 from functools import partial
 import csv
-import json
-import io
 import logging
 import os
 import sys
 import unicodedata
 
 import click
-import yaml
 from six import text_type
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tubular.edx_api import LmsApi  # pylint: disable=wrong-import-position
 from tubular.google_api import DriveApi  # pylint: disable=wrong-import-position
-from tubular.scripts.helpers import _log, _fail, _fail_exception  # pylint: disable=wrong-import-position
+# pylint: disable=wrong-import-position
+from tubular.scripts.helpers import (
+    _config_with_drive_or_exit,
+    _fail,
+    _fail_exception,
+    _log,
+    _setup_lms_api_or_exit
+)
 
-SCRIPT_SHORTNAME = 'Partner report'
-LOG = partial(_log, SCRIPT_SHORTNAME)
-FAIL = partial(_fail, SCRIPT_SHORTNAME)
-FAIL_EXCEPTION = partial(_fail_exception, SCRIPT_SHORTNAME)
-
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-
-# Prefix which starts all generated report filenames.
-REPORTING_FILENAME_PREFIX = 'user_retirement'
-
-# We'll store the access token here once retrieved
-AUTH_HEADER = {}
 
 # Return codes for various fail cases
 ERR_SETUP_FAILED = -1
@@ -53,6 +44,21 @@ ERR_DRIVE_UPLOAD = -10
 ERR_CLEANUP = -11
 ERR_DRIVE_LISTING = -12
 
+SCRIPT_SHORTNAME = 'Partner report'
+LOG = partial(_log, SCRIPT_SHORTNAME)
+FAIL = partial(_fail, SCRIPT_SHORTNAME)
+FAIL_EXCEPTION = partial(_fail_exception, SCRIPT_SHORTNAME)
+CONFIG_WITH_DRIVE_OR_EXIT = partial(_config_with_drive_or_exit, FAIL_EXCEPTION, ERR_BAD_CONFIG, ERR_BAD_SECRETS)
+SETUP_LMS_OR_EXIT = partial(_setup_lms_api_or_exit, FAIL, ERR_SETUP_FAILED)
+
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
+# Prefix which starts all generated report filenames.
+REPORTING_FILENAME_PREFIX = 'user_retirement'
+
+# We'll store the access token here once retrieved
+AUTH_HEADER = {}
+
 # This text will be the comment body for all new CSV uploads.
 NOTIFICATION_MESSAGE = 'Your learner retirement report from edX has been published to Drive.'
 
@@ -65,53 +71,6 @@ class PartnerDoesNotExist(Exception):
     pass
 
 
-def _config_or_exit(config_file, google_secrets_file):
-    """
-    Returns the config values from the given file, allows overriding of passed in values.
-    """
-    try:
-        with io.open(config_file, 'r') as config:
-            config = yaml.load(config)
-
-        # Check required values
-        for var in ('org_partner_mapping', 'drive_partners_folder'):
-            if var not in config or not config[var]:
-                FAIL(ERR_BAD_CONFIG, 'No {} in config, or it is empty!'.format(var))
-
-        # Force the partner names into NFKC here and when we get the folders to ensure
-        # they are using the same characters. Otherwise accented characters will not match.
-        for org in config['org_partner_mapping']:
-            partner = config['org_partner_mapping'][org]
-            config['org_partner_mapping'][org] = unicodedata.normalize('NFKC', text_type(partner))
-    except Exception as exc:  # pylint: disable=broad-except
-        FAIL_EXCEPTION(ERR_BAD_CONFIG, 'Failed to read config file {}'.format(config_file), exc)
-
-    try:
-        # Just load and parse the file to make sure it's legit JSON before doing
-        # all of the work to get the users.
-        with open(google_secrets_file, 'r') as secrets_f:
-            json.load(secrets_f)
-
-        config['google_secrets_file'] = google_secrets_file
-        return config
-    except Exception as exc:  # pylint: disable=broad-except
-        FAIL_EXCEPTION(ERR_BAD_SECRETS, 'Failed to read secrets file {}'.format(google_secrets_file), exc)
-
-
-def _setup_lms_or_exit(config):
-    """
-    Performs setup of EdxRestClientApi for LMS and returns the validated, sorted list of users to report on.
-    """
-    try:
-        lms_base_url = config['base_urls']['lms']
-        client_id = config['client_id']
-        client_secret = config['client_secret']
-
-        config['lms_api'] = LmsApi(lms_base_url, lms_base_url, client_id, client_secret)
-    except Exception as exc:  # pylint: disable=broad-except
-        FAIL_EXCEPTION(ERR_SETUP_FAILED, 'Unexpected exception occurred!', exc)
-
-
 def _get_orgs_and_learners_or_exit(config):
     """
     Contacts LMS to get the list of learners to report on and the orgs they belong to.
@@ -119,7 +78,7 @@ def _get_orgs_and_learners_or_exit(config):
     and returns a tuple of that dict plus a list of all of the learner usernames.
     """
     try:
-        learners = config['lms_api'].retirement_partner_report()
+        learners = config['LMS'].retirement_partner_report()
         orgs = defaultdict(list)
         usernames = []
 
@@ -294,8 +253,8 @@ def generate_report(config_file, google_secrets_file, output_dir, comments):
         if not output_dir or not os.path.exists(output_dir):
             FAIL(ERR_NO_OUTPUT_DIR, 'No output_dir passed in or path does not exist.')
 
-        config = _config_or_exit(config_file, google_secrets_file)
-        _setup_lms_or_exit(config)
+        config = CONFIG_WITH_DRIVE_OR_EXIT(config_file, google_secrets_file)
+        SETUP_LMS_OR_EXIT(config)
         _config_drive_folder_map_or_exit(config)
         report_data, all_usernames = _get_orgs_and_learners_or_exit(config)
         partner_filenames = _generate_report_files_or_exit(config, report_data, output_dir)
@@ -308,7 +267,7 @@ def generate_report(config_file, google_secrets_file, output_dir, comments):
             _add_comments_to_files(config, report_file_ids)
 
         # Success, tell LMS to remove these users from the queue
-        config['lms_api'].retirement_partner_cleanup(all_usernames)
+        config['LMS'].retirement_partner_cleanup(all_usernames)
         LOG('All reports completed and uploaded to Google.')
     except Exception as exc:  # pylint: disable=broad-except
         FAIL_EXCEPTION(ERR_CLEANUP, 'Unexpected error occurred! Users may be stuck in the processing state!', exc)
