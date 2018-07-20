@@ -1,6 +1,7 @@
 """
 Test the retirement_bulk_status_update.py script
 """
+from __future__ import print_function
 
 from mock import patch, DEFAULT
 
