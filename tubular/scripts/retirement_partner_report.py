@@ -17,7 +17,7 @@ import unicodedata
 
 import click
 import yaml
-from six import PY2, text_type
+from six import text_type
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -82,9 +82,7 @@ def _config_or_exit(config_file, google_secrets_file):
         # they are using the same characters. Otherwise accented characters will not match.
         for org in config['org_partner_mapping']:
             partner = config['org_partner_mapping'][org]
-            if PY2:
-                partner = partner.decode('utf-8')
-            config['org_partner_mapping'][org] = unicodedata.normalize('NFKC', partner)
+            config['org_partner_mapping'][org] = unicodedata.normalize('NFKC', text_type(partner))
     except Exception as exc:  # pylint: disable=broad-except
         FAIL_EXCEPTION(ERR_BAD_CONFIG, 'Failed to read config file {}'.format(config_file), exc)
 
@@ -128,7 +126,7 @@ def _get_orgs_and_learners_or_exit(config):
         # Organize the learners, create separate dicts per partner, make sure partner is in the mapping.
         # learners can appear in more than one dict.
         for learner in learners:
-            usernames.append(learner['original_username'])
+            usernames.append({'original_username': learner['original_username']})
             for org in learner['orgs']:
                 try:
                     reporting_org = config['org_partner_mapping'][org]
@@ -202,9 +200,7 @@ def _config_drive_folder_map_or_exit(config):
     # match. Otherwise the name we get back from Google won't match what's in the YAML config.
     config['partner_folder_mapping'] = OrderedDict()
     for folder in folders:
-        if PY2:
-            folder['name'] = folder['name'].decode('utf-8')
-        folder['name'] = unicodedata.normalize('NFKC', folder['name'])
+        folder['name'] = unicodedata.normalize('NFKC', text_type(folder['name']))
         config['partner_folder_mapping'][folder['name']] = folder['id']
 
 
@@ -249,7 +245,7 @@ def _add_comments_to_files(config, file_ids):
     """
     drive = DriveApi(config['google_secrets_file'])
     try:
-        LOG('Attempting to add notification comments to uploaded csv files.')
+        LOG('Adding notification comments to uploaded csv files.')
         drive.create_comments_for_files(file_ids, NOTIFICATION_MESSAGE)
     except Exception as exc:  # pylint: disable=broad-except
         # do not fail the script here, since comment errors are non-critical

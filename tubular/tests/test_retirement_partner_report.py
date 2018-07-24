@@ -176,7 +176,7 @@ def test_successful_report(*args, **kwargs):
 
     # Make sure we tried to remove the users from the queue
     mock_retirement_cleanup.assert_called_with(
-        [user['original_username'] for user in mock_retirement_report.return_value]
+        [{'original_username': user['original_username']} for user in mock_retirement_report.return_value]
     )
 
     assert 'All reports completed and uploaded to Google.' in result.output
@@ -470,7 +470,7 @@ def test_google_unicode_folder_names(*args, **kwargs):
 
     # Make sure we tried to remove the users from the queue
     mock_retirement_cleanup.assert_called_with(
-        [user['original_username'] for user in mock_retirement_report.return_value]
+        [{'original_username': user['original_username']} for user in mock_retirement_report.return_value]
     )
 
     assert 'All reports completed and uploaded to Google.' in result.output

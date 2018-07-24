@@ -271,7 +271,7 @@ class LmsApi(BaseApiClient):
         """
         params = {'data': usernames}
         with correct_exception():
-            return self._client.api.user.v1.accounts.retirement_partner_report.delete(**params)
+            return self._client.api.user.v1.accounts.retirement_partner_report_cleanup.post(**params)
 
 
 class EcommerceApi(BaseApiClient):
