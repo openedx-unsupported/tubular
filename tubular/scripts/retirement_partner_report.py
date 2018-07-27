@@ -143,7 +143,7 @@ def _get_orgs_and_learners_or_exit(config):
         FAIL_EXCEPTION(ERR_FETCHING_LEARNERS, 'Unexpected exception occurred!', exc)
 
 
-def _generate_report_files_or_exit(report_data, output_dir):
+def _generate_report_files_or_exit(config, report_data, output_dir):
     """
     Spins through the partners, creating a single CSV file for each
     """
@@ -158,8 +158,8 @@ def _generate_report_files_or_exit(report_data, output_dir):
         try:
             # Fields for each learner to write, in order these are also the header names
             fields = ['original_username', 'original_email', 'original_name']
-            outfile = os.path.join(output_dir, '{}_{}_{}.csv'.format(
-                REPORTING_FILENAME_PREFIX, partner, date.today().isoformat()
+            outfile = os.path.join(output_dir, '{}_{}_{}_{}.csv'.format(
+                REPORTING_FILENAME_PREFIX, config['partner_report_platform_name'], partner, date.today().isoformat()
             ))
 
             # If there is already a file for this date, assume it is bad and replace it
@@ -301,7 +301,7 @@ def generate_report(config_file, google_secrets_file, output_dir, comments):
         _setup_lms_or_exit(config)
         _config_drive_folder_map_or_exit(config)
         report_data, all_usernames = _get_orgs_and_learners_or_exit(config)
-        partner_filenames = _generate_report_files_or_exit(report_data, output_dir)
+        partner_filenames = _generate_report_files_or_exit(config, report_data, output_dir)
 
         # All files generated successfully, now push them to Google
         report_file_ids = _push_files_to_google(config, partner_filenames)

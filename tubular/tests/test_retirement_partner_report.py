@@ -27,7 +27,7 @@ from tubular.scripts.retirement_partner_report import (
     REPORTING_FILENAME_PREFIX,
     generate_report
 )
-from tubular.tests.retirement_helpers import fake_config_file, fake_google_secrets_file, FAKE_ORGS
+from tubular.tests.retirement_helpers import fake_config_file, fake_google_secrets_file, FAKE_ORGS, TEST_PLATFORM_NAME
 
 
 TEST_CONFIG_YML_NAME = 'test_config.yml'
@@ -83,8 +83,8 @@ def _call_script(expect_success=True, config_orgs=None):
             config_org_vals = [unicodedata.normalize('NFKC', org) for org in config_org_vals]
 
             for org in config_org_vals:
-                outfile = os.path.join(tmp_output_dir, '{}_{}_{}.csv'.format(
-                    REPORTING_FILENAME_PREFIX, org, date.today().isoformat()
+                outfile = os.path.join(tmp_output_dir, '{}_{}_{}_{}.csv'.format(
+                    REPORTING_FILENAME_PREFIX, TEST_PLATFORM_NAME, org, date.today().isoformat()
                 ))
 
                 with open(outfile, 'r') as csvfile:
