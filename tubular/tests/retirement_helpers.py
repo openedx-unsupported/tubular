@@ -26,6 +26,8 @@ FAKE_ORGS = {
     'org3': 'Org3X',
 }
 
+TEST_PLATFORM_NAME = 'fakename'
+
 
 def fake_config_file(f, orgs=None):
     """
@@ -44,6 +46,7 @@ def fake_config_file(f, orgs=None):
             'ecommerce': 'https://ecommerce.stage.edx.org/'
         },
         'retirement_pipeline': TEST_RETIREMENT_PIPELINE,
+        'partner_report_platform_name': TEST_PLATFORM_NAME,
         'org_partner_mapping': orgs,
         'drive_partners_folder': 'FakeDriveID'
     }
