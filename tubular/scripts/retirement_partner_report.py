@@ -228,10 +228,11 @@ def _push_files_to_google(config, partner_filenames):
         file_id = None
         with open(partner_filenames[partner], 'rb') as f:
             try:
-                LOG('Attempting to upload {} to {} Drive folder.'.format(partner_filenames[partner], partner))
-                file_id = drive.create_file_in_folder(folder_id, partner_filenames[partner], f, "text/csv")
+                drive_filename = os.path.basename(partner_filenames[partner])
+                LOG('Attempting to upload {} to {} Drive folder.'.format(drive_filename, partner))
+                file_id = drive.create_file_in_folder(folder_id, drive_filename, f, "text/csv")
             except Exception as exc:  # pylint: disable=broad-except
-                FAIL_EXCEPTION(ERR_DRIVE_UPLOAD, 'Drive upload failed for: {}'.format(partner_filenames[partner]), exc)
+                FAIL_EXCEPTION(ERR_DRIVE_UPLOAD, 'Drive upload failed for: {}'.format(drive_filename), exc)
         file_ids.append(file_id)
     return file_ids
 
