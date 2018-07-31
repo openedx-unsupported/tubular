@@ -8,6 +8,7 @@ import csv
 import os
 import unicodedata
 from datetime import date
+import time
 
 from click.testing import CliRunner
 from mock import ANY, DEFAULT, patch
@@ -32,6 +33,8 @@ from tubular.tests.retirement_helpers import fake_config_file, fake_google_secre
 
 TEST_CONFIG_YML_NAME = 'test_config.yml'
 TEST_GOOGLE_SECRETS_FILENAME = 'test_google_secrets.json'
+DELETION_TIME = time.strftime("%Y-%m-%dT%H:%M:%S")
+UNICODE_NAME_CONSTANT = '阿碧'
 
 
 def _call_script(expect_success=True, config_orgs=None):
@@ -92,14 +95,17 @@ def _call_script(expect_success=True, config_orgs=None):
                     rows = []
                     for row in reader:
 
-                        # Check username value is in the right place
+                        # Check username value is in the correct place
                         assert 'username' in row['original_username']
 
-                        # Check email value is in the right place
+                        # Check email value is in the correct place
                         assert 'invalid' in row['original_email']
 
-                        # Check name value is in the right place
-                        assert '阿碧' in row['original_name']
+                        # Check name value is in the correct place
+                        assert UNICODE_NAME_CONSTANT in row['original_name']
+
+                        # Check deletion_completed value is in the correct place
+                        assert DELETION_TIME in row['deletion_completed']
 
                         rows.append(row)
 
@@ -121,8 +127,9 @@ def _fake_retirement_report_user(seed_val, user_orgs=None):
     return {
         'original_username': 'username_{}'.format(seed_val),
         'original_email': 'user_{}@foo.invalid'.format(seed_val),
-        'original_name': '阿碧 {}'.format(seed_val),
-        'orgs': user_orgs
+        'original_name': '{} {}'.format(UNICODE_NAME_CONSTANT, seed_val),
+        'orgs': user_orgs,
+        'created': DELETION_TIME,
     }
 
 

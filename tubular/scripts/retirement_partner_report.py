@@ -127,6 +127,12 @@ def _get_orgs_and_learners_or_exit(config):
         # learners can appear in more than one dict.
         for learner in learners:
             usernames.append({'original_username': learner['original_username']})
+
+            # Use the datetime upon which the record was 'created' in the partner reporting queue
+            # as the approximate time upon which user retirement was completed ('deletion_completed')
+            # for the record's user.
+            learner['deletion_completed'] = learner['created']
+
             for org in learner['orgs']:
                 try:
                     reporting_org = config['org_partner_mapping'][org]
@@ -155,7 +161,7 @@ def _generate_report_files_or_exit(config, report_data, output_dir):
 
         try:
             # Fields for each learner to write, in order these are also the header names
-            fields = ['original_username', 'original_email', 'original_name']
+            fields = ['original_username', 'original_email', 'original_name', 'deletion_completed']
             outfile = os.path.join(output_dir, '{}_{}_{}_{}.csv'.format(
                 REPORTING_FILENAME_PREFIX, config['partner_report_platform_name'], partner, date.today().isoformat()
             ))
