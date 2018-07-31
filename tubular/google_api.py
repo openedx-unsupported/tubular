@@ -6,7 +6,7 @@ DriveApi is for managing files in google drive.
 from itertools import count
 
 import logging
-from six import iteritems
+from six import iteritems, text_type
 import backoff
 
 from dateutil.parser import parse
@@ -28,6 +28,13 @@ GOOGLE_API_MAX_BATCH_SIZE = 100
 
 # Mimetype used for Google Drive folders.
 FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
+
+
+class BatchRequestError(Exception):
+    """
+    Exception which indicates one or more failed requests inside of a batch request.
+    """
+    pass
 
 
 class BaseApiClient(object):
@@ -267,7 +274,7 @@ class DriveApi(BaseApiClient):
         giveup=lambda e: not _should_retry_google_api(e),
         on_backoff=lambda details: _backoff_handler(details),  # pylint: disable=unnecessary-lambda
     )
-    def _create_comments_for_files(self, file_ids, content, fields='id'):
+    def _create_comments_for_files(self, file_ids_and_content, fields='id'):
         """
         Retryable helper function for create_comments_for_files()
 
@@ -281,9 +288,10 @@ class DriveApi(BaseApiClient):
 
         # Generate arbitrary (but unique in this batch request) IDs for each file, so that we can recall the
         # corresponding file_id for a batch response item.
+        file_ids, _ = zip(*file_ids_and_content)
         file_id_to_request_id = dict(zip(
             file_ids,
-            (str(n) for n in count()),
+            (text_type(n) for n in count()),
         ))
         # Create a flipped mapping for convenience.
         request_id_to_file_id = {v: k for k, v in iteritems(file_id_to_request_id)}
@@ -297,7 +305,7 @@ class DriveApi(BaseApiClient):
                 LOG.info('Successfully created comment on file "{}".'.format(file_id))
 
         batched_requests = self._client.new_batch_http_request(callback=callback)  # pylint: disable=no-member
-        for file_id in file_ids:
+        for file_id, content in file_ids_and_content:
             batched_requests.add(
                 self._client.comments().create(fileId=file_id, body={u'content': content}, fields=fields),  # pylint: disable=no-member
                 request_id=file_id_to_request_id[file_id]
@@ -307,16 +315,15 @@ class DriveApi(BaseApiClient):
         return responses
 
     # NOTE: Do not decorate this function with backoff since it already calls other retryable methods.
-    def create_comments_for_files(self, file_ids, content, fields='id'):
+    def create_comments_for_files(self, file_ids_and_content, fields='id'):
         """
-        Create the same comment for each file in the given list
+        Create comments for files.
 
         This function is NOT idempotent.  It will blindly create the comments it was asked to create, regardless of the
         existence of other identical comments.
 
         Args:
-            file_ids (list of str): list of file_ids for which to add comments.
-            content (str): content/message of the comment for every file.
+            file_ids_and_content (list of tuple(str, str)): list of (file_id, content) tuples.
             fields (str): comma separated list of fields to describe each comment resource in the response.
 
         Returns: dict mapping of file_id to comment resource (dict).  The contents of the comment resources are dictated
@@ -327,6 +334,85 @@ class DriveApi(BaseApiClient):
                 For some non-retryable 4xx or 5xx error.  See the full list here:
                 https://developers.google.com/drive/api/v3/handle-errors
         """
+        file_ids, _ = zip(*file_ids_and_content)
+        if len(set(file_ids)) != len(file_ids):
+            raise ValueError('Duplicates detected in the file_ids_and_content list.')
+
+        # Mapping of file_id to the new comment resource returned in the response.
+        responses = {}
+
+        # Process the list of file IDs in batches of size GOOGLE_API_MAX_BATCH_SIZE.
+        for file_ids_and_content_batch in batch(file_ids_and_content, batch_size=GOOGLE_API_MAX_BATCH_SIZE):
+            responses_batch = self._create_comments_for_files(file_ids_and_content_batch, fields=fields)
+            responses.update(responses_batch)
+
+        return responses
+
+    @backoff.on_exception(
+        backoff.expo,
+        HttpError,
+        max_time=600,  # 10 minutes
+        giveup=lambda e: not _should_retry_google_api(e),
+        on_backoff=lambda details: _backoff_handler(details),  # pylint: disable=unnecessary-lambda
+    )
+    def _list_permissions_for_files(self, file_ids, fields='emailAddress, role'):
+        """
+        Retryable helper function for list_permissions_for_files()
+
+        Args:
+        Returns:
+        Throws:
+            See the `create_comments_for_files` docstring.
+        """
+        # Mapping of file_id to the new comment resource returned in the response.
+        responses = {}
+
+        # Generate arbitrary (but unique in this batch request) IDs for each file, so that we can recall the
+        # corresponding file_id for a batch response item.
+        file_id_to_request_id = dict(zip(
+            file_ids,
+            (text_type(n) for n in count()),
+        ))
+        # Create a flipped mapping for convenience.
+        request_id_to_file_id = {v: k for k, v in iteritems(file_id_to_request_id)}
+
+        def callback(request_id, response, exception):  # pylint: disable=unused-argument,missing-docstring
+            file_id = request_id_to_file_id[request_id]
+            if exception:
+                LOG.error('Error listing permissions on file "{}": {}'.format(file_id, exception))
+            else:
+                responses[file_id] = response['permissions']
+                LOG.info('Successfully listed permissions on file "{}".'.format(file_id))
+
+        batched_requests = self._client.new_batch_http_request(callback=callback)  # pylint: disable=no-member
+        for file_id in file_ids:
+            batched_requests.add(
+                self._client.permissions().list(fileId=file_id, fields=fields),  # pylint: disable=no-member
+                request_id=file_id_to_request_id[file_id]
+            )
+        batched_requests.execute()
+
+        return responses
+
+    def list_permissions_for_files(self, file_ids, fields='emailAddress, role'):
+        """
+        List permissions for files.
+
+        Args:
+            file_ids (list of str): list of Drive file IDs for which to list permissions.
+            fields (str): comma separated list of fields to describe each permissions resource in the response.
+
+        Returns: dict mapping of file_id to permission resource list (list of dict).  The contents of the permission
+            resources are dictated by the `fields` arg.
+
+        Throws:
+            googleapiclient.errors.HttpError:
+                For some non-retryable 4xx or 5xx error.  See the full list here:
+                https://developers.google.com/drive/api/v3/handle-errors
+            BatchRequestError:
+                One or more files resulted in an error when having their permissions listed.
+        """
+
         if len(set(file_ids)) != len(file_ids):
             raise ValueError('Duplicates detected in the file_ids list.')
 
@@ -335,7 +421,10 @@ class DriveApi(BaseApiClient):
 
         # Process the list of file IDs in batches of size GOOGLE_API_MAX_BATCH_SIZE.
         for file_ids_batch in batch(file_ids, batch_size=GOOGLE_API_MAX_BATCH_SIZE):
-            responses_batch = self._create_comments_for_files(file_ids_batch, content, fields=fields)
+            responses_batch = self._list_permissions_for_files(file_ids_batch, fields=fields)
             responses.update(responses_batch)
+
+        if len(responses) != len(file_ids):
+            raise BatchRequestError('Error listing permissions for one or more files/folders.')
 
         return responses

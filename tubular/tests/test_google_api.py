@@ -9,12 +9,17 @@ import sys
 import unittest
 from io import BytesIO
 
-from googleapiclient.http import HttpMockSequence
+# Gives a version of zip which returns an iterable even under python 2.
+from builtins import zip  # pylint: disable=redefined-builtin
+
+from itertools import cycle
 from mock import patch
 from pytz import UTC
 import six
 from six.moves import range  # use the range function introduced in python 3
-from tubular.google_api import DriveApi, FOLDER_MIMETYPE
+
+from googleapiclient.http import HttpMockSequence
+from tubular.google_api import BatchRequestError, DriveApi, FOLDER_MIMETYPE
 
 # For info about this file, see tubular/tests/discovery-drive.json.README.rst
 DISCOVERY_DRIVE_RESPONSE_FILE = 'tubular/tests/discovery-drive.json'
@@ -131,10 +136,10 @@ ETag: "etag/sheep"\r\n\r\n
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
         if sys.version_info < (3, 4):
             # This is a simple smoke-test without checking the output because
-            # python 2 doesn't support assertLogs.
+            # python <3.4 doesn't support assertLogs.
             test_client.delete_files(fake_file_ids)
         else:
-            # This is the full test case, which only runs under python 3.
+            # This is the full test case, which only runs under python 3.4+.
             with self.assertLogs(level='INFO') as captured_logs:  # pylint: disable=no-member
                 test_client.delete_files(fake_file_ids)
             assert sum(
@@ -500,7 +505,7 @@ ETag: "etag/sheep"\r\n\r\n{"id": "fake-comment-id1"}
             ({'status': '200', 'content-type': 'multipart/mixed; boundary="batch_foobarbaz"'}, batch_response),
         ])
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
-        resp = test_client.create_comments_for_files(fake_file_ids, 'some comment message')
+        resp = test_client.create_comments_for_files(list(zip(fake_file_ids, cycle(['some comment message']))))
         six.assertCountEqual(
             self,
             resp,
@@ -550,7 +555,7 @@ ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
             ({'status': '200', 'content-type': 'multipart/mixed; boundary="batch_foobarbaz"'}, batch_response_1),
         ])
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
-        resp = test_client.create_comments_for_files(fake_file_ids, 'some comment message')
+        resp = test_client.create_comments_for_files(list(zip(fake_file_ids, cycle(['some comment message']))))
         six.assertCountEqual(
             self,
             resp,
@@ -605,7 +610,7 @@ ETag: "etag/sheep"\r\n\r\n{"id": "fake-comment-id1"}
             ({'status': '200', 'content-type': 'multipart/mixed; boundary="batch_foobarbaz"'}, batch_response),
         ])
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
-        resp = test_client.create_comments_for_files(fake_file_ids, 'some comment message')
+        resp = test_client.create_comments_for_files(list(zip(fake_file_ids, cycle(['some comment message']))))
         six.assertCountEqual(
             self,
             resp,
@@ -641,4 +646,113 @@ ETag: "etag/sheep"\r\n\r\n{"id": "fake-comment-id1"}
         ])
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
         with self.assertRaises(ValueError):
-            test_client.create_comments_for_files(fake_file_ids, 'some comment message')
+            test_client.create_comments_for_files(list(zip(fake_file_ids, cycle(['some comment message']))))
+
+    @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
+    def test_list_permissions_success(self, mock_from_service_account_file):  # pylint: disable=unused-argument
+        """
+        Test normal case for listing permissions on files.
+        """
+        fake_file_ids = ['fake-file-id0', 'fake-file-id1']
+        batch_response = b'''--batch_foobarbaz
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <response+0>
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+ETag: "etag/pony"\r\n\r\n{"permissions": [{"emailAddress": "reader@example.com", "role": "reader"}]}
+
+--batch_foobarbaz
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <response+1>
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+ETag: "etag/sheep"\r\n\r\n{"permissions": [{"emailAddress": "writer@example.com", "role": "writer"}]}
+--batch_foobarbaz--'''
+        http_mock_sequence = HttpMockSequence([
+            # First, a request is made to the discovery API to construct a client object for Drive.
+            ({'status': '200'}, self.mock_discovery_response_content),
+            # Then, a request is made to add comments to the files.
+            ({'status': '200', 'content-type': 'multipart/mixed; boundary="batch_foobarbaz"'}, batch_response),
+        ])
+        test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
+        resp = test_client.list_permissions_for_files(fake_file_ids)
+        six.assertCountEqual(
+            self,
+            resp,
+            {
+                'fake-file-id0': [{'emailAddress': 'reader@example.com', 'role': 'reader'}],
+                'fake-file-id1': [{'emailAddress': 'writer@example.com', 'role': 'writer'}],
+            },
+        )
+
+    @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
+    def test_list_permissions_one_failure(self, mock_from_service_account_file):  # pylint: disable=unused-argument
+        """
+        Test case for listing permissions on files, but one file doesn't exist.
+        """
+        fake_file_ids = ['fake-file-id0', 'fake-file-id1', 'fake-file-id2']
+        batch_response = b'''--batch_foobarbaz
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <response+0>
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+ETag: "etag/pony"\r\n\r\n{"permissions": [{"emailAddress": "reader@example.com", "role": "reader"}]}
+
+--batch_foobarbaz
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <response+1>
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+ETag: "etag/sheep"\r\n\r\n{"permissions": [{"emailAddress": "writer@example.com", "role": "writer"}]}
+
+--batch_foobarbaz
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <response+2>
+
+HTTP/1.1 404 NOT FOUND
+Content-Type: application/json
+Content-length: 266
+ETag: "etag/bird"\r\n\r\n{
+ "error": {
+  "errors": [
+   {
+    "domain": "global",
+    "reason": "notFound",
+    "message": "File not found: fake-file-id2.",
+    "locationType": "parameter",
+    "location": "fileId"
+   }
+  ],
+  "code": 404,
+  "message": "File not found: fake-file-id2."
+ }
+}
+--batch_foobarbaz--'''
+        http_mock_sequence = HttpMockSequence([
+            # First, a request is made to the discovery API to construct a client object for Drive.
+            ({'status': '200'}, self.mock_discovery_response_content),
+            # Then, a request is made to add comments to the files.
+            ({'status': '200', 'content-type': 'multipart/mixed; boundary="batch_foobarbaz"'}, batch_response),
+        ])
+        test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
+
+        if sys.version_info < (3, 4):
+            # This is a simple smoke-test without checking the output because python <3.4 doesn't support assertLogs.
+            with self.assertRaises(BatchRequestError):
+                test_client.list_permissions_for_files(fake_file_ids)
+        else:
+            # This is the full test case, which only runs under python 3.4+.
+            with self.assertLogs(level='INFO') as captured_logs:  # pylint: disable=no-member
+                with self.assertRaises(BatchRequestError):
+                    test_client.list_permissions_for_files(fake_file_ids)
+            assert sum('Successfully listed permissions' in msg for msg in captured_logs.output) == 2
+            assert sum('Error listing permissions' in msg for msg in captured_logs.output) == 1

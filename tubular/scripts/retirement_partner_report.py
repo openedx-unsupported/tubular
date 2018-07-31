@@ -1,4 +1,6 @@
 #! /usr/bin/env python3
+# coding=utf-8
+
 """
 Command-line script to drive the partner reporting part of the retirement process
 """
@@ -59,8 +61,12 @@ REPORTING_FILENAME_PREFIX = 'user_retirement'
 # We'll store the access token here once retrieved
 AUTH_HEADER = {}
 
-# This text will be the comment body for all new CSV uploads.
-NOTIFICATION_MESSAGE = 'Your learner retirement report from edX has been published to Drive.'
+# This text template will be the comment body for all new CSV uploads.  The
+# following format variables need to be provided:
+#   tags: space delimited list of google user tags, e.g. "+user1@gmail.com +user2@gmail.com"
+NOTIFICATION_MESSAGE_TEMPLATE = """
+Hello from edX. Dear {tags}, a new report listing the learners enrolled in your institution’s courses on edx.org that have requested deletion of their edX account and associated personal data within the last week has been published to Google Drive. Please access your folder to see the latest report. If you have any questions, please contact your edX Project Coordinator.
+""".strip()
 
 
 class PartnerDoesNotExist(Exception):
@@ -185,7 +191,7 @@ def _push_files_to_google(config, partner_filenames):
     if failed_partners:
         FAIL(ERR_BAD_CONFIG, 'These partners have retiring learners, but no Drive folder: {}'.format(failed_partners))
 
-    file_ids = []
+    file_ids = {}
     drive = DriveApi(config['google_secrets_file'])
     for partner in partner_filenames:
         # This is populated on the fly in _config_drive_folder_map_or_exit
@@ -198,7 +204,7 @@ def _push_files_to_google(config, partner_filenames):
                 file_id = drive.create_file_in_folder(folder_id, drive_filename, f, "text/csv")
             except Exception as exc:  # pylint: disable=broad-except
                 FAIL_EXCEPTION(ERR_DRIVE_UPLOAD, 'Drive upload failed for: {}'.format(drive_filename), exc)
-        file_ids.append(file_id)
+        file_ids[partner] = file_id
     return file_ids
 
 
@@ -207,12 +213,40 @@ def _add_comments_to_files(config, file_ids):
     Add comments to the uploaded csv files, triggering email notification.
 
     Args:
-        file_ids (list of str): Drive file IDs corresponding to the list of newly uploaded csv files.
+        file_ids (dict): Mapping of partner names to Drive file IDs corresponding to the newly uploaded csv files.
     """
     drive = DriveApi(config['google_secrets_file'])
+
+    partner_folders_to_permissions = drive.list_permissions_for_files(
+        config['partner_folder_mapping'].values(),
+        fields='emailAddress',
+    )
+
+    # create a mapping of partners to a list of permissions dicts:
+    permissions = {
+        partner: partner_folders_to_permissions[config['partner_folder_mapping'][partner]]
+        for partner in file_ids
+    }
+
+    # throw out all edx.org addresses, and flatten the permissions dicts to just the email:
+    external_emails = {
+        partner: [
+            perm['emailAddress']
+            for perm in permissions[partner]
+            if not perm['emailAddress'].lower().endswith('@edx.org')
+        ]
+        for partner in permissions
+    }
+
+    file_ids_and_comments = []
+    for partner in file_ids:
+        tag_string = ' '.join('+' + email for email in external_emails[partner])
+        comment_content = NOTIFICATION_MESSAGE_TEMPLATE.format(tags=tag_string)
+        file_ids_and_comments.append((file_ids[partner], comment_content))
+
     try:
         LOG('Adding notification comments to uploaded csv files.')
-        drive.create_comments_for_files(file_ids, NOTIFICATION_MESSAGE)
+        drive.create_comments_for_files(file_ids_and_comments)
     except Exception as exc:  # pylint: disable=broad-except
         # do not fail the script here, since comment errors are non-critical
         LOG('WARNING: there was an error adding Google Drive comments to the csv files: {}'.format(exc))
