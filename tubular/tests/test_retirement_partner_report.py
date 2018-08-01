@@ -35,6 +35,7 @@ TEST_CONFIG_YML_NAME = 'test_config.yml'
 TEST_GOOGLE_SECRETS_FILENAME = 'test_google_secrets.json'
 DELETION_TIME = time.strftime("%Y-%m-%dT%H:%M:%S")
 UNICODE_NAME_CONSTANT = '阿碧'
+USER_ID = '12345'
 
 
 def _call_script(expect_success=True, config_orgs=None):
@@ -94,6 +95,8 @@ def _call_script(expect_success=True, config_orgs=None):
                     reader = csv.DictReader(csvfile)
                     rows = []
                     for row in reader:
+                        # Check the user_id value is in the correct place
+                        assert USER_ID in row['user_id']
 
                         # Check username value is in the correct place
                         assert 'username' in row['original_username']
@@ -125,6 +128,7 @@ def _fake_retirement_report_user(seed_val, user_orgs=None):
         user_orgs = list(FAKE_ORGS.keys())
 
     return {
+        'user_id': USER_ID,
         'original_username': 'username_{}'.format(seed_val),
         'original_email': 'user_{}@foo.invalid'.format(seed_val),
         'original_name': '{} {}'.format(UNICODE_NAME_CONSTANT, seed_val),

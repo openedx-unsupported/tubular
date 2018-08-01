@@ -120,7 +120,7 @@ def _generate_report_files_or_exit(config, report_data, output_dir):
 
         try:
             # Fields for each learner to write, in order these are also the header names
-            fields = ['original_username', 'original_email', 'original_name', 'deletion_completed']
+            fields = ['user_id', 'original_username', 'original_email', 'original_name', 'deletion_completed']
             outfile = os.path.join(output_dir, '{}_{}_{}_{}.csv'.format(
                 REPORTING_FILENAME_PREFIX, config['partner_report_platform_name'], partner, date.today().isoformat()
             ))
