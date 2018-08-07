@@ -11,7 +11,7 @@ from datetime import date
 import time
 
 from click.testing import CliRunner
-from mock import ANY, DEFAULT, patch
+from mock import DEFAULT, patch
 from six import PY2
 
 from tubular.scripts.retirement_partner_report import (
@@ -147,6 +147,7 @@ def _fake_retirement_report(num_users=10):
 @patch('tubular.google_api.DriveApi.__init__')
 @patch('tubular.google_api.DriveApi.create_file_in_folder')
 @patch('tubular.google_api.DriveApi.walk_files')
+@patch('tubular.google_api.DriveApi.list_permissions_for_files')
 @patch('tubular.google_api.DriveApi.create_comments_for_files')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
 @patch.multiple(
@@ -157,14 +158,22 @@ def _fake_retirement_report(num_users=10):
 def test_successful_report(*args, **kwargs):
     mock_get_access_token = args[0]
     mock_create_comments = args[1]
-    mock_walk_files = args[2]
-    mock_create_files = args[3]
-    mock_driveapi = args[4]
+    mock_list_permissions = args[2]
+    mock_walk_files = args[3]
+    mock_create_files = args[4]
+    mock_driveapi = args[5]
     mock_retirement_report = kwargs['retirement_partner_report']
     mock_retirement_cleanup = kwargs['retirement_partner_cleanup']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
     mock_create_comments.return_value = None
+    mock_list_permissions.return_value = {
+        'folder' + partner: [
+            {'emailAddress': 'some.contact@example.com'},
+            {'emailAddress': 'another.contact@edx.org'},
+        ]
+        for partner in FAKE_ORGS.values()
+    }
     mock_walk_files.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in FAKE_ORGS.values()]
     mock_create_files.side_effect = ['foo', 'bar', 'baz']
     mock_driveapi.return_value = None
@@ -183,7 +192,11 @@ def test_successful_report(*args, **kwargs):
 
     # Make sure we tried to add comments to the files
     assert mock_create_comments.call_count == 1
-    mock_create_comments.assert_called_with(['foo', 'bar', 'baz'], ANY)
+    # First [0] returns all positional args, second [0] gets the first positional arg.
+    create_comments_file_ids, create_comments_messages = zip(*mock_create_comments.call_args[0][0])
+    assert set(create_comments_file_ids) == set(['foo', 'bar', 'baz'])
+    assert all('+some.contact@example.com' in msg for msg in create_comments_messages)
+    assert all('+another.contact@edx.org' not in msg for msg in create_comments_messages)
 
     # Make sure we tried to remove the users from the queue
     mock_retirement_cleanup.assert_called_with(
@@ -432,6 +445,7 @@ def test_cleanup_error(*args, **kwargs):
 @patch('tubular.google_api.DriveApi.__init__')
 @patch('tubular.google_api.DriveApi.create_file_in_folder')
 @patch('tubular.google_api.DriveApi.walk_files')
+@patch('tubular.google_api.DriveApi.list_permissions_for_files')
 @patch('tubular.google_api.DriveApi.create_comments_for_files')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
 @patch.multiple(
@@ -442,17 +456,32 @@ def test_cleanup_error(*args, **kwargs):
 def test_google_unicode_folder_names(*args, **kwargs):
     mock_get_access_token = args[0]
     mock_create_comments = args[1]
-    mock_walk_files = args[2]
-    mock_create_files = args[3]
-    mock_driveapi = args[4]
+    mock_list_permissions = args[2]
+    mock_walk_files = args[3]
+    mock_create_files = args[4]
+    mock_driveapi = args[5]
     mock_retirement_report = kwargs['retirement_partner_report']
     mock_retirement_cleanup = kwargs['retirement_partner_cleanup']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_list_permissions.return_value = {
+        'folder' + partner: [
+            {'emailAddress': 'some.contact@example.com'},
+            {'emailAddress': 'another.contact@edx.org'},
+        ]
+        for partner in [
+            unicodedata.normalize('NFKC', u'TéstX'),
+            unicodedata.normalize('NFKC', u'TéstX2'),
+            unicodedata.normalize('NFKC', u'TéstX3'),
+        ]
+    }
     mock_walk_files.return_value = [
-        {'name': unicodedata.normalize('NFKC', u'TéstX'), 'id': 'org1'},
-        {'name': unicodedata.normalize('NFKC', u'TéstX2'), 'id': 'org2'},
-        {'name': unicodedata.normalize('NFKC', u'TéstX3'), 'id': 'org3'},
+        {'name': partner, 'id': 'folder' + partner}
+        for partner in [
+            unicodedata.normalize('NFKC', u'TéstX'),
+            unicodedata.normalize('NFKC', u'TéstX2'),
+            unicodedata.normalize('NFKC', u'TéstX3'),
+        ]
     ]
     mock_create_files.side_effect = ['foo', 'bar', 'baz']
     mock_driveapi.return_value = None
@@ -477,7 +506,11 @@ def test_google_unicode_folder_names(*args, **kwargs):
 
     # Make sure we tried to add comments to the files
     assert mock_create_comments.call_count == 1
-    mock_create_comments.assert_called_with(['foo', 'bar', 'baz'], ANY)
+    # First [0] returns all positional args, second [0] gets the first positional arg.
+    create_comments_file_ids, create_comments_messages = zip(*mock_create_comments.call_args[0][0])
+    assert set(create_comments_file_ids) == set(['foo', 'bar', 'baz'])
+    assert all('+some.contact@example.com' in msg for msg in create_comments_messages)
+    assert all('+another.contact@edx.org' not in msg for msg in create_comments_messages)
 
     # Make sure we tried to remove the users from the queue
     mock_retirement_cleanup.assert_called_with(

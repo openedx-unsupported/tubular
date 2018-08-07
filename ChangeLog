@@ -1,6 +1,16 @@
 CHANGES
 =======
 
+* Tag partners in Drive comment notifications
+* Add missed script symlink to retirement\_bulk\_status\_update.py
+* Add user\_id to the report
+* Add deletion\_completed field to Partner Reporting
+* Refactor setup methods
+* Add retirement\_bulk\_status\_update script and support
+* Fix partner report filenames - remove absolute path
+* add the platform name to generated partner report files
+* Added scripts used when deploying frontend apps
+* Fix formatting of username results on report generation to fix queue deletion
 * Add script to delete expired partner reports
 * Correct test\_get\_pr\_in\_range mock for search\_issues
 * search github prs using string
