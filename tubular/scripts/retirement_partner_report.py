@@ -69,12 +69,22 @@ Hello from edX. Dear {tags}, a new report listing the learners enrolled in your 
 """.strip()
 
 
-class PartnerDoesNotExist(Exception):
+def _check_all_learner_orgs_or_exit(config, learners):
     """
-    A custom exception to catch the case where a learner has a partner lists that doesn't exist
-    in the configuration.
+    Checks all leaners and their orgs, ensuring that each org has a mapping to a partner Drive folder.
+    If any orgs are missing a mapping, fails after printing the mismatched orgs.
     """
-    pass
+    # Loop through all learner orgs, checking for their mappings.
+    mismatched_orgs = set()
+    for learner in learners:
+        for org in learner['orgs']:
+            if org not in config['org_partner_mapping']:
+                mismatched_orgs.add(org)
+    if mismatched_orgs:
+        FAIL(
+            ERR_UNKNOWN_ORG,
+            'Partners for organizations {} do not exist in configuration.'.format(text_type(mismatched_orgs))
+        )
 
 
 def _get_orgs_and_learners_or_exit(config):
@@ -85,6 +95,9 @@ def _get_orgs_and_learners_or_exit(config):
     """
     try:
         learners = config['LMS'].retirement_partner_report()
+
+        _check_all_learner_orgs_or_exit(config, learners)
+
         orgs = defaultdict(list)
         usernames = []
 
@@ -99,15 +112,10 @@ def _get_orgs_and_learners_or_exit(config):
             learner['deletion_completed'] = learner['created']
 
             for org in learner['orgs']:
-                try:
-                    reporting_org = config['org_partner_mapping'][org]
-                except KeyError:
-                    raise PartnerDoesNotExist(org)
-
+                reporting_org = config['org_partner_mapping'][org]
                 orgs[reporting_org].append(learner)
+
         return orgs, usernames
-    except PartnerDoesNotExist as exc:
-        FAIL(ERR_UNKNOWN_ORG, 'Partner for organization "{}" does not exist in configuration.'.format(text_type(exc)))
     except Exception as exc:  # pylint: disable=broad-except
         FAIL_EXCEPTION(ERR_FETCHING_LEARNERS, 'Unexpected exception occurred!', exc)
 

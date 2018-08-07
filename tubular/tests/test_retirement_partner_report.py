@@ -381,6 +381,7 @@ def test_unknown_org(*args, **kwargs):
 
     assert result.exit_code == ERR_UNKNOWN_ORG
     assert 'orgA' in result.output
+    assert 'orgB' in result.output
 
 
 @patch('tubular.google_api.DriveApi.__init__')
