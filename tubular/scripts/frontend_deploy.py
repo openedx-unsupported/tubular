@@ -13,6 +13,7 @@ from functools import partial
 from os import path
 
 import click
+import CloudFlare
 import yaml
 
 # Add top-level module path to sys.path before importing tubular code.
@@ -73,6 +74,22 @@ def frontend_deploy(env_config_file, app_name, app_dist):
     return_code = proc.wait()
     if return_code != 0:
         FAIL(1, 'Could not sync app {} with S3 bucket {}.'.format(app_name, bucket_uri))
+
+    # Purge the Cloudflare cache for the frontend hostname.
+    # Frontend S3 buckets are named by hostname.
+    # Cloudflare zones are named by domain.
+    # Assumes the caller's shell has the following environment
+    # variables set to enable Cloudflare API auth:
+    # CF_API_EMAIL
+    # CF_API_KEY
+    zone_name = bucket_name.split('.')[-2:]
+    data = {'hosts': [bucket_name]}
+    cloudflare_client = CloudFlare.CloudFlare()
+    try:
+        zone_id = cloudflare_client.zones.get(params={'name': zone_name})[0]['id']  # pylint: disable=no-member
+        cloudflare_client.zones.purge_cache.post(zone_id, data=data)  # pylint: disable=no-member
+    except (CloudFlare.exceptions.CloudFlareAPIError, IndexError, KeyError):
+        FAIL(1, 'Failed to purge the Cloudflare cache for hostname {}.'.format(bucket_name))
 
     LOG('Frontend application {} successfully deployed to {}.'.format(app_name, bucket_name))
 
