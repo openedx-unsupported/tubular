@@ -1,6 +1,9 @@
 CHANGES
 =======
 
+* Switch to unicodecsv for partner reporting
+* Fix parsing of cloudflare zone name from frontend bucket name
+* Check and log all mismatched orgs before reporting
 * Tag partners in Drive comment notifications
 * Add missed script symlink to retirement\_bulk\_status\_update.py
 * Add user\_id to the report
@@ -8,6 +11,7 @@ CHANGES
 * Refactor setup methods
 * Add retirement\_bulk\_status\_update script and support
 * Fix partner report filenames - remove absolute path
+* Purge CloudFlare cache when frontend app is deployed
 * add the platform name to generated partner report files
 * Added scripts used when deploying frontend apps
 * Fix formatting of username results on report generation to fix queue deletion

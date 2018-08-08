@@ -9,11 +9,11 @@ from __future__ import absolute_import, unicode_literals
 from collections import defaultdict, OrderedDict
 from datetime import date
 from functools import partial
-import csv
 import logging
 import os
 import sys
 import unicodedata
+import unicodecsv as csv
 
 import click
 from six import text_type
@@ -145,7 +145,7 @@ def _generate_report_files_or_exit(config, report_data, output_dir):
             except OSError:
                 pass
 
-            with open(outfile, 'w') as f:
+            with open(outfile, 'wb') as f:
                 writer = csv.DictWriter(f, fields, dialect=csv.excel, extrasaction='ignore')
                 writer.writeheader()
                 writer.writerows(report_data[partner])
