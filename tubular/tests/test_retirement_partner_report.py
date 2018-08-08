@@ -387,7 +387,7 @@ def test_unknown_org(*args, **kwargs):
 @patch('tubular.google_api.DriveApi.__init__')
 @patch('tubular.google_api.DriveApi.walk_files')
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
-@patch('csv.DictWriter')
+@patch('unicodecsv.DictWriter')
 @patch('tubular.edx_api.LmsApi.retirement_partner_report')
 def test_reporting_error(*args):
     mock_retirement_report = args[0]
