@@ -82,7 +82,7 @@ def frontend_deploy(env_config_file, app_name, app_dist):
     # variables set to enable Cloudflare API auth:
     # CF_API_EMAIL
     # CF_API_KEY
-    zone_name = bucket_name.split('.')[-2:]
+    zone_name = '.'.join(bucket_name.split('.')[-2:])  # Zone name is the TLD
     data = {'hosts': [bucket_name]}
     cloudflare_client = CloudFlare.CloudFlare()
     try:
