@@ -81,7 +81,7 @@ def _config_with_drive_or_exit(fail_func, config_fail_code, google_fail_code, co
         # Check required values
         for var in ('org_partner_mapping', 'drive_partners_folder'):
             if var not in config or not config[var]:
-                fail_func(config_fail_code, 'No {} in config, or it is empty!'.format(var))
+                fail_func(config_fail_code, 'No {} in config, or it is empty!'.format(var), ValueError())
 
         # Force the partner names into NFKC here and when we get the folders to ensure
         # they are using the same characters. Otherwise accented characters will not match.
