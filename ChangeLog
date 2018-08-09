@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* encode all strings going out to the console
 * Switch to unicodecsv for partner reporting
 * Fix parsing of cloudflare zone name from frontend bucket name
 * Check and log all mismatched orgs before reporting

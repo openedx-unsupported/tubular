@@ -1,6 +1,14 @@
 """
 Common helper methods to use in tubular scripts.
 """
+# NOTE: Make sure that all non-ascii text written to standard output (including
+# print statements and logging) is manually encoded to bytes using a utf-8 or
+# other encoding.  We currently make use of this library within a context that
+# does NOT tolerate unicode text on sys.stdout, namely python 2 on Build
+# Jenkins.  PLAT-2287 tracks this Tech Debt.
+
+from __future__ import print_function
+
 import io
 import json
 import sys
@@ -8,7 +16,6 @@ import traceback
 import unicodedata
 from os import path
 
-import click
 import yaml
 from six import text_type
 
@@ -22,7 +29,7 @@ def _log(kind, message):
     """
     Convenience method to log text. Prepended "kind" text makes finding log entries easier.
     """
-    click.echo('{}: {}'.format(kind, message))
+    print(u'{}: {}'.format(kind, message).encode('utf-8'))  # See note at the top of this file.
 
 
 def _fail(kind, code, message):

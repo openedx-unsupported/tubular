@@ -3,6 +3,12 @@ Helper API classes for calling google APIs.
 
 DriveApi is for managing files in google drive.
 """
+# NOTE: Make sure that all non-ascii text written to standard output (including
+# print statements and logging) is manually encoded to bytes using a utf-8 or
+# other encoding.  We currently make use of this library within a context that
+# does NOT tolerate unicode text on sys.stdout, namely python 2 on Build
+# Jenkins  PLAT-2287 tracks this Tech Debt..
+
 from itertools import count
 
 import logging
@@ -133,7 +139,7 @@ class DriveApi(BaseApiClient):
             media_body=media,
             fields='id'
         ).execute()
-        LOG.info('File uploaded: ID="{}", name="{}"'.format(uploaded_file.get('id'), filename))
+        LOG.info(u'File uploaded: ID="{}", name="{}"'.format(uploaded_file.get('id'), filename).encode('utf-8'))
         return uploaded_file.get('id')
 
     @backoff.on_exception(
@@ -154,7 +160,7 @@ class DriveApi(BaseApiClient):
         """
         def callback(request_id, response, exception):  # pylint: disable=unused-argument,missing-docstring
             if exception:
-                LOG.error(exception)
+                LOG.error(text_type(exception).encode('utf-8'))
             else:
                 LOG.info('Successfully deleted file.')
 
@@ -245,7 +251,7 @@ class DriveApi(BaseApiClient):
 
                 # Examine returned results to separate folders from non-folders.
                 for result in page_results:
-                    LOG.debug("walk_files: Result: %s", result)
+                    LOG.debug(u"walk_files: Result: {}".format(result).encode('utf-8'))
                     # Folders contain files - and get special treatment.
                     if result['mimeType'] == FOLDER_MIMETYPE:
                         if recurse and result['id'] not in visited_folders:
@@ -300,9 +306,9 @@ class DriveApi(BaseApiClient):
             file_id = request_id_to_file_id[request_id]
             responses[file_id] = response
             if exception:
-                LOG.error('Error creating comment on file "{}": {}'.format(file_id, exception))
+                LOG.error(u'Error creating comment on file "{}": {}'.format(file_id, exception).encode('utf-8'))
             else:
-                LOG.info('Successfully created comment on file "{}".'.format(file_id))
+                LOG.info(u'Successfully created comment on file "{}".'.format(file_id).encode('utf-8'))
 
         batched_requests = self._client.new_batch_http_request(callback=callback)  # pylint: disable=no-member
         for file_id, content in file_ids_and_content:
@@ -379,10 +385,10 @@ class DriveApi(BaseApiClient):
         def callback(request_id, response, exception):  # pylint: disable=unused-argument,missing-docstring
             file_id = request_id_to_file_id[request_id]
             if exception:
-                LOG.error('Error listing permissions on file "{}": {}'.format(file_id, exception))
+                LOG.error(u'Error listing permissions on file "{}": {}'.format(file_id, exception).encode('utf-8'))
             else:
                 responses[file_id] = response['permissions']
-                LOG.info('Successfully listed permissions on file "{}".'.format(file_id))
+                LOG.info(u'Successfully listed permissions on file "{}".'.format(file_id).encode('utf-8'))
 
         batched_requests = self._client.new_batch_http_request(callback=callback)  # pylint: disable=no-member
         for file_id in file_ids:
