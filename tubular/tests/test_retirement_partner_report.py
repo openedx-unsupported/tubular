@@ -25,6 +25,7 @@ from tubular.scripts.retirement_partner_report import (
     ERR_REPORTING,
     ERR_SETUP_FAILED,
     ERR_UNKNOWN_ORG,
+    ERR_DRIVE_LISTING,
     REPORTING_FILENAME_PREFIX,
     generate_report
 )
@@ -349,7 +350,7 @@ def test_fetching_learners_failed(*args, **kwargs):
     mock_retirement_report = kwargs['retirement_partner_report']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
-    mock_walk_files.return_value = []
+    mock_walk_files.return_value = [{'name': 'dummy_file_name', 'id': 'dummy_file_id'}]
     mock_drive_init.return_value = None
     mock_retirement_report.side_effect = Exception('failed to get learners')
 
@@ -357,6 +358,31 @@ def test_fetching_learners_failed(*args, **kwargs):
 
     assert result.exit_code == ERR_FETCHING_LEARNERS
     assert 'failed to get learners' in result.output
+
+
+@patch('tubular.google_api.DriveApi.__init__')
+@patch('tubular.google_api.DriveApi.walk_files')
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+def test_listing_folders_failed(*args):
+    mock_get_access_token = args[0]
+    mock_walk_files = args[1]
+    mock_drive_init = args[2]
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_walk_files.side_effect = [[], Exception()]
+    mock_drive_init.return_value = None
+
+    # call it once; this time walk_files will return an empty list.
+    result = _call_script(expect_success=False)
+
+    assert result.exit_code == ERR_DRIVE_LISTING
+    assert 'Finding partner directories on Drive failed' in result.output
+
+    # call it a second time; this time walk_files will throw an exception.
+    result = _call_script(expect_success=False)
+
+    assert result.exit_code == ERR_DRIVE_LISTING
+    assert 'Finding partner directories on Drive failed' in result.output
 
 
 @patch('tubular.google_api.DriveApi.__init__')

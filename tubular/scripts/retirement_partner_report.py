@@ -181,6 +181,9 @@ def _config_drive_folder_map_or_exit(config):
     except Exception as exc:  # pylint: disable=broad-except
         FAIL_EXCEPTION(ERR_DRIVE_LISTING, 'Finding partner directories on Drive failed.', exc)
 
+    if not folders:
+        FAIL(ERR_DRIVE_LISTING, 'Finding partner directories on Drive failed. Check your permissions.')
+
     # As in _config_or_exit we force normalize the unicode here to make sure the keys
     # match. Otherwise the name we get back from Google won't match what's in the YAML config.
     config['partner_folder_mapping'] = OrderedDict()
