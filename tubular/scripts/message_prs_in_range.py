@@ -4,6 +4,7 @@
 Command-line script message pull requests in a range
 """
 from __future__ import absolute_import
+import enum
 from os import path
 import sys
 import socket
@@ -22,6 +23,15 @@ from github.GithubException import RateLimitExceededException, GithubException  
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
+@enum.unique
+class MessageType(enum.Enum):
+    stage = enum.auto()
+    stage_failed = enum.auto()
+    prod = enum.auto()
+    prod_failed = enum.auto()
+    rollback = enum.auto()
+    broke_vagrant = enum.auto()
+    e2e_failed = enum.auto()
 
 @click.command()
 @click.option(
@@ -67,29 +77,29 @@ LOG = logging.getLogger(__name__)
     help=u'The name of the app to read the head_sha from',
 )
 @click.option(
-    u'--release_stage', u'message_type', flag_value=u'stage'
+    u'--release_stage', u'message_type', flag_value=MessageType.stage.name
 )
 @click.option(
-    u'--release_stage_failed', u'message_type', flag_value=u'stage_failed'
+    u'--release_stage_failed', u'message_type', flag_value=MessageType.stage_failed.name
 )
 @click.option(
-    u'--release_prod', u'message_type', flag_value=u'prod'
+    u'--release_prod', u'message_type', flag_value=MessageType.prod.name
 )
 @click.option(
-    u'--release_prod_failed', u'message_type', flag_value=u'prod_failed'
+    u'--release_prod_failed', u'message_type', flag_value=MessageType.prod_failed.name
 )
 @click.option(
-    u'--release_rollback', u'message_type', flag_value=u'rollback'
+    u'--release_rollback', u'message_type', flag_value=MessageType.rollback.name
 )
 @click.option(
-    u'--release_vagrant_broken', u'message_type', flag_value=u'broke_vagrant'
+    u'--release_vagrant_broken', u'message_type', flag_value=MessageType.broke_vagrant.name
 )
 @click.option(
-    u'--release_e2e_failed', u'message_type', flag_value=u'e2e_failed'
+    u'--release_e2e_failed', u'message_type', flag_value=MessageType.e2e_failed.name
 )
 @click.option(
     u'--release', u'message_type', type=click.Choice(
-        ['stage', 'stage_failed', 'prod', 'prod_failed', 'rollback', 'broke_vagrant', 'e2e_failed']
+        [ mt.name for mt in MessageType ]
     ),
 )
 @click.option(
@@ -109,10 +119,7 @@ def message_pull_requests(org,
     u"""
     Message a range of Pull requests between the BASE and HEAD SHA specified.
 
-    Message can be one of 3 types:
-    - PR on stage
-    - PR on prod
-    - Release canceled
+    Message can be one of several types enumerated in MessageType
 
     Args:
         org (str): The github organization
@@ -146,7 +153,7 @@ def message_pull_requests(org,
     api = get_client(org, repo, token)
     pull_requests = retrieve_pull_requests(api, base_sha, head_sha)
     for pull_request in pull_requests:
-        message_prs(api, message_type, pull_request, extra_text)
+        message_pr(api, MessageType[message_type], pull_request, extra_text)
 
 
 @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7)
@@ -184,18 +191,11 @@ def retrieve_pull_requests(api, base_sha, head_sha):
 
 
 @backoff.on_exception(backoff.expo, GithubException, max_tries=5)
-def message_prs(api, message_type, pull_request, extra_text):
+def message_pr(api, message_type, pull_request, extra_text):
     u"""
     Send a Message for a Pull request.
 
-    Message can be one of several types:
-    - stage
-    - stage_failed
-    - prod
-    - prod_failed
-    - rollback
-    - broke_vagrant
-    - e2e_failed
+    Message can be one of several types enumerated in MessageType
 
     Args:
         api (obj): The github API client
@@ -207,15 +207,15 @@ def message_prs(api, message_type, pull_request, extra_text):
         None
     """
     methods = {
-        u'stage': api.message_pr_deployed_stage,
-        u'stage_failed': api.message_pr_stage_failed,
-        u'prod': api.message_pr_deployed_prod,
-        u'prod_failed': api.message_pr_prod_failed,
-        u'rollback': api.message_pr_release_canceled,
-        u'broke_vagrant': api.message_pr_broke_vagrant,
-        u'e2e_failed': api.message_pr_e2e_failed,
+        MessageType.stage: api.message_pr_deployed_stage,
+        MessageType.stage_failed: api.message_pr_stage_failed,
+        MessageType.prod: api.message_pr_deployed_prod,
+        MessageType.prod_failed: api.message_pr_prod_failed,
+        MessageType.rollback: api.message_pr_release_canceled,
+        MessageType.broke_vagrant: api.message_pr_broke_vagrant,
+        MessageType.e2e_failed: api.message_pr_e2e_failed,
     }
-    LOG.info(u"Posting message type %r to %d.", message_type, pull_request.number)
+    LOG.info(u"Posting message type %r to %d.", message_type.name, pull_request.number)
     methods[message_type](pr_number=pull_request, extra_text=extra_text)
 
 if __name__ == u"__main__":
