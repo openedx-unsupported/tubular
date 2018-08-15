@@ -70,7 +70,13 @@ LOG = logging.getLogger(__name__)
     u'--release_stage', u'message_type', flag_value=u'stage'
 )
 @click.option(
+    u'--release_stage_failed', u'message_type', flag_value=u'stage_failed'
+)
+@click.option(
     u'--release_prod', u'message_type', flag_value=u'prod'
+)
+@click.option(
+    u'--release_prod_failed', u'message_type', flag_value=u'prod_failed'
 )
 @click.option(
     u'--release_rollback', u'message_type', flag_value=u'rollback'
@@ -82,7 +88,9 @@ LOG = logging.getLogger(__name__)
     u'--release_e2e_failed', u'message_type', flag_value=u'e2e_failed'
 )
 @click.option(
-    u'--release', u'message_type', type=click.Choice(['stage', 'prod', 'rollback', 'broke_vagrant', 'e2e_failed']),
+    u'--release', u'message_type', type=click.Choice(
+        ['stage', 'stage_failed', 'prod', 'prod_failed', 'rollback', 'broke_vagrant', 'e2e_failed']
+    ),
 )
 @click.option(
     u'--extra_text', u'extra_text', default=''
@@ -180,10 +188,14 @@ def message_prs(api, message_type, pull_request, extra_text):
     u"""
     Send a Message for a Pull request.
 
-    Message can be one of 3 types:
-    - PR on stage
-    - PR on prod
-    - Release canceled
+    Message can be one of several types:
+    - stage
+    - stage_failed
+    - prod
+    - prod_failed
+    - rollback
+    - broke_vagrant
+    - e2e_failed
 
     Args:
         api (obj): The github API client
@@ -195,14 +207,16 @@ def message_prs(api, message_type, pull_request, extra_text):
         None
     """
     methods = {
-        u'stage': u'message_pr_deployed_stage',
-        u'prod': u'message_pr_deployed_prod',
-        u'rollback': u'message_pr_release_canceled',
-        u'broke_vagrant': u'message_pr_broke_vagrant',
-        u'e2e_failed': u'message_pr_e2e_failed',
+        u'stage': api.message_pr_deployed_stage,
+        u'stage_failed': api.message_pr_stage_failed,
+        u'prod': api.message_pr_deployed_prod,
+        u'prod_failed': api.message_pr_prod_failed,
+        u'rollback': api.message_pr_release_canceled,
+        u'broke_vagrant': api.message_pr_broke_vagrant,
+        u'e2e_failed': api.message_pr_e2e_failed,
     }
     LOG.info(u"Posting message type %r to %d.", message_type, pull_request.number)
-    getattr(api, methods[message_type])(pr_number=pull_request, extra_text=extra_text)
+    methods[message_type](pr_number=pull_request, extra_text=extra_text)
 
 if __name__ == u"__main__":
     message_pull_requests()  # pylint: disable=no-value-for-parameter

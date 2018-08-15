@@ -28,7 +28,9 @@ LOGGER.setLevel(logging.INFO)
 PR_PREFIX = '**EdX Release Notice**: '
 PR_ON_STAGE_BASE_MESSAGE = PR_PREFIX + 'This PR has been deployed to the staging environment '
 PR_ON_STAGE_DATE_MESSAGE = 'in preparation for a release to production on {date:%A, %B %d, %Y}. {extra_text}'
+PR_STAGE_FAILED_MESSAGE = PR_PREFIX + 'This PR failed to deploy to the staging environment. {extra_text}'
 PR_ON_PROD_MESSAGE = PR_PREFIX + 'This PR has been deployed to the production environment. {extra_text}'
+PR_PROD_FAILED_MESSAGE = PR_PREFIX + 'This PR failed to deploy to the production environment. {extra_text}'
 PR_RELEASE_CANCELED_MESSAGE = PR_PREFIX + 'This PR has been rolled back from the production environment. {extra_text}'
 PR_BROKE_VAGRANT_DEVSTACK_MESSAGE = PR_PREFIX + 'This PR may have broken Vagrant Devstack CI. {extra_text}'
 PR_E2E_FAILED_MESSAGE = PR_PREFIX + 'This PR may have caused e2e tests to fail on Stage. {extra_text}'
@@ -826,6 +828,26 @@ class GitHubAPI(object):
             force_message,
         )
 
+    def message_pr_stage_failed(self, pr_number, force_message=False, extra_text=''):
+        """
+        sends a message that this PRs commits failed to deploy to the staging environment
+
+        Args:
+            pr_number (int): The number of the pull request
+            force_message (bool): if set true the message will be posted without duplicate checking
+            extra_text (str): Extra text that will be inserted at the end of the PR message
+
+        Returns:
+            github.IssueComment.IssueComment
+
+        """
+        return self.message_pull_request(
+            pr_number,
+            PR_STAGE_FAILED_MESSAGE.format(extra_text=extra_text),
+            PR_STAGE_FAILED_MESSAGE.format(extra_text=''),
+            force_message
+        )
+
     def message_pr_deployed_prod(self, pr_number, force_message=False, extra_text=''):
         """
         sends a message that this PRs commits have been deployed to the production environment
@@ -843,6 +865,26 @@ class GitHubAPI(object):
             pr_number,
             PR_ON_PROD_MESSAGE.format(extra_text=extra_text),
             PR_ON_PROD_MESSAGE.format(extra_text=''),
+            force_message
+        )
+
+    def message_pr_prod_failed(self, pr_number, force_message=False, extra_text=''):
+        """
+        sends a message that this PRs commits failed to deploy to the production environment
+
+        Args:
+            pr_number (int): The number of the pull request
+            force_message (bool): if set true the message will be posted without duplicate checking
+            extra_text (str): Extra text that will be inserted at the end of the PR message
+
+        Returns:
+            github.IssueComment.IssueComment
+
+        """
+        return self.message_pull_request(
+            pr_number,
+            PR_PROD_FAILED_MESSAGE.format(extra_text=extra_text),
+            PR_PROD_FAILED_MESSAGE.format(extra_text=''),
             force_message
         )
 
