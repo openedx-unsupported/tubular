@@ -828,9 +828,10 @@ class GitHubAPI(object):
 
         Returns:
             github.IssueComment.IssueComment
-
         """
         if message_type is MessageType.stage:
+            # HACK: In general, special behavior here should be minimized and the caller should add any additional
+            # information in extra_text
             if deploy_date is None:
                 deploy_date = default_expected_release_date()
 

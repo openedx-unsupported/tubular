@@ -66,26 +66,32 @@ LOG = logging.getLogger(__name__)
     u'--head-ami-tag-app', 'head_ami_tag_app',
     help=u'The name of the app to read the head_sha from',
 )
+# Individual --release_* options are being kept for backwards compatibility, but new message types should just
+# use the --release option below
 @click.option(
-    u'--release_stage', u'message_type', flag_value=MessageType.stage.name
+    u'--release_stage', u'message_type',
+    flag_value=MessageType.stage.name,
+    help=u'(Deprecated, use "--release stage")'
 )
 @click.option(
-    u'--release_stage_failed', u'message_type', flag_value=MessageType.stage_failed.name
+    u'--release_prod', u'message_type',
+    flag_value=MessageType.prod.name,
+    help=u'(Deprecated, use "--release prod")'
 )
 @click.option(
-    u'--release_prod', u'message_type', flag_value=MessageType.prod.name
+    u'--release_rollback', u'message_type',
+    flag_value=MessageType.rollback.name,
+    help=u'(Deprecated, use "--release rollback")'
 )
 @click.option(
-    u'--release_prod_failed', u'message_type', flag_value=MessageType.prod_failed.name
+    u'--release_vagrant_broken', u'message_type',
+    flag_value=MessageType.broke_vagrant.name,
+    help=u'(Deprecated, use "--release broke_vagrant")'
 )
 @click.option(
-    u'--release_rollback', u'message_type', flag_value=MessageType.rollback.name
-)
-@click.option(
-    u'--release_vagrant_broken', u'message_type', flag_value=MessageType.broke_vagrant.name
-)
-@click.option(
-    u'--release_e2e_failed', u'message_type', flag_value=MessageType.e2e_failed.name
+    u'--release_e2e_failed', u'message_type',
+    flag_value=MessageType.e2e_failed.name,
+    help=u'(Deprecated, use "--release e2e_failed")'
 )
 @click.option(
     u'--release', u'message_type', type=click.Choice(
