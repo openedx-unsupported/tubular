@@ -816,7 +816,7 @@ class GitHubAPI(object):
         else:
             return None
 
-    def message_pr_with_type(self, pr_number, message_type, force_message=False, extra_text=''):
+    def message_pr_with_type(self, pr_number, message_type, deploy_date=None, force_message=False, extra_text=''):
         """
         Sends a message to a PR based on the built-in MessageTypes
 
@@ -830,6 +830,12 @@ class GitHubAPI(object):
             github.IssueComment.IssueComment
 
         """
+        if message_type is MessageType.stage:
+            if deploy_date is None:
+                deploy_date = default_expected_release_date()
+
+            extra_text = PR_ON_STAGE_DATE_EXTRA.format(date=deploy_date, extra_text=extra_text)
+
         return self.message_pull_request(
             pr_number,
             PR_MESSAGE_FORMAT.format(
@@ -839,25 +845,6 @@ class GitHubAPI(object):
             PR_MESSAGE_FILTER.format(prefix=PR_PREFIX, message=message_type.value),
             force_message,
         )
-
-    def message_pr_deployed_stage(self, pr_number, deploy_date=None, force_message=False, extra_text=''):
-        """
-        Sends a message that this PRs commits have been deployed to the staging environment
-
-        Args:
-            pr_number (int): The number of the pull request
-            force_message (bool): if set true the message will be posted without duplicate checking
-            extra_text (str): Extra text that will be inserted at the end of the PR message
-
-        Returns:
-            github.IssueComment.IssueComment
-
-        """
-        if deploy_date is None:
-            deploy_date = default_expected_release_date()
-
-        extra_text = PR_ON_STAGE_DATE_EXTRA.format(date=deploy_date, extra_text=extra_text)
-        return self.message_pr_with_type(pr_number, MessageType.stage, force_message, extra_text)
 
     def has_been_merged(self, base, candidate):
         """

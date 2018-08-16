@@ -386,7 +386,8 @@ class GitHubApiTestCase(TestCase):
     def test_message_pr_deployed_stage(self):
         deploy_date = github_api.default_expected_release_date()
         with patch.object(self.api, 'message_pull_request') as mock:
-            self.api.message_pr_deployed_stage(1, deploy_date=deploy_date)
+            # self.api.message_pr_deployed_stage(1, deploy_date=deploy_date)
+            self.api.message_pr_with_type(1, github_api.MessageType.stage, deploy_date=deploy_date)
             mock.assert_called_with(
                 1,
                 github_api.PR_MESSAGE_FORMAT.format(
@@ -413,7 +414,7 @@ class GitHubApiTestCase(TestCase):
         with patch.object(self.api, 'message_pull_request') as mock:
             with patch.object(github_api, 'datetime', Mock(wraps=datetime)) as mock_datetime:
                 mock_datetime.now.return_value = message_date
-                self.api.message_pr_deployed_stage(1)
+                self.api.message_pr_with_type(1, github_api.MessageType.stage)
 
                 mock.assert_called_with(
                     1,
