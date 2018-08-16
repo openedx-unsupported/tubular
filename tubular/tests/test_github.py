@@ -386,14 +386,21 @@ class GitHubApiTestCase(TestCase):
     def test_message_pr_deployed_stage(self):
         deploy_date = github_api.default_expected_release_date()
         with patch.object(self.api, 'message_pull_request') as mock:
-            self.api.message_pr_deployed_stage(1, deploy_date=deploy_date)
+            self.api.message_pr_with_type(1, github_api.MessageType.stage, deploy_date=deploy_date)
             mock.assert_called_with(
                 1,
-                (github_api.PR_ON_STAGE_BASE_MESSAGE + github_api.PR_ON_STAGE_DATE_MESSAGE).format(
-                    date=deploy_date,
-                    extra_text=''
+                github_api.PR_MESSAGE_FORMAT.format(
+                    prefix=github_api.PR_PREFIX,
+                    message=github_api.MessageType.stage.value,
+                    extra_text=github_api.PR_ON_STAGE_DATE_EXTRA.format(
+                        date=deploy_date,
+                        extra_text=''
+                    )
                 ),
-                github_api.PR_ON_STAGE_BASE_MESSAGE.format(extra_text=''),
+                github_api.PR_MESSAGE_FILTER.format(
+                    prefix=github_api.PR_PREFIX,
+                    message=github_api.MessageType.stage.value
+                ),
                 False
             )
 
@@ -406,33 +413,48 @@ class GitHubApiTestCase(TestCase):
         with patch.object(self.api, 'message_pull_request') as mock:
             with patch.object(github_api, 'datetime', Mock(wraps=datetime)) as mock_datetime:
                 mock_datetime.now.return_value = message_date
-                self.api.message_pr_deployed_stage(1)
+                self.api.message_pr_with_type(1, github_api.MessageType.stage)
 
                 mock.assert_called_with(
                     1,
-                    (github_api.PR_ON_STAGE_BASE_MESSAGE + github_api.PR_ON_STAGE_DATE_MESSAGE).format(
-                        date=deploy_date, extra_text=''
+                    github_api.PR_MESSAGE_FORMAT.format(
+                        prefix=github_api.PR_PREFIX,
+                        message=github_api.MessageType.stage.value,
+                        extra_text=github_api.PR_ON_STAGE_DATE_EXTRA.format(
+                            date=deploy_date,
+                            extra_text=''
+                        )
                     ),
-                    github_api.PR_ON_STAGE_BASE_MESSAGE,
+                    github_api.PR_MESSAGE_FILTER.format(
+                        prefix=github_api.PR_PREFIX,
+                        message=github_api.MessageType.stage.value
+                    ),
                     False
                 )
 
     @ddt.data(
-        (1, github_api.PR_ON_PROD_MESSAGE, '', False, 'message_pr_deployed_prod'),
-        (1337, github_api.PR_ON_PROD_MESSAGE, 'some extra words', False, 'message_pr_deployed_prod'),
-        (867, github_api.PR_RELEASE_CANCELED_MESSAGE, '', True, 'message_pr_release_canceled'),
-        (5, github_api.PR_RELEASE_CANCELED_MESSAGE, 'Elmo does not approve', False, 'message_pr_release_canceled'),
-        (30, github_api.PR_BROKE_VAGRANT_DEVSTACK_MESSAGE, '', False, 'message_pr_broke_vagrant'),
-        (9, github_api.PR_BROKE_VAGRANT_DEVSTACK_MESSAGE, 'Why did you merge this?', True, 'message_pr_broke_vagrant'),
+        (1, github_api.MessageType.prod, '', False),
+        (1337, github_api.MessageType.prod, 'some extra words', False),
+        (867, github_api.MessageType.rollback, '', True),
+        (5, github_api.MessageType.rollback, 'Elmo does not approve', False),
+        (30, github_api.MessageType.broke_vagrant, '', False),
+        (9, github_api.MessageType.broke_vagrant, 'Why did you merge this?', True),
     )
     @ddt.unpack
-    def test_message_pr_methods(self, pr_number, message, extra_text, force_message, fn_name):
+    def test_message_pr_methods(self, pr_number, message_type, extra_text, force_message):
         with patch.object(self.api, 'message_pull_request') as mock:
-            getattr(self.api, fn_name)(pr_number, extra_text=extra_text, force_message=force_message)
+            self.api.message_pr_with_type(pr_number, message_type, extra_text=extra_text, force_message=force_message)
             mock.assert_called_with(
                 pr_number,
-                message.format(extra_text=extra_text),
-                message.format(extra_text=''),
+                github_api.PR_MESSAGE_FORMAT.format(
+                    prefix=github_api.PR_PREFIX,
+                    message=message_type.value,
+                    extra_text=extra_text
+                ),
+                github_api.PR_MESSAGE_FILTER.format(
+                    prefix=github_api.PR_PREFIX,
+                    message=message_type.value
+                ),
                 force_message
             )
 

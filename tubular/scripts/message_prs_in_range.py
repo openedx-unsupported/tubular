@@ -16,7 +16,7 @@ import yaml
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from tubular.github_api import GitHubAPI  # pylint: disable=wrong-import-position
+from tubular.github_api import GitHubAPI, MessageType  # pylint: disable=wrong-import-position
 from github.GithubException import RateLimitExceededException, GithubException  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -66,23 +66,37 @@ LOG = logging.getLogger(__name__)
     u'--head-ami-tag-app', 'head_ami_tag_app',
     help=u'The name of the app to read the head_sha from',
 )
+# Individual --release_* options are being kept for backwards compatibility, but new message types should just
+# use the --release option below
 @click.option(
-    u'--release_stage', u'message_type', flag_value=u'stage'
+    u'--release_stage', u'message_type',
+    flag_value=MessageType.stage.name,
+    help=u'(Deprecated, use "--release stage")'
 )
 @click.option(
-    u'--release_prod', u'message_type', flag_value=u'prod'
+    u'--release_prod', u'message_type',
+    flag_value=MessageType.prod.name,
+    help=u'(Deprecated, use "--release prod")'
 )
 @click.option(
-    u'--release_rollback', u'message_type', flag_value=u'rollback'
+    u'--release_rollback', u'message_type',
+    flag_value=MessageType.rollback.name,
+    help=u'(Deprecated, use "--release rollback")'
 )
 @click.option(
-    u'--release_vagrant_broken', u'message_type', flag_value=u'broke_vagrant'
+    u'--release_vagrant_broken', u'message_type',
+    flag_value=MessageType.broke_vagrant.name,
+    help=u'(Deprecated, use "--release broke_vagrant")'
 )
 @click.option(
-    u'--release_e2e_failed', u'message_type', flag_value=u'e2e_failed'
+    u'--release_e2e_failed', u'message_type',
+    flag_value=MessageType.e2e_failed.name,
+    help=u'(Deprecated, use "--release e2e_failed")'
 )
 @click.option(
-    u'--release', u'message_type', type=click.Choice(['stage', 'prod', 'rollback', 'broke_vagrant', 'e2e_failed']),
+    u'--release', u'message_type', type=click.Choice(
+        [mt.name for mt in MessageType]
+    ),
 )
 @click.option(
     u'--extra_text', u'extra_text', default=''
@@ -101,10 +115,7 @@ def message_pull_requests(org,
     u"""
     Message a range of Pull requests between the BASE and HEAD SHA specified.
 
-    Message can be one of 3 types:
-    - PR on stage
-    - PR on prod
-    - Release canceled
+    Message can be one of several types enumerated in MessageType
 
     Args:
         org (str): The github organization
@@ -138,7 +149,7 @@ def message_pull_requests(org,
     api = get_client(org, repo, token)
     pull_requests = retrieve_pull_requests(api, base_sha, head_sha)
     for pull_request in pull_requests:
-        message_prs(api, message_type, pull_request, extra_text)
+        message_pr(api, MessageType[message_type], pull_request, extra_text)
 
 
 @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7)
@@ -176,14 +187,11 @@ def retrieve_pull_requests(api, base_sha, head_sha):
 
 
 @backoff.on_exception(backoff.expo, GithubException, max_tries=5)
-def message_prs(api, message_type, pull_request, extra_text):
+def message_pr(api, message_type, pull_request, extra_text):
     u"""
     Send a Message for a Pull request.
 
-    Message can be one of 3 types:
-    - PR on stage
-    - PR on prod
-    - Release canceled
+    Message can be one of several types enumerated in MessageType
 
     Args:
         api (obj): The github API client
@@ -194,15 +202,8 @@ def message_prs(api, message_type, pull_request, extra_text):
     Returns:
         None
     """
-    methods = {
-        u'stage': u'message_pr_deployed_stage',
-        u'prod': u'message_pr_deployed_prod',
-        u'rollback': u'message_pr_release_canceled',
-        u'broke_vagrant': u'message_pr_broke_vagrant',
-        u'e2e_failed': u'message_pr_e2e_failed',
-    }
-    LOG.info(u"Posting message type %r to %d.", message_type, pull_request.number)
-    getattr(api, methods[message_type])(pr_number=pull_request, extra_text=extra_text)
+    LOG.info(u"Posting message type %r to %d.", message_type.name, pull_request.number)
+    api.message_pr_with_type(pr_number=pull_request, message_type=message_type, extra_text=extra_text)
 
 if __name__ == u"__main__":
     message_pull_requests()  # pylint: disable=no-value-for-parameter
