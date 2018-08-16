@@ -389,11 +389,18 @@ class GitHubApiTestCase(TestCase):
             self.api.message_pr_deployed_stage(1, deploy_date=deploy_date)
             mock.assert_called_with(
                 1,
-                (github_api.PR_ON_STAGE_BASE_MESSAGE + github_api.PR_ON_STAGE_DATE_MESSAGE).format(
-                    date=deploy_date,
-                    extra_text=''
+                github_api.PR_MESSAGE_FORMAT.format(
+                    prefix=github_api.PR_PREFIX,
+                    message=github_api.MessageType.stage.value,
+                    extra_text=github_api.PR_ON_STAGE_DATE_EXTRA.format(
+                        date=deploy_date,
+                        extra_text=''
+                    )
                 ),
-                github_api.PR_ON_STAGE_BASE_MESSAGE.format(extra_text=''),
+                github_api.PR_MESSAGE_FILTER.format(
+                    prefix=github_api.PR_PREFIX,
+                    message=github_api.MessageType.stage.value
+                ),
                 False
             )
 
@@ -410,20 +417,28 @@ class GitHubApiTestCase(TestCase):
 
                 mock.assert_called_with(
                     1,
-                    (github_api.PR_ON_STAGE_BASE_MESSAGE + github_api.PR_ON_STAGE_DATE_MESSAGE).format(
-                        date=deploy_date, extra_text=''
+                    github_api.PR_MESSAGE_FORMAT.format(
+                        prefix=github_api.PR_PREFIX,
+                        message=github_api.MessageType.stage.value,
+                        extra_text=github_api.PR_ON_STAGE_DATE_EXTRA.format(
+                            date=deploy_date,
+                            extra_text=''
+                        )
                     ),
-                    github_api.PR_ON_STAGE_BASE_MESSAGE,
+                    github_api.PR_MESSAGE_FILTER.format(
+                        prefix=github_api.PR_PREFIX,
+                        message=github_api.MessageType.stage.value
+                    ),
                     False
                 )
 
     @ddt.data(
-        (1, github_api.PR_ON_PROD_MESSAGE, '', False, 'message_pr_deployed_prod'),
-        (1337, github_api.PR_ON_PROD_MESSAGE, 'some extra words', False, 'message_pr_deployed_prod'),
-        (867, github_api.PR_RELEASE_CANCELED_MESSAGE, '', True, 'message_pr_release_canceled'),
-        (5, github_api.PR_RELEASE_CANCELED_MESSAGE, 'Elmo does not approve', False, 'message_pr_release_canceled'),
-        (30, github_api.PR_BROKE_VAGRANT_DEVSTACK_MESSAGE, '', False, 'message_pr_broke_vagrant'),
-        (9, github_api.PR_BROKE_VAGRANT_DEVSTACK_MESSAGE, 'Why did you merge this?', True, 'message_pr_broke_vagrant'),
+        (1, github_api.MessageType.prod.value, '', False, 'message_pr_deployed_prod'),
+        (1337, github_api.MessageType.prod.value, 'some extra words', False, 'message_pr_deployed_prod'),
+        (867, github_api.MessageType.rollback.value, '', True, 'message_pr_release_canceled'),
+        (5, github_api.MessageType.rollback.value, 'Elmo does not approve', False, 'message_pr_release_canceled'),
+        (30, github_api.MessageType.broke_vagrant.value, '', False, 'message_pr_broke_vagrant'),
+        (9, github_api.MessageType.broke_vagrant.value, 'Why did you merge this?', True, 'message_pr_broke_vagrant'),
     )
     @ddt.unpack
     def test_message_pr_methods(self, pr_number, message, extra_text, force_message, fn_name):
@@ -431,8 +446,15 @@ class GitHubApiTestCase(TestCase):
             getattr(self.api, fn_name)(pr_number, extra_text=extra_text, force_message=force_message)
             mock.assert_called_with(
                 pr_number,
-                message.format(extra_text=extra_text),
-                message.format(extra_text=''),
+                github_api.PR_MESSAGE_FORMAT.format(
+                    prefix=github_api.PR_PREFIX,
+                    message=message,
+                    extra_text=extra_text
+                ),
+                github_api.PR_MESSAGE_FILTER.format(
+                    prefix=github_api.PR_PREFIX,
+                    message=message
+                ),
                 force_message
             )
 

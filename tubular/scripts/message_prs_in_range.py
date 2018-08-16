@@ -4,7 +4,6 @@
 Command-line script message pull requests in a range
 """
 from __future__ import absolute_import
-import enum
 from os import path
 import sys
 import socket
@@ -17,21 +16,12 @@ import yaml
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from tubular.github_api import GitHubAPI  # pylint: disable=wrong-import-position
+from tubular.github_api import GitHubAPI, MessageType  # pylint: disable=wrong-import-position
 from github.GithubException import RateLimitExceededException, GithubException  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
-@enum.unique
-class MessageType(enum.Enum):
-    stage = enum.auto()
-    stage_failed = enum.auto()
-    prod = enum.auto()
-    prod_failed = enum.auto()
-    rollback = enum.auto()
-    broke_vagrant = enum.auto()
-    e2e_failed = enum.auto()
 
 @click.command()
 @click.option(
@@ -99,7 +89,7 @@ class MessageType(enum.Enum):
 )
 @click.option(
     u'--release', u'message_type', type=click.Choice(
-        [ mt.name for mt in MessageType ]
+        [mt.name for mt in MessageType]
     ),
 )
 @click.option(
