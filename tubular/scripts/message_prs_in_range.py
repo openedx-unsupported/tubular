@@ -196,17 +196,8 @@ def message_pr(api, message_type, pull_request, extra_text):
     Returns:
         None
     """
-    methods = {
-        MessageType.stage: api.message_pr_deployed_stage,
-        MessageType.stage_failed: api.message_pr_stage_failed,
-        MessageType.prod: api.message_pr_deployed_prod,
-        MessageType.prod_failed: api.message_pr_prod_failed,
-        MessageType.rollback: api.message_pr_release_canceled,
-        MessageType.broke_vagrant: api.message_pr_broke_vagrant,
-        MessageType.e2e_failed: api.message_pr_e2e_failed,
-    }
     LOG.info(u"Posting message type %r to %d.", message_type.name, pull_request.number)
-    methods[message_type](pr_number=pull_request, extra_text=extra_text)
+    api.message_pr_with_type(pr_number=pull_request, message_type=message_type, extra_text=extra_text)
 
 if __name__ == u"__main__":
     message_pull_requests()  # pylint: disable=no-value-for-parameter
