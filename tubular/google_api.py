@@ -43,6 +43,13 @@ class BatchRequestError(Exception):
     pass
 
 
+class TriggerRetryException(Exception):
+    """
+    Exception which indicates one or more throttled requests inside of a batch request.
+    """
+    pass
+
+
 class BaseApiClient(object):
     """
     Base API client for google services.
@@ -58,15 +65,111 @@ class BaseApiClient(object):
     _api_scopes = None
 
     def __init__(self, client_secrets_file_path, **kwargs):
-        self.build_client(client_secrets_file_path, **kwargs)
+        self._build_client(client_secrets_file_path, **kwargs)
 
-    def build_client(self, client_secrets_file_path, **kwargs):
+    def _build_client(self, client_secrets_file_path, **kwargs):
         """
         Build the google API client, specific to a single google service.
         """
         credentials = service_account.Credentials.from_service_account_file(
             client_secrets_file_path, scopes=self._api_scopes)
         self._client = build(self._api_name, self._api_version, credentials=credentials, **kwargs)
+
+    def _batch_with_retry(self, requests):
+        """
+        Send the given Google API requests in a single batch requests, and retry only requests that are throttled.
+
+        Args:
+            requests (list of googleapiclient.http.HttpRequest): The requests to send.
+
+        Returns:
+            dict mapping of request object to response
+        """
+
+        # Mapping of request object to the corresponding response.
+        responses = {}
+
+        # This is our working "request queue".  Initially, populate the request queue with all the given requests.
+        try_requests = []
+        try_requests.extend(requests)
+
+        # This is the queue of requests that are to be retried, populated by the batch callback function.
+        retry_requests = []
+
+        # Generate arbitrary (but unique in this batch request) IDs for each request, so that we can recall the
+        # corresponding response within a batch response.
+        request_object_to_request_id = dict(zip(
+            requests,
+            (text_type(n) for n in count()),
+        ))
+        # Create a flipped mapping for convenience.
+        request_id_to_request_object = {v: k for k, v in iteritems(request_object_to_request_id)}
+
+        def batch_callback(request_id, response, exception):  # pylint: disable=unused-argument,missing-docstring
+            """
+            Handle individual responses in the batch request.
+            """
+            request_object = request_id_to_request_object[request_id]
+            if exception:
+                if _should_retry_google_api(exception):
+                    LOG.error(u'Request throttled, adding to the retry queue: {}'.format(exception).encode('utf-8'))
+                    retry_requests.append(request_object)
+                else:
+                    # In this case, probably nothing can be done, so we just give up on this particular request and
+                    # do not include it in the responses dict.
+                    LOG.error(u'Error processing request {}'.format(request_object).encode('utf-8'))
+                    LOG.error(text_type(exception).encode('utf-8'))
+            else:
+                responses[request_object] = response
+                LOG.info(u'Successfully processed request {}.'.format(request_object).encode('utf-8'))
+
+        # Retry on API throttling at the HTTP request level.
+        @backoff.on_exception(
+            backoff.expo,
+            HttpError,
+            max_time=600,  # 10 minutes
+            giveup=lambda e: not _should_retry_google_api(e),
+            on_backoff=lambda details: _backoff_handler(details),  # pylint: disable=unnecessary-lambda
+        )
+        # Retry on API throttling at the BATCH ITEM request level.
+        @backoff.on_exception(
+            backoff.expo,
+            TriggerRetryException,
+            max_time=600,  # 10 minutes
+            on_backoff=lambda details: _backoff_handler(details),  # pylint: disable=unnecessary-lambda
+        )
+        def func():
+            """
+            Core function which constitutes the retry loop.  It has no inputs or outputs, only side-effects which
+            populates the `responses` variable within the scope of _batch_with_retry().
+            """
+            # Construct a new batch request object containing the current iteration of requests to "try".
+            batch_request = self._client.new_batch_http_request(callback=batch_callback)  # pylint: disable=no-member
+            for request_object in try_requests:
+                batch_request.add(
+                    request_object,
+                    request_id=request_object_to_request_id[request_object]
+                )
+
+            # Empty the retry queue in preparation of filling it back up with requests that need to be retried.
+            del retry_requests[:]
+
+            # Send the batch request.  If the API responds with HTTP 403 or some other retryable error, we should
+            # immediately retry this function func() with the same requests in the try_requests queue.  If the response
+            # is HTTP 200, we *still* may raise TriggerRetryException and retry a subset of requests if some, but not
+            # all requests need to be retried.
+            batch_request.execute()
+
+            # If the API throttled some requests, batch_callback would have populated the retry queue.  Reset the
+            # try_requests queue and indicate to backoff that there are requests to retry.
+            if retry_requests:
+                del try_requests[:]
+                try_requests.extend(retry_requests)
+                raise TriggerRetryException()
+
+        # func()'s side-effect is that it indirectly calls batch_callback which populates the responses dict.
+        func()
+        return responses
 
 
 def _backoff_handler(details):
@@ -87,7 +190,7 @@ def _should_retry_google_api(exc):
         bool: True if the caller should retry the API call.
     """
     retry = False
-    if hasattr(exc, 'resp') and exc.resp:  # bizzare and disappointing that sometimes `resp` doesn't exist.
+    if hasattr(exc, 'resp') and exc.resp:  # bizarre and disappointing that sometimes `resp` doesn't exist.
         retry = _should_retry_response(exc.resp.status, exc.content)
     return retry
 
@@ -142,13 +245,7 @@ class DriveApi(BaseApiClient):
         LOG.info(u'File uploaded: ID="{}", name="{}"'.format(uploaded_file.get('id'), filename).encode('utf-8'))
         return uploaded_file.get('id')
 
-    @backoff.on_exception(
-        backoff.expo,
-        HttpError,
-        max_time=600,  # 10 minutes
-        giveup=lambda e: not _should_retry_google_api(e),
-        on_backoff=lambda details: _backoff_handler(details),  # pylint: disable=unnecessary-lambda
-    )
+    # NOTE: Do not decorate this function with backoff since it already calls retryable methods.
     def delete_files(self, file_ids):
         """
         Delete multiple files forever, bypassing the "trash".
@@ -157,17 +254,32 @@ class DriveApi(BaseApiClient):
 
         Args:
             file_ids (list of str): list of IDs for files to delete.
-        """
-        def callback(request_id, response, exception):  # pylint: disable=unused-argument,missing-docstring
-            if exception:
-                LOG.error(text_type(exception).encode('utf-8'))
-            else:
-                LOG.info('Successfully deleted file.')
 
-        batched_requests = self._client.new_batch_http_request(callback=callback)  # pylint: disable=no-member
-        for file_id in file_ids:
-            batched_requests.add(self._client.files().delete(fileId=file_id))  # pylint: disable=no-member
-        batched_requests.execute()
+        Returns: nothing
+
+        Throws:
+            BatchRequestError:
+                One or more files could not be deleted (could even mean the file does not exist).
+        """
+        if len(set(file_ids)) != len(file_ids):
+            raise ValueError('duplicates detected in the file_ids list.')
+
+        # mapping of request object to the new comment resource returned in the response.
+        responses = {}
+
+        # process the list of file ids in batches of size GOOGLE_API_MAX_BATCH_SIZE.
+        for file_ids_batch in batch(file_ids, batch_size=GOOGLE_API_MAX_BATCH_SIZE):
+            request_objects = []
+            for file_id in file_ids_batch:
+                request_objects.append(self._client.files().delete(fileId=file_id))  # pylint: disable=no-member
+
+            # this generic helper function will handle the retry logic
+            responses_batch = self._batch_with_retry(request_objects)
+
+            responses.update(responses_batch)
+
+        if len(responses) != len(file_ids):
+            raise BatchRequestError('Error deleting one or more files/folders.')
 
     def delete_files_older_than(self, top_level, delete_before_dt, mimetype=None, prefix=None):
         """
@@ -273,54 +385,7 @@ class DriveApi(BaseApiClient):
                     break
         return results
 
-    @backoff.on_exception(
-        backoff.expo,
-        HttpError,
-        max_time=600,  # 10 minutes
-        giveup=lambda e: not _should_retry_google_api(e),
-        on_backoff=lambda details: _backoff_handler(details),  # pylint: disable=unnecessary-lambda
-    )
-    def _create_comments_for_files(self, file_ids_and_content, fields='id'):
-        """
-        Retryable helper function for create_comments_for_files()
-
-        Args:
-        Returns:
-        Throws:
-            See the `create_comments_for_files` docstring.
-        """
-        # Mapping of file_id to the new comment resource returned in the response.
-        responses = {}
-
-        # Generate arbitrary (but unique in this batch request) IDs for each file, so that we can recall the
-        # corresponding file_id for a batch response item.
-        file_ids, _ = zip(*file_ids_and_content)
-        file_id_to_request_id = dict(zip(
-            file_ids,
-            (text_type(n) for n in count()),
-        ))
-        # Create a flipped mapping for convenience.
-        request_id_to_file_id = {v: k for k, v in iteritems(file_id_to_request_id)}
-
-        def callback(request_id, response, exception):  # pylint: disable=unused-argument,missing-docstring
-            file_id = request_id_to_file_id[request_id]
-            responses[file_id] = response
-            if exception:
-                LOG.error(u'Error creating comment on file "{}": {}'.format(file_id, exception).encode('utf-8'))
-            else:
-                LOG.info(u'Successfully created comment on file "{}".'.format(file_id).encode('utf-8'))
-
-        batched_requests = self._client.new_batch_http_request(callback=callback)  # pylint: disable=no-member
-        for file_id, content in file_ids_and_content:
-            batched_requests.add(
-                self._client.comments().create(fileId=file_id, body={u'content': content}, fields=fields),  # pylint: disable=no-member
-                request_id=file_id_to_request_id[file_id]
-            )
-        batched_requests.execute()
-
-        return responses
-
-    # NOTE: Do not decorate this function with backoff since it already calls other retryable methods.
+    # NOTE: Do not decorate this function with backoff since it already calls retryable methods.
     def create_comments_for_files(self, file_ids_and_content, fields='id'):
         """
         Create comments for files.
@@ -339,6 +404,8 @@ class DriveApi(BaseApiClient):
             googleapiclient.errors.HttpError:
                 For some non-retryable 4xx or 5xx error.  See the full list here:
                 https://developers.google.com/drive/api/v3/handle-errors
+            BatchRequestError:
+                One or more files resulted in an error when adding comments.
         """
         file_ids, _ = zip(*file_ids_and_content)
         if len(set(file_ids)) != len(file_ids):
@@ -349,57 +416,31 @@ class DriveApi(BaseApiClient):
 
         # Process the list of file IDs in batches of size GOOGLE_API_MAX_BATCH_SIZE.
         for file_ids_and_content_batch in batch(file_ids_and_content, batch_size=GOOGLE_API_MAX_BATCH_SIZE):
-            responses_batch = self._create_comments_for_files(file_ids_and_content_batch, fields=fields)
+            request_objects_to_file_id = {}
+            for file_id, content in file_ids_and_content_batch:
+                request_object = self._client.comments().create(  # pylint: disable=no-member
+                    fileId=file_id,
+                    body={u'content': content},
+                    fields=fields
+                )
+                request_objects_to_file_id[request_object] = file_id
+
+            # This generic helper function will handle the retry logic
+            responses_batch = self._batch_with_retry(request_objects_to_file_id.keys())
+
+            # Transform the mapping FROM request objects -> comment resource TO file IDs -> comment resources.
+            responses_batch = {
+                request_objects_to_file_id[request_object]: resp
+                for request_object, resp in responses_batch.items()
+            }
             responses.update(responses_batch)
 
-        return responses
-
-    @backoff.on_exception(
-        backoff.expo,
-        HttpError,
-        max_time=600,  # 10 minutes
-        giveup=lambda e: not _should_retry_google_api(e),
-        on_backoff=lambda details: _backoff_handler(details),  # pylint: disable=unnecessary-lambda
-    )
-    def _list_permissions_for_files(self, file_ids, fields='emailAddress, role'):
-        """
-        Retryable helper function for list_permissions_for_files()
-
-        Args:
-        Returns:
-        Throws:
-            See the `create_comments_for_files` docstring.
-        """
-        # Mapping of file_id to the new comment resource returned in the response.
-        responses = {}
-
-        # Generate arbitrary (but unique in this batch request) IDs for each file, so that we can recall the
-        # corresponding file_id for a batch response item.
-        file_id_to_request_id = dict(zip(
-            file_ids,
-            (text_type(n) for n in count()),
-        ))
-        # Create a flipped mapping for convenience.
-        request_id_to_file_id = {v: k for k, v in iteritems(file_id_to_request_id)}
-
-        def callback(request_id, response, exception):  # pylint: disable=unused-argument,missing-docstring
-            file_id = request_id_to_file_id[request_id]
-            if exception:
-                LOG.error(u'Error listing permissions on file "{}": {}'.format(file_id, exception).encode('utf-8'))
-            else:
-                responses[file_id] = response['permissions']
-                LOG.info(u'Successfully listed permissions on file "{}".'.format(file_id).encode('utf-8'))
-
-        batched_requests = self._client.new_batch_http_request(callback=callback)  # pylint: disable=no-member
-        for file_id in file_ids:
-            batched_requests.add(
-                self._client.permissions().list(fileId=file_id, fields=fields),  # pylint: disable=no-member
-                request_id=file_id_to_request_id[file_id]
-            )
-        batched_requests.execute()
+        if len(responses) != len(file_ids_and_content):
+            raise BatchRequestError('Error creating comments for one or more files/folders.')
 
         return responses
 
+    # NOTE: Do not decorate this function with backoff since it already calls retryable methods.
     def list_permissions_for_files(self, file_ids, fields='emailAddress, role'):
         """
         List permissions for files.
@@ -420,15 +461,33 @@ class DriveApi(BaseApiClient):
         """
 
         if len(set(file_ids)) != len(file_ids):
-            raise ValueError('Duplicates detected in the file_ids list.')
+            raise ValueError('duplicates detected in the file_ids list.')
 
-        # Mapping of file_id to the new comment resource returned in the response.
+        # mapping of file_id to the new comment resource returned in the response.
         responses = {}
 
-        # Process the list of file IDs in batches of size GOOGLE_API_MAX_BATCH_SIZE.
+        # process the list of file ids in batches of size GOOGLE_API_MAX_BATCH_SIZE.
         for file_ids_batch in batch(file_ids, batch_size=GOOGLE_API_MAX_BATCH_SIZE):
-            responses_batch = self._list_permissions_for_files(file_ids_batch, fields=fields)
-            responses.update(responses_batch)
+            request_objects_to_file_id = {}
+            for file_id in file_ids_batch:
+                request_object = self._client.permissions().list(  # pylint: disable=no-member
+                    fileId=file_id,
+                    fields='permissions({})'.format(fields)
+                )
+                request_objects_to_file_id[request_object] = file_id
+
+            # this generic helper function will handle the retry logic
+            responses_batch = self._batch_with_retry(request_objects_to_file_id.keys())
+
+            # transform the mapping from request objects -> response dicts to file ids -> permissions resource lists.
+            responses_batch_transformed = {}
+            for request_object, resp in responses_batch.items():
+                permissions = None
+                if resp and 'permissions' in resp:
+                    permissions = resp['permissions']
+                responses_batch_transformed[request_objects_to_file_id[request_object]] = permissions
+
+            responses.update(responses_batch_transformed)
 
         if len(responses) != len(file_ids):
             raise BatchRequestError('Error listing permissions for one or more files/folders.')
