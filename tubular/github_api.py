@@ -55,9 +55,13 @@ class MessageType(enum.Enum):
     """
     stage = 'This PR has been deployed to the staging environment'
     stage_failed = 'This PR failed to deploy to the staging environment.'
+    stage_rollback = 'This PR has been rolled back from the staging environment.'
     prod = 'This PR has been deployed to the production environment.'
     prod_failed = 'This PR failed to deploy to the production environment.'
-    rollback = 'This PR has been rolled back from the production environment.'
+    prod_rollback = 'This PR has been rolled back from the production environment.'
+    loadtest = 'This PR has been deployed to the loadtest environment.'
+    loadtest_failed = 'This PR failed to deploy to the loadtest environment.'
+    loadtest_rollback = 'This PR has been rolled back from the loadtest environment.'
     broke_vagrant = 'This PR may have broken Vagrant Devstack CI.'
     e2e_failed = 'This PR may have caused e2e tests to fail on Stage.'
 
