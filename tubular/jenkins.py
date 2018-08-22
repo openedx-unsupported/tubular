@@ -11,6 +11,7 @@ import shutil
 
 import backoff
 from jenkinsapi.jenkins import Jenkins
+from jenkinsapi.utils.crumb_requester import CrumbRequester
 from jenkinsapi.custom_exceptions import JenkinsAPIException
 from requests.exceptions import HTTPError
 
@@ -159,7 +160,14 @@ def trigger_build(base_url, user_name, user_token, job_name, job_token,
 
     # Contact jenkins, log in, and get the base data on the system.
     try:
-        jenkins = Jenkins(base_url, username=user_name, password=user_token)
+        crumb_requester = CrumbRequester(
+            baseurl=base_url, username=user_name, password=user_token,
+            ssl_verify=True
+        )
+        jenkins = Jenkins(
+            base_url, username=user_name, password=user_token,
+            requester=crumb_requester
+        )
     except (JenkinsAPIException, HTTPError) as err:
         raise BackendError(str(err))
 
