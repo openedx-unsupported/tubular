@@ -49,6 +49,10 @@ MOCK_BUILD_DATA = {
     'result': 'SUCCESS',
     'url': JOB_URL,
 }
+MOCK_CRUMB_DATA = {
+    'crumbRequestField': 'Jenkins-Crumb',
+    'crumb': '1234567890'
+}
 
 
 class TestProperties(unittest.TestCase):
@@ -164,6 +168,8 @@ class TestJenkinsAPI(unittest.TestCase):
                 return json.dumps(MOCK_BUILDS_DATA)
             elif request.url.startswith(u'https://test-jenkins/queue/item/123/api/python'):
                 return json.dumps(MOCK_QUEUE_DATA)
+            elif request.url.startswith(u'https://test-jenkins/crumbIssuer/api/python'):
+                return json.dumps(MOCK_CRUMB_DATA)
             else:
                 # We should never get here, unless the jenkinsapi implementation changes.
                 # This response will catch that condition.
