@@ -435,10 +435,8 @@ class GitHubApiTestCase(TestCase):
     @ddt.data(
         (1, github_api.MessageType.prod, '', False),
         (1337, github_api.MessageType.prod, 'some extra words', False),
-        (867, github_api.MessageType.rollback, '', True),
-        (5, github_api.MessageType.rollback, 'Elmo does not approve', False),
-        (30, github_api.MessageType.broke_vagrant, '', False),
-        (9, github_api.MessageType.broke_vagrant, 'Why did you merge this?', True),
+        (867, github_api.MessageType.prod_rollback, '', True),
+        (5, github_api.MessageType.prod_rollback, 'Elmo does not approve', False),
     )
     @ddt.unpack
     def test_message_pr_methods(self, pr_number, message_type, extra_text, force_message):
