@@ -44,7 +44,7 @@ def test_release_page(mock_github):
     page = ReleasePage(
         u'github_token',
         u'jira_url',
-        ReleaseStatus.DEPLOYED,
+        ReleaseStatus.prod,
         [
             (
                 AMI(
