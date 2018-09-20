@@ -57,9 +57,9 @@ LOGGER = logging.getLogger(__name__)
 
 class ReleaseStatus(Enum):
     u"""The set of valid release states."""
-    stage = u"Deployed to Staging"
-    prod = u"Deployed to Production"
-    prod_rollback = u"Rolled back from Production"
+    STAGED = u"Deployed to Staging"
+    DEPLOYED = u"Deployed to Production"
+    ROLLED_BACK = u"Rolled back from Production"
 
 
 class AMI(object):
