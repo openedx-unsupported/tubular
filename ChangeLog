@@ -1,7 +1,12 @@
 CHANGES
 =======
 
+* prevent service account from being mentioned in partner notifications
+* Revert "Renamed confluence release status keys to match github api and gomatic (#274)"
+* Revert "Revert "Renamed confluence release status keys to match github api and gomatic (#274)""
 * Add segment\_api to support Segment retirement
+* Revert "Renamed confluence release status keys to match github api and gomatic (#274)"
+* Renamed confluence release status keys to match github api and gomatic (#274)
 * Updated message types for github api and message PRs script and fixing tests
 * add crumb requester to jenkins
 * Perform Google API retries correctly

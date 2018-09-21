@@ -28,6 +28,11 @@ FAKE_ORGS = {
 
 TEST_PLATFORM_NAME = 'fakename'
 
+TEST_BLACKLISTED_NOTIFICATION_DOMAINS = {
+    '@edx.org',
+    '@partner-reporting-automation.iam.gserviceaccount.com',
+}
+
 
 def fake_config_file(f, orgs=None):
     """
@@ -48,7 +53,8 @@ def fake_config_file(f, orgs=None):
         'retirement_pipeline': TEST_RETIREMENT_PIPELINE,
         'partner_report_platform_name': TEST_PLATFORM_NAME,
         'org_partner_mapping': orgs,
-        'drive_partners_folder': 'FakeDriveID'
+        'drive_partners_folder': 'FakeDriveID',
+        'blacklisted_notification_domains': TEST_BLACKLISTED_NOTIFICATION_DOMAINS,
     }
 
     yaml.safe_dump(config, f)
