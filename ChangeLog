@@ -1,8 +1,13 @@
 CHANGES
 =======
 
-* Fail when listing partner folders retuns zero results
+* Add segment\_api to support Segment retirement
+* Updated message types for github api and message PRs script and fixing tests
+* add crumb requester to jenkins
 * Perform Google API retries correctly
+* Added stage\_ and prod\_failed PR messages to github\_api; refactored to make adding messages easier
+* Fail when listing partner folders retuns zero results
+* Add script to delete Google Drive files by ID
 * encode all strings going out to the console
 * Switch to unicodecsv for partner reporting
 * Fix parsing of cloudflare zone name from frontend bucket name

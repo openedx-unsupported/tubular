@@ -17,7 +17,7 @@ import click
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tubular.email import send_email  # pylint: disable=wrong-import-position
+from tubular.tubular_email import send_email  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)

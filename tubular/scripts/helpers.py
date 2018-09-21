@@ -23,6 +23,7 @@ from six import text_type
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.edx_api import CredentialsApi, EcommerceApi, LmsApi  # pylint: disable=wrong-import-position
+from tubular.segment_api import SegmentApi   # pylint: disable=wrong-import-position
 
 
 def _log(kind, message):
@@ -133,15 +134,20 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
     """
     try:
         lms_base_url = config['base_urls']['lms']
-        ecommerce_base_url = config['base_urls']['ecommerce']
-        credentials_base_url = config['base_urls']['credentials']
+        ecommerce_base_url = config['base_urls'].get('ecommerce', None)
+        credentials_base_url = config['base_urls'].get('credentials', None)
+        segment_base_url = config['base_urls'].get('segment', None)
         client_id = config['client_id']
         client_secret = config['client_secret']
 
         for state in config['retirement_pipeline']:
-            if (state[2] == 'ECOMMERCE' and ecommerce_base_url is None) or \
-                    (state[2] == 'CREDENTIALS' and credentials_base_url is None):
-                fail_func(fail_code, 'Service URL is not configured, but required for state {}'.format(state))
+            for service, service_url in (
+                    ('ECOMMERCE', ecommerce_base_url),
+                    ('CREDENTIALS', credentials_base_url),
+                    ('SEGMENT', segment_base_url),
+            ):
+                if state[2] == service and service_url is None:
+                    fail_func(fail_code, 'Service URL is not configured, but required for state {}'.format(state))
 
         config['LMS'] = LmsApi(lms_base_url, lms_base_url, client_id, client_secret)
 
@@ -150,5 +156,14 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
 
         if credentials_base_url:
             config['CREDENTIALS'] = CredentialsApi(lms_base_url, credentials_base_url, client_id, client_secret)
+
+        if segment_base_url:
+            config['SEGMENT'] = SegmentApi(
+                segment_base_url,
+                config['segment_email'],
+                config['segment_password'],
+                config['segment_projects'],
+                config['segment_workspace_slug']
+            )
     except Exception as exc:  # pylint: disable=broad-except
         fail_func(fail_code, 'Unexpected error occurred!', exc)
