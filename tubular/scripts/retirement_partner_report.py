@@ -260,9 +260,16 @@ def _add_comments_to_files(config, file_ids):
 
     file_ids_and_comments = []
     for partner in file_ids:
-        tag_string = ' '.join('+' + email for email in external_emails[partner])
-        comment_content = NOTIFICATION_MESSAGE_TEMPLATE.format(tags=tag_string)
-        file_ids_and_comments.append((file_ids[partner], comment_content))
+        if len(external_emails[partner]) == 0:
+            LOG(
+                'WARNING: could not find a POC for the following partner: "{}". '
+                'Double check the partner folder permissions in Google Drive.'
+                .format(partner)
+            )
+        else:
+            tag_string = ' '.join('+' + email for email in external_emails[partner])
+            comment_content = NOTIFICATION_MESSAGE_TEMPLATE.format(tags=tag_string)
+            file_ids_and_comments.append((file_ids[partner], comment_content))
 
     try:
         LOG('Adding notification comments to uploaded csv files.')
