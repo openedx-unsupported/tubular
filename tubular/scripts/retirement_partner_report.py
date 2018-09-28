@@ -100,7 +100,9 @@ def _get_orgs_and_learners_or_exit(config):
     and returns a tuple of that dict plus a list of all of the learner usernames.
     """
     try:
+        LOG('Retrieving all learners on which to report from the LMS.')
         learners = config['LMS'].retirement_partner_report()
+        LOG('Retrieved {} learners from the LMS.'.format(len(learners)))
 
         _check_all_learner_orgs_or_exit(config, learners)
 
@@ -173,6 +175,7 @@ def _config_drive_folder_map_or_exit(config):
     drive = DriveApi(config['google_secrets_file'])
 
     try:
+        LOG('Attempting to find all partner sub-directories on Drive.')
         folders = drive.walk_files(
             config['drive_partners_folder'],
             mimetype='application/vnd.google-apps.folder',
@@ -324,18 +327,20 @@ def generate_report(config_file, google_secrets_file, output_dir, comments):
         SETUP_LMS_OR_EXIT(config)
         _config_drive_folder_map_or_exit(config)
         report_data, all_usernames = _get_orgs_and_learners_or_exit(config)
-        partner_filenames = _generate_report_files_or_exit(config, report_data, output_dir)
+        # If no usernames were returned, then no reports need to be generated.
+        if all_usernames:
+            partner_filenames = _generate_report_files_or_exit(config, report_data, output_dir)
 
-        # All files generated successfully, now push them to Google
-        report_file_ids = _push_files_to_google(config, partner_filenames)
+            # All files generated successfully, now push them to Google
+            report_file_ids = _push_files_to_google(config, partner_filenames)
 
-        if comments:
-            # All files uploaded successfully, now add comments to them to trigger notifications
-            _add_comments_to_files(config, report_file_ids)
+            if comments:
+                # All files uploaded successfully, now add comments to them to trigger notifications
+                _add_comments_to_files(config, report_file_ids)
 
-        # Success, tell LMS to remove these users from the queue
-        config['LMS'].retirement_partner_cleanup(all_usernames)
-        LOG('All reports completed and uploaded to Google.')
+            # Success, tell LMS to remove these users from the queue
+            config['LMS'].retirement_partner_cleanup(all_usernames)
+            LOG('All reports completed and uploaded to Google.')
     except Exception as exc:  # pylint: disable=broad-except
         FAIL_EXCEPTION(ERR_CLEANUP, 'Unexpected error occurred! Users may be stuck in the processing state!', exc)
 
