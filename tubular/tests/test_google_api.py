@@ -19,7 +19,7 @@ import six
 from six.moves import range  # use the range function introduced in python 3
 
 from googleapiclient.http import HttpMockSequence
-from tubular.google_api import BatchRequestError, DriveApi, FOLDER_MIMETYPE
+from tubular.google_api import BatchRequestError, DriveApi, FOLDER_MIMETYPE, GOOGLE_API_MAX_BATCH_SIZE
 
 # For info about this file, see tubular/tests/discovery-drive.json.README.rst
 DISCOVERY_DRIVE_RESPONSE_FILE = 'tubular/tests/discovery-drive.json'
@@ -514,10 +514,10 @@ ETag: "etag/sheep"\r\n\r\n{"id": "fake-comment-id1"}
     @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
     def test_comment_files_batching_retries(self, mock_from_service_account_file):  # pylint: disable=unused-argument
         """
-        Test commenting on more files than the google API batch limit (100).  This also tests the partial retry
+        Test commenting on more files than the google API batch limit.  This also tests the partial retry
         mechanism when a subset of responses are rate limited.
         """
-        num_files = 150  # >100
+        num_files = int(GOOGLE_API_MAX_BATCH_SIZE * 1.5)
         fake_file_ids = ['fake-file-id{}'.format(n) for n in range(0, num_files)]
         batch_response_0 = '\n'.join(
             '''--batch_foobarbaz
@@ -528,7 +528,7 @@ Content-ID: <response+{idx}>
 HTTP/1.1 204 OK
 ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
 '''.format(idx=n)
-            for n in range(0, 100)
+            for n in range(0, GOOGLE_API_MAX_BATCH_SIZE)
         )
         batch_response_0 += '--batch_foobarbaz--'
         batch_response_1 = '\n'.join(
@@ -540,7 +540,7 @@ Content-ID: <response+{idx}>
 HTTP/1.1 204 OK
 ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
 '''.format(idx=n)
-            for n in range(0, 25)
+            for n in range(0, int(GOOGLE_API_MAX_BATCH_SIZE * 0.25))
         )
         batch_response_1 += '\n'
         batch_response_1 += '\n'.join(
@@ -552,7 +552,7 @@ Content-ID: <response+{idx}>
 HTTP/1.1 500 Internal Server Error
 ETag: "etag/pony{idx}"\r\n\r\n
 '''.format(idx=n)
-            for n in range(25, 50)
+            for n in range(int(GOOGLE_API_MAX_BATCH_SIZE * 0.25), int(GOOGLE_API_MAX_BATCH_SIZE * 0.5))
         )
         batch_response_1 += '--batch_foobarbaz--'
         batch_response_2 = '\n'.join(
@@ -564,19 +564,19 @@ Content-ID: <response+{idx}>
 HTTP/1.1 204 OK
 ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
 '''.format(idx=n)
-            for n in range(25, 50)
+            for n in range(int(GOOGLE_API_MAX_BATCH_SIZE * 0.25), int(GOOGLE_API_MAX_BATCH_SIZE * 0.5))
         )
         batch_response_2 += '--batch_foobarbaz--'
         http_mock_sequence = HttpMockSequence([
             # First, a request is made to the discovery API to construct a client object for Drive.
             ({'status': '200'}, self.mock_discovery_response_content),
-            # Then, a request is made to add comments to the files, first batch. Return 100 results.
+            # Then, a request is made to add comments to the files, first batch. Return max batch size results.
             ({'status': '200', 'content-type': 'multipart/mixed; boundary="batch_foobarbaz"'}, batch_response_0),
-            # Then, a request is made to add comments to the files, second batch. Only half of the results are returned
-            # (25 results), the rest resulted in HTTP 500.
+            # Then, a request is made to add comments to the files, second batch. Only half of the results are returned,
+            # the rest resulted in HTTP 500.
             ({'status': '200', 'content-type': 'multipart/mixed; boundary="batch_foobarbaz"'}, batch_response_1),
             # Then, a request is made retry the last half of the second batch (only the ones that returned the 500s).
-            # Return the last 25 results.
+            # Return the last 1/4 results.
             ({'status': '200', 'content-type': 'multipart/mixed; boundary="batch_foobarbaz"'}, batch_response_2),
         ])
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
