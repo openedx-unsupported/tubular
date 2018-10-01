@@ -12,7 +12,7 @@ import time
 
 from click.testing import CliRunner
 from mock import DEFAULT, patch
-from six import PY2
+from six import PY2, itervalues
 
 from tubular.scripts.retirement_partner_report import (
     ERR_BAD_CONFIG,
@@ -168,13 +168,23 @@ def test_successful_report(*args, **kwargs):
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
     mock_create_comments.return_value = None
+    fake_partners = list(itervalues(FAKE_ORGS))
+    # Generate the list_permissions return value.
+    # The first few have POCs.
     mock_list_permissions.return_value = {
         'folder' + partner: [
-            {'emailAddress': 'some.contact@example.com'},
+            {'emailAddress': 'some.contact@example.com'},  # The POC.
             {'emailAddress': 'another.contact@edx.org'},
         ]
-        for partner in FAKE_ORGS.values()
+        for partner in fake_partners[:2]
     }
+    # The last one does not have any POCs.
+    mock_list_permissions.return_value.update({
+        'folder' + partner: [
+            {'emailAddress': 'another.contact@edx.org'},
+        ]
+        for partner in [fake_partners[2]]
+    })
     mock_walk_files.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in FAKE_ORGS.values()]
     mock_create_files.side_effect = ['foo', 'bar', 'baz']
     mock_driveapi.return_value = None
@@ -195,9 +205,11 @@ def test_successful_report(*args, **kwargs):
     assert mock_create_comments.call_count == 1
     # First [0] returns all positional args, second [0] gets the first positional arg.
     create_comments_file_ids, create_comments_messages = zip(*mock_create_comments.call_args[0][0])
-    assert set(create_comments_file_ids) == set(['foo', 'bar', 'baz'])
+    assert set(create_comments_file_ids).issubset(set(['foo', 'bar', 'baz']))
+    assert len(create_comments_file_ids) == 2  # only two comments created, the third didn't have a POC.
     assert all('+some.contact@example.com' in msg for msg in create_comments_messages)
     assert all('+another.contact@edx.org' not in msg for msg in create_comments_messages)
+    assert 'WARNING: could not find a POC' in result.output
 
     # Make sure we tried to remove the users from the queue
     mock_retirement_cleanup.assert_called_with(
