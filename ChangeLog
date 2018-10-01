@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* Decrease api call batch size to avoid throttling and retries
+* Add logging. Skip report upload upon no retired learners
 * prevent service account from being mentioned in partner notifications
 * Revert "Renamed confluence release status keys to match github api and gomatic (#274)"
 * Revert "Revert "Renamed confluence release status keys to match github api and gomatic (#274)""
