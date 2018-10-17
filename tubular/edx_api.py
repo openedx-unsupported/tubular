@@ -159,6 +159,10 @@ class LmsApi(BaseApiClient):
         Retrieves a list of learners in the given retirement state that were
         created in the retirement queue between the dates given. Date range
         is inclusive, so to get one day you would set both dates to that day.
+
+        :param state_to_request: String LMS UserRetirementState state name (ex. COMPLETE)
+        :param start_date: Date or Datetime object
+        :param end_date: Date or Datetime
         """
         params = {
             'start_date': start_date.strftime('%Y-%m-%d'),
@@ -291,6 +295,15 @@ class LmsApi(BaseApiClient):
         params = {'data': usernames}
         with correct_exception():
             return self._client.api.user.v1.accounts.retirement_partner_report_cleanup.post(**params)
+
+    @_retry_lms_api()
+    def bulk_cleanup_retirements(self, usernames):
+        """
+        Deletes the retirements for all given usernames
+        """
+        params = {'data': {'usernames': usernames}}
+        with correct_exception():
+            return self._client.api.user.v1.accounts.retirement_cleanup.post(**params)
 
 
 class EcommerceApi(BaseApiClient):

@@ -1,8 +1,18 @@
 CHANGES
 =======
 
+* Add retirement archive and cleanup script
+* Add SailthruApi class and configure it in script helpers
+* fix changes
+*  add script to send messages to slack
+* Update retirement to fetch Segment Ecom ID into config when configured
+* Revert "Update retirement to fetch Segment Ecom ID into config when configured"
+* Update retirement to fetch Segment Ecom ID into config when configured
+* Fix the boto import failures at start of CI
+* Update Python versions tested. Update Changelog
 * Decrease api call batch size to avoid throttling and retries
 * Add logging. Skip report upload upon no retired learners
+* prevent comments from being added when there is nobody to notify
 * prevent service account from being mentioned in partner notifications
 * Revert "Renamed confluence release status keys to match github api and gomatic (#274)"
 * Revert "Revert "Renamed confluence release status keys to match github api and gomatic (#274)""
