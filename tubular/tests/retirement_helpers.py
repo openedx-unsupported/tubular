@@ -55,6 +55,8 @@ def fake_config_file(f, orgs=None):
         'org_partner_mapping': orgs,
         'drive_partners_folder': 'FakeDriveID',
         'blacklisted_notification_domains': TEST_BLACKLISTED_NOTIFICATION_DOMAINS,
+        'sailthru_key': 'fake_sailthru_key',
+        'sailthru_secret': 'fake_sailthru_secret',
     }
 
     yaml.safe_dump(config, f)

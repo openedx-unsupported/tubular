@@ -24,6 +24,7 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.edx_api import CredentialsApi, EcommerceApi, LmsApi  # pylint: disable=wrong-import-position
 from tubular.segment_api import SegmentApi   # pylint: disable=wrong-import-position
+from tubular.sailthru_api import SailthruApi   # pylint: disable=wrong-import-position
 
 
 def _log(kind, message):
@@ -139,17 +140,23 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
         segment_base_url = config['base_urls'].get('segment', None)
         client_id = config['client_id']
         client_secret = config['client_secret']
+        sailthru_key = config.get('sailthru_key', None)
+        sailthru_secret = config.get('sailthru_secret', None)
 
         for state in config['retirement_pipeline']:
             for service, service_url in (
                     ('ECOMMERCE', ecommerce_base_url),
                     ('CREDENTIALS', credentials_base_url),
                     ('SEGMENT', segment_base_url),
+                    ('SAILTHRU', sailthru_key),
             ):
                 if state[2] == service and service_url is None:
                     fail_func(fail_code, 'Service URL is not configured, but required for state {}'.format(state))
 
         config['LMS'] = LmsApi(lms_base_url, lms_base_url, client_id, client_secret)
+
+        if sailthru_key:
+            config['SAILTHRU'] = SailthruApi(sailthru_key, sailthru_secret)
 
         if ecommerce_base_url:
             config['ECOMMERCE'] = EcommerceApi(lms_base_url, ecommerce_base_url, client_id, client_secret)
