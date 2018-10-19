@@ -306,16 +306,6 @@ class EcommerceApi(BaseApiClient):
         with correct_exception():
             return self._client.api.v2.user.retire.post(**params)
 
-    @_retry_lms_api()
-    def get_tracking_key(self, learner):
-        """
-        Fetches the ecommerce tracking id used for Segment tracking when
-        ecommerce doesn't have access to the LMS user id.
-        """
-        with correct_exception():
-            result = self._client.api.v2.retirement.tracking_id(learner['original_username']).get()
-            return result['ecommerce_tracking_id']
-
 
 class CredentialsApi(BaseApiClient):
     """
