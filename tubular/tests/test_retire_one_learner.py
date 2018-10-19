@@ -5,6 +5,7 @@ from __future__ import print_function
 from mock import patch, DEFAULT
 
 from click.testing import CliRunner
+from slumber.exceptions import HttpNotFoundError
 
 from tubular.scripts.retire_one_learner import (
     END_STATES,
@@ -19,7 +20,7 @@ from tubular.scripts.retire_one_learner import (
 from tubular.tests.retirement_helpers import fake_config_file
 
 
-def _call_script(username):
+def _call_script(username, fetch_ecom_segment_id=False):
     """
     Call the retired learner script with the given username and a generic, temporary config file.
     Returns the CliRunner.invoke results
@@ -27,7 +28,7 @@ def _call_script(username):
     runner = CliRunner()
     with runner.isolated_filesystem():
         with open('test_config.yml', 'w') as f:
-            fake_config_file(f)
+            fake_config_file(f, fetch_ecom_segment_id=fetch_ecom_segment_id)
         result = runner.invoke(retire_learner, args=['--username', username, '--config_file', 'test_config.yml'])
     print(result)
     print(result.output)
@@ -35,6 +36,7 @@ def _call_script(username):
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch('tubular.edx_api.EcommerceApi.get_tracking_key')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
     get_learner_retirement_state=DEFAULT,
@@ -47,7 +49,7 @@ def _call_script(username):
 def test_successful_retirement(*args, **kwargs):
     username = 'test_username'
 
-    mock_get_access_token = args[0]
+    mock_get_access_token = args[1]
     mock_get_retirement_state = kwargs['get_learner_retirement_state']
     mock_update_learner_state = kwargs['update_learner_retirement_state']
     mock_retire_forum = kwargs['retirement_retire_forum']
@@ -63,7 +65,7 @@ def test_successful_retirement(*args, **kwargs):
         }
     }
 
-    result = _call_script(username)
+    result = _call_script(username, fetch_ecom_segment_id=True)
 
     # Called once per API we instantiate (LMS, ECommerce, Credentials)
     assert mock_get_access_token.call_count == 3
@@ -310,3 +312,120 @@ def test_skipping_states(*args, **kwargs):
             'Retirement complete'
     ):
         assert required_output in result.output
+
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch('tubular.edx_api.EcommerceApi.get_tracking_key')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    get_learner_retirement_state=DEFAULT,
+    update_learner_retirement_state=DEFAULT,
+    retirement_retire_forum=DEFAULT,
+    retirement_retire_mailings=DEFAULT,
+    retirement_unenroll=DEFAULT,
+    retirement_lms_retire=DEFAULT
+)
+def test_get_segment_id_success(*args, **kwargs):
+    username = 'test_username'
+
+    mock_get_tracking_key = args[0]
+    mock_get_access_token = args[1]
+    mock_get_retirement_state = kwargs['get_learner_retirement_state']
+    mock_retirement_retire_forum = kwargs['retirement_retire_forum']
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_get_tracking_key.return_value = {'id': 1, 'ecommerce_tracking_id': 'ecommerce-1'}
+
+    # The learner starts off with these values, 'ecommerce_segment_id' is added during script
+    # startup
+    mock_get_retirement_state.return_value = {
+        'original_username': username,
+        'current_state': {
+            'state_name': 'PENDING'
+        }
+    }
+
+    _call_script(username, fetch_ecom_segment_id=True)
+    mock_get_tracking_key.assert_called_once_with(mock_get_retirement_state.return_value)
+
+    config_after_get_segment_id = mock_get_retirement_state.return_value
+    config_after_get_segment_id['ecommerce_segment_id'] = 'ecommerce-1'
+
+    mock_retirement_retire_forum.assert_called_once_with(config_after_get_segment_id)
+
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch('tubular.edx_api.EcommerceApi.get_tracking_key')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    get_learner_retirement_state=DEFAULT,
+    update_learner_retirement_state=DEFAULT,
+    retirement_retire_forum=DEFAULT,
+    retirement_retire_mailings=DEFAULT,
+    retirement_unenroll=DEFAULT,
+    retirement_lms_retire=DEFAULT
+)
+def test_get_segment_id_not_found(*args, **kwargs):
+    username = 'test_username'
+
+    mock_get_tracking_key = args[0]
+    mock_get_access_token = args[1]
+    mock_get_retirement_state = kwargs['get_learner_retirement_state']
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_get_tracking_key.side_effect = HttpNotFoundError('{} not found'.format(username))
+
+    mock_get_retirement_state.return_value = {
+        'original_username': username,
+        'current_state': {
+            'state_name': 'PENDING'
+        }
+    }
+
+    result = _call_script(username, fetch_ecom_segment_id=True)
+    mock_get_tracking_key.assert_called_once_with(mock_get_retirement_state.return_value)
+    assert 'Setting Ecommerce Segment ID to None' in result.output
+
+    # Reset our call counts for the next test
+    mock_get_access_token.reset_mock()
+    mock_get_retirement_state.reset_mock()
+
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch('tubular.edx_api.EcommerceApi.get_tracking_key')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    get_learner_retirement_state=DEFAULT,
+    update_learner_retirement_state=DEFAULT,
+    retirement_retire_forum=DEFAULT,
+    retirement_retire_mailings=DEFAULT,
+    retirement_unenroll=DEFAULT,
+    retirement_lms_retire=DEFAULT
+)
+def test_get_segment_id_error(*args, **kwargs):
+    username = 'test_username'
+
+    mock_get_tracking_key = args[0]
+    mock_get_access_token = args[1]
+    mock_get_retirement_state = kwargs['get_learner_retirement_state']
+    mock_update_learner_state = kwargs['update_learner_retirement_state']
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+
+    test_exception_message = 'Test Exception!'
+    mock_get_tracking_key.side_effect = Exception(test_exception_message)
+
+    mock_get_retirement_state.return_value = {
+        'original_username': username,
+        'current_state': {
+            'state_name': 'PENDING'
+        }
+    }
+
+    result = _call_script(username, fetch_ecom_segment_id=True)
+    mock_get_tracking_key.assert_called_once_with(mock_get_retirement_state.return_value)
+    mock_update_learner_state.assert_not_called()
+
+    assert result.exit_code == ERR_SETUP_FAILED
+    assert 'Unexpected error fetching Ecommerce tracking id!' in result.output
+    assert test_exception_message in result.output

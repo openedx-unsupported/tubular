@@ -9,7 +9,7 @@ from six import text_type
 
 
 # These are the keys in the learner dict that contain IDs we need to retire from Segment
-IDENTIFYING_KEYS = ['id', 'original_username', 'ecommerce_id']
+IDENTIFYING_KEYS = ['id', 'original_username', 'ecommerce_segment_id']
 
 # The Segment GraphQL mutation for authorization
 AUTH_MUTATION = "mutation auth($email:String!, $password:String!) {login(email:$email, password:$password)}"
