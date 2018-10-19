@@ -30,7 +30,7 @@ def test_suppress_and_delete_success():
     Test simple success case
     """
     projects_to_retire = ['project_1', 'project_2']
-    learner = {'id': 1, 'ecommerce_segment_id': 'ecommerce-20', 'original_username': 'test_user'}
+    learner = {'id': 1, 'ecommerce_id': 'ecommerce-20', 'original_username': 'test_user'}
     fake_base_url = 'https://segment.invalid'
     fake_email = 'fake_email'
     fake_password = 'fake_password'

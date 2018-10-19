@@ -9,7 +9,7 @@ from six import text_type
 
 
 # These are the keys in the learner dict that contain IDs we need to retire from Segment
-IDENTIFYING_KEYS = ['id', 'original_username', 'ecommerce_segment_id']
+IDENTIFYING_KEYS = ['id', 'original_username', 'ecommerce_id']
 
 # The Segment GraphQL mutation for authorization
 AUTH_MUTATION = "mutation auth($email:String!, $password:String!) {login(email:$email, password:$password)}"
@@ -141,10 +141,6 @@ class SegmentApi(object):
         """
         for project in self.projects_to_retire:
             for id_key in IDENTIFYING_KEYS:
-                if learner[id_key] is None:
-                    LOG.info('Identifying key {} is None, learner may have no Ecommerce ID. Skipping.')
-                    continue
-
                 mutation = {
                     'query': SUPPRESS_MUTATION.format(self.workspace_slug, project, learner[id_key])
                 }

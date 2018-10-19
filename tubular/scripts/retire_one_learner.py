@@ -129,21 +129,6 @@ def _get_learner_and_state_index_or_exit(config, username):
         FAIL_EXCEPTION(ERR_SETUP_FAILED, 'Unexpected error fetching user state!', text_type(exc))
 
 
-def _get_ecom_segment_id(config, learner):
-    """
-    Calls Ecommerce to get the ecom-specific Segment tracking id that we need to retire.
-    This is only available from Ecommerce, unfortunately, and makes more sense to handle
-    here than to pass all of the config down to SegmentApi.
-    """
-    try:
-        return config['ECOMMERCE'].get_tracking_key(learner)
-    except HttpNotFoundError:
-        LOG('Learner {} not found in Ecommerce. Setting Ecommerce Segment ID to None'.format(learner))
-        return None
-    except Exception as exc:  # pylint: disable=broad-except
-        FAIL_EXCEPTION(ERR_SETUP_FAILED, 'Unexpected error fetching Ecommerce tracking id!', text_type(exc))
-
-
 @click.command()
 @click.option(
     '--username',
@@ -171,9 +156,6 @@ def retire_learner(
     SETUP_ALL_APIS_OR_EXIT(config)
 
     learner, learner_state_index = _get_learner_and_state_index_or_exit(config, username)
-
-    if 'ECOMMERCE' in config:
-        learner['ecommerce_segment_id'] = _get_ecom_segment_id(config, learner)
 
     start_state = None
     try:
