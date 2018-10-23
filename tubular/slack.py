@@ -30,7 +30,7 @@ def submit_slack_message(auth_token, channels, message):
         channels (list(str)): List of channel names to which to post the message.
         message (str): Message to post to Slack channel.
     """
-    post_url = SLACK_API_URL + NOTIFICATION_POST
+    post_url = "{}{}".format(SLACK_API_URL, NOTIFICATION_POST)
     headers = {
         AUTH_HEADER_FIELD: AUTH_HEADER_VALUE.format(auth_token)
     }
