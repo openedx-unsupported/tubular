@@ -34,7 +34,7 @@ TEST_BLACKLISTED_NOTIFICATION_DOMAINS = {
 }
 
 
-def fake_config_file(f, orgs=None):
+def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
     """
     Create a config file for a single test. Combined with CliRunner.isolated_filesystem() to
     ensure the file lifetime is limited to the test. See _call_script for usage.
@@ -56,6 +56,9 @@ def fake_config_file(f, orgs=None):
         'drive_partners_folder': 'FakeDriveID',
         'blacklisted_notification_domains': TEST_BLACKLISTED_NOTIFICATION_DOMAINS,
     }
+
+    if fetch_ecom_segment_id:
+        config['fetch_ecommerce_segment_id'] = True
 
     yaml.safe_dump(config, f)
 
