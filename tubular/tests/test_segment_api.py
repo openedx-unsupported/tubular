@@ -14,7 +14,7 @@ class FakeResponse(object):
         """
         Returns fake Segment retirement response data in the correct format
         """
-        return {'data': {'createWorkspaceRegulation': {'id': 1}}}
+        return {'data': {'createSourceRegulation': {'id': 1}}}
 
 
 class FakeErrorResponse(object):

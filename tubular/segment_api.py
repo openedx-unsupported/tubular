@@ -149,17 +149,28 @@ class SegmentApi(object):
                 resp_json = resp.json()
 
                 try:
-                    supression_id = resp_json['data']['createWorkspaceRegulation']['id']
-                    print('Suppress and delete queued. Id: {}'.format(supression_id))
+                    supression_id = resp_json['data']['createSourceRegulation']['id']
+                    LOG.info('Suppress and delete queued. Id: {}'.format(supression_id))
                 except (TypeError, KeyError):
+                    if 'errors' not in resp_json or len(resp_json['errors']) != 1:
+                        LOG.error(u'Errors were encountered for learner id {} key {}: {}'.format(
+                            learner['id'],
+                            id_key,
+                            text_type(resp_json)
+                        ).encode('utf-8'))
+                        raise
+
                     # This message means the identifier has already been submitted
                     # for this project, we count this as success.
                     if 'Regulation already exists' in resp_json['errors'][0]['message']:
                         LOG.info(resp_json['errors'][0]['message'])
+
+                    # This seems to indicate there is no data to delete, though the
+                    # project may exist in the web interface with debug data.
+                    elif 'Source not found' in resp_json['errors'][0]['message']:
+                        LOG.info('Project {} not found, this is expected. Skipping other keys.'.format(project))
+
+                        # If this one fails, the others will too. Might as well save the calls.
+                        break
                     else:
-                        LOG.error('Errors were encountered for learner id {} key {}: {}'.format(
-                            learner['id'],
-                            id_key,
-                            text_type(resp_json)
-                        ))
                         raise
