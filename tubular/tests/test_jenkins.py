@@ -73,11 +73,11 @@ class TestProperties(unittest.TestCase):
             jenkins._recreate_directory = Mock()  # pylint: disable=protected-access
             jenkins.export_learner_job_properties(learners, "tmpdir")
         jenkins._recreate_directory.assert_called_once()  # pylint: disable=protected-access
-        self.assertTrue(call('tmpdir/learner_retire_learnera', 'w') in open_mocker.call_args_list)
-        self.assertTrue(call('tmpdir/learner_retire_learnerb', 'w') in open_mocker.call_args_list)
+        self.assertIn(call('tmpdir/learner_retire_learnera', 'w'), open_mocker.call_args_list)
+        self.assertIn(call('tmpdir/learner_retire_learnerb', 'w'), open_mocker.call_args_list)
         handle = open_mocker()
-        self.assertTrue(call('RETIREMENT_USERNAME=learnerA\n') in handle.write.call_args_list)
-        self.assertTrue(call('RETIREMENT_USERNAME=learnerB\n') in handle.write.call_args_list)
+        self.assertIn(call('RETIREMENT_USERNAME=learnerA\n'), handle.write.call_args_list)
+        self.assertIn(call('RETIREMENT_USERNAME=learnerB\n'), handle.write.call_args_list)
 
 
 @ddt.ddt

@@ -130,9 +130,9 @@ def correct_exception():
         else:
             raise err
     except HttpClientError as err:
-        try:
+        if hasattr(err, 'content'):
             LOG.error("API Error: {}".format(err.content))
-        except AttributeError:
+        else:
             LOG.error("API Error: {}".format(text_type(err)))
         raise err
 

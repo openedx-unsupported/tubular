@@ -209,12 +209,10 @@ def retire_learner(
     except Exception as exc:  # pylint: disable=broad-except
         exc_msg = text_type(exc)
 
-        try:
+        if hasattr(exc, 'content'):
             # Slumber inconveniently discards the decoded .text attribute from the Response object, and instead gives us
             # the raw encoded .content attribute, so we need to decode it first.
             exc_msg += '\n' + exc.content.decode('utf-8')
-        except AttributeError:
-            pass
 
         try:
             LOG('Error in retirement state {}: {}'.format(start_state, exc_msg))

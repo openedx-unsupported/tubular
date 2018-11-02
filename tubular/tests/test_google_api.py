@@ -32,6 +32,7 @@ class TestDriveApi(unittest.TestCase):
     maxDiff = None
 
     def setUp(self):
+        super(TestDriveApi, self).setUp()
         with open(DISCOVERY_DRIVE_RESPONSE_FILE, 'r') as f:
             self.mock_discovery_response_content = f.read()
 
@@ -518,7 +519,7 @@ ETag: "etag/sheep"\r\n\r\n{"id": "fake-comment-id1"}
         mechanism when a subset of responses are rate limited.
         """
         num_files = int(GOOGLE_API_MAX_BATCH_SIZE * 1.5)
-        fake_file_ids = ['fake-file-id{}'.format(n) for n in range(0, num_files)]
+        fake_file_ids = ['fake-file-id{}'.format(n) for n in range(num_files)]
         batch_response_0 = '\n'.join(
             '''--batch_foobarbaz
 Content-Type: application/http
@@ -528,7 +529,7 @@ Content-ID: <response+{idx}>
 HTTP/1.1 204 OK
 ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
 '''.format(idx=n)
-            for n in range(0, GOOGLE_API_MAX_BATCH_SIZE)
+            for n in range(GOOGLE_API_MAX_BATCH_SIZE)
         )
         batch_response_0 += '--batch_foobarbaz--'
         batch_response_1 = '\n'.join(
@@ -540,7 +541,7 @@ Content-ID: <response+{idx}>
 HTTP/1.1 204 OK
 ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
 '''.format(idx=n)
-            for n in range(0, int(GOOGLE_API_MAX_BATCH_SIZE * 0.25))
+            for n in range(int(GOOGLE_API_MAX_BATCH_SIZE * 0.25))
         )
         batch_response_1 += '\n'
         batch_response_1 += '\n'.join(
@@ -586,7 +587,7 @@ ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
             resp,
             {
                 'fake-file-id{}'.format(n): {'id': 'fake-comment-id{}'.format(n)}
-                for n in range(0, num_files)
+                for n in range(num_files)
             },
         )
 
