@@ -1,6 +1,10 @@
 CHANGES
 =======
 
+* Wait longer for ASGs to become healthy
+* Fix pylint errors caused by new version
+* Avoid raising exception that stomps the important one
+* Segment API key fix and handling of missing projects
 * Add retirement archive and cleanup script
 * Add SailthruApi class and configure it in script helpers
 * fix changes
