@@ -39,7 +39,7 @@ ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8
 ASGARD_API_TOKEN = "asgardApiToken={}".format(os.environ.get("ASGARD_API_TOKEN", "dummy-token"))
 # Asgard's ASG creation times out at 25 minutes - set tubular's timeout to 26 minutes (1560 seconds).
 ASGARD_NEW_ASG_CREATION_TIMEOUT = int(os.environ.get("ASGARD_NEW_ASG_CREATION_TIMEOUT", 1560))
-ASGARD_ELB_HEALTH_TIMEOUT = int(os.environ.get("ASGARD_ELB_HEALTH_TIMEOUT", 600))
+ASGARD_ELB_HEALTH_TIMEOUT = int(os.environ.get("ASGARD_ELB_HEALTH_TIMEOUT", 900))
 REQUESTS_TIMEOUT = float(os.environ.get("REQUESTS_TIMEOUT", 10))
 
 CLUSTER_LIST_URL = "{}/cluster/list.json".format(ASGARD_API_ENDPOINT)
@@ -840,7 +840,7 @@ def _red_black_deploy(
 
     # Wait for all instances to be in service in all ELBs.
     try:
-        ec2.wait_for_healthy_elbs(elbs_to_monitor, 600)
+        ec2.wait_for_healthy_elbs(elbs_to_monitor, ASGARD_ELB_HEALTH_TIMEOUT)
     except:  # pylint: disable=bare-except
         LOG.info("Some ASGs are failing ELB health checks. Disabling traffic to all new ASGs.", exc_info=True)
         _disable_clustered_asgs(
