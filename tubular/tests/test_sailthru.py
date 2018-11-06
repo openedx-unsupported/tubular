@@ -27,7 +27,7 @@ def test_sailthru_delete_client_error(test_learner):  # pylint: disable=redefine
         sailthru_api._sailthru_client.api_delete.side_effect = SailthruClientError()  # pylint: disable=protected-access
         with pytest.raises(Exception) as exc:
             sailthru_api.delete_user(test_learner)
-        assert 'Exception attempting to delete user foo@bar.com from Sailthru' in str(exc)
+        assert 'Exception attempting to delete user from Sailthru' in str(exc)
 
 
 def test_sailthru_delete_not_ok_response(test_learner):  # pylint: disable=redefined-outer-name
@@ -41,7 +41,7 @@ def test_sailthru_delete_not_ok_response(test_learner):  # pylint: disable=redef
         sailthru_api._sailthru_client.api_delete.return_value = mock_response  # pylint: disable=protected-access
         with pytest.raises(Exception) as exc:
             sailthru_api.delete_user(test_learner)
-        assert 'Error attempting to delete user foo@bar.com from Sailthru' in str(exc)
+        assert 'Error attempting to delete user from Sailthru' in str(exc)
 
 
 def test_sailthru_delete_not_found_response(test_learner, caplog):  # pylint: disable=redefined-outer-name
@@ -60,15 +60,15 @@ def test_sailthru_delete_not_found_response(test_learner, caplog):  # pylint: di
         sailthru_api._sailthru_client.api_delete.return_value = mock_response  # pylint: disable=protected-access
         with caplog.at_level(logging.INFO):
             sailthru_api.delete_user(test_learner)
-        assert 'No action taken because no profile was found - User not found with email: foo@bar.com' in caplog.text
+        assert 'No action taken because no user was found in Sailthru.' in caplog.text
 
 
-@mock.patch('tubular.sailthru_api.log')
-def test_sailthru_success(mock_logger, test_learner):  # pylint: disable=redefined-outer-name
+def test_sailthru_success(test_learner, caplog):  # pylint: disable=redefined-outer-name
     with mock.patch('tubular.sailthru_api.SailthruClient'):
         sailthru_api = SailthruApi('key', 'secret')
         mock_response = mock.Mock()
         mock_response.is_ok.return_value = True
         sailthru_api._sailthru_client.api_delete.return_value = mock_response  # pylint: disable=protected-access
-        sailthru_api.delete_user(test_learner)
-        mock_logger.info.assert_called_with('Email address %s successfully deleted from Sailthru.', 'foo@bar.com')
+        with caplog.at_level(logging.INFO):
+            sailthru_api.delete_user(test_learner)
+        assert 'User successfully deleted from Sailthru.' in caplog.text

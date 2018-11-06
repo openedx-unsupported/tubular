@@ -33,8 +33,8 @@ class SailthruApi(object):
         try:
             sailthru_response = self._sailthru_client.api_delete("user", {'id': email})
         except SailthruClientError as exc:
-            error_msg = u"Exception attempting to delete user {} from Sailthru - {}".format(
-                email, text_type(exc)
+            error_msg = u"Exception attempting to delete user from Sailthru - {}".format(
+                text_type(exc)
             ).encode('utf-8')
             log.error(error_msg)
             raise Exception(error_msg)
@@ -42,15 +42,12 @@ class SailthruApi(object):
         if not sailthru_response.is_ok():
             error = sailthru_response.get_error()
             if SAILTHRU_ERROR_NOT_FOUND in error.get_message():
-                skip_msg = u"No action taken because no profile was found - {}".format(
-                    error.get_message()
-                ).encode('utf-8')
-                log.info(skip_msg)
+                log.info("No action taken because no user was found in Sailthru.")
             else:
-                error_msg = u"Error attempting to delete user {} from Sailthru - {}".format(
-                    email, error.get_message()
+                error_msg = u"Error attempting to delete user from Sailthru - {}".format(
+                    error.get_message()
                 ).encode('utf-8')
                 log.error(error_msg)
                 raise Exception(error_msg)
 
-        log.info("Email address %s successfully deleted from Sailthru.", email)
+        log.info("User successfully deleted from Sailthru.")
