@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* Wait longer for ASGs to become healthy
 * sailthru deletion: swallow "not found" errors
 * Fix pylint errors caused by new version
 * Avoid raising exception that stomps the important one
