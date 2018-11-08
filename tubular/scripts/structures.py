@@ -62,6 +62,9 @@ def cli(ctx, connection, database_name):
     handles courses that use the old "/" separator, such as
     "MITx/6.002x/2012_Spring", as well as assets starting with "i4x://".
     """
+    if ctx.obj is None:
+        ctx.obj = dict()
+
     ctx.obj['BACKEND'] = SplitMongoBackend(connection, database_name)
 
 
