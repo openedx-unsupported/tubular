@@ -39,7 +39,13 @@ FAIL = partial(_fail, SCRIPT_SHORTNAME)
     '--app-dist',
     help='Path to the frontend app dist directory.',
 )
-def frontend_deploy(env_config_file, app_name, app_dist):
+@click.option(
+    '--purge-cache',
+    default=False,
+    is_flag=True,
+    help='Boolean to decide if Cloudflare cache needs to be purged or not.',
+)
+def frontend_deploy(env_config_file, app_name, app_dist, purge_cache):
     """
     Copies a frontend application to an s3 bucket.
 
@@ -47,6 +53,7 @@ def frontend_deploy(env_config_file, app_name, app_dist):
         env_config_file (str): Path to a YAML file containing environment configuration variables.
         app_name (str): Name of the frontend app.
         app_dist (str): Path to frontend application dist directory.
+        purge_cache (bool): Should Cloudflare cache needs to be purged.
     """
     if not env_config_file:
         FAIL(1, 'Environment config file was not specified.')
@@ -75,21 +82,23 @@ def frontend_deploy(env_config_file, app_name, app_dist):
     if return_code != 0:
         FAIL(1, 'Could not sync app {} with S3 bucket {}.'.format(app_name, bucket_uri))
 
-    # Purge the Cloudflare cache for the frontend hostname.
-    # Frontend S3 buckets are named by hostname.
-    # Cloudflare zones are named by domain.
-    # Assumes the caller's shell has the following environment
-    # variables set to enable Cloudflare API auth:
-    # CF_API_EMAIL
-    # CF_API_KEY
-    zone_name = '.'.join(bucket_name.split('.')[-2:])  # Zone name is the TLD
-    data = {'hosts': [bucket_name]}
-    cloudflare_client = CloudFlare.CloudFlare()
-    try:
-        zone_id = cloudflare_client.zones.get(params={'name': zone_name})[0]['id']  # pylint: disable=no-member
-        cloudflare_client.zones.purge_cache.post(zone_id, data=data)  # pylint: disable=no-member
-    except (CloudFlare.exceptions.CloudFlareAPIError, IndexError, KeyError):
-        FAIL(1, 'Failed to purge the Cloudflare cache for hostname {}.'.format(bucket_name))
+    if purge_cache:
+        # Purge the Cloudflare cache for the frontend hostname.
+        # Frontend S3 buckets are named by hostname.
+        # Cloudflare zones are named by domain.
+        # Assumes the caller's shell has the following environment
+        # variables set to enable Cloudflare API auth:
+        # CF_API_EMAIL
+        # CF_API_KEY
+        zone_name = '.'.join(bucket_name.split('.')[-2:])  # Zone name is the TLD
+        data = {'hosts': [bucket_name]}
+        cloudflare_client = CloudFlare.CloudFlare()
+        try:
+            zone_id = cloudflare_client.zones.get(params={'name': zone_name})[0]['id']  # pylint: disable=no-member
+            cloudflare_client.zones.purge_cache.post(zone_id, data=data)  # pylint: disable=no-member
+            LOG('Successfully purged Cloudflare cache for hostname {}.'.format(bucket_name))
+        except (CloudFlare.exceptions.CloudFlareAPIError, IndexError, KeyError):
+            FAIL(1, 'Failed to purge the Cloudflare cache for hostname {}.'.format(bucket_name))
 
     LOG('Frontend application {} successfully deployed to {}.'.format(app_name, bucket_name))
 
