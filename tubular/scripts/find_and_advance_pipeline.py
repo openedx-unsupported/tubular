@@ -21,6 +21,8 @@ import click
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.gocd_api import GoCDAPI  # pylint: disable=wrong-import-position
+from tubular.slack import submit_slack_message  # pylint: disable=wrong-import-position
+
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -43,6 +45,15 @@ LOG = logging.getLogger(__name__)
     required=True,
 )
 @click.option(
+    '--slack_token',
+    help=u"Slack token which authorizes message sending. (optional)",
+)
+@click.option(
+    '--slack_channel',
+    multiple=True,
+    help=u"Slack channel which to send the message. (optional)",
+)
+@click.option(
     '--pipeline',
     help=u"Name of the pipeline to advance.",
     required=True,
@@ -63,7 +74,9 @@ LOG = logging.getLogger(__name__)
     default=sys.stdout
 )
 def find_and_advance_pipeline(
-        gocd_user, gocd_password, gocd_url, pipeline, stage, relative_dt, out_file
+        gocd_user, gocd_password, gocd_url, slack_token, slack_channel,
+        pipeline, stage, relative_dt, out_file
+
 ):
     """
     Find the GoCD advancement pipeline that should be advanced/deployed to production - and advance it.
@@ -92,6 +105,13 @@ def find_and_advance_pipeline(
     if dirname:
         os.makedirs(dirname, exist_ok=True)
     yaml.safe_dump(advance_info, stream=out_file)
+
+    if slack_token:
+        submit_slack_message(
+            slack_token,
+            slack_channel,
+            'PROD DEPLOY: Pipeline was advanced: {}'.format(pipeline_to_advance.url)
+        )
 
 
 if __name__ == "__main__":
