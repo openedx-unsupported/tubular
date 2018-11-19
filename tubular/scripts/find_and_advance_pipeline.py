@@ -23,7 +23,6 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from tubular.gocd_api import GoCDAPI  # pylint: disable=wrong-import-position
 from tubular.slack import submit_slack_message  # pylint: disable=wrong-import-position
 
-
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
