@@ -3,7 +3,7 @@ Tests for the Segment API functionality
 """
 import mock
 
-from tubular.segment_api import SegmentApi, SUPPRESS_MUTATION
+from tubular.segment_api import SegmentApi, BULK_DELETE_MUTATION, BULK_DELETE_MUTATION_OPNAME
 
 
 class FakeResponse(object):
@@ -14,7 +14,7 @@ class FakeResponse(object):
         """
         Returns fake Segment retirement response data in the correct format
         """
-        return {'data': {'createSourceRegulation': {'id': 1}}}
+        return {'data': {BULK_DELETE_MUTATION_OPNAME: {'id': 1}}}
 
 
 class FakeErrorResponse(object):
@@ -30,7 +30,7 @@ def test_suppress_and_delete_success():
     Test simple success case
     """
     projects_to_retire = ['project_1', 'project_2']
-    learner = {'id': 1, 'ecommerce_segment_id': 'ecommerce-20', 'original_username': 'test_user'}
+    learner = [{'id': 1, 'ecommerce_segment_id': 'ecommerce-20', 'original_username': 'test_user'}]
     fake_base_url = 'https://segment.invalid'
     fake_email = 'fake_email'
     fake_password = 'fake_password'
@@ -46,11 +46,13 @@ def test_suppress_and_delete_success():
             segment = SegmentApi(fake_base_url, fake_email, fake_password, projects_to_retire, fake_workspace)
             segment.suppress_and_delete(learner)
 
-            assert mock_get_auth_token.call_count == len(projects_to_retire) * len(learner)
-            assert mock_post.call_count == len(projects_to_retire) * len(learner)
+            assert mock_get_auth_token.call_count == len(learner)
+            assert mock_post.call_count == len(learner)
 
-            for proj in projects_to_retire:
-                for curr_key in learner:
-                    curr_id = learner[curr_key]
-                    fake_json = {'query': SUPPRESS_MUTATION.format(fake_workspace, proj, curr_id)}
-                    mock_post.assert_any_call(fake_base_url, json=fake_json, headers=headers)
+            learners_vals = []
+            for curr_key in ['id', 'original_username', 'ecommerce_segment_id']:
+                curr_id = learner[0][curr_key]
+                learners_vals.append('"{}"'.format(curr_id))
+            learners_str = '[' + ','.join(learners_vals) + ']'
+            fake_json = {'query': BULK_DELETE_MUTATION.format(fake_workspace, learners_str)}
+            mock_post.assert_any_call(fake_base_url, json=fake_json, headers=headers)

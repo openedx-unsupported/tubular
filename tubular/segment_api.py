@@ -14,18 +14,35 @@ IDENTIFYING_KEYS = ['id', 'original_username', 'ecommerce_segment_id']
 # The Segment GraphQL mutation for authorization
 AUTH_MUTATION = "mutation auth($email:String!, $password:String!) {login(email:$email, password:$password)}"
 
-# The Segment GraphQL mutation for SUPPRESS_AND_DELETE for a particular workspace and source
-SUPPRESS_MUTATION = """
-mutation {{
-  createSourceRegulation(
+# # The Segment GraphQL mutation for SUPPRESS_AND_DELETE for a particular workspace and source
+# SUPPRESS_MUTATION = """
+# mutation {{
+#   createSourceRegulation(
+#     workspaceSlug: "{}"
+#     sourceSlug: "{}"
+#     type: SUPPRESS_AND_DELETE
+#     userId: "{}"
+#   ) {{
+#     id
+#   }}
+# }}"""
+
+
+# The Segment GraphQL mutation for bulk deleting users for a particular workspace
+BULK_DELETE_MUTATION_OPNAME = 'createWorkspaceBulkDeletion'
+BULK_DELETE_MUTATION = """
+mutation {{{{
+  {}(
     workspaceSlug: "{}"
-    sourceSlug: "{}"
-    type: SUPPRESS_AND_DELETE
-    userId: "{}"
-  ) {{
+    userIds: {}
+  ) {{{{
     id
-  }}
-}}"""
+  }}}}
+}}}}""".format(BULK_DELETE_MUTATION_OPNAME, '{}', '{}')
+
+# According to Segment, these numbers represent the maximum limits of the bulk delete mutation call.
+MAXIMUM_USERS_IN_DELETE_REQUEST = 16 * 1024  # 16k users
+MAXIMUM_LENGTH_OF_DELETE_REQUEST = 100 * 1024  # 100kB
 
 LOG = logging.getLogger(__name__)
 
@@ -109,9 +126,9 @@ class SegmentApi(object):
             raise
 
     @_retry_segment_api()
-    def _call_suppress_and_delete(self, mutation):
+    def _call_bulk_delete_learners(self, mutation):
         """
-        Actually makes the Segment GraphQL SUPPRESS_AND_DELETE call
+        Actually makes the Segment GraphQL createWorkspaceBulkDeletion call.
 
         5xx errors and timeouts will be retried via _retry_segment_api,
         all others will bubble up.
@@ -125,52 +142,68 @@ class SegmentApi(object):
         headers = {"Authorization": "Bearer {}".format(access_token)}
         return requests.post(self.base_url, json=mutation, headers=headers)
 
-    def suppress_and_delete(self, learner):
+    def delete_learners(self, learners, chunk_size):
         """
-        Sets up the Segment GraphQL calls to GDPR forget a user.
+        Sets up the Segment GraphQL calls to GDPR-delete users in chunks.
 
-        Due to the way we use Segment we need to make one call per "source" for
-        each different identifier associated with the user. We have identified
-        3 identifiers that might be tied to a user in production - LMS user id,
-        Ecommerce user id, and username (deprecated), and currently have 12
-        production projects that identify users. So it's possible this will make
-        36 Segment calls.
-
-        :param learner: The learner dict returned from LMS, should contain all
+        :param learners: List of learner dicts returned from LMS, should contain all
             we need to retire this learner.
         """
-        for project in self.projects_to_retire:
-            for id_key in IDENTIFYING_KEYS:
-                mutation = {
-                    'query': SUPPRESS_MUTATION.format(self.workspace_slug, project, learner[id_key])
-                }
+        curr_idx = 0
+        start_idx = 0
+        while curr_idx < len(learners):
+            start_idx = curr_idx
+            end_idx = min(start_idx + chunk_size - 1, len(learners) - 1)
+            LOG.info(
+                "Attempting Segment deletion for learners (%s, %s) through (%s, %s)...",
+                learners[start_idx]['id'], learners[start_idx]['original_username'],
+                learners[end_idx]['id'], learners[end_idx]['original_username']
+            )
 
-                resp = self._call_suppress_and_delete(mutation)
-                resp_json = resp.json()
+            learner_vals = []
+            for idx in range(start_idx, end_idx + 1):
+                for id_key in IDENTIFYING_KEYS:
+                    learner_vals.append('"{}"'.format(learners[idx][id_key]))
 
-                try:
-                    supression_id = resp_json['data']['createSourceRegulation']['id']
-                    LOG.info('Suppress and delete queued. Id: {}'.format(supression_id))
-                except (TypeError, KeyError):
-                    if 'errors' not in resp_json or len(resp_json['errors']) != 1:
-                        LOG.error(u'Errors were encountered for learner id {} key {}: {}'.format(
-                            learner['id'],
-                            id_key,
-                            text_type(resp_json)
-                        ).encode('utf-8'))
-                        raise
+            if len(learner_vals) >= MAXIMUM_USERS_IN_DELETE_REQUEST:
+                LOG.error(
+                    'Attempting to delete too many user values (%s) at once in bulk request - decrease chunk_size.',
+                    len(learner_vals)
+                )
+                return
 
-                    # This message means the identifier has already been submitted
-                    # for this project, we count this as success.
-                    if 'Regulation already exists' in resp_json['errors'][0]['message']:
-                        LOG.info(resp_json['errors'][0]['message'])
+            learners_str = '[' + ','.join(learner_vals) + ']'
+            if len(learners_str) >= MAXIMUM_LENGTH_OF_DELETE_REQUEST:
+                LOG.error(
+                    'Attempting to pass too-long bulk delete request (%s) - decrease chunk_size.',
+                    len(learners_str)
+                )
+                return
 
-                    # This seems to indicate there is no data to delete, though the
-                    # project may exist in the web interface with debug data.
-                    elif 'Source not found' in resp_json['errors'][0]['message']:
-                        LOG.info('Project {} not found, this is expected. Skipping other keys.'.format(project))
+            mutation = {
+                'query': BULK_DELETE_MUTATION.format(self.workspace_slug, learners_str)
+            }
 
-                        # If this one fails, the others will too. Might as well save the calls.
-                        break
-                    else:
-                        raise
+            resp = self._call_bulk_delete_learners(mutation)
+            resp_json = resp.json()
+
+            try:
+                bulk_user_delete_id = resp_json['data'][BULK_DELETE_MUTATION_OPNAME]['id']
+                LOG.info('Bulk user deletion queued. Id: {}'.format(bulk_user_delete_id))
+            except (TypeError, KeyError):
+                if 'errors' not in resp_json or len(resp_json['errors']) != 1:
+                    LOG.error(u'Errors were encountered for learner ids {} key {}: {}'.format(
+                        learner['id'],
+                        id_key,
+                        text_type(resp_json)
+                    ).encode('utf-8'))
+                    raise
+
+                # This message means the identifier has already been submitted
+                # for this project, we count this as success.
+                if 'Regulation already exists' in resp_json['errors'][0]['message']:
+                    LOG.info(resp_json['errors'][0]['message'])
+                else:
+                    raise
+
+            curr_idx += chunk_size
