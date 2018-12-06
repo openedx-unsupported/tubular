@@ -48,7 +48,8 @@ def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
         'base_urls': {
             'credentials': 'https://credentials.stage.edx.org/',
             'lms': 'https://stage-edx-edxapp.edx.org/',
-            'ecommerce': 'https://ecommerce.stage.edx.org/'
+            'ecommerce': 'https://ecommerce.stage.edx.org/',
+            'segment': 'https://segment.invalid/graphql'
         },
         'retirement_pipeline': TEST_RETIREMENT_PIPELINE,
         'partner_report_platform_name': TEST_PLATFORM_NAME,
@@ -62,7 +63,11 @@ def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
             'region': 'fake_region',
             'access_key': 'fake_access_key',
             'secret_key': 'fake_secret_key'
-        }
+        },
+        'segment_workspace_slug': 'test_slug',
+        'segment_email': 'test-segment-retire@edx.org',
+        'segment_password': 'mysegmentpassword',
+        'segment_projects': ['test_project1', 'test_project2', 'test_project3']
     }
 
     if fetch_ecom_segment_id:

@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-Test the retire_one_learner.py script
+Test the delete_drive_files.py script
 """
 from __future__ import print_function
 
