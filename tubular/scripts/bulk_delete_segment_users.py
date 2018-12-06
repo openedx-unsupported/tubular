@@ -6,11 +6,11 @@ from __future__ import absolute_import, unicode_literals
 
 from functools import partial
 from os import path
+import csv
 import logging
 import sys
 
 import click
-import csv
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -103,7 +103,7 @@ def bulk_delete_segment_users(dry_run, config_file, retired_users_csv, chunk_siz
     LOG('Attempting Segment deletion of {} users...'.format(len(users_to_delete)))
     if not dry_run:
         try:
-            segment_api.delete_learners(users_to_delete)
+            segment_api.delete_learners(users_to_delete, chunk_size)
         except Exception as exc:  # pylint: disable=broad-except
             FAIL_EXCEPTION(ERR_DELETING_USERS, 'Unexpected error occurred!', exc)
 

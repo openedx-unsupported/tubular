@@ -14,20 +14,6 @@ IDENTIFYING_KEYS = ['id', 'original_username', 'ecommerce_segment_id']
 # The Segment GraphQL mutation for authorization
 AUTH_MUTATION = "mutation auth($email:String!, $password:String!) {login(email:$email, password:$password)}"
 
-# # The Segment GraphQL mutation for SUPPRESS_AND_DELETE for a particular workspace and source
-# SUPPRESS_MUTATION = """
-# mutation {{
-#   createSourceRegulation(
-#     workspaceSlug: "{}"
-#     sourceSlug: "{}"
-#     type: SUPPRESS_AND_DELETE
-#     userId: "{}"
-#   ) {{
-#     id
-#   }}
-# }}"""
-
-
 # The Segment GraphQL mutation for bulk deleting users for a particular workspace
 BULK_DELETE_MUTATION_OPNAME = 'createWorkspaceBulkDeletion'
 BULK_DELETE_MUTATION = """
@@ -40,9 +26,8 @@ mutation {{{{
   }}}}
 }}}}""".format(BULK_DELETE_MUTATION_OPNAME, '{}', '{}')
 
-# According to Segment, these numbers represent the maximum limits of the bulk delete mutation call.
+# According to Segment, represents the maximum limits of the bulk delete mutation call.
 MAXIMUM_USERS_IN_DELETE_REQUEST = 16 * 1024  # 16k users
-MAXIMUM_LENGTH_OF_DELETE_REQUEST = 100 * 1024  # 100kB
 
 LOG = logging.getLogger(__name__)
 
@@ -142,20 +127,22 @@ class SegmentApi(object):
         headers = {"Authorization": "Bearer {}".format(access_token)}
         return requests.post(self.base_url, json=mutation, headers=headers)
 
-    def delete_learners(self, learners, chunk_size):
+    def delete_learners(self, learners, chunk_size, beginning_idx=0):
         """
         Sets up the Segment GraphQL calls to GDPR-delete users in chunks.
 
         :param learners: List of learner dicts returned from LMS, should contain all
             we need to retire this learner.
         """
-        curr_idx = 0
+        curr_idx = beginning_idx
         start_idx = 0
         while curr_idx < len(learners):
             start_idx = curr_idx
             end_idx = min(start_idx + chunk_size - 1, len(learners) - 1)
             LOG.info(
-                "Attempting Segment deletion for learners (%s, %s) through (%s, %s)...",
+                "Attempting Segment deletion with start index %s, \
+end index %s for learners (%s, %s) through (%s, %s)...",
+                start_idx, end_idx,
                 learners[start_idx]['id'], learners[start_idx]['original_username'],
                 learners[end_idx]['id'], learners[end_idx]['original_username']
             )
@@ -173,12 +160,6 @@ class SegmentApi(object):
                 return
 
             learners_str = '[' + ','.join(learner_vals) + ']'
-            if len(learners_str) >= MAXIMUM_LENGTH_OF_DELETE_REQUEST:
-                LOG.error(
-                    'Attempting to pass too-long bulk delete request (%s) - decrease chunk_size.',
-                    len(learners_str)
-                )
-                return
 
             mutation = {
                 'query': BULK_DELETE_MUTATION.format(self.workspace_slug, learners_str)
@@ -191,19 +172,10 @@ class SegmentApi(object):
                 bulk_user_delete_id = resp_json['data'][BULK_DELETE_MUTATION_OPNAME]['id']
                 LOG.info('Bulk user deletion queued. Id: {}'.format(bulk_user_delete_id))
             except (TypeError, KeyError):
-                if 'errors' not in resp_json or len(resp_json['errors']) != 1:
-                    LOG.error(u'Errors were encountered for learner ids {} key {}: {}'.format(
-                        learner['id'],
-                        id_key,
-                        text_type(resp_json)
-                    ).encode('utf-8'))
-                    raise
-
-                # This message means the identifier has already been submitted
-                # for this project, we count this as success.
-                if 'Regulation already exists' in resp_json['errors'][0]['message']:
-                    LOG.info(resp_json['errors'][0]['message'])
-                else:
-                    raise
+                LOG.error(u'Error was encountered for learners between start/end indices ({}, {}) : {}'.format(
+                    start_idx, end_idx,
+                    text_type(resp_json)
+                ).encode('utf-8'))
+                raise
 
             curr_idx += chunk_size
