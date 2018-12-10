@@ -105,6 +105,7 @@ def find_and_advance_pipeline(
         os.makedirs(dirname, exist_ok=True)
     yaml.safe_dump(advance_info, stream=out_file)
 
+
     if slack_token:
         submit_slack_message(
             slack_token,
