@@ -26,6 +26,18 @@ mutation {{{{
   }}}}
 }}}}""".format(BULK_DELETE_MUTATION_OPNAME, '{}', '{}')
 
+# The Segment GraphQL mutation for querying the status of a bulk user deletion request for a particular workspace
+BULK_DELETE_STATUS_QUERY_OPNAME = 'bulkDeletion'
+BULK_DELETE_STATUS_QUERY = """
+query {{{{
+  {}(
+    id: "{}"
+  ) {{{{
+    id
+    status
+  }}}}
+}}}}""".format(BULK_DELETE_STATUS_QUERY_OPNAME, '{}')
+
 # According to Segment, represents the maximum limits of the bulk delete mutation call.
 MAXIMUM_USERS_IN_DELETE_REQUEST = 16 * 1024  # 16k users
 
@@ -111,9 +123,9 @@ class SegmentApi(object):
             raise
 
     @_retry_segment_api()
-    def _call_bulk_delete_learners(self, mutation):
+    def _call_segment_graphql(self, mutation):
         """
-        Actually makes the Segment GraphQL createWorkspaceBulkDeletion call.
+        Actually makes the Segment GraphQL call.
 
         5xx errors and timeouts will be retried via _retry_segment_api,
         all others will bubble up.
@@ -165,7 +177,7 @@ end index %s for learners (%s, %s) through (%s, %s)...",
                 'query': BULK_DELETE_MUTATION.format(self.workspace_slug, learners_str)
             }
 
-            resp = self._call_bulk_delete_learners(mutation)
+            resp = self._call_segment_graphql(mutation)
             resp_json = resp.json()
 
             try:
@@ -179,3 +191,17 @@ end index %s for learners (%s, %s) through (%s, %s)...",
                 raise
 
             curr_idx += chunk_size
+
+    def get_bulk_delete_status(self, bulk_delete_id):
+        """
+        Queries the status of a previously submitted bulk delete request.
+
+        :param bulk_delete_id: ID returned from a previously-submitted bulk delete request.
+        """
+        query = {
+            'query': BULK_DELETE_STATUS_QUERY.format(bulk_delete_id)
+        }
+
+        resp = self._call_segment_graphql(query)
+        resp_json = resp.json()
+        LOG.info(text_type(resp_json))
