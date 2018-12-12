@@ -159,7 +159,6 @@ CHANGES
 * Don't error out if the base\_sha and head\_sha are from different repos. This allows messaging against both edx-platform and edx-platform-private
 * Re-sync scripts, symlinks, and setup.cfg for all scripts
 * take a differet approach to removing delete\_on\_ts from asgs
-* Add script to find and advance pipeline. Add hipchat module for message-sending and other HipChat functions
 * Don't create empty commits when there are no branches to octopus merge
 * instance termination logging cleanup
 * add cleanup\_instances to the pbr config
@@ -432,15 +431,14 @@ CHANGES
 * Get all ASGs that match an EDC
 * Latest version of test config with installable module
 * Add versions to required modules. Refer to tubular itself from requirements.pip
-* Add ability to set HipChat message contents
 * Add GoCD-specific code
 * Make tubular installable
 * Move exceptions into their own module
 * Cleanup documentation
 * Add a travis file and a requirements file
 * Add an ec2 utility function for getting AMI Info
-* Add delay and HipChat posting scripts
 * Read parameters from environment variables. Add some prints for logging. Return the correct exit status code on success/failure
 * Change import filename - oops
 * Initial script implementation
 * Initial commit
+* Removed Hipchat integration
