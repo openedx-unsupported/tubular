@@ -77,7 +77,7 @@ def cli(ctx, connection, database_name):
 )
 @click.option(
     '--retain',
-    default=2,
+    default=10,
     type=click.IntRange(0, None),
     help=(
         "The maximum number of intermediate structures to preserve for any "
