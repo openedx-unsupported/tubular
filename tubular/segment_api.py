@@ -26,7 +26,7 @@ mutation {{{{
   }}}}
 }}}}""".format(BULK_DELETE_MUTATION_OPNAME, '{}', '{}')
 
-# The Segment GraphQL mutation for querying the status of a bulk user deletion request for a particular workspace
+# The Segment GraphQL query for querying the status of a bulk user deletion request for a particular workspace
 BULK_DELETE_STATUS_QUERY_OPNAME = 'bulkDeletion'
 BULK_DELETE_STATUS_QUERY = """
 query {{{{
@@ -37,6 +37,26 @@ query {{{{
     status
   }}}}
 }}}}""".format(BULK_DELETE_STATUS_QUERY_OPNAME, '{}')
+
+# The Segment GraphQL query for listing the deletion requests sdent to Segment for a particular workspace
+DELETION_REQUEST_LIST_QUERY_OPNAME = 'deletionRequests'
+DELETION_REQUEST_LIST_QUERY = """
+query {{{{
+  {}(
+    workspaceSlug: "{}",
+    cursor: {{{{ limit: {} }}}}
+  ) {{{{
+    data {{{{
+      userId
+      status
+    }}}}
+    cursor {{{{
+      hasMore
+      next
+      limit
+    }}}}
+  }}}}
+}}}}""".format(DELETION_REQUEST_LIST_QUERY_OPNAME, '{}', '{}')
 
 # According to Segment, represents the maximum limits of the bulk delete mutation call.
 MAXIMUM_USERS_IN_DELETE_REQUEST = 16 * 1024  # 16k users
@@ -200,6 +220,23 @@ end index %s for learners (%s, %s) through (%s, %s)...",
         """
         query = {
             'query': BULK_DELETE_STATUS_QUERY.format(bulk_delete_id)
+        }
+
+        resp = self._call_segment_graphql(query)
+        resp_json = resp.json()
+        LOG.info(text_type(resp_json))
+
+    def get_all_deletion_requests(self, per_page):
+        """
+        Queries the status of all previously submitted deletion requests.
+
+        TODO: Handle pagination by checking the returned "hasMore", "next", and "limit".
+              Details: https://segment.com/docs/guides/best-practices/user-deletion-and-suppression/
+
+        :param per_page: Number of requests to return with each GraphQL query.
+        """
+        query = {
+            'query': DELETION_REQUEST_LIST_QUERY.format(self.workspace_slug, per_page)
         }
 
         resp = self._call_segment_graphql(query)

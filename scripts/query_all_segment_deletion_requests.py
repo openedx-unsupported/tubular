@@ -1,0 +1,1 @@
+../tubular/scripts/query_all_segment_deletion_requests.py
