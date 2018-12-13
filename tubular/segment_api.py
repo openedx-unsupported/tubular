@@ -111,11 +111,10 @@ class SegmentApi(object):
     """
     Segment API client with convenience methods
     """
-    def __init__(self, base_url, auth_email, auth_password, projects_to_retire, workspace_slug):
+    def __init__(self, base_url, auth_email, auth_password, workspace_slug):
         self.base_url = base_url
         self.auth_email = auth_email
         self.auth_password = auth_password
-        self.projects_to_retire = projects_to_retire
         self.workspace_slug = workspace_slug
 
     def _get_auth_token(self):

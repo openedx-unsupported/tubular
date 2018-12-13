@@ -53,7 +53,7 @@ def setup_bulk_delete():
 
             segment = SegmentApi(
                 *[TEST_SEGMENT_CONFIG[key] for key in [
-                    'fake_base_url', 'fake_email', 'fake_password', 'projects_to_retire', 'fake_workspace'
+                    'fake_base_url', 'fake_email', 'fake_password', 'fake_workspace'
                 ]]
             )
             yield mock_post, segment

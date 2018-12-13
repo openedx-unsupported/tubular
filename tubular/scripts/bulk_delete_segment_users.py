@@ -79,10 +79,9 @@ def bulk_delete_segment_users(dry_run, config_file, retired_users_csv, chunk_siz
     segment_base_url = config['base_urls']['segment']
     auth_email = config['segment_email']
     auth_password = config['segment_password']
-    projects_to_retire = config['segment_projects']
     workplace_slug = config['segment_workspace_slug']
 
-    segment_api = SegmentApi(segment_base_url, auth_email, auth_password, projects_to_retire, workplace_slug)
+    segment_api = SegmentApi(segment_base_url, auth_email, auth_password, workplace_slug)
 
     # Read the CSV file. Log the number of user rows read.
     with open(retired_users_csv, 'r') as csv_file:
