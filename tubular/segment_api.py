@@ -158,6 +158,15 @@ class SegmentApi(object):
         headers = {"Authorization": "Bearer {}".format(access_token)}
         return requests.post(self.base_url, json=mutation, headers=headers)
 
+    def delete_learner(self, learner):
+        """
+        Delete a single Segment user using the bulk user deletion GraphQL mutation.
+
+        :param learner: Single user retirement status row with its fields.
+        """
+        # Send a list of one learner to be deleted by the multiple learner deletion call.
+        return self.delete_learners([learner], 1)
+
     def delete_learners(self, learners, chunk_size, beginning_idx=0):
         """
         Sets up the Segment GraphQL calls to GDPR-delete users in chunks.
