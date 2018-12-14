@@ -66,8 +66,7 @@ def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
         },
         'segment_workspace_slug': 'test_slug',
         'segment_email': 'test-segment-retire@edx.org',
-        'segment_password': 'mysegmentpassword',
-        'segment_projects': ['test_project1', 'test_project2', 'test_project3']
+        'segment_password': 'mysegmentpassword'
     }
 
     if fetch_ecom_segment_id:

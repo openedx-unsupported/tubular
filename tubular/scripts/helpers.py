@@ -169,7 +169,6 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
                 segment_base_url,
                 config['segment_email'],
                 config['segment_password'],
-                config['segment_projects'],
                 config['segment_workspace_slug']
             )
     except Exception as exc:  # pylint: disable=broad-except

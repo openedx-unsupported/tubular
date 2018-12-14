@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 """
-Command-line script to check status of a bulk delete users request from Segment.
+Command-line script to query all deletion requests made to Segment to check their status.
 """
 from __future__ import absolute_import, unicode_literals
 
@@ -23,7 +23,7 @@ from tubular.scripts.helpers import (
     _log
 )
 
-DEFAULT_CHUNK_SIZE = 5000
+DEFAULT_STATUSES_PER_PAGE = 50
 
 # Return codes for various fail cases
 ERR_NO_CONFIG = -1
@@ -31,7 +31,7 @@ ERR_BAD_CONFIG = -2
 ERR_NO_CSV_FILE = -3
 ERR_QUERYING_STATUS = -4
 
-SCRIPT_SHORTNAME = 'query_segment_bulk_delete_status'
+SCRIPT_SHORTNAME = 'query_all_segment_deletion_requests'
 LOG = partial(_log, SCRIPT_SHORTNAME)
 FAIL = partial(_fail, SCRIPT_SHORTNAME)
 FAIL_EXCEPTION = partial(_fail_exception, SCRIPT_SHORTNAME)
@@ -46,18 +46,19 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
     help='YAML file that contains retirement-related configuration for this environment.'
 )
 @click.option(
-    '--bulk_delete_id',
-    help='ID from previously-submitted Segment bulk user delete request.'
+    '--per_page',
+    default=DEFAULT_STATUSES_PER_PAGE,
+    help='Number of Segment deletion statuses to return on each page.'
 )
-def query_bulk_delete_id(config_file, bulk_delete_id):
+def query_all_deletion_requests(config_file, per_page):
     """
-    Query the status of a previously-submitted Segment bulk delete request.
+    Query the status of all Segment deletion requests.
     """
     if not config_file:
         FAIL(ERR_NO_CONFIG, 'No config file passed in.')
 
-    LOG('Querying Segment user bulk deletion status for ID "{}" using config file "{}"'.format(
-        bulk_delete_id, config_file
+    LOG('Querying Segment deletion requests using config file "{}"'.format(
+        config_file
     ))
 
     config = CONFIG_OR_EXIT(config_file)
@@ -70,11 +71,11 @@ def query_bulk_delete_id(config_file, bulk_delete_id):
     segment_api = SegmentApi(segment_base_url, auth_email, auth_password, workplace_slug)
 
     try:
-        segment_api.get_bulk_delete_status(bulk_delete_id)
+        segment_api.get_all_deletion_requests(per_page)
     except Exception as exc:  # pylint: disable=broad-except
         FAIL_EXCEPTION(ERR_QUERYING_STATUS, 'Unexpected error occurred!', exc)
 
 
 if __name__ == '__main__':
     # pylint: disable=unexpected-keyword-arg, no-value-for-parameter
-    query_bulk_delete_id(auto_envvar_prefix='RETIREMENT')
+    query_all_deletion_requests(auto_envvar_prefix='RETIREMENT')
