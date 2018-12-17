@@ -8,8 +8,9 @@ import requests
 from six import text_type
 
 
-# These are the keys in the learner dict that contain IDs we need to retire from Segment
-IDENTIFYING_KEYS = ['id', 'original_username', 'ecommerce_segment_id']
+# These are the required/optional keys in the learner dict that contain IDs we need to retire from Segment.
+REQUIRED_IDENTIFYING_KEYS = ['id', 'original_username']
+OPTIONAL_IDENTIFYING_KEYS = ['ecommerce_segment_id']
 
 # The Segment GraphQL mutation for authorization
 AUTH_MUTATION = "mutation auth($email:String!, $password:String!) {login(email:$email, password:$password)}"
@@ -189,8 +190,11 @@ end index %s for learners (%s, %s) through (%s, %s)...",
 
             learner_vals = []
             for idx in range(start_idx, end_idx + 1):
-                for id_key in IDENTIFYING_KEYS:
+                for id_key in REQUIRED_IDENTIFYING_KEYS:
                     learner_vals.append('"{}"'.format(learners[idx][id_key]))
+                for id_key in OPTIONAL_IDENTIFYING_KEYS:
+                    if id_key in learners[idx]:
+                        learner_vals.append('"{}"'.format(learners[idx][id_key]))
 
             if len(learner_vals) >= MAXIMUM_USERS_IN_DELETE_REQUEST:
                 LOG.error(
