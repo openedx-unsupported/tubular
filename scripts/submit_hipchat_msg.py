@@ -1,1 +1,0 @@
-../tubular/scripts/submit_hipchat_msg.py

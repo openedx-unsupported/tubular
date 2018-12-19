@@ -444,3 +444,4 @@ CHANGES
 * Change import filename - oops
 * Initial script implementation
 * Initial commit
+* Removed Hipchat integration
