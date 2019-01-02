@@ -48,7 +48,7 @@ LOG = logging.getLogger(__name__)
     help=u"Slack token which authorizes message sending. (optional)",
 )
 @click.option(
-    '--slack_channel',
+    '--slack_room',
     multiple=True,
     help=u"Slack channel which to send the message. (optional)",
 )
@@ -73,7 +73,7 @@ LOG = logging.getLogger(__name__)
     default=sys.stdout
 )
 def find_and_advance_pipeline(
-        gocd_user, gocd_password, gocd_url, slack_token, slack_channel,
+        gocd_user, gocd_password, gocd_url, slack_token, slack_room,
         pipeline, stage, relative_dt, out_file
 
 ):
@@ -108,7 +108,7 @@ def find_and_advance_pipeline(
     if slack_token:
         submit_slack_message(
             slack_token,
-            slack_channel,
+            slack_room,
             'PROD DEPLOY: Pipeline was advanced: {}'.format(pipeline_to_advance.url)
         )
 
