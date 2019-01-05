@@ -49,13 +49,17 @@ logging.basicConfig(level=logging.INFO)
     help='Output file for the AMI information yaml.',
     default=None,
 )
-def retrieve_base_ami(environment, deployment, play, override, out_file):
+@click.option(
+    '--elb/--no-elb',
+    default=True,
+)
+def retrieve_base_ami(environment, deployment, play, override, out_file, elb):
     """
     Method used to retrieve the last base AMI ID used for an environment/deployment/play.
     """
 
     try:
-        edp_ami_id = ec2.active_ami_for_edp(environment, deployment, play)
+        edp_ami_id = ec2.active_ami_for_edp(environment, deployment, play, has_elb=elb)
         if override:
             ami_id = override
         else:
