@@ -28,14 +28,17 @@ logging.basicConfig(level=logging.INFO)
 @click.option(
     '--environment', '-e',
     help='Environment for AMI, e.g. prod, stage',
+    required=True,
 )
 @click.option(
     '--deployment', '-d',
     help='Deployment for AMI e.g. edx, edge',
+    required=True,
 )
 @click.option(
     '--play', '-p',
     help='Play for AMI, e.g. edxapp, insights, discovery',
+    required=True,
 )
 @click.option(
     '--override',
@@ -44,17 +47,12 @@ logging.basicConfig(level=logging.INFO)
 @click.option(
     '--out_file',
     help='Output file for the AMI information yaml.',
-    default=None
+    default=None,
 )
 def retrieve_base_ami(environment, deployment, play, override, out_file):
     """
     Method used to retrieve the last base AMI ID used for an environment/deployment/play.
     """
-
-    has_edp = environment is not None or deployment is not None or play is not None
-    if not has_edp:
-        logging.error("Specify --environment, --deployment and --play.")
-        sys.exit(1)
 
     try:
         edp_ami_id = ec2.active_ami_for_edp(environment, deployment, play)
