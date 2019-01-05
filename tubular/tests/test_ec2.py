@@ -83,6 +83,7 @@ class TestEC2(unittest.TestCase):
 
     @mock_elb
     @mock_ec2
+    @mock_autoscaling
     def test_ami_for_edp_missing_edp(self):
         # Non-existent EDP
         with self.assertRaises(ImageNotFoundException):

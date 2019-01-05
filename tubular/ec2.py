@@ -136,6 +136,7 @@ def active_ami_for_edp(env, dep, play):
     LOG.info("Looking up AMI for {}-{}-{}...".format(env, dep, play))
     edp = EDP(env, dep, play)
     ec2_conn = boto.connect_ec2()
+    asg_conn = boto.connect_autoscale()
     all_elbs = get_all_load_balancers()
     LOG.info("Found {} load balancers.".format(len(all_elbs)))
 
@@ -148,37 +149,22 @@ def active_ami_for_edp(env, dep, play):
     LOG.info("{} reservations found for EDP {}-{}-{}".format(len(reservations), env, dep, play))
     amis = set()
     instances_by_id = {}
-    elb_found = False
     for reservation in reservations:
         for instance in reservation.instances:
-            # Need to build up instances_by_id for non ELB code below
+            # Need to build up instances_by_id for code below
             instances_by_id[instance.id] = instance
-            elbs = _instance_elbs(instance.id, all_elbs)
-            # Track if we find any instances behind an ELB, if not
-            # detect active ASG by checking if ASG has any suspended processes
-            # ASGs enabled by asgard have 0 disables processes
-            if len(elbs) > 0:
-                elb_found = True
-            if instance.state == 'running' and len(elbs) > 0:
-                amis.add(instance.image_id)
-                LOG.info("AMI found for {}-{}-{}: {}".format(env, dep, play, instance.image_id))
-            else:
-                LOG.info("Instance {} state: {} - elbs in: {}".format(instance.id, instance.state, len(elbs)))
 
-    if not elb_found:
-        LOG.info("No ELBs found, checking for enabled ASG instead")
-        asg_conn = boto.connect_autoscale()
-        asgs = asg_conn.get_all_groups(names=asgs_for_edp(edp))
-        for asg in asgs:
-            for asg_inst in asg.instances:
-                instance = instances_by_id[asg_inst.instance_id]
-                asg_enabled = len(asg.suspended_processes) == 0
-                if instance.state == 'running' and asg_enabled:
-                    amis.add(instance.image_id)
-                    LOG.info("AMI found in ASG {} for {}-{}-{}: {}".format(asg.name, env, dep, play, instance.image_id))
-                else:
-                    LOG.info("Instance {} state: {} - asg {} enabled: {}".format(
-                        instance.id, instance.state, asg.name, asg_enabled))
+    asgs = asg_conn.get_all_groups(names=asgs_for_edp(edp))
+    for asg in asgs:
+        for asg_inst in asg.instances:
+            instance = instances_by_id[asg_inst.instance_id]
+            asg_enabled = len(asg.suspended_processes) == 0
+            if instance.state == 'running' and asg_enabled:
+                amis.add(instance.image_id)
+                LOG.info("AMI found in ASG {} for {}-{}-{}: {}".format(asg.name, env, dep, play, instance.image_id))
+            else:
+                LOG.info("Instance {} state: {} - asg {} enabled: {}".format(
+                    instance.id, instance.state, asg.name, asg_enabled))
 
     if len(amis) > 1:
         msg = "Multiple AMIs found for {}-{}-{}, should have only one.".format(env, dep, play)
