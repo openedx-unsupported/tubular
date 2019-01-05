@@ -119,7 +119,7 @@ def _instance_elbs(instance_id, elbs):
                       max_tries=MAX_ATTEMPTS,
                       giveup=giveup_if_not_throttling,
                       factor=RETRY_FACTOR)
-def active_ami_for_edp(env, dep, play, has_elb=True):
+def active_ami_for_edp(env, dep, play):
     """
     Given an environment, deployment, and play, find the base AMI id used for the active deployment.
 
@@ -127,7 +127,6 @@ def active_ami_for_edp(env, dep, play, has_elb=True):
         env (str): Environment to check (stage, prod, loadtest, etc.)
         dep (str): Deployment to check (edx, edge, mckinsey, etc.)
         play (str): Play to check (edxapp, discovery, ecommerce, etc.)
-        no_elb (bool): EDP has an elb, backend instances don't so we have to find the active ASG differently
     Returns:
         str: Base AMI id of current active deployment for the EDP.
     Raises:
@@ -137,7 +136,6 @@ def active_ami_for_edp(env, dep, play, has_elb=True):
     LOG.info("Looking up AMI for {}-{}-{}...".format(env, dep, play))
     edp = EDP(env, dep, play)
     ec2_conn = boto.connect_ec2()
-    asg_conn = boto.connect_autoscale()
     all_elbs = get_all_load_balancers()
     LOG.info("Found {} load balancers.".format(len(all_elbs)))
 
@@ -150,20 +148,26 @@ def active_ami_for_edp(env, dep, play, has_elb=True):
     LOG.info("{} reservations found for EDP {}-{}-{}".format(len(reservations), env, dep, play))
     amis = set()
     instances_by_id = {}
+    elb_found = False
     for reservation in reservations:
         for instance in reservation.instances:
-            if has_elb:
-                elbs = _instance_elbs(instance.id, all_elbs)
-                if instance.state == 'running' and len(elbs) > 0:
-                    amis.add(instance.image_id)
-                    LOG.info("AMI found for {}-{}-{}: {}".format(env, dep, play, instance.image_id))
-                else:
-                    LOG.info("Instance {} state: {} - elbs in: {}".format(instance.id, instance.state, len(elbs)))
+            # Need to build up instances_by_id for non ELB code below
+            instances_by_id[instance.id] = instance
+            elbs = _instance_elbs(instance.id, all_elbs)
+            # Track if we find any instances behind an ELB, if not
+            # detect active ASG by checking if ASG has any suspended processes
+            # ASGs enabled by asgard have 0 disables processes
+            if len(elbs) > 0:
+                elb_found = True
+            if instance.state == 'running' and len(elbs) > 0:
+                amis.add(instance.image_id)
+                LOG.info("AMI found for {}-{}-{}: {}".format(env, dep, play, instance.image_id))
             else:
-                # Need to build up instances_by_id for non ELB code below
-                instances_by_id[instance.id] = instance
+                LOG.info("Instance {} state: {} - elbs in: {}".format(instance.id, instance.state, len(elbs)))
 
-    if not has_elb:
+    if not elb_found:
+        LOG.info("No ELBs found, checking for enabled ASG instead")
+        asg_conn = boto.connect_autoscale()
         asgs = asg_conn.get_all_groups(names=asgs_for_edp(edp))
         for asg in asgs:
             for asg_inst in asg.instances:
