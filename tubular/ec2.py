@@ -134,7 +134,9 @@ def active_ami_for_edp(env, dep, play):
         ImageNotFoundException: If no AMI IDs are found for the EDP.
     """
     LOG.info("Looking up AMI for {}-{}-{}...".format(env, dep, play))
+    edp = EDP(env, dep, play)
     ec2_conn = boto.connect_ec2()
+    asg_conn = boto.connect_autoscale()
     all_elbs = get_all_load_balancers()
     LOG.info("Found {} load balancers.".format(len(all_elbs)))
 
@@ -146,14 +148,23 @@ def active_ami_for_edp(env, dep, play):
     reservations = ec2_conn.get_all_reservations(filters=edp_filter)
     LOG.info("{} reservations found for EDP {}-{}-{}".format(len(reservations), env, dep, play))
     amis = set()
+    instances_by_id = {}
     for reservation in reservations:
         for instance in reservation.instances:
-            elbs = _instance_elbs(instance.id, all_elbs)
-            if instance.state == 'running' and len(elbs) > 0:
+            # Need to build up instances_by_id for code below
+            instances_by_id[instance.id] = instance
+
+    asgs = asg_conn.get_all_groups(names=asgs_for_edp(edp))
+    for asg in asgs:
+        for asg_inst in asg.instances:
+            instance = instances_by_id[asg_inst.instance_id]
+            asg_enabled = len(asg.suspended_processes) == 0
+            if instance.state == 'running' and asg_enabled:
                 amis.add(instance.image_id)
-                LOG.info("AMI found for {}-{}-{}: {}".format(env, dep, play, instance.image_id))
+                LOG.info("AMI found in ASG {} for {}-{}-{}: {}".format(asg.name, env, dep, play, instance.image_id))
             else:
-                LOG.info("Instance {} state: {} - elbs in: {}".format(instance.id, instance.state, len(elbs)))
+                LOG.info("Instance {} state: {} - asg {} enabled: {}".format(
+                    instance.id, instance.state, asg.name, asg_enabled))
 
     if len(amis) > 1:
         msg = "Multiple AMIs found for {}-{}-{}, should have only one.".format(env, dep, play)
