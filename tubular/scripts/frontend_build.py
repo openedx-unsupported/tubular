@@ -31,8 +31,12 @@ FAIL = partial(_fail, SCRIPT_SHORTNAME)
 
 @click.command()
 @click.option(
+    '--common-config-file',
+    help='File from which common configuration variables are read.',
+)
+@click.option(
     '--env-config-file',
-    help='File from which to read the environment configuration variables.',
+    help='File from which environment configuration variables are read.',
 )
 @click.option(
     '--app-name',
@@ -42,18 +46,21 @@ FAIL = partial(_fail, SCRIPT_SHORTNAME)
     '--version-file',
     help='File to which to write app version info to.',
 )
-def frontend_build(env_config_file, app_name, version_file):
+def frontend_build(common_config_file, env_config_file, app_name, version_file):
     """
     Builds a frontend application.
 
-    Uses the provided environment-specific configuration file to pass
+    Uses the provided common and environment-specific configuration files to pass
     environment variables to the frontend build.
 
     Args:
+        common_config_file (str): Path to a YAML file containing common configuration variables.
         env_config_file (str): Path to a YAML file containing environment configuration variables.
         app_name (str): Name of the frontend app.
         version_file (str): Path to a file to which application version info will be written.
     """
+    if not common_config_file:
+        FAIL(1, 'Common config file was not specified.')
     if not env_config_file:
         FAIL(1, 'Environment config file was not specified.')
     if not app_name:
@@ -62,12 +69,19 @@ def frontend_build(env_config_file, app_name, version_file):
         FAIL(1, 'Version file was not specified.')
 
     try:
+        with io.open(common_config_file, 'r') as contents:
+            common_vars = yaml.safe_load(contents)
+    except IOError:
+        FAIL(1, 'Common config file could not be opened.')
+
+    try:
         with io.open(env_config_file, 'r') as contents:
             env_vars = yaml.safe_load(contents)
     except IOError:
         FAIL(1, 'Environment config file could not be opened.')
 
-    app_config = env_vars.get('APP_CONFIG', {})
+    app_config = common_vars.get('APP_CONFIG', {})
+    app_config.update(env_vars.get('APP_CONFIG', {}))
     if not app_config:
         LOG('Config variables do not exist for app {}.'.format(app_name))
 
