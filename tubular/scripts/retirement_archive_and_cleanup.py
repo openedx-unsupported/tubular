@@ -67,7 +67,7 @@ def _on_s3_backoff(details):
     """
     Callback that is called when backoff... backs off
     """
-    LOG("Backing off {wait:0.1f} seconds afters {tries} tries calling function {target}".format(**details))
+    LOG("Backing off {wait:0.1f} seconds after {tries} tries calling function {target}".format(**details))
 
 
 @backoff.on_exception(
@@ -86,7 +86,8 @@ def _upload_to_s3(config, filename):
     try:
         s3_connection = S3Connection(
             config['s3_archive']['access_key'],
-            config['s3_archive']['secret_key']
+            config['s3_archive']['secret_key'],
+            host='s3.{}.amazonaws.com'.format(config['s3_archive']['region'])
         )
 
         datestr = datetime.datetime.now().strftime('%Y/%m/')
