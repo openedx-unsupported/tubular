@@ -48,15 +48,16 @@ Please do not report security issues in public. Please email security@edx.org.
 
 |     Variable Name    | Default                         | Description                                                                                   |
 |:--------------------:|---------------------------------|-----------------------------------------------------------------------------------------------|
-| ASGARD_API_ENDPOINTS | http://dummy.url:8091/us-east-1 | fully qualified URL to the asgard instance to run the scripts against                         |
-| ASGARD_API_TOKEN     | dummy-token                     | String - The asgard token                                                                     |
-| ASGARD_WAIT_TIMEOUT  | 600                             | Integer - time in seconds to wait for an action such as instances healthy in a load balancer. |
-| REQUESTS_TIMEOUT     | 10                              | How long to wait for an http connection/response from Asgard.                                 |
-| RETRY_MAX_ATTEMPTS   | 5                               | Integer - Maximum number attempts to be made when asgard returns an error.                    |
-| RETRY_DELAY_SECONDS  | 5                               | How long in seconds to wait between retries to asgard                                         |
-| RETRY_MAX_TIME_SECONDS | None                          | How long in seconds to keep retrying asgard before giving up.                                 |
-| RETRY_FACTOR         | 1.5                             | Factor to multiple the base wait time by per retry attempt.  Only applies to ec2 boto calls   |
-| ASGARD_ELB_HEALTH_TIMEOUT | 600                        | How long in seconds to wait for an instanced to become healthy in an ELB.                     |
+| ASGARD_API_ENDPOINTS | http://dummy.url:8091/us-east-1 | Fully qualified URL for the Asgard instance against which to run the scripts.                 |
+| ASGARD_API_TOKEN     | dummy-token                     | String - The Asgard token.                                                                    |
+| ASGARD_WAIT_TIMEOUT  | 600                             | Integer - Time in seconds to wait for an action such as instances healthy in a load balancer. |
+| REQUESTS_TIMEOUT     | 10                              | How long to wait for an HTTP connection/response from Asgard.                                 |
+| RETRY_MAX_ATTEMPTS   | 5                               | Integer - Maximum number of attempts to be made when Asgard returns an error.                 |
+| RETRY_SAILTHRU_MAX_ATTEMPTS | 5                        | Integer - Maximum number of attempts to be made when Sailthru returns an error.               |
+| RETRY_DELAY_SECONDS  | 5                               | Time in seconds to wait between retries to Asgard.                                            |
+| RETRY_MAX_TIME_SECONDS | None                          | Time in seconds to keep retrying Asgard before giving up.                                     |
+| RETRY_FACTOR         | 1.5                             | Factor by which to multiply the base wait time per retry attempt for EC2 boto calls.          |
+| ASGARD_ELB_HEALTH_TIMEOUT | 600                        | Time in seconds to wait for an EC2 instance to become healthy in an ELB.                      |
 | SHA_LENGTH           | 10                              | Length of the commit SHA to use when querying for a PR by commit.                             |
 | BATCH_SIZE           | 18                              | Number of commits to batch together when querying a PR by commit.                             |
 
