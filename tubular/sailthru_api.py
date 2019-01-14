@@ -1,15 +1,17 @@
 """
 Sailthru API classes that will call the Sailthru REST API using the Sailthru client.
 """
+import os
 import logging
-from six import text_type
 
+import backoff
 from sailthru.sailthru_client import SailthruClient
 from sailthru.sailthru_error import SailthruClientError
 
 log = logging.getLogger(__name__)
 
 SAILTHRU_ERROR_NOT_FOUND = 'User not found with email:'
+MAX_ATTEMPTS = int(os.environ.get('RETRY_SAILTHRU_MAX_ATTEMPTS', 5))
 
 
 class SailthruApi(object):
@@ -22,6 +24,11 @@ class SailthruApi(object):
         """
         self._sailthru_client = SailthruClient(sailthru_key, sailthru_secret)
 
+    @backoff.on_exception(
+        backoff.expo,
+        SailthruClientError,
+        max_tries=MAX_ATTEMPTS
+    )
     def delete_user(self, learner):
         """
         Delete a user from Sailthru using their email address.
@@ -30,14 +37,7 @@ class SailthruApi(object):
         if not email:
             raise TypeError('Expected an email address for user to delete, but received None.')
 
-        try:
-            sailthru_response = self._sailthru_client.api_delete("user", {'id': email})
-        except SailthruClientError as exc:
-            error_msg = u"Exception attempting to delete user from Sailthru - {}".format(
-                text_type(exc)
-            ).encode('utf-8')
-            log.error(error_msg)
-            raise Exception(error_msg)
+        sailthru_response = self._sailthru_client.api_delete("user", {'id': email})
 
         if not sailthru_response.is_ok():
             error = sailthru_response.get_error()
