@@ -25,6 +25,7 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from tubular.edx_api import CredentialsApi, EcommerceApi, LmsApi  # pylint: disable=wrong-import-position
 from tubular.segment_api import SegmentApi   # pylint: disable=wrong-import-position
 from tubular.sailthru_api import SailthruApi   # pylint: disable=wrong-import-position
+from tubular.salesforce_api import SalesforceApi   # pylint: disable=wrong-import-position
 
 
 def _log(kind, message):
@@ -142,6 +143,11 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
         client_secret = config['client_secret']
         sailthru_key = config.get('sailthru_key', None)
         sailthru_secret = config.get('sailthru_secret', None)
+        salesforce_user = config.get('salesforce_user', None)
+        salesforce_password = config.get('salesforce_password', None)
+        salesforce_token = config.get('salesforce_token', None)
+        salesforce_domain = config.get('salesforce_domain', None)
+        salesforce_assignee = config.get('salesforce_assignee', None)
 
         for state in config['retirement_pipeline']:
             for service, service_url in (
@@ -157,6 +163,15 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
 
         if sailthru_key:
             config['SAILTHRU'] = SailthruApi(sailthru_key, sailthru_secret)
+
+        if salesforce_user and salesforce_password and salesforce_token:
+            config['SALESFORCE'] = SalesforceApi(
+                salesforce_user,
+                salesforce_password,
+                salesforce_token,
+                salesforce_domain,
+                salesforce_assignee
+            )
 
         if ecommerce_base_url:
             config['ECOMMERCE'] = EcommerceApi(lms_base_url, ecommerce_base_url, client_id, client_secret)
