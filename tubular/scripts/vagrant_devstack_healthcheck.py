@@ -79,7 +79,7 @@ def check_health():
         except URLError:
             failed_services.append((service, 'Connection Refused! Is the service running and the port correct?'))
 
-    if len(failed_services) > 0:
+    if failed_services:
         print("The following services have failed their health checks:")
         print(failed_services)
         exit(1)

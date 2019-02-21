@@ -263,7 +263,7 @@ def _add_comments_to_files(config, file_ids):
 
     file_ids_and_comments = []
     for partner in file_ids:
-        if len(external_emails[partner]) == 0:
+        if not external_emails[partner]:
             LOG(
                 'WARNING: could not find a POC for the following partner: "{}". '
                 'Double check the partner folder permissions in Google Drive.'

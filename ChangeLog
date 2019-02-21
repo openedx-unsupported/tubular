@@ -1,6 +1,41 @@
 CHANGES
 =======
 
+* [retirement archiver] Make S3 credentials optional
+* add salesforce api and calls to retire user
+* Add link to slack room for debugging e2e failures
+* Added method to call the edx\_proctoring endpoint for deleting proctoring data
+* Remove name from AUTHORS
+* Change name in AUTHORS
+* Update README to add new Sailthru max attempts env var
+* Add retrying to the Sailthru delete\_user API call
+* Use specified region when connecting to S3 bucket
+* Add option for common environment variable file to frontend build script
+* Determine AMI by ASG only
+* Remove elb options, make detection automatic
+* Add no-elb mode to retrieve\_base\_ami.py OPS-3639
+* Cleanup/fix click options to be mandatory
+* fix release advancer
+* Differentiate between required/optional segment user ID keys
+* Add delete\_learner for single user deletion
+* Remove concept of Segment projects - no longer needed for bulk delete
+* Add querying of all suppress and delete user mutations
+* removed hipchat
+* removed hipchat
+* removed hipchat integration
+* pep8 fix
+* rebaes
+* added logic to send notifications to slack
+* added logic to send notifications to slack
+* Remove hipchat from release advancer
+* Add Segment bulk user delete querying functionality
+* Implement review comments. Add test for error case
+* Add script to call Segment bulk user delete & tests
+* Change supress call to bulk delete & change tests
+* Fix to avoid TypeError
+* add purge-cache parameter
+* Avoid logging the email address wherever not necessary
+* Update changelog
 * Wait longer for ASGs to become healthy
 * sailthru deletion: swallow "not found" errors
 * Fix pylint errors caused by new version
@@ -444,4 +479,3 @@ CHANGES
 * Change import filename - oops
 * Initial script implementation
 * Initial commit
-* Removed Hipchat integration

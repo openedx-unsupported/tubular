@@ -469,12 +469,10 @@ class SplitMongoBackend(object):
         for av_doc in self._active_versions.find():
             for branch, obj_id in av_doc['versions'].items():
                 structure_id = str(obj_id)
-                # pylint: disable=redefined-variable-type
                 if branch == 'library':
                     key = LibraryLocator(av_doc['org'], av_doc['course'])
                 else:
                     key = CourseLocator(av_doc['org'], av_doc['course'], av_doc['run'])
-                # pylint: disable=redefined-variable-type
 
                 branches.append(
                     ActiveVersionBranch(

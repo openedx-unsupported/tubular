@@ -49,7 +49,7 @@ def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
             'credentials': 'https://credentials.stage.edx.org/',
             'lms': 'https://stage-edx-edxapp.edx.org/',
             'ecommerce': 'https://ecommerce.stage.edx.org/',
-            'segment': 'https://segment.invalid/graphql'
+            'segment': 'https://segment.invalid/graphql',
         },
         'retirement_pipeline': TEST_RETIREMENT_PIPELINE,
         'partner_report_platform_name': TEST_PLATFORM_NAME,
@@ -61,8 +61,6 @@ def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
         's3_archive': {
             'bucket_name': 'fake_test_bucket',
             'region': 'fake_region',
-            'access_key': 'fake_access_key',
-            'secret_key': 'fake_secret_key'
         },
         'segment_workspace_slug': 'test_slug',
         'segment_email': 'test-segment-retire@edx.org',
