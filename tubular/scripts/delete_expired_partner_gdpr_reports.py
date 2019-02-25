@@ -45,7 +45,7 @@ def _config_or_exit(config_file, google_secrets_file):
     """
     try:
         with io.open(config_file, 'r') as config:
-            config = yaml.load(config)
+            config = yaml.safe_load(config)
 
         # Check required value
         if 'drive_partners_folder' not in config or not config['drive_partners_folder']:

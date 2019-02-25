@@ -73,7 +73,7 @@ def _config_or_exit(fail_func, fail_code, config_file):
     """
     try:
         with io.open(config_file, 'r') as config:
-            config = yaml.load(config)
+            config = yaml.safe_load(config)
 
         return config
     except Exception as exc:  # pylint: disable=broad-except
@@ -86,7 +86,7 @@ def _config_with_drive_or_exit(fail_func, config_fail_code, google_fail_code, co
     """
     try:
         with io.open(config_file, 'r') as config:
-            config = yaml.load(config)
+            config = yaml.safe_load(config)
 
         # Check required values
         for var in ('org_partner_mapping', 'drive_partners_folder'):

@@ -170,7 +170,7 @@ def active_ami_for_edp(env, dep, play):
         msg = "Multiple AMIs found for {}-{}-{}, should have only one.".format(env, dep, play)
         raise MultipleImagesFoundException(msg)
 
-    if len(amis) == 0:
+    if not amis:
         msg = "No AMIs found for {}-{}-{}.".format(env, dep, play)
         raise ImageNotFoundException(msg)
 
@@ -456,7 +456,7 @@ def terminate_instances(region, tags, max_run_hours, skip_if_tag):
             total_run_time = datetime.utcnow() - datetime.strptime(instance.launch_time[:-1], ISO_DATE_FORMAT)
             if total_run_time > timedelta(hours=max_run_hours) and skip_if_tag not in instance.tags:
                 instances_to_terminate.append(instance.id)
-    if len(instances_to_terminate) > 0:
+    if instances_to_terminate:
         conn.terminate_instances(instance_ids=instances_to_terminate)
     return instances_to_terminate
 
@@ -476,7 +476,7 @@ def wait_for_in_service(all_asgs, timeout):
 
     Returns: Nothing if healthy, raises a timeout exception if un-healthy.
     """
-    if len(all_asgs) == 0:
+    if not all_asgs:
         LOG.info("No ASGs to monitor - skipping health check.")
         return
 
@@ -500,7 +500,7 @@ def wait_for_in_service(all_asgs, timeout):
                 LOG.debug(asgs_left_to_check)
                 asgs_left_to_check.remove(asg.name)
 
-        if len(asgs_left_to_check) == 0:
+        if not asgs_left_to_check:
             return
 
         time.sleep(1)
@@ -542,7 +542,7 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
         """
         return selected_elb.get_instance_health()
 
-    if len(elbs_to_monitor) == 0:
+    if not elbs_to_monitor:
         LOG.info("No ELBs to monitor - skipping health check.")
         return
 
@@ -565,7 +565,7 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
                 elbs_left.remove(elb.name)
 
         LOG.info("Number of load balancers remaining with unhealthy instances: {}".format(len(elbs_left)))
-        if len(elbs_left) == 0:
+        if not elbs_left:
             LOG.info("All instances in all ELBs are healthy, returning.")
             return
         time.sleep(WAIT_SLEEP_TIME)

@@ -114,7 +114,7 @@ def _call_script(expect_success=True, config_orgs=None):
                         rows.append(row)
 
                 # Confirm that there are rows at all
-                assert len(rows)
+                assert rows
     return result
 
 

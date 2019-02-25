@@ -74,14 +74,16 @@ def fake_learners_to_retire():
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token', return_value=('THIS_IS_A_JWT', None))
-@patch('tubular.scripts.retirement_archive_and_cleanup._upload_to_s3')
+@patch('tubular.scripts.retirement_archive_and_cleanup.S3Connection')
+@patch('tubular.scripts.retirement_archive_and_cleanup.Key')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
     get_learners_by_date_and_status=DEFAULT,
     bulk_cleanup_retirements=DEFAULT
 )
 def test_successful(*args, **kwargs):
-    mock_get_access_token = args[1]
+    mock_get_access_token = args[2]
+    mock_s3connection_class = args[1]
     mock_get_learners = kwargs['get_learners_by_date_and_status']
     mock_bulk_cleanup_retirements = kwargs['bulk_cleanup_retirements']
 
@@ -93,6 +95,7 @@ def test_successful(*args, **kwargs):
     assert mock_get_access_token.call_count == 1
     mock_get_learners.assert_called_once()
     mock_bulk_cleanup_retirements.assert_called_once_with(['test1', 'test2', 'test3'])
+    mock_s3connection_class.assert_called_once_with(host='s3.fake_region.amazonaws.com')
 
     assert result.exit_code == 0
     assert 'Archive and cleanup complete' in result.output

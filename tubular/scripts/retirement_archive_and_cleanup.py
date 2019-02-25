@@ -84,9 +84,15 @@ def _upload_to_s3(config, filename):
     Upload the archive file to S3
     """
     try:
+        s3_credentials = ()
+        if 'access_key' in config['s3_archive']:
+            s3_credentials = (
+                config['s3_archive']['access_key'],
+                config['s3_archive']['secret_key'],
+            )
+
         s3_connection = S3Connection(
-            config['s3_archive']['access_key'],
-            config['s3_archive']['secret_key'],
+            *s3_credentials,
             host='s3.{}.amazonaws.com'.format(config['s3_archive']['region'])
         )
 

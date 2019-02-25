@@ -164,7 +164,7 @@ class ModuleStore(object):
         # establish the query filter  (respecting cases where no value is specified)
         query_filter = {}
 
-        if len(doc_filter['$in']) > 0:
+        if doc_filter['$in']:
             query_filter = {"_id": doc_filter}
 
         return query_filter
@@ -450,7 +450,7 @@ class ModuleStore(object):
                         structures)
 
                     # only add the tree if it has 1+ element
-                    if len(version_ancestry_list) > 0:
+                    if version_ancestry_list:
 
                         status_message = "Processing Active Version %s | %s: %s version with a %s-version tree"
 
