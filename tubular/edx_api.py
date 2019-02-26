@@ -302,7 +302,7 @@ class LmsApi(BaseApiClient):
         Removes the given learner from 3rd party proctoring backends
         """
         with correct_exception():
-            return self._client.api.edx_proctoring.v1.retire_backend_user(learner['user_id']).post()
+            return self._client.api.edx_proctoring.v1.retire_backend_user(learner['user']['id']).post()
 
     @_retry_lms_api()
     def bulk_cleanup_retirements(self, usernames):
