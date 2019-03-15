@@ -313,6 +313,28 @@ class LmsApi(BaseApiClient):
         with correct_exception():
             return self._client.api.user.v1.accounts.retirement_cleanup.post(**params)
 
+    def replace_lms_usernames(self, username_mappings):
+        """
+        Calls LMS API to replace usernames.
+        Param:
+            username_mappings: list of dicts where key is current username and value is new desired username
+            [{current_un_1: desired_un_1}, {current_un_2: desired_un_2}]
+        """
+        request_data = {"username_mappings": username_mappings}
+        with correct_exception():
+            return self._client.api.user.v1.accounts.replace_usernames.post(data=request_data)
+
+    def replace_forums_usernames(self, username_mappings):
+        """
+        Calls the discussion forums API inside of LMS to replace usernames.
+        Param:
+            username_mappings: list of dicts where key is current username and value is new unique username
+            [{current_un_1: new_un_1}, {current_un_2: new_un_2}]
+        """
+        request_data = {"username_mappings": username_mappings}
+        with correct_exception():
+            return self._client.api.discussion.v1.accounts.replace_usernames.post(data=request_data)
+
 
 class EcommerceApi(BaseApiClient):
     """
@@ -337,6 +359,17 @@ class EcommerceApi(BaseApiClient):
             result = self._client.api.v2.retirement.tracking_id(learner['original_username']).get()
             return result['ecommerce_tracking_id']
 
+    def replace_usernames(self, username_mappings):
+        """
+        Calls the ecommerce API to replace usernames.
+        Param:
+            username_mappings: list of dicts where key is current username and value is new unique username
+            [{current_un_1: new_un_1}, {current_un_2: new_un_2}]
+        """
+        request_data = {"username_mappings": username_mappings}
+        with correct_exception():
+            return self._client.api.v2.user_management.replace_usernames.post(data=request_data)
+
 
 class CredentialsApi(BaseApiClient):
     """
@@ -350,3 +383,30 @@ class CredentialsApi(BaseApiClient):
         params = {'data': {'username': learner['original_username']}}
         with correct_exception():
             return self._client.user.retire.post(**params)
+
+    def replace_usernames(self, username_mappings):
+        """
+        Calls the credentials API to replace usernames.
+        Param:
+            username_mappings: list of dicts where key is current username and value is new unique username
+            [{current_un_1: new_un_1}, {current_un_2: new_un_2}]
+        """
+        request_data = {"username_mappings": username_mappings}
+        with correct_exception():
+            return self._client.api.v2.replace_usernames.post(data=request_data)
+
+
+class DiscoveryApi(BaseApiClient):
+    """
+    Discovery API client with convenience methods for making API calls)
+    """
+    def replace_usernames(self, username_mappings):
+        """
+        Calls the discovery API to replace usernames.
+        Param:
+            username_mappings: list of dicts where key is current username and value is new unique username
+            [{current_un_1: new_un_1}, {current_un_2: new_un_2}]
+        """
+        request_data = {"username_mappings": username_mappings}
+        with correct_exception():
+            return self._client.api.v1.replace_usernames.post(data=request_data)
