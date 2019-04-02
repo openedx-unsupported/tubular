@@ -30,8 +30,8 @@ LOG = logging.getLogger(__name__)
 
 def write_responses(writer, replacements, status):
     for replacement in replacements:
-        original_username = replacement.keys()[0]
-        new_username = replacement.values()[0]
+        original_username = list(replacement.keys())[0]
+        new_username = list(replacement.values())[0]
         writer.writerow([original_username, new_username, status])
 
 
