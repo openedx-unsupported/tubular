@@ -91,7 +91,7 @@ def test_bulk_delete_error(setup_bulk_delete, caplog):  # pylint: disable=redefi
     mock_post.return_value = FakeErrorResponse()
 
     learner = TEST_SEGMENT_CONFIG['learner']
-    with pytest.raises(KeyError):
+    with pytest.raises(Exception):
         segment.delete_learners(learner, 1000)
 
     assert mock_post.call_count == 1
