@@ -212,15 +212,20 @@ end index %s for learners (%s, %s) through (%s, %s)...",
             resp = self._call_segment_graphql(mutation)
             resp_json = resp.json()
 
+            # If we get here we got some kind of JSON response from Segment, we'll try to get
+            # the data we need. If it doesn't exist we'll bubble up the error from Segment and
+            # eat the TypeError / KeyError since they won't be relevant.
             try:
                 bulk_user_delete_id = resp_json['data'][BULK_DELETE_MUTATION_OPNAME]['id']
                 LOG.info('Bulk user deletion queued. Id: {}'.format(bulk_user_delete_id))
             except (TypeError, KeyError):
-                LOG.error(u'Error was encountered for learners between start/end indices ({}, {}) : {}'.format(
+                err = u'Error was encountered for learners between start/end indices ({}, {}) : {}'.format(
                     start_idx, end_idx,
                     text_type(resp_json)
-                ).encode('utf-8'))
-                raise
+                ).encode('utf-8')
+                LOG.error(err)
+
+                raise Exception(err)
 
             curr_idx += chunk_size
 
