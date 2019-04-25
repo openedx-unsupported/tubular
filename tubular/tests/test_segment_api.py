@@ -3,6 +3,7 @@ Tests for the Segment API functionality
 """
 import mock
 import pytest
+from simplejson.errors import JSONDecodeError
 
 from tubular.segment_api import SegmentApi, BULK_DELETE_MUTATION, BULK_DELETE_MUTATION_OPNAME
 
@@ -40,6 +41,20 @@ class FakeErrorResponse(object):
         Returns fake Segment retirement response error in the correct format
         """
         return {'error': 'Test error message'}
+
+
+class FakeAuthErrorResponse(object):
+    """
+    Fakes an error response
+    """
+    status_code = 200
+    text = 'There was an error authenticating.'
+
+    def json(self):
+        """
+        Returns fake Segment retirement response error in the correct format
+        """
+        raise JSONDecodeError('This is not JSON', 'test', 1, 1)
 
 
 @pytest.fixture
@@ -97,3 +112,28 @@ def test_bulk_delete_error(setup_bulk_delete, caplog):  # pylint: disable=redefi
     assert mock_post.call_count == 1
     assert "Error was encountered for learners between start/end indices (0, 0)" in caplog.text
     assert "{'error': 'Test error message'}" in caplog.text
+
+
+def test_auth_error(caplog):  # pylint: disable=redefined-outer-name
+    """
+    Test Segment auth errors
+    """
+    with mock.patch('backoff.expo') as mock_expo:
+        mock_expo.return_value = 0.01
+        with mock.patch('tubular.segment_api.requests.post') as mock_post:
+                mock_post.return_value = FakeAuthErrorResponse()
+
+                segment = SegmentApi(
+                    *[TEST_SEGMENT_CONFIG[key] for key in [
+                        'fake_base_url', 'fake_email', 'fake_password', 'fake_workspace'
+                    ]]
+                )
+
+                learner = TEST_SEGMENT_CONFIG['learner']
+
+                with pytest.raises(JSONDecodeError):
+                    segment.delete_learners(learner, 1000)
+
+                assert mock_post.call_count == 4
+                assert 'Error occurred getting access token' in caplog.text
+                assert 'Response body: There was an error authenticating.' in caplog.text

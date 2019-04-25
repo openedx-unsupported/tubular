@@ -5,8 +5,11 @@ import logging
 
 import backoff
 import requests
+from simplejson.errors import JSONDecodeError
 from six import text_type
 
+# Maximum number of tries on Segment API calls
+MAX_TRIES = 4
 
 # These are the required/optional keys in the learner dict that contain IDs we need to retire from Segment.
 REQUIRED_IDENTIFYING_KEYS = ['id', 'original_username']
@@ -91,6 +94,12 @@ def _retry_segment_api():
     Decorator which enables retries with sane backoff defaults
     """
     def inner(func):  # pylint: disable=missing-docstring
+        func_with_decode_backoff = backoff.on_exception(
+            backoff.expo,
+            JSONDecodeError,
+            max_tries=MAX_TRIES,
+            on_backoff=lambda details: _backoff_handler(details)  # pylint: disable=unnecessary-lambda
+        )
         func_with_backoff = backoff.on_exception(
             backoff.expo,
             requests.exceptions.HTTPError,
@@ -101,10 +110,10 @@ def _retry_segment_api():
         func_with_timeout_backoff = backoff.on_exception(
             _wait_30_seconds,
             requests.exceptions.Timeout,
-            max_tries=4,
+            max_tries=MAX_TRIES,
             on_backoff=lambda details: _backoff_handler(details)  # pylint: disable=unnecessary-lambda
         )
-        return func_with_backoff(func_with_timeout_backoff(func))
+        return func_with_decode_backoff(func_with_backoff(func_with_timeout_backoff(func)))
     return inner
 
 
@@ -137,9 +146,14 @@ class SegmentApi(object):
             resp = requests.post(self.base_url, json=mutation)
             resp_json = resp.json()
             return resp_json['data']['login']['access_token']
-        except (TypeError, KeyError):
+        except (TypeError, KeyError, JSONDecodeError):
             LOG.error('Error occurred getting access token. Response {}'.format(text_type(resp)))
-            LOG.error('Response JSON: {}'.format(text_type(resp_json)))
+
+            if resp_json:
+                LOG.error('Response JSON: {}'.format(text_type(resp_json)))
+            else:
+                LOG.error('Response body: {}'.format(text_type(resp.text)))
+
             raise
 
     @_retry_segment_api()
@@ -218,7 +232,7 @@ end index %s for learners (%s, %s) through (%s, %s)...",
             try:
                 bulk_user_delete_id = resp_json['data'][BULK_DELETE_MUTATION_OPNAME]['id']
                 LOG.info('Bulk user deletion queued. Id: {}'.format(bulk_user_delete_id))
-            except (TypeError, KeyError):
+            except (TypeError, KeyError, JSONDecodeError):
                 err = u'Error was encountered for learners between start/end indices ({}, {}) : {}'.format(
                     start_idx, end_idx,
                     text_type(resp_json)
