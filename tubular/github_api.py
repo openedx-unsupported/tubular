@@ -66,6 +66,8 @@ class MessageType(enum.Enum):
     e2e_failed = "This PR may have caused e2e tests to fail on Stage. " \
                  "If you're a member of the edX org, please visit #e2e-troubleshooting on Slack to " \
                  "help diagnose the cause of these failures. Otherwise, it is the reviewer's responsibility."
+    jenkins = 'This PR triggered job completed successfully'
+    jenkins_failed = 'This PR triggered job failed'
 
 
 class SearchRateLimitError(Exception):
