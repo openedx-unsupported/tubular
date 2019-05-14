@@ -62,12 +62,17 @@ def frontend_deploy(env_config_file, app_name, app_dist, purge_cache):
         FAIL(1, 'Frontend application dist path was not specified.')
 
     deployer = FrontendDeployer(env_config_file, app_name)
-    bucket_name = deployer.env_cfg.get('S3_BUCKET_NAME')
-    if not bucket_name:
-        FAIL(1, 'No S3 bucket name configured for {}.'.format(app_name))
-    deployer.deploy_site(bucket_name, app_dist)
-    if purge_cache:
-        deployer.purge_cache(bucket_name)
+    multisite_sites = deployer.env_cfg.get('MULTISITE', [])
+    for site_obj in multisite_sites:
+        sitename = site_obj.get('HOSTNAME')
+        bucket_name = site_obj.get('BUCKET_NAME')
+        if not bucket_name:
+            FAIL(1, 'No S3 bucket name configured for {} for site {}.'.format(app_name, sitename))
+        app_path = path.join(app_dist, sitename)
+        deployer.deploy_site(bucket_name, app_path)
+        if purge_cache:
+            deployer.purge_cache(bucket_name)
+
 
 if __name__ == "__main__":
     frontend_deploy()  # pylint: disable=no-value-for-parameter
