@@ -352,7 +352,7 @@ class DriveApi(BaseApiClient):
 
         while folders_to_visit:
             current_folder = folders_to_visit.pop()
-            print("Current folder: {}".format(current_folder))
+            LOG.info("Current folder: {}".format(current_folder))
             visited_folders.append(current_folder)
             extra_kwargs = {}
 
