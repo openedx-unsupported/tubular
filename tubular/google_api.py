@@ -75,6 +75,7 @@ class BaseApiClient(object):
         credentials = service_account.Credentials.from_service_account_file(
             client_secrets_file_path, scopes=self._api_scopes)
         self._client = build(self._api_name, self._api_version, credentials=credentials, **kwargs)
+        LOG.info("Client built.")
 
     def _batch_with_retry(self, requests):
         """
@@ -294,7 +295,9 @@ class DriveApi(BaseApiClient):
             mimetype (str): Mimetype of files to delete. If not specified, all non-folders will be found.
             prefix (str): Filename prefix - only files started with this prefix will be deleted.
         """
+        LOG.info("Walking files...")
         all_files = self.walk_files(top_level, 'id, name, createdTime', mimetype)
+        LOG.info("Files walked. {} files found.".format(len(all_files)))
         file_ids_to_delete = []
         for file in all_files:
             if (not prefix or file['name'].startswith(prefix)) and parse(file['createdTime']) < delete_before_dt:
@@ -349,7 +352,10 @@ class DriveApi(BaseApiClient):
 
         while folders_to_visit:
             current_folder = folders_to_visit.pop()
+            LOG.info("Current folder: {}".format(current_folder))
             visited_folders.append(current_folder)
+            extra_kwargs = {}
+
             while True:
                 resp = self._client.files().list(  # pylint: disable=no-member
                     q="{}'{}' in parents".format(mimetype_clause, current_folder),
@@ -360,11 +366,11 @@ class DriveApi(BaseApiClient):
                 ).execute()
                 page_results = resp.get('files', [])
 
-                LOG.debug("walk_files: Returned %s results.", len(page_results))
+                LOG.info("walk_files: Returned %s results.", len(page_results))
 
                 # Examine returned results to separate folders from non-folders.
                 for result in page_results:
-                    LOG.debug(u"walk_files: Result: {}".format(result).encode('utf-8'))
+                    LOG.info(u"walk_files: Result: {}".format(result).encode('utf-8'))
                     # Folders contain files - and get special treatment.
                     if result['mimeType'] == FOLDER_MIMETYPE:
                         if recurse and result['id'] not in visited_folders:
@@ -376,7 +382,7 @@ class DriveApi(BaseApiClient):
                         # Return only the fields specified in file_fields.
                         results.append({k.strip(): result.get(k.strip(), None) for k in file_fields.split(',')})
 
-                LOG.debug("walk_files: %s files found and %s folders to check.", len(results), len(folders_to_visit))
+                LOG.info("walk_files: %s files found and %s folders to check.", len(results), len(folders_to_visit))
 
                 if page_results and 'nextPageToken' in resp and resp['nextPageToken']:
                     # Only call for more result pages if results were actually returned -and
