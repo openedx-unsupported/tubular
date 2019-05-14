@@ -19,7 +19,7 @@ from tubular.scripts.delete_expired_partner_gdpr_reports import (
     delete_expired_reports
 )
 from tubular.scripts.retirement_partner_report import REPORTING_FILENAME_PREFIX
-from tubular.tests.retirement_helpers import fake_config_file, fake_google_secrets_file
+from tubular.tests.retirement_helpers import TEST_PLATFORM_NAME, fake_config_file, fake_google_secrets_file
 
 TEST_CONFIG_FILENAME = 'test_config.yml'
 TEST_GOOGLE_SECRETS_FILENAME = 'test_google_secrets.json'
@@ -67,10 +67,12 @@ def test_successful_report_deletion(*args):
     mock_driveapi = args[2]
 
     test_created_date = '2018-07-13T22:21:45.600275+00:00'
+    file_prefix = '{}_{}'.format(REPORTING_FILENAME_PREFIX, TEST_PLATFORM_NAME)
+
     mock_walk_files.return_value = [
-        {'id': 'folder1', 'name': '{}.csv'.format(REPORTING_FILENAME_PREFIX), 'createdTime': test_created_date},
-        {'id': 'folder2', 'name': '{}_foo.csv'.format(REPORTING_FILENAME_PREFIX), 'createdTime': test_created_date},
-        {'id': 'folder3', 'name': '{}__bar.csv'.format(REPORTING_FILENAME_PREFIX), 'createdTime': test_created_date},
+        {'id': 'folder1', 'name': '{}.csv'.format(file_prefix), 'createdTime': test_created_date},
+        {'id': 'folder2', 'name': '{}_foo.csv'.format(file_prefix), 'createdTime': test_created_date},
+        {'id': 'folder3', 'name': '{}___bar.csv'.format(file_prefix), 'createdTime': test_created_date},
     ]
     mock_delete_files.return_value = None
     mock_driveapi.return_value = None
