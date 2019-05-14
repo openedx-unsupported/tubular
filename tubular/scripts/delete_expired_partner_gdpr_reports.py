@@ -102,10 +102,11 @@ def delete_expired_reports(config_file, google_secrets_file, age_in_days):
     try:
         delete_before_dt = datetime.now(UTC) - timedelta(days=age_in_days)
         drive = DriveApi(config['google_secrets_file'])
+        LOG('DriveApi configured')
         drive.delete_files_older_than(
             config['drive_partners_folder'],
             delete_before_dt,
-            mimetype='application/csv',
+            mimetype='text/csv',
             prefix=REPORTING_FILENAME_PREFIX
         )
         LOG('Partner report deletion complete')
