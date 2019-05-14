@@ -297,12 +297,13 @@ class DriveApi(BaseApiClient):
         """
         LOG.info("Walking files...")
         all_files = self.walk_files(top_level, 'id, name, createdTime', mimetype)
-        LOG.info("Files walked. {} files found.".format(len(all_files)))
+        LOG.info("Files walked. {} files found before filtering.".format(len(all_files)))
         file_ids_to_delete = []
         for file in all_files:
             if (not prefix or file['name'].startswith(prefix)) and parse(file['createdTime']) < delete_before_dt:
                 file_ids_to_delete.append(file['id'])
         if file_ids_to_delete:
+            LOG.info("{} files remaining after filtering.".format(len(file_ids_to_delete)))
             self.delete_files(file_ids_to_delete)
 
     @backoff.on_exception(

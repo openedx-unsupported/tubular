@@ -107,7 +107,7 @@ def delete_expired_reports(config_file, google_secrets_file, age_in_days):
             config['drive_partners_folder'],
             delete_before_dt,
             mimetype='text/csv',
-            prefix=REPORTING_FILENAME_PREFIX
+            prefix="{}_{}".format(REPORTING_FILENAME_PREFIX, config['partner_report_platform_name'])
         )
         LOG('Partner report deletion complete')
     except Exception as exc:  # pylint: disable=broad-except
