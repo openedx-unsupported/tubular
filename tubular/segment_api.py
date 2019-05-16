@@ -144,6 +144,7 @@ class SegmentApi(object):
         resp_json = None
         try:
             resp = requests.post(self.base_url, json=mutation)
+            resp.raise_for_status()
             resp_json = resp.json()
             return resp_json['data']['login']['access_token']
         except (TypeError, KeyError, JSONDecodeError):
