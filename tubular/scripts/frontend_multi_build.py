@@ -21,6 +21,7 @@ from tubular.scripts.frontend_utils import FrontendBuilder  # pylint: disable=wr
 SCRIPT_SHORTNAME = 'Build frontend'
 LOG = partial(_log, SCRIPT_SHORTNAME)
 FAIL = partial(_fail, SCRIPT_SHORTNAME)
+MULTISITE_PATH = './multisite/dist'
 
 
 @click.command()
@@ -66,14 +67,31 @@ def frontend_build(common_config_file, env_config_file, app_name, version_file):
     builder.install_requirements()
     app_config = builder.get_app_config()
     env_vars = ['{}={}'.format(k, v) for k, v in app_config.items()]
-    builder.build_app(env_vars, 'Could not run `npm run build` for app {}.'.format(app_name))
-    builder.create_version_file()
-    LOG(
-        'Frontend app {} built successfully with config file {}.'.format(
-            app_name,
-            env_config_file,
+
+    # If the MULTISITE key is set, build the app once for each site (by setting
+    # a SITENAME environment variable and store the each build output in
+    # `dist/$SITENAME`.
+    multisite_sites = builder.env_cfg.get('MULTISITE', [])
+    os.makedirs(MULTISITE_PATH)
+    for site_obj in multisite_sites:
+        sitename = site_obj.get('HOSTNAME')
+        if not sitename:
+            FAIL(1, 'HOSTNAME is not set for a site in in app {}.'.format(app_name))
+        env_vars_with_site = env_vars + ["SITENAME={}".format(sitename)]
+        builder.build_app(
+            env_vars_with_site,
+            'Could not run `npm run build` for for site {} in app {}.'.format(sitename, app_name)
         )
-    )
+
+        # Move built app from ./dist to a folder named after the site in the temporary
+        # multisite directory
+        os.renames('./dist', os.path.join(MULTISITE_PATH, sitename))
+
+    # Move the temporary directory down to `./dist` for deployment. The ./dist directory
+    # will be non-existant since it was moved after each build.
+    os.renames(MULTISITE_PATH, './dist')
+
+    builder.create_version_file()
 
 if __name__ == "__main__":
     frontend_build()  # pylint: disable=no-value-for-parameter
