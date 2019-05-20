@@ -82,11 +82,11 @@ def _wait_30_seconds():
     return backoff.constant(interval=30)
 
 
-def _exception_not_internal_svr_error(exc):
+def _http_status_giveup(exc):
     """
     Giveup method that gives up backoff upon any non-5xx and 504 server errors.
     """
-    return not 500 <= exc.response.status_code < 600
+    return not 429 == exc.response.status_code and not 500 <= exc.response.status_code < 600
 
 
 def _retry_segment_api():
@@ -103,8 +103,8 @@ def _retry_segment_api():
         func_with_backoff = backoff.on_exception(
             backoff.expo,
             requests.exceptions.HTTPError,
-            max_time=90,  # in seconds
-            giveup=_exception_not_internal_svr_error,
+            max_tries=MAX_TRIES,
+            giveup=_http_status_giveup,
             on_backoff=lambda details: _backoff_handler(details)  # pylint: disable=unnecessary-lambda
         )
         func_with_timeout_backoff = backoff.on_exception(
@@ -144,14 +144,15 @@ class SegmentApi(object):
         resp_json = None
         try:
             resp = requests.post(self.base_url, json=mutation)
+            resp.raise_for_status()
             resp_json = resp.json()
             return resp_json['data']['login']['access_token']
-        except (TypeError, KeyError, JSONDecodeError):
+        except (TypeError, KeyError, JSONDecodeError, requests.exceptions.HTTPError):
             LOG.error('Error occurred getting access token. Response {}'.format(text_type(resp)))
 
             if resp_json:
                 LOG.error('Response JSON: {}'.format(text_type(resp_json)))
-            else:
+            elif resp:
                 LOG.error('Response body: {}'.format(text_type(resp.text)))
 
             raise

@@ -5,6 +5,8 @@ import mock
 import pytest
 from simplejson.errors import JSONDecodeError
 
+import requests
+
 from tubular.segment_api import SegmentApi, BULK_DELETE_MUTATION, BULK_DELETE_MUTATION_OPNAME
 
 
@@ -55,6 +57,40 @@ class FakeAuthErrorResponse(object):
         Returns fake Segment retirement response error in the correct format
         """
         raise JSONDecodeError('This is not JSON', 'test', 1, 1)
+
+    def raise_for_status(self):
+        return
+
+
+class FakeAuthRateLimitResponse(object):
+    """
+    Fakes a rate limited response
+    """
+    status_code = 429
+    text = 'Rate limit exceeded'
+
+    def raise_for_status(self):
+        raise requests.exceptions.HTTPError(self.text, response=self)
+
+
+class FakeAuth500Response(FakeAuthErrorResponse):
+    """
+    Fakes a server error response
+    """
+    status_code = 500
+    text = 'Internal Server Error'
+
+    def raise_for_status(self):
+        raise requests.exceptions.HTTPError(self.text, response=self)
+
+
+@pytest.fixture(params=[FakeAuthErrorResponse, FakeAuthRateLimitResponse, FakeAuth500Response])
+def fake_auth_data_responses(request):
+    """
+    Pytest fixture that works similar to DDT, running each test with the
+    given parameter.
+    """
+    return request.param
 
 
 @pytest.fixture
@@ -114,26 +150,26 @@ def test_bulk_delete_error(setup_bulk_delete, caplog):  # pylint: disable=redefi
     assert "{'error': 'Test error message'}" in caplog.text
 
 
-def test_auth_error(caplog):  # pylint: disable=redefined-outer-name
+def test_auth_error(caplog, fake_auth_data_responses):  # pylint: disable=redefined-outer-name
     """
     Test Segment auth errors
     """
-    with mock.patch('backoff.expo') as mock_expo:
-        mock_expo.return_value = 0.01
-        with mock.patch('tubular.segment_api.requests.post') as mock_post:
-                mock_post.return_value = FakeAuthErrorResponse()
+    # Auth is the first call made, so we just patch post here since these errors should
+    # prevent other calls from being made.
+    with mock.patch('tubular.segment_api.requests.post') as mock_post:
+        mock_post.return_value = fake_auth_data_responses()
 
-                segment = SegmentApi(
-                    *[TEST_SEGMENT_CONFIG[key] for key in [
-                        'fake_base_url', 'fake_email', 'fake_password', 'fake_workspace'
-                    ]]
-                )
+        segment = SegmentApi(
+            *[TEST_SEGMENT_CONFIG[key] for key in [
+                'fake_base_url', 'fake_email', 'fake_password', 'fake_workspace'
+            ]]
+        )
 
-                learner = TEST_SEGMENT_CONFIG['learner']
+        learner = TEST_SEGMENT_CONFIG['learner']
 
-                with pytest.raises(JSONDecodeError):
-                    segment.delete_learners(learner, 1000)
+        with pytest.raises((JSONDecodeError, requests.exceptions.HTTPError)):
+            segment.delete_learners(learner, 1000)
 
-                assert mock_post.call_count == 4
-                assert 'Error occurred getting access token' in caplog.text
-                assert 'Response body: There was an error authenticating.' in caplog.text
+        assert mock_post.call_count == 4
+        assert 'Error occurred getting access token' in caplog.text
+        assert fake_auth_data_responses.text in caplog.text
