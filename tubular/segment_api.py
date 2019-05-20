@@ -147,12 +147,12 @@ class SegmentApi(object):
             resp.raise_for_status()
             resp_json = resp.json()
             return resp_json['data']['login']['access_token']
-        except (TypeError, KeyError, JSONDecodeError):
+        except (TypeError, KeyError, JSONDecodeError, requests.exceptions.HTTPError):
             LOG.error('Error occurred getting access token. Response {}'.format(text_type(resp)))
 
             if resp_json:
                 LOG.error('Response JSON: {}'.format(text_type(resp_json)))
-            else:
+            elif resp:
                 LOG.error('Response body: {}'.format(text_type(resp.text)))
 
             raise
