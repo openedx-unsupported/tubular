@@ -5,6 +5,8 @@ import mock
 import pytest
 from simplejson.errors import JSONDecodeError
 
+import requests
+
 from tubular.segment_api import SegmentApi, BULK_DELETE_MUTATION, BULK_DELETE_MUTATION_OPNAME
 
 
@@ -60,15 +62,29 @@ class FakeAuthErrorResponse(object):
         return
 
 
-class FakeAuthRateLimitResponse(FakeAuthErrorResponse):
+class FakeAuthRateLimitResponse(object):
     """
     Fakes a rate limited response
     """
     status_code = 429
     text = 'Rate limit exceeded'
 
+    def raise_for_status(self):
+        raise requests.exceptions.HTTPError(self.text, response=self)
 
-@pytest.fixture(params=[FakeAuthErrorResponse, FakeAuthRateLimitResponse])
+
+class FakeAuth500Response(FakeAuthErrorResponse):
+    """
+    Fakes a server error response
+    """
+    status_code = 500
+    text = 'Internal Server Error'
+
+    def raise_for_status(self):
+        raise requests.exceptions.HTTPError(self.text, response=self)
+
+
+@pytest.fixture(params=[FakeAuthErrorResponse, FakeAuthRateLimitResponse, FakeAuth500Response])
 def fake_auth_data_responses(request):
     """
     Pytest fixture that works similar to DDT, running each test with the
@@ -138,6 +154,8 @@ def test_auth_error(caplog, fake_auth_data_responses):  # pylint: disable=redefi
     """
     Test Segment auth errors
     """
+    # Auth is the first call made, so we just patch post here since these errors should
+    # prevent other calls from being made.
     with mock.patch('tubular.segment_api.requests.post') as mock_post:
         mock_post.return_value = fake_auth_data_responses()
 
@@ -149,7 +167,7 @@ def test_auth_error(caplog, fake_auth_data_responses):  # pylint: disable=redefi
 
         learner = TEST_SEGMENT_CONFIG['learner']
 
-        with pytest.raises(JSONDecodeError):
+        with pytest.raises((JSONDecodeError, requests.exceptions.HTTPError)):
             segment.delete_learners(learner, 1000)
 
         assert mock_post.call_count == 4
