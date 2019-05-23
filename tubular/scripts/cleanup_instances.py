@@ -37,15 +37,15 @@ LOG = logging.getLogger(__name__)
     type=str,
 )
 @click.option(
-    '--name_filter',
+    '--key_name_filter',
     default='gocd automation run*',
-    help='String used to filter the name of instances to terminate',
+    help='String used to filter the key pair name of instances to terminate',
     type=str,
 )
 def terminate_instances(region,
                         max_run_hours,
                         skip_if_tag,
-                        name_filter):
+                        key_name_filter):
     """
     Delete AWS EC2 instances that have been leftover from incomplete gocd runs
 
@@ -53,11 +53,12 @@ def terminate_instances(region,
         region (str):
         max_run_hours (int):
         skip_if_tag (str):
-        name_filter (str):
+        key_name_filter (str):
 
     """
     try:
-        terminated_instances = ec2.terminate_instances(region, {'tag:Name': name_filter}, max_run_hours, skip_if_tag)
+        terminated_instances = ec2.terminate_instances(region,
+                                                       {'key-name': key_name_filter}, max_run_hours, skip_if_tag)
         logging.info("terminated instances: {}".format(terminated_instances))
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
