@@ -114,7 +114,7 @@ class FrontendDeployer:
         return env_vars
 
     def deploy_site(self, bucket_name, app_path):
-        """Deploy files to bucket. If sitename is defined, collect files from sitename folder instead"""
+        """Deploy files to bucket."""
         bucket_uri = 's3://{}'.format(bucket_name)
         proc = subprocess.Popen(
             ' '.join(['aws s3 sync', app_path, bucket_uri, '--delete']),

@@ -69,23 +69,23 @@ def frontend_build(common_config_file, env_config_file, app_name, version_file):
     env_vars = ['{}={}'.format(k, v) for k, v in app_config.items()]
 
     # If the MULTISITE key is set, build the app once for each site (by setting
-    # a SITENAME environment variable and store the each build output in
-    # `dist/$SITENAME`.
+    # a HOSTNAME environment variable and store the each build output in
+    # `dist/$HOSTNAME`.
     multisite_sites = builder.env_cfg.get('MULTISITE', [])
     os.makedirs(MULTISITE_PATH)
     for site_obj in multisite_sites:
-        sitename = site_obj.get('HOSTNAME')
-        if not sitename:
+        hostname = site_obj.get('HOSTNAME')
+        if not hostname:
             FAIL(1, 'HOSTNAME is not set for a site in in app {}.'.format(app_name))
-        env_vars_with_site = env_vars + ["SITENAME={}".format(sitename)]
+        env_vars_with_site = env_vars + [" HOSTNAME={}".format(hostname)]
         builder.build_app(
             env_vars_with_site,
-            'Could not run `npm run build` for for site {} in app {}.'.format(sitename, app_name)
+            'Could not run `npm run build` for for site {} in app {}.'.format(hostname, app_name)
         )
 
         # Move built app from ./dist to a folder named after the site in the temporary
         # multisite directory
-        os.renames('./dist', os.path.join(MULTISITE_PATH, sitename))
+        os.renames('./dist', os.path.join(MULTISITE_PATH, hostname))
 
     # Move the temporary directory down to `./dist` for deployment. The ./dist directory
     # will be non-existant since it was moved after each build.
