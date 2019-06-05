@@ -225,7 +225,11 @@ end index %s for learners (%s, %s) through (%s, %s)...",
             }
 
             resp = self._call_segment_graphql(mutation)
-            resp_json = resp.json()
+            try:
+                resp_json = resp.json()
+            except JSONDecodeError:
+                LOG.error("Segment bulk delete response was invalid JSON: '%s'", resp.text)
+                raise
 
             # If we get here we got some kind of JSON response from Segment, we'll try to get
             # the data we need. If it doesn't exist we'll bubble up the error from Segment and
