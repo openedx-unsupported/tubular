@@ -248,30 +248,63 @@ class GitHubApiTestCase(TestCase):
         self.assertEqual(self.api.have_branches_diverged('base', 'head'), expected)
 
     @ddt.data(
-        ('123', list(range(10)), 10, 'SuCcEsS', True, "dummy_url"),
-        ('123', list(range(10)), 10, 'success', True, "dummy_url"),
-        ('123', list(range(10)), 10, 'SUCCESS', True, "dummy_url"),
-        ('123', list(range(10)), 10, 'pending', False, "dummy_url"),
-        ('123', list(range(10)), 10, 'failure', False, "dummy_url"),
-        ('123', list(range(10)), 0, None, False, "")
+        ('123', list(range(10)), 10, 'SuCcEsS', True, True),
+        ('123', list(range(10)), 10, 'success', True, True),
+        ('123', list(range(10)), 10, 'SUCCESS', True, True),
+        ('123', list(range(10)), 10, 'pending', False, True),
+        ('123', list(range(10)), 10, 'failure', False, True),
+        ('123', [], 0, None, False, True),
+        ('123', list(range(10)), 10, 'SuCcEsS', True, False),
+        ('123', list(range(10)), 10, 'success', True, False),
+        ('123', list(range(10)), 10, 'SUCCESS', True, False),
+        ('123', list(range(10)), 10, 'pending', False, False),
+        ('123', list(range(10)), 10, 'failure', False, False),
+        ('123', [], 0, None, False, False)
     )
     @ddt.unpack
-    def test_check_combined_status_commit(self, sha, statuses, statuses_returned, state, expected, combined_url):
-        mock_combined_status = Mock(spec=CommitCombinedStatus)
-        mock_combined_status.statuses = [Mock(spec=CommitStatus, id=i) for i in statuses]
-        mock_combined_status.state = state
-        mock_combined_status.url = combined_url
+    def test_check_combined_status_commit(
+            self, sha, statuses, statuses_returned, state, success_expected, use_statuses
+    ):
+        if use_statuses:
+            mock_combined_status = Mock(spec=CommitCombinedStatus)
+            mock_combined_status.statuses = [Mock(spec=CommitStatus, id=i, state=state) for i in statuses]
+            mock_combined_status.state = state
 
-        commit_mock = Mock(spec=Commit)
-        commit_mock.get_combined_status.return_value = mock_combined_status
-        self.repo_mock.get_commit.return_value = commit_mock
+            commit_mock = Mock(spec=Commit, url="some.fake.repo/")
+            commit_mock.get_combined_status.return_value = mock_combined_status
+            self.repo_mock.get_commit.return_value = commit_mock
+            commit_mock._requester = Mock()  # pylint: disable=protected-access
+            commit_mock._requester.requestJsonAndCheck.return_value = ({}, {'check_suites': []})   # pylint: disable=protected-access
+        else:
+            mock_combined_status = Mock(spec=CommitCombinedStatus)
+            mock_combined_status.statuses = []
+            mock_combined_status.state = None
+            mock_combined_status.url = None
 
-        response, statuses, commit_url = self.api.check_combined_status_commit(sha)
+            commit_mock = Mock(spec=Commit, url="some.fake.repo/")
+            commit_mock.get_combined_status.return_value = mock_combined_status
+            self.repo_mock.get_commit.return_value = commit_mock
+            commit_mock._requester = Mock()  # pylint: disable=protected-access
+            commit_mock._requester.requestJsonAndCheck.return_value = (  # pylint: disable=protected-access
+                {},
+                {
+                    'check_suites': [
+                        {
+                            'app': {
+                                'name': 'App {}'.format(i)
+                            },
+                            'conclusion': state,
+                            'url': 'some.fake.repo'
+                        } for i in statuses
+                    ]
+                }
+            )
 
-        self.assertEqual(commit_url, combined_url)
-        self.assertEqual(response, expected)
-        self.assertIsInstance(statuses, dict)
-        self.assertEqual(len(statuses), statuses_returned)
+        successful, statuses = self.api.check_combined_status_commit(sha)
+
+        assert successful == success_expected
+        assert isinstance(statuses, dict)
+        assert len(statuses) == statuses_returned
         commit_mock.get_combined_status.assert_called()
         self.repo_mock.get_commit.assert_called_with(sha)
 
