@@ -358,7 +358,7 @@ class GitHubAPI(object):
         check_suites = self.get_commit_check_suites(commit)
         results.update({
             suite['app']['name']: (
-                suite.get('conclusion', 'pending').lower(),
+                suite.get('conclusion').lower() if suite.get('conclusion') is not None else 'pending',
                 suite['url']
             )
             for suite in check_suites['check_suites']
