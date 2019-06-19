@@ -309,6 +309,68 @@ class GitHubApiTestCase(TestCase):
         self.repo_mock.get_commit.assert_called_with(sha)
 
     @ddt.data(
+        (
+            None,
+            None,
+            [
+                '{}-{}'.format(state, valtype)
+                for state in ['passed', 'pending', None, 'failed']
+                for valtype in ['status', 'check']
+            ]
+        ),
+        ('status', None, ['passed-check', 'pending-check', 'None-check', 'failed-check']),
+        ('check', None, ['passed-status', 'pending-status', 'None-status', 'failed-status']),
+        ('check', 'passed', ['passed-status', 'passed-check', 'pending-status', 'None-status', 'failed-status']),
+        ('.*', 'passed', ['passed-status', 'passed-check']),
+    )
+    @ddt.unpack
+    def test_filter_validation(self, exclude_contexts, include_contexts, expected_contexts):
+        filterable_states = ['passed', 'pending', None, 'failed']
+
+        with patch.object(
+            Github,
+            'get_organization',
+            return_value=Mock(name='org-mock', spec=Organization)
+        ):
+            with patch.object(Github, 'get_repo', return_value=Mock(name='repo-mock', spec=Repository)) as repo_mock:
+                api = GitHubAPI(
+                    'test-org',
+                    'test-repo',
+                    token='abc123',
+                    exclude_contexts=exclude_contexts,
+                    include_contexts=include_contexts
+                )
+
+        mock_combined_status = Mock(name='combined-status', spec=CommitCombinedStatus)
+        mock_combined_status.statuses = [
+            Mock(name='{}-status'.format(state), spec=CommitStatus, context='{}-status'.format(state), state=state)
+            for state in filterable_states
+        ]
+        mock_combined_status.state = None
+        mock_combined_status.url = None
+
+        commit_mock = Mock(name='commit', spec=Commit, url="some.fake.repo/")
+        commit_mock.get_combined_status.return_value = mock_combined_status
+        repo_mock.return_value.get_commit.return_value = commit_mock
+        commit_mock._requester = Mock(name='_requester')  # pylint: disable=protected-access
+        commit_mock._requester.requestJsonAndCheck.return_value = (  # pylint: disable=protected-access
+            {},
+            {
+                'check_suites': [
+                    {
+                        'app': {
+                            'name': '{}-check'.format(state)
+                        },
+                        'conclusion': state,
+                        'url': 'some.fake.repo'
+                    } for state in filterable_states
+                ]
+            }
+        )
+        filtered_results = api.filter_validation_results(api.get_validation_results('deadbeef'))
+        assert set(expected_contexts) == set(filtered_results.keys())
+
+    @ddt.data(
         ('release-candidate', 4),
         ('meow-candidate', 6),
         ('should-have-gone-to-law-school', 1),
