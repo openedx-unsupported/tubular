@@ -53,12 +53,20 @@ LOG = logging.getLogger(__name__)
     '--commit_hash',
     help='Commit hash to check.',
 )
-def poll_tests(org,
-               repo,
-               token,
-               input_file,
-               pr_number,
-               commit_hash):
+@click.option(
+    '--exclude-contexts',
+    help=u"Regex defining which validation contexts to exclude from this status check.",
+    default="datreeio|Renovate|Codecov"
+)
+@click.option(
+    '--include-contexts',
+    help=u"Regex defining which validation contexts to include from this status check.",
+    default=None
+)
+def poll_tests(
+    org, repo, token, input_file, pr_number, commit_hash,
+    exclude_contexts, include_contexts,
+):
     """
     Poll the combined status of a GitHub PR/commit in a repo several times.
 
@@ -70,7 +78,7 @@ def poll_tests(org,
     Else if both PR number -and- commit hash is specified, return a failure.
     Else if either PR number -or- commit hash is specified, check the tests for the specified value.
     """
-    gh_utils = GitHubAPI(org, repo, token)
+    gh_utils = GitHubAPI(org, repo, token, exclude_contexts=exclude_contexts, include_contexts=include_contexts)
 
     if not exactly_one_set((input_file, pr_number, commit_hash)):
         err_msg = \

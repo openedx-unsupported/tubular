@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, time
 import enum
 import logging
 import os
+import re
 import socket
 import backoff
 
@@ -171,7 +172,11 @@ class GitHubAPI(object):
     Manages requests to the GitHub api for a given org/repo
     """
 
-    def __init__(self, org, repo, token):
+    def __init__(
+            self, org, repo, token,
+            max_tries=None, initial_wait=None, interval=None,
+            exclude_contexts=None, include_contexts=None
+    ):
         """
         Creates a new API access object.
 
@@ -180,12 +185,39 @@ class GitHubAPI(object):
             repo (string): Github repo to access
             token (string): Github API access token
 
+            max_tries (int): The number of retries to attempt when polling for status
+            initial_wait (int): The number of seconds to wait after the first attempt while polling status
+            interval (int): The number of seconds to wait between each subsequent attempt while polling status
+
+            exclude_contexts (string): A regex indicating which validation contexts should be excluded
+            include_contexts (string): A regex indicating which validation contexts should be explicitly included.
+                If a context matches both exclude_contexts and include_contexts, it is *included*.
         """
         self.github_connection = Github(token)
         self.github_repo = self.github_connection.get_repo('{org}/{repo}'.format(org=org, repo=repo))
         self.github_org = self.github_connection.get_organization(org)
         self.org = org
         self.repo = repo
+
+        if max_tries is None:
+            max_tries = envvar_get_int("MAX_PR_TEST_POLL_TRIES", MAX_PR_TEST_TRIES_DEFAULT)
+        self.max_tries = max_tries
+
+        if initial_wait is None:
+            initial_wait = envvar_get_int("PR_TEST_INITIAL_WAIT_INTERVAL", PR_TEST_INITIAL_WAIT_INTERVAL_DEFAULT)
+        self.initial_wait = initial_wait
+
+        if interval is None:
+            interval = envvar_get_int("PR_TEST_POLL_INTERVAL", PR_TEST_POLL_INTERVAL_DEFAULT)
+        self.interval = interval
+
+        self.exclude_contexts = None
+        if exclude_contexts is not None:
+            self.exclude_contexts = re.compile(exclude_contexts)
+
+        self.include_contexts = None
+        if include_contexts is not None:
+            self.include_contexts = re.compile(include_contexts)
 
     def clone(self, branch=None, reference_repo=None):
         """
@@ -366,6 +398,24 @@ class GitHubAPI(object):
 
         return results
 
+    def filter_validation_results(self, results):
+        """
+        Filter a dictionary of validations to exclude all that contain the regex in ``self.exclude_contexts`` (except
+        those specifically included by ``self.include_contexts``).
+
+        Arguments:
+            results: A dict with context names as keys
+
+        Returns:
+            results, filtered by the exclude_apps and include_apps
+        """
+        return {
+            ctx: value
+            for (ctx, value) in results.items()
+            if (self.include_contexts and self.include_contexts.search(ctx)) or
+            not (self.exclude_contexts and self.exclude_contexts.search(ctx))
+        }
+
     def aggregate_validation_results(self, results):
         """
         Aggregate validation results. Returns 'success' if all validations
@@ -392,7 +442,7 @@ class GitHubAPI(object):
                 bool: True when the combined state equals 'success', False otherwise
                 dict: Key/values of ci_context:ci_url
         """
-        all_validations = self.get_validation_results(sha)
+        all_validations = self.filter_validation_results(self.get_validation_results(sha))
         aggregate_validation = self.aggregate_validation_results(all_validations)
 
         # Determine if the commit has passed all checks
@@ -442,20 +492,6 @@ class GitHubAPI(object):
             self.get_head_commit_from_pull_request(pr_number)
         )
 
-    @backoff.on_exception(
-        backoff.expo,
-        socket.timeout,
-        max_tries=5
-    )
-    @backoff.on_predicate(
-        _constant_with_initial_wait,
-        lambda x: x[0] not in ('success', 'failure'),
-        max_tries=envvar_get_int("MAX_PR_TEST_POLL_TRIES", MAX_PR_TEST_TRIES_DEFAULT),
-        initial_wait=envvar_get_int("PR_TEST_INITIAL_WAIT_INTERVAL", PR_TEST_INITIAL_WAIT_INTERVAL_DEFAULT),
-        interval=envvar_get_int("PR_TEST_POLL_INTERVAL", PR_TEST_POLL_INTERVAL_DEFAULT),
-        jitter=None,
-        on_backoff=_backoff_handler
-    )
     def _poll_commit(self, sha):
         """
         Poll whether the passed commit has passed all its tests.
@@ -471,7 +507,23 @@ class GitHubAPI(object):
         Returns:
             tuple(string, dict): the current commit status, and the results and urls of all validations
         """
-        return self._is_commit_successful(sha)
+
+        @backoff.on_exception(
+            backoff.expo,
+            socket.timeout,
+            max_tries=5
+        )
+        @backoff.on_predicate(
+            _constant_with_initial_wait,
+            lambda x: x[0] not in ('success', 'failure'),
+            max_tries=self.max_tries,
+            initial_wait=self.initial_wait,
+            interval=self.interval,
+            jitter=None,
+            on_backoff=_backoff_handler
+        )
+        def _run():
+            return self._is_commit_successful(sha)
 
     def poll_pull_request_test_status(self, pr_number):
         """
