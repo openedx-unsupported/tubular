@@ -307,6 +307,77 @@ class GitHubAPI(object):
 
         return commit.get_combined_status()
 
+    def get_commit_check_suites(self, commit):
+        """
+        Calls GitHub's `<commit>/check-suites` endpoint for a given commit. See
+        https://developer.github.com/v3/checks/suites/#list-check-suites-for-a-specific-ref
+
+        Arguments:
+            commit: One of:
+                - string (interprets as git SHA and fetches commit)
+                - GitCommit (uses the accompanying git SHA and fetches commit)
+                - Commit (directly gets the combined status)
+
+        Returns:
+            Json representing the check suites
+        """
+        if isinstance(commit, six.string_types):
+            commit = self.github_repo.get_commit(commit)
+        elif isinstance(commit, GitCommit):
+            commit = self.github_repo.get_commit(commit.sha)
+        elif not isinstance(commit, Commit):
+            raise UnknownObjectException(
+                500, "commit is neither a valid sha nor github.Commit.Commit object."
+            )
+        _, data = commit._requester.requestJsonAndCheck(  # pylint: disable=protected-access
+            "GET",
+            commit.url + "/check-suites",
+            headers={"Accept": "application/vnd.github.antiope-preview+json"}
+        )
+        return data
+
+    def get_validation_results(self, commit):
+        """
+        Return a list of validations (statuses and check runs), their results (success/failure/pending),
+        and direct urls.
+
+        Returns:
+            dict mapping context names to (result, url) tuples
+        """
+        results = {}
+
+        combined_status = self.get_commit_combined_statuses(commit)
+        results.update({
+            status.context: (
+                status.state.lower() if status.state is not None else None,
+                status.target_url
+            )
+            for status in combined_status.statuses
+        })
+
+        check_suites = self.get_commit_check_suites(commit)
+        results.update({
+            suite['app']['name']: (
+                suite.get('conclusion', 'pending').lower(),
+                suite['url']
+            )
+            for suite in check_suites['check_suites']
+        })
+
+        return results
+
+    def aggregate_validation_results(self, results):
+        """
+        Aggregate validation results. Returns 'success' if all validations
+        are 'success' or 'neutral', 'pending' if any validations are 'pending',
+        or 'failure' otherwise.
+        """
+        if any(state in ('pending', None) for (state, url) in results.values()):
+            return 'pending'
+        if all(state in ('success', 'neutral') for (state, url) in results.values()):
+            return 'success'
+        return 'failure'
+
     def _is_commit_successful(self, sha):
         """
         Returns whether the passed commit has passed all its tests.
@@ -321,16 +392,16 @@ class GitHubAPI(object):
                 bool: True when the combined state equals 'success', False otherwise
                 dict: Key/values of ci_context:ci_url
         """
-        commit_status = self.get_commit_combined_statuses(sha)
+        all_validations = self.get_validation_results(sha)
+        aggregate_validation = self.aggregate_validation_results(all_validations)
 
         # Determine if the commit has passed all checks
-        if len(commit_status.statuses) < 1 or commit_status.state is None:
-            return (False, {}, "")
+        if len(all_validations) < 1:
+            return (False, {})
 
         return (
-            commit_status.state.lower() == 'success',
-            {cs.context: cs.target_url for cs in commit_status.statuses},
-            commit_status.url
+            aggregate_validation == 'success',
+            {context: url for (context, (state, url)) in all_validations.items()}
         )
 
     def check_combined_status_commit(self, commit_sha):
@@ -378,7 +449,7 @@ class GitHubAPI(object):
     )
     @backoff.on_predicate(
         _constant_with_initial_wait,
-        lambda x: x not in ('success', 'failure'),
+        lambda x: x[0] not in ('success', 'failure'),
         max_tries=envvar_get_int("MAX_PR_TEST_POLL_TRIES", MAX_PR_TEST_TRIES_DEFAULT),
         initial_wait=envvar_get_int("PR_TEST_INITIAL_WAIT_INTERVAL", PR_TEST_INITIAL_WAIT_INTERVAL_DEFAULT),
         interval=envvar_get_int("PR_TEST_POLL_INTERVAL", PR_TEST_POLL_INTERVAL_DEFAULT),
@@ -391,19 +462,16 @@ class GitHubAPI(object):
         Ensures there is at least one status update so that
         commits whose tests haven't started yet are not valid.
 
+        If a suite or status context matches both include and exclude,
+        it is included.
+
         Arguments:
             sha (str): The SHA of which to get the status.
 
         Returns:
-            bool: true when the combined state equals 'success'
+            tuple(string, dict): the current commit status, and the results and urls of all validations
         """
-        commit_status = self.get_commit_combined_statuses(sha)
-
-        # Ensure that at least one status update exists to guard against commits whose tests haven't started yet.
-        if len(commit_status.statuses) < 1 or commit_status.state is None:
-            return 'not_started'
-
-        return commit_status.state.lower()
+        return self._is_commit_successful(sha)
 
     def poll_pull_request_test_status(self, pr_number):
         """
@@ -432,7 +500,7 @@ class GitHubAPI(object):
         Returns:
             True when the commit's combined state equals 'success', else False.
         """
-        return self._poll_commit(sha) == 'success'
+        return self._poll_commit(sha)[0] == 'success'
 
     def is_branch_base_of_pull_request(self, pr_number, branch_name):
         """
