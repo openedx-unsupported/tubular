@@ -438,9 +438,10 @@ class GitHubAPI(object):
             sha (str): The SHA of which to get the status.
 
         Returns:
-            tuple(bool, dict):
+            tuple(bool, dict, string):
                 bool: True when the combined state equals 'success', False otherwise
                 dict: Key/values of ci_context:ci_url
+                string: The aggregate validation status of the commit
         """
         all_validations = self.filter_validation_results(self.get_validation_results(sha))
         aggregate_validation = self.aggregate_validation_results(all_validations)
@@ -451,7 +452,8 @@ class GitHubAPI(object):
 
         return (
             aggregate_validation == 'success',
-            {context: url for (context, (state, url)) in all_validations.items()}
+            {context: url for (context, (state, url)) in all_validations.items()},
+            aggregate_validation,
         )
 
     def check_combined_status_commit(self, commit_sha):
@@ -470,7 +472,7 @@ class GitHubAPI(object):
             github.GithubException.GithubException: Unknown errors from github
             github.GithubException.UnknownObjectException: If the SHA does not exist
         """
-        return self._is_commit_successful(commit_sha)
+        return self._is_commit_successful(commit_sha)[0:2]
 
     def check_combined_status_pull_request(self, pr_number):
         """
@@ -490,7 +492,7 @@ class GitHubAPI(object):
         """
         return self._is_commit_successful(
             self.get_head_commit_from_pull_request(pr_number)
-        )
+        )[0:2]
 
     def _poll_commit(self, sha):
         """
@@ -515,7 +517,7 @@ class GitHubAPI(object):
         )
         @backoff.on_predicate(
             _constant_with_initial_wait,
-            lambda x: x[0] not in ('success', 'failure'),
+            lambda x: x[2] == 'pending',
             max_tries=self.max_tries,
             initial_wait=self.initial_wait,
             interval=self.interval,
@@ -525,7 +527,7 @@ class GitHubAPI(object):
         def _run():
             return self._is_commit_successful(sha)
 
-        return _run()
+        return _run()[0:2]
 
     def poll_pull_request_test_status(self, pr_number):
         """
