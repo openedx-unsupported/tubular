@@ -556,7 +556,7 @@ class GitHubAPI(object):
         Returns:
             True when the commit's combined state equals 'success', else False.
         """
-        return self._poll_commit(sha)[0] == 'success'
+        return self._poll_commit(sha)[0]
 
     def is_branch_base_of_pull_request(self, pr_number, branch_name):
         """
