@@ -525,6 +525,8 @@ class GitHubAPI(object):
         def _run():
             return self._is_commit_successful(sha)
 
+        return _run()
+
     def poll_pull_request_test_status(self, pr_number):
         """
         Given a PR number, poll the combined status of the PR's tests.
