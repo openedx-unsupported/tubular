@@ -309,6 +309,23 @@ class GitHubApiTestCase(TestCase):
         self.repo_mock.get_commit.assert_called_with(sha)
 
     @ddt.data(
+        ('passed', True),
+        ('failed', False)
+    )
+    @ddt.unpack
+    def test_poll_commit(self, end_status, successful):
+        url_dict = {'TravisCI': 'some url'}
+        with patch.object(self.api, '_is_commit_successful', side_effect=[
+            (False, url_dict, 'pending'),
+            (successful, url_dict, end_status),
+        ]):
+            result = self.api._poll_commit('some sha')  # pylint: disable=protected-access
+
+            assert self.api._is_commit_successful.call_count == 2  # pylint: disable=protected-access
+        assert result[0] == end_status
+        assert result[1] == url_dict
+
+    @ddt.data(
         (
             None,
             None,

@@ -517,7 +517,7 @@ class GitHubAPI(object):
         )
         @backoff.on_predicate(
             _constant_with_initial_wait,
-            lambda x: x[2] == 'pending',
+            lambda x: x[0] == 'pending',
             max_tries=self.max_tries,
             initial_wait=self.initial_wait,
             interval=self.interval,
@@ -525,9 +525,10 @@ class GitHubAPI(object):
             on_backoff=_backoff_handler
         )
         def _run():
-            return self._is_commit_successful(sha)
+            result = self._is_commit_successful(sha)
+            return (result[2], result[1])
 
-        return _run()[0:2]
+        return _run()
 
     def poll_pull_request_test_status(self, pr_number):
         """
