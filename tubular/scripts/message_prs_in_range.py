@@ -120,6 +120,7 @@ def message_pull_requests(org,
         _, _, head_sha = version.partition(u' ')
 
     api = get_client(org, repo, token)
+    LOG.info("Github API Rate Limit: {}".format(api.get_rate_limit()))
     pull_requests = retrieve_pull_requests(api, base_sha, head_sha)
     for pull_request in pull_requests:
         message_pr(api, MessageType[message_type], pull_request, extra_text)
@@ -155,6 +156,7 @@ def retrieve_pull_requests(api, base_sha, head_sha):
     Returns:
         An array of pull request objects
     """
+    LOG.info("Github API Rate Limit: {}".format(api.get_rate_limit()))
     pull_requests = api.get_pr_range(base_sha, head_sha)
     return pull_requests
 
@@ -175,6 +177,7 @@ def message_pr(api, message_type, pull_request, extra_text):
     Returns:
         None
     """
+    LOG.info("Github API Rate Limit: {}".format(api.get_rate_limit()))
     LOG.info(u"Posting message type %r to %d.", message_type.name, pull_request.number)
     api.message_pr_with_type(pr_number=pull_request, message_type=message_type, extra_text=extra_text)
 

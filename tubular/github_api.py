@@ -219,6 +219,13 @@ class GitHubAPI(object):
         if include_contexts is not None:
             self.include_contexts = re.compile(include_contexts)
 
+    def get_rate_limit(self):
+        """
+        Returns the rate limit and remaining calls before the limit is hit
+        Example: RateLimit(rate=Rate(remaining=4767, limit=5000))
+        """
+        return self.github_connection.get_rate_limit()
+
     def clone(self, branch=None, reference_repo=None):
         """
         Clone this Github repo as a LocalGitAPI instance.
