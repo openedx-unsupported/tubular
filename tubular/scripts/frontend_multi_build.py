@@ -66,7 +66,6 @@ def frontend_build(common_config_file, env_config_file, app_name, version_file):
     builder = FrontendBuilder(common_config_file, env_config_file, app_name, version_file)
     builder.install_requirements()
     app_config = builder.get_app_config()
-    env_vars = ['{}={}'.format(k, v) for k, v in app_config.items()]
 
     # If the MULTISITE key is set, build the app once for each site (by setting
     # a HOSTNAME environment variable and store the each build output in
@@ -77,9 +76,12 @@ def frontend_build(common_config_file, env_config_file, app_name, version_file):
         hostname = site_obj.get('HOSTNAME')
         if not hostname:
             FAIL(1, 'HOSTNAME is not set for a site in in app {}.'.format(app_name))
-        env_vars_with_site = env_vars + [" HOSTNAME={}".format(hostname)]
+        site_app_config = site_obj.get('APP_CONFIG', {})
+        site_app_config.update({'HOSTNAME': hostname})
+        app_config.update(site_app_config)
+        env_vars = ['{}={}'.format(k, v) for k, v in app_config.items()]
         builder.build_app(
-            env_vars_with_site,
+            env_vars,
             'Could not run `npm run build` for for site {} in app {}.'.format(hostname, app_name)
         )
 
