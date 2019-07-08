@@ -22,10 +22,13 @@ from github.GithubException import RateLimitExceededException, GithubException  
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
+
 def backoff_handler(details):
-    LOG.warn("Backing off {wait:0.1f} seconds afters {tries} tries "
-           "calling function {target} with args {args} and kwargs "
-           "{kwargs}".format(**details))
+    LOG.warning(
+        "Backing off {wait:0.1f} seconds afters {tries} tries "
+        "calling function {target} with args {args} and kwargs "
+        "{kwargs}".format(**details)
+    )
 
 
 @click.command()
