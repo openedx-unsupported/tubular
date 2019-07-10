@@ -38,6 +38,7 @@ from tubular.scripts.helpers import (
     _config_or_exit,
     _fail,
     _fail_exception,
+    _get_error_str_from_exception,
     _log,
     _setup_all_apis_or_exit
 )
@@ -207,12 +208,7 @@ def retire_learner(
         config['LMS'].update_learner_retirement_state(username, COMPLETE_STATE, 'Learner retirement complete.')
         LOG('Retirement complete for learner {}'.format(username))
     except Exception as exc:  # pylint: disable=broad-except
-        exc_msg = text_type(exc)
-
-        if hasattr(exc, 'content'):
-            # Slumber inconveniently discards the decoded .text attribute from the Response object, and instead gives us
-            # the raw encoded .content attribute, so we need to decode it first.
-            exc_msg += '\n' + exc.content.decode('utf-8')
+        exc_msg = _get_error_str_from_exception(exc)
 
         try:
             LOG('Error in retirement state {}: {}'.format(start_state, exc_msg))
