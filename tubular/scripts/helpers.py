@@ -55,16 +55,27 @@ def _fail_exception(kind, code, message, exc):
     """
     A version of fail that takes an exception to be utf-8 decoded
     """
-    exc_msg = text_type(exc)
-
-    # Slumber inconveniently discards the decoded .text attribute from the Response object, and
-    # instead gives us the raw encoded .content attribute, so we need to decode it first. Using
-    # hasattr here instead of try/except to keep our original exception intact.
-    if hasattr(exc, 'content'):
-        exc_msg += '\n' + exc.content.decode('utf-8')
-
+    exc_msg = _get_error_str_from_exception(exc)
     message += '\n' + exc_msg
     _fail(kind, code, message)
+
+
+def _get_error_str_from_exception(exc):
+    """
+    Return a string from an exception that may or may not have a .content (Slumber)
+    """
+    exc_msg = text_type(exc)
+
+    if hasattr(exc, 'content'):
+        # Slumber inconveniently discards the decoded .text attribute from the Response object,
+        # and instead gives us the raw encoded .content attribute, so we need to decode it first.
+        # Python 2 needs the decode, Py3 does not have it.
+        try:
+            exc_msg += '\n' + str(exc.content).decode('utf-8')
+        except AttributeError:
+            exc_msg += '\n' + str(exc.content)
+
+    return exc_msg
 
 
 def _config_or_exit(fail_func, fail_code, config_file):
