@@ -520,6 +520,7 @@ class GitHubAPI(object):
         @backoff.on_exception(
             backoff.expo,
             socket.timeout,
+            jitter=backoff.random_jitter,
             max_tries=5
         )
         @backoff.on_predicate(
@@ -706,6 +707,7 @@ class GitHubAPI(object):
     # We run this a few extra times than normal bc it may need to backoff up to a minute or more
     @backoff.on_exception(backoff.expo,
                           (SearchRateLimitError),
+                          jitter=backoff.random_jitter,
                           max_tries=12,
                           max_value=128)  # Keep it at 2 minutes and retry ~3 times after that.
     def search_issues(self, query, github_type, base, user, repo):
