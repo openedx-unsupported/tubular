@@ -9,12 +9,13 @@ import os
 import re
 import socket
 import backoff
+import logging
 
 from github import Github
 from github.PullRequest import PullRequest
 from github.Commit import Commit
 from github.GitCommit import GitCommit
-from github.GithubException import UnknownObjectException, GithubException
+from github.GithubException import UnknownObjectException, GithubException, RateLimitExceededException
 from github.InputGitAuthor import InputGitAuthor
 from pytz import timezone
 import six
@@ -142,6 +143,14 @@ def rc_branch_name_for_date(date):
     return 'rc/{date}'.format(date=date.isoformat())
 
 
+def _backoff_logger(details):
+    LOGGER.warning(
+        "Backing off {wait:0.1f} seconds afters {tries} tries "
+        "calling function {target} with args {args} and kwargs "
+        "{kwargs}".format(**details)
+    )
+
+
 def _backoff_handler(details):
     """
     Simple logging handler for when polling backoff occurs.
@@ -226,6 +235,17 @@ class GitHubAPI(object):
         """
         return self.github_connection.get_rate_limit()
 
+
+    def log_rate_limit(self):
+        """
+        Logs the rate limit and remaining calls before the limit is hit
+        Example: RateLimit(rate=Rate(remaining=4767, limit=5000))
+        """
+        LOGGER.info("Github API Rate Limit: {}".format(self.get_rate_limit()))
+        return self.github_connection.get_rate_limit()
+
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def clone(self, branch=None, reference_repo=None):
         """
         Clone this Github repo as a LocalGitAPI instance.
@@ -233,6 +253,8 @@ class GitHubAPI(object):
         clone_url = self.github_repo.ssh_url
         return LocalGitAPI.clone(clone_url, branch, reference_repo)
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def user(self):
         """
         Calls GitHub's '/user' endpoint.
@@ -320,6 +342,8 @@ class GitHubAPI(object):
         """
         return self.get_pull_request(pr_number).merge_commit_sha
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def get_commit_combined_statuses(self, commit):
         """
         Calls GitHub's '<commit>/statuses' endpoint for a given commit. See
@@ -337,6 +361,7 @@ class GitHubAPI(object):
         Raises:
             RequestFailed: If the response fails validation.
         """
+        self.log_rate_limit()
         if isinstance(commit, six.string_types):
             commit = self.github_repo.get_commit(commit)
         elif isinstance(commit, GitCommit):
@@ -346,6 +371,8 @@ class GitHubAPI(object):
 
         return commit.get_combined_status()
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def get_commit_check_suites(self, commit):
         """
         Calls GitHub's `<commit>/check-suites` endpoint for a given commit. See
@@ -360,6 +387,7 @@ class GitHubAPI(object):
         Returns:
             Json representing the check suites
         """
+        self.log_rate_limit()
         if isinstance(commit, six.string_types):
             commit = self.github_repo.get_commit(commit)
         elif isinstance(commit, GitCommit):
@@ -383,6 +411,7 @@ class GitHubAPI(object):
         Returns:
             dict mapping context names to (result, url) tuples
         """
+        self.log_rate_limit()
         results = {}
 
         combined_status = self.get_commit_combined_statuses(commit)
@@ -521,6 +550,7 @@ class GitHubAPI(object):
             backoff.expo,
             socket.timeout,
             jitter=backoff.random_jitter,
+            on_backoff=_backoff_logger,
             max_tries=5
         )
         @backoff.on_predicate(
@@ -587,6 +617,8 @@ class GitHubAPI(object):
         repo_branch_name = '{}:{}'.format(self.org, branch_name)
         return pull_request.base.label == repo_branch_name
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def get_commits_by_branch(self, branch):
         """
         Calls GitHub's 'commits' endpoint for master.
@@ -605,6 +637,8 @@ class GitHubAPI(object):
         branch = self.github_repo.get_branch(branch)
         return self.github_repo.get_commits(branch.commit.sha)
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def delete_branch(self, branch_name):
         """
         Call GitHub's delete ref (branch) API
@@ -616,11 +650,14 @@ class GitHubAPI(object):
             github.GithubException.GithubException: Unknown errors from github
             github.GithubException.UnknownObjectException: If the branch does not exist
         """
+        self.log_rate_limit()
         ref = self.github_repo.get_git_ref(
             ref='heads/{ref}'.format(ref=branch_name)
         )
         ref.delete()
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def create_branch(self, branch_name, sha):
         """
         Calls GitHub's create ref (branch) API
@@ -636,11 +673,14 @@ class GitHubAPI(object):
             github.GithubException.GithubException: If the branch isn't created/already exists.
             github.GithubException.UnknownObjectException: if the branch can not be fetched after creation
         """
+        self.log_rate_limit()
         return self.github_repo.create_git_ref(
             ref='refs/heads/{}'.format(branch_name),
             sha=sha
         )
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def create_pull_request(
             self,
             head,
@@ -674,6 +714,8 @@ class GitHubAPI(object):
             # PR could not be created.
             raise PullRequestCreationError(str(exc.data))
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def get_pull_request(self, pr_number):
         """
         Given a PR number, return the PR object.
@@ -688,8 +730,11 @@ class GitHubAPI(object):
             github.GithubException.GithubException: Unknown errors from github
             github.GithubException.UnknownObjectException: If the PR ID does not exist
         """
+        self.log_rate_limit()
         return self.github_repo.get_pull(pr_number)
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def merge_pull_request(self, pr_number):
         """
         Given a PR number, merge the pull request (if possible).
@@ -701,6 +746,7 @@ class GitHubAPI(object):
             github.GithubException.GithubException: If the PR merge fails.
             github.GithubException.UnknownObjectException: If the PR ID does not exist.
         """
+        self.log_rate_limit()
         pull_request = self.get_pull_request(pr_number)
         pull_request.merge()
 
@@ -708,6 +754,7 @@ class GitHubAPI(object):
     @backoff.on_exception(backoff.expo,
                           (SearchRateLimitError),
                           jitter=backoff.random_jitter,
+                          on_backoff=_backoff_logger,
                           max_tries=12,
                           max_value=128)  # Keep it at 2 minutes and retry ~3 times after that.
     def search_issues(self, query, github_type, base, user, repo):
@@ -748,6 +795,8 @@ class GitHubAPI(object):
             raise exc
         raise 'Failed to search_issues on Github'
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def create_tag(
             self,
             sha,
@@ -769,6 +818,7 @@ class GitHubAPI(object):
         Raises:
             github.GithubException.GithubException:
         """
+        self.log_rate_limit()
         tag_user = self.user()
         tagger = InputGitAuthor(
             name=tag_user.name or DEFAULT_TAG_USERNAME,
@@ -806,6 +856,8 @@ class GitHubAPI(object):
                 )
         return created_tag
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def have_branches_diverged(self, base_branch, compare_branch):
         """
         Checks to see if all the commits that are in the compare_branch are already in the base_branch.
@@ -822,6 +874,7 @@ class GitHubAPI(object):
             github.GithubException.GithubException: If the call fails.
             github.GithubException.UnknownObjectException: If either branch does not exist.
         """
+        self.log_rate_limit()
         return self.github_repo.compare(
             base='refs/heads/{}'.format(base_branch),
             head='refs/heads/{}'.format(compare_branch)
@@ -852,6 +905,8 @@ class GitHubAPI(object):
         # no result
         raise NoValidCommitsError()
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def get_pr_range(self, start_sha, end_sha):
         """
         Given a start SHA and an end SHA, returns a list of PRs between the two,
@@ -875,6 +930,7 @@ class GitHubAPI(object):
         Returns:
             list: of github.PullRequest.PullRequest
         """
+        self.log_rate_limit()
         # The Search API limits search queries to 256 characters. Untrimmed SHA1s
         # are 40 characters long. To avoid exceeding the rate and search query size
         # limits, we can batch SHAs in our searches. Reserving 56 characters for
@@ -906,6 +962,8 @@ class GitHubAPI(object):
 
         return list(pulls.values())
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def message_pull_request(self, pull_request, message, message_filter, force_message=False):
         """
         Messages a pull request. Will only message the PR if the message has not already been posted to the discussion
@@ -924,6 +982,7 @@ class GitHubAPI(object):
             InvalidPullRequestError: When the PR does not exist
 
         """
+        self.log_rate_limit()
         def _not_duplicate(pr_messages, new_message):
             """
             Returns True if the comment does not exist on the PR
@@ -989,10 +1048,13 @@ class GitHubAPI(object):
             force_message,
         )
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def has_been_merged(self, base, candidate):
         """
         Return whether ``candidate`` has been merged into ``base``.
         """
+        self.log_rate_limit()
         try:
             comparison = self.github_repo.compare(base, candidate)
         except UnknownObjectException:
@@ -1000,10 +1062,13 @@ class GitHubAPI(object):
 
         return comparison.status in ('behind', 'identical')
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def find_approved_not_closed_prs(self, pr_base):
         """
         Yield all pull requests in the repo against ``pr_base`` that are approved and not closed.
         """
+        self.log_rate_limit()
         query = "review:approved state:open"
         for issue in self.search_issues(query, 'pr', pr_base, '', ''):
             yield self.github_repo.get_pull(issue.number)

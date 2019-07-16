@@ -9,7 +9,6 @@ import sys
 import socket
 import logging
 import click
-import backoff
 import yaml
 
 
@@ -21,14 +20,6 @@ from github.GithubException import RateLimitExceededException, GithubException  
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
-
-
-def backoff_handler(details):
-    LOG.warning(
-        "Backing off {wait:0.1f} seconds afters {tries} tries "
-        "calling function {target} with args {args} and kwargs "
-        "{kwargs}".format(**details)
-    )
 
 
 @click.command()
@@ -134,10 +125,6 @@ def message_pull_requests(org,
         message_pr(api, MessageType[message_type], pull_request, extra_text)
 
 
-# Backoff switched to default jitter being max_jitter which is rand(0, max) which is undesirable in this case because
-# it can give a pattern like [1, 2, 1, 4, 6, 30, etc.] when we really want something closer to [1, 2, 4, 8, 16, etc.]
-@backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
-                      jitter=backoff.random_jitter, on_backoff=backoff_handler)
 def get_client(org, repo, token):
     u"""
     Returns the github client, pointing at the repo specified
@@ -154,10 +141,6 @@ def get_client(org, repo, token):
     return api
 
 
-# Backoff switched to default jitter being max_jitter which is rand(0, max) which is undesirable in this case because
-# it can give a pattern like [1, 2, 1, 4, 6, 30, etc.] when we really want something closer to [1, 2, 4, 8, 16, etc.]
-@backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
-                      jitter=backoff.random_jitter, on_backoff=backoff_handler)
 def retrieve_pull_requests(api, base_sha, head_sha):
     u"""
     Use the github API to retrieve pull requests between the BASE and HEAD SHA specified.
@@ -175,10 +158,6 @@ def retrieve_pull_requests(api, base_sha, head_sha):
     return pull_requests
 
 
-# Backoff switched to default jitter being max_jitter which is rand(0, max) which is undesirable in this case because
-# it can give a pattern like [1, 2, 1, 4, 6, 30, etc.] when we really want something closer to [1, 2, 4, 8, 16, etc.]
-@backoff.on_exception(backoff.expo, GithubException, max_tries=5, jitter=backoff.random_jitter,
-                      on_backoff=backoff_handler)
 def message_pr(api, message_type, pull_request, extra_text):
     u"""
     Send a Message for a Pull request.
