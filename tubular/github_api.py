@@ -617,7 +617,7 @@ class GitHubAPI(object):
         return pull_request.base.label == repo_branch_name
 
     @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
-                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
+                          jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def get_commits_by_branch(self, branch):
         """
         Calls GitHub's 'commits' endpoint for master.
@@ -679,7 +679,7 @@ class GitHubAPI(object):
         )
 
     @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
-                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
+                          jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def create_pull_request(
             self,
             head,
@@ -982,6 +982,7 @@ class GitHubAPI(object):
 
         """
         self.log_rate_limit()
+
         def _not_duplicate(pr_messages, new_message):
             """
             Returns True if the comment does not exist on the PR
@@ -1062,7 +1063,7 @@ class GitHubAPI(object):
         return comparison.status in ('behind', 'identical')
 
     @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
-                      jitter=backoff.random_jitter, on_backoff=_backoff_logger)
+                          jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def find_approved_not_closed_prs(self, pr_base):
         """
         Yield all pull requests in the repo against ``pr_base`` that are approved and not closed.
