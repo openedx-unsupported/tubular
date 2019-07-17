@@ -86,12 +86,20 @@ def frontend_build(common_config_file, env_config_file, app_name, version_file):
         )
 
         # Move built app from ./dist to a folder named after the site in the temporary
-        # multisite directory
-        os.renames('./dist', os.path.join(MULTISITE_PATH, hostname))
+        # multisite directory. Since the build step uses app_name as a current working directory,
+        # we need to move the files within that location.
+        os.renames(
+            os.path.join('.', app_name, 'dist'),
+            os.path.join('.', app_name, MULTISITE_PATH, hostname)
+        )
 
     # Move the temporary directory down to `./dist` for deployment. The ./dist directory
-    # will be non-existant since it was moved after each build.
-    os.renames(MULTISITE_PATH, './dist')
+    # will be non-existant since it was moved after each build. Since the build step uses app_name
+    # as a current working directory, we need to move the files within that location.
+    os.renames(
+        os.path.join('.', app_name, MULTISITE_PATH),
+        os.path.join('.', app_name, 'dist')
+    )
 
     builder.create_version_file()
 
