@@ -6,7 +6,6 @@ Command-line script message pull requests in a range
 from __future__ import absolute_import
 from os import path
 import sys
-import socket
 import logging
 import click
 import yaml
@@ -16,7 +15,6 @@ import yaml
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.github_api import GitHubAPI, MessageType  # pylint: disable=wrong-import-position
-from github.GithubException import RateLimitExceededException, GithubException  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)

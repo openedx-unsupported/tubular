@@ -9,7 +9,6 @@ import os
 import re
 import socket
 import backoff
-import logging
 
 from github import Github
 from github.PullRequest import PullRequest
