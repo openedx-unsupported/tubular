@@ -64,6 +64,7 @@ class GitHubApiTestCase(TestCase):
                 self.org_mock = org_mock.return_value = Mock(spec=Organization)
                 self.repo_mock = repo_mock.return_value = Mock(spec=Repository)
                 self.api = GitHubAPI('test-org', 'test-repo', token='abc123')
+        self.api.log_rate_limit = Mock(return_value=None)
         super(GitHubApiTestCase, self).setUp()
 
     @patch('github.Github.get_user')
@@ -357,6 +358,7 @@ class GitHubApiTestCase(TestCase):
                     exclude_contexts=exclude_contexts,
                     include_contexts=include_contexts
                 )
+        api.log_rate_limit = Mock(return_value=None)
 
         mock_combined_status = Mock(name='combined-status', spec=CommitCombinedStatus)
         mock_combined_status.statuses = [
