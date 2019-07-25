@@ -13,7 +13,7 @@ GitPython==2.1.8
 google-api-python-client==1.7.3
 jenkinsapi==0.3.3
 lxml==3.8.0
-PyGithub==1.29
+PyGithub==1.43.8
 pymongo==3.5.1
 pytz==2016.10
 pyyaml==5.1
