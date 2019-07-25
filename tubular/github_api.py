@@ -242,7 +242,8 @@ class GitHubAPI(object):
         LOGGER.info("Github API Rate Limit: {}".format(self.get_rate_limit()))
         return self.github_connection.get_rate_limit()
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def clone(self, branch=None, reference_repo=None):
         """
@@ -251,7 +252,8 @@ class GitHubAPI(object):
         clone_url = self.github_repo.ssh_url
         return LocalGitAPI.clone(clone_url, branch, reference_repo)
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def user(self):
         """
@@ -340,7 +342,8 @@ class GitHubAPI(object):
         """
         return self.get_pull_request(pr_number).merge_commit_sha
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def get_commit_combined_statuses(self, commit):
         """
@@ -369,7 +372,8 @@ class GitHubAPI(object):
 
         return commit.get_combined_status()
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def get_commit_check_suites(self, commit):
         """
@@ -615,7 +619,8 @@ class GitHubAPI(object):
         repo_branch_name = '{}:{}'.format(self.org, branch_name)
         return pull_request.base.label == repo_branch_name
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def get_commits_by_branch(self, branch):
         """
@@ -635,7 +640,8 @@ class GitHubAPI(object):
         branch = self.github_repo.get_branch(branch)
         return self.github_repo.get_commits(branch.commit.sha)
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def delete_branch(self, branch_name):
         """
@@ -654,7 +660,8 @@ class GitHubAPI(object):
         )
         ref.delete()
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def create_branch(self, branch_name, sha):
         """
@@ -677,7 +684,8 @@ class GitHubAPI(object):
             sha=sha
         )
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def create_pull_request(
             self,
@@ -712,7 +720,8 @@ class GitHubAPI(object):
             # PR could not be created.
             raise PullRequestCreationError(str(exc.data))
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def get_pull_request(self, pr_number):
         """
@@ -731,7 +740,8 @@ class GitHubAPI(object):
         self.log_rate_limit()
         return self.github_repo.get_pull(pr_number)
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def merge_pull_request(self, pr_number):
         """
@@ -793,7 +803,8 @@ class GitHubAPI(object):
             raise exc
         raise 'Failed to search_issues on Github'
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def create_tag(
             self,
@@ -854,7 +865,8 @@ class GitHubAPI(object):
                 )
         return created_tag
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def have_branches_diverged(self, base_branch, compare_branch):
         """
@@ -903,7 +915,8 @@ class GitHubAPI(object):
         # no result
         raise NoValidCommitsError()
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def get_pr_range(self, start_sha, end_sha):
         """
@@ -960,7 +973,8 @@ class GitHubAPI(object):
 
         return list(pulls.values())
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def message_pull_request(self, pull_request, message, message_filter, force_message=False):
         """
@@ -1047,7 +1061,8 @@ class GitHubAPI(object):
             force_message,
         )
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def has_been_merged(self, base, candidate):
         """
@@ -1061,7 +1076,8 @@ class GitHubAPI(object):
 
         return comparison.status in ('behind', 'identical')
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+    # GithubException is a temporary hack due to https://github.com/PyGithub/PyGithub/issues/1182
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, GithubException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def find_approved_not_closed_prs(self, pr_base):
         """
