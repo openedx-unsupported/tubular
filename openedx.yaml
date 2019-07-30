@@ -1,6 +1,8 @@
 # This file describes this Open edX repo, as described in OEP-2:
 # https://open-edx-proposals.readthedocs.io/en/latest/oep-0002-bp-repo-metadata.html#specification
-
+owner: coryleeio
+supporting_teams:
+    - edx/devops
 nick: tubul
 oeps:
   oep-7: true     # Python 3.6
