@@ -103,7 +103,7 @@ class GoCDAPI(object):
 
             # Was the initial pipeline in the value stream map was triggered before the last release time?
             if utc_trigger_time < previous_release_cutoff:
-                # Found the first pipeline to be triggered before the last release time.
+                # Found the most recent pipeline to be triggered before the last release time.
 
                 # Log relevant information.
                 est_time = utc_trigger_time.astimezone(tz.gettz('America/New_York'))
