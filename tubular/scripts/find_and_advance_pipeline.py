@@ -63,6 +63,10 @@ LOG = logging.getLogger(__name__)
     required=True,
 )
 @click.option(
+    '--check_ci_stage',
+    help=u"Name of the pipeline's optional ci_check stage.",
+)
+@click.option(
     '--relative_dt',
     help=u"Datetime used when determining current release date in ISO 8601 format, YYYY-MM-DDTHH:MM:SS+HH:MM",
 )
@@ -74,7 +78,7 @@ LOG = logging.getLogger(__name__)
 )
 def find_and_advance_pipeline(
         gocd_user, gocd_password, gocd_url, slack_token, slack_room,
-        pipeline, stage, relative_dt, out_file
+        pipeline, stage, check_ci_stage, relative_dt, out_file
 
 ):
     """
@@ -86,7 +90,7 @@ def find_and_advance_pipeline(
     if relative_dt:
         relative_dt = parser.parse(relative_dt)
 
-    pipeline_to_advance = gocd.fetch_pipeline_to_advance(pipeline, stage, relative_dt)
+    pipeline_to_advance = gocd.fetch_pipeline_to_advance(pipeline, stage, check_ci_stage, relative_dt)
     gocd.approve_stage(
         pipeline_to_advance.name,
         pipeline_to_advance.counter,
