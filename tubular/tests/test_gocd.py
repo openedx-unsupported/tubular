@@ -157,7 +157,8 @@ class GoCDApiTestCase(TestCase):
                 fetch_func = partial(
                     self.test_gocd_client.fetch_pipeline_to_advance,
                     'manual_verification_edxapp_prod_early_ami_build',
-                    'manual_verification'
+                    'manual_verification',
+                    None,
                 )
                 if exception_expected:
                     with self.assertRaises(exception_expected):
