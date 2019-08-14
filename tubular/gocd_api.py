@@ -49,7 +49,10 @@ class GoCDAPI(object):
         LOG.info("Starting stage %s of pipeline %s:%s", stage_name, pipeline_name, pipeline_counter)
         self.client.stages.run(pipeline_name, pipeline_counter, stage_name)
 
-    def fetch_pipeline_to_advance(self, advance_pipeline_name, advance_stage_name, check_ci_stage_name=None,
+    def fetch_pipeline_to_advance(self,
+                                  advance_pipeline_name,
+                                  advance_stage_name,
+                                  check_ci_stage_name=None,
                                   relative_to=None):
         """
         Given:
@@ -79,9 +82,9 @@ class GoCDAPI(object):
             """
             return pipeline_instance.stage(stage_name).data['scheduled']
 
-        def check_ci_stage_failed(pipeline_instance, stage_name):
+        def check_stage_failed(pipeline_instance, stage_name):
             """
-            Check to see if the check_ci stage failed
+            Check to see if a stage failed
             """
             return pipeline_instance.stage(stage_name).data.get('result') != 'Passed'
 
@@ -118,7 +121,7 @@ class GoCDAPI(object):
                 LOG.info('From initial pipeline: %s', initial_pipeline_inst.url)
                 LOG.info('Initial pipeline %s was triggered at %s', initial_pipeline_inst.data.name, est_time)
 
-                if check_ci_stage_name and check_ci_stage_failed(advancement_pipeline, check_ci_stage_name):
+                if check_ci_stage_name and check_stage_failed(advancement_pipeline, check_ci_stage_name):
                     LOG.info('CI check failed on %s, skipping to next older build', advancement_pipeline.url)
                     continue
 
