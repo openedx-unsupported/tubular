@@ -24,8 +24,8 @@ from .exception import InvalidUrlException
 from .utils import batch, envvar_get_int
 from .git_repo import LocalGitAPI
 
-LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.INFO)
+LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.INFO)
 
 PR_PREFIX = '**EdX Release Notice**: '
 PR_MESSAGE_FORMAT = '{prefix} {message} {extra_text}'
@@ -143,7 +143,7 @@ def rc_branch_name_for_date(date):
 
 
 def _backoff_logger(details):
-    LOGGER.warning(
+    LOG.warning(
         "Backing off {wait:0.1f} seconds afters {tries} tries "
         "calling function {target} with args {args} and kwargs "
         "{kwargs}".format(**details)
@@ -154,7 +154,7 @@ def _backoff_handler(details):
     """
     Simple logging handler for when polling backoff occurs.
     """
-    LOGGER.info('Trying again in {wait:0.1f} seconds after {tries} tries calling {target}'.format(**details))
+    LOG.info('Trying again in {wait:0.1f} seconds after {tries} tries calling {target}'.format(**details))
 
 
 def _constant_with_initial_wait(initial_wait=0, interval=1):
@@ -239,7 +239,7 @@ class GitHubAPI(object):
         Logs the rate limit and remaining calls before the limit is hit
         Example: RateLimit(rate=Rate(remaining=4767, limit=5000))
         """
-        LOGGER.info("Github API Rate Limit: {}".format(self.get_rate_limit()))
+        LOG.info("Github API Rate Limit: {}".format(self.get_rate_limit()))
         return self.github_connection.get_rate_limit()
 
     @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
@@ -783,7 +783,7 @@ class GitHubAPI(object):
                 query_str.append("user:{}".format(user))
             if repo:
                 query_str.append("repo:{}".format(repo))
-            LOGGER.info(' '.join(query_str))
+            LOG.info(' '.join(query_str))
             return self.github_connection.search_issues(' '.join(query_str))
         except GithubException as exc:
             message = str(exc.data)
