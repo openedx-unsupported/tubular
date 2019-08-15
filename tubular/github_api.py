@@ -480,7 +480,7 @@ class GitHubAPI(object):
         all_validations = self.filter_validation_results(self.get_validation_results(sha))
         aggregate_validation = self.aggregate_validation_results(all_validations)
 
-        # Determine if the commit has passed all checks
+        # Return false if there are no checks so that commits whose tests haven't started yet are not valid
         if len(all_validations) < 1:
             return (False, {})
 
