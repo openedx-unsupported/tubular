@@ -486,7 +486,7 @@ class GitHubAPI(object):
 
         return (
             aggregate_validation == 'success',
-            {context: url for (context, (state, url)) in all_validations.items()},
+            {context: "{} {}".format(url, state) for (context, (state, url)) in all_validations.items()},
             aggregate_validation,
         )
 
