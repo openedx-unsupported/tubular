@@ -73,6 +73,15 @@ def frontend_deploy(env_config_file, app_name, app_dist, purge_cache):
         if purge_cache:
             deployer.purge_cache(bucket_name)
 
+    # Here we are deploying ALL sites to a single bucket so they live at /<hostname>/
+    # within the global bucket. We are doing this concurrently will the individual
+    # deploys until it is verified that we can safely cut over.
+    bucket_name = deployer.env_cfg.get('BUCKET_NAME')
+    if not bucket_name:
+        FAIL(1, 'No S3 bucket name configured for {}.'.format(app_name))
+    deployer.deploy_site(bucket_name, app_dist)
+    if purge_cache:
+        deployer.purge_cache(bucket_name)
 
 if __name__ == "__main__":
     frontend_deploy()  # pylint: disable=no-value-for-parameter
