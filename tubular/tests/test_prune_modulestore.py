@@ -71,10 +71,10 @@ class TestModuleStorePruning(unittest.TestCase):
 
         # initialize the logger
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-        logger = logging.getLogger(__name__)
+        LOG = logging.getLogger(__name__)
 
         # initialize the module store libraries
-        cls.module_store = modulestore.ModuleStore(logger)
+        cls.module_store = modulestore.ModuleStore(LOG)
 
     def setUp(self):
         super(TestModuleStorePruning, self).setUp()

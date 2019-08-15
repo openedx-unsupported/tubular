@@ -4,7 +4,7 @@ Salesforce API class that will call the Salesforce REST API using simple-salesfo
 import logging
 from simple_salesforce import Salesforce
 
-log = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 RETIREMENT_TASK_DESCRIPTION = (
     "A user data retirement request has been made for "
     "{email} who has been identified as a lead in Salesforce. "
@@ -43,7 +43,7 @@ class SalesforceApi(object):
         else:
             ids = [record['Id'] for record in id_query['records']]
             if len(ids) > 1:
-                log.warning("Multiple Ids returned for Lead with email {}".format(email))
+                LOG.warning("Multiple Ids returned for Lead with email {}".format(email))
             return ids
 
     def get_user_id(self, username):
@@ -78,11 +78,11 @@ class SalesforceApi(object):
             task_params['Description'] += note
         created_task = self._sf.Task.create(task_params)
         if created_task['success']:
-            log.info("Successfully salesforce task created task " + created_task['id'])
+            LOG.info("Successfully salesforce task created task " + created_task['id'])
         else:
-            log.error("Errors while creating task:")
+            LOG.error("Errors while creating task:")
             for error in created_task['errors']:
-                log.error(error)
+                LOG.error(error)
             raise Exception("Unable to create retirement task for email " + email)
 
     def retire_learner(self, learner):
@@ -96,6 +96,6 @@ class SalesforceApi(object):
             raise TypeError('Expected an email address for user to delete, but received None.')
         lead_ids = self.get_lead_ids_by_email(email)
         if lead_ids is None:
-            log.info("No action taken because no lead was found in Salesforce.")
+            LOG.info("No action taken because no lead was found in Salesforce.")
             return
         self._create_retirement_task(email, lead_ids)

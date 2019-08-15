@@ -52,7 +52,7 @@ class Version(namedtuple(u'_Version', [u'repo', u'sha'])):
 
 
 GITHUB_PREFIX = re.compile(u'https?://github.com/')
-LOGGER = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 
 class ReleaseStatus(Enum):
@@ -248,7 +248,7 @@ def pr_table(token, jira_url, delta):
             )
         )
     except Exception:  # pylint: disable=broad-except
-        LOGGER.exception(u'Unable to get PRs for %r', delta)
+        LOG.exception(u'Unable to get PRs for %r', delta)
         change_details = E.P("Unable to list changes")
 
     return SECTION(
@@ -383,6 +383,6 @@ def publish_page(url, user, password, space, parent_title, title, body):
     try:
         parent_page = conf.get_page_by_title(space, parent_title)
     except:
-        LOGGER.error(u'Failed to publish, TITLE: %s BODY: %s', title, body)
+        LOG.error(u'Failed to publish, TITLE: %s BODY: %s', title, body)
         raise ValueError(u"Unable to retrieve page {!r} in space {!r}".format(parent_title, space))
     return conf.update_or_create(parent_page[u'id'], title, body)

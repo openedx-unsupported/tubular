@@ -14,8 +14,8 @@ from git.util import rmtree
 from git.exc import GitCommandError
 
 
-LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.INFO)
+LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.INFO)
 
 
 class InvalidGitRepoURL(Exception):

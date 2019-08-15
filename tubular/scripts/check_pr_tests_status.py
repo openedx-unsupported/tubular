@@ -118,7 +118,7 @@ def check_tests(
     dirname = os.path.dirname(out_file.name)
     if dirname:
         os.makedirs(dirname, exist_ok=True)
-    yaml.safe_dump(test_statuses, stream=out_file)
+    yaml.safe_dump(test_statuses, stream=out_file, width=1000)
 
     # An exit code of 0 means success and non-zero means failure.
     sys.exit(not status_success)
