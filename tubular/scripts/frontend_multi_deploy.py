@@ -61,21 +61,9 @@ def frontend_deploy(env_config_file, app_name, app_dist, purge_cache):
     if not app_dist:
         FAIL(1, 'Frontend application dist path was not specified.')
 
+    # We are deploying ALL sites to a single bucket so they live at
+    # /<hostname>/ within the global bucket.
     deployer = FrontendDeployer(env_config_file, app_name)
-    multisite_sites = deployer.env_cfg.get('MULTISITE', [])
-    for site_obj in multisite_sites:
-        hostname = site_obj.get('HOSTNAME')
-        bucket_name = site_obj.get('BUCKET_NAME')
-        if not bucket_name:
-            FAIL(1, 'No S3 bucket name configured for {} for site {}.'.format(app_name, hostname))
-        app_path = path.join(app_dist, hostname)
-        deployer.deploy_site(bucket_name, app_path)
-        if purge_cache:
-            deployer.purge_cache(bucket_name)
-
-    # Here we are deploying ALL sites to a single bucket so they live at /<hostname>/
-    # within the global bucket. We are doing this concurrently will the individual
-    # deploys until it is verified that we can safely cut over.
     bucket_name = deployer.env_cfg.get('BUCKET_NAME')
     if not bucket_name:
         FAIL(1, 'No S3 bucket name configured for {}.'.format(app_name))
