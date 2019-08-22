@@ -76,10 +76,12 @@ def frontend_build(common_config_file, env_config_file, app_name, version_file):
         hostname = site_obj.get('HOSTNAME')
         if not hostname:
             FAIL(1, 'HOSTNAME is not set for a site in in app {}.'.format(app_name))
-        site_app_config = site_obj.get('APP_CONFIG', {})
+
+        site_app_config = {}
+        site_app_config.update(app_config)
+        site_app_config.update(site_obj.get('APP_CONFIG', {}))
         site_app_config.update({'HOSTNAME': hostname})
-        app_config.update(site_app_config)
-        env_vars = ['{}={}'.format(k, v) for k, v in app_config.items()]
+        env_vars = ['{}={}'.format(k, v) for k, v in site_app_config.items()]
         builder.build_app(
             env_vars,
             'Could not run `npm run build` for for site {} in app {}.'.format(hostname, app_name)
