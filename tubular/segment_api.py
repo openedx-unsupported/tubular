@@ -15,55 +15,15 @@ MAX_TRIES = 4
 REQUIRED_IDENTIFYING_KEYS = ['id', 'original_username']
 OPTIONAL_IDENTIFYING_KEYS = ['ecommerce_segment_id']
 
-# The Segment GraphQL mutation for authorization
-AUTH_MUTATION = "mutation auth($email:String!, $password:String!) {login(email:$email, password:$password)}"
+# The Segment Config API for bulk deleting users for a particular workspace
+BULK_DELETE_URL = 'v1beta/workspaces/{}/regulations'
 
-# The Segment GraphQL mutation for bulk deleting users for a particular workspace
-BULK_DELETE_MUTATION_OPNAME = 'createWorkspaceBulkDeletion'
-BULK_DELETE_MUTATION = """
-mutation {{{{
-  {}(
-    workspaceSlug: "{}"
-    userIds: {}
-  ) {{{{
-    id
-  }}}}
-}}}}""".format(BULK_DELETE_MUTATION_OPNAME, '{}', '{}')
+# The Segment Config API for querying the status of a bulk user deletion request for a particular workspace
+BULK_DELETE_STATUS_URL = 'v1beta/workspaces/{}/regulations/{}'
 
-# The Segment GraphQL query for querying the status of a bulk user deletion request for a particular workspace
-BULK_DELETE_STATUS_QUERY_OPNAME = 'bulkDeletion'
-BULK_DELETE_STATUS_QUERY = """
-query {{{{
-  {}(
-    id: "{}"
-  ) {{{{
-    id
-    status
-  }}}}
-}}}}""".format(BULK_DELETE_STATUS_QUERY_OPNAME, '{}')
-
-# The Segment GraphQL query for listing the deletion requests sdent to Segment for a particular workspace
-DELETION_REQUEST_LIST_QUERY_OPNAME = 'deletionRequests'
-DELETION_REQUEST_LIST_QUERY = """
-query {{{{
-  {}(
-    workspaceSlug: "{}",
-    cursor: {{{{ limit: {} }}}}
-  ) {{{{
-    data {{{{
-      userId
-      status
-    }}}}
-    cursor {{{{
-      hasMore
-      next
-      limit
-    }}}}
-  }}}}
-}}}}""".format(DELETION_REQUEST_LIST_QUERY_OPNAME, '{}', '{}')
-
-# According to Segment, represents the maximum limits of the bulk delete mutation call.
-MAXIMUM_USERS_IN_DELETE_REQUEST = 16 * 1024  # 16k users
+# According to Segment this represents the maximum limits of the bulk delete mutation call.
+# https://reference.segmentapis.com/?version=latest#57a69434-76cc-43cc-a547-98c319182247
+MAXIMUM_USERS_IN_DELETE_REQUEST = 5000
 
 LOG = logging.getLogger(__name__)
 
@@ -121,62 +81,45 @@ class SegmentApi(object):
     """
     Segment API client with convenience methods
     """
-    def __init__(self, base_url, auth_email, auth_password, workspace_slug):
+    def __init__(self, base_url, auth_token, workspace_slug):
         self.base_url = base_url
-        self.auth_email = auth_email
-        self.auth_password = auth_password
+        self.auth_token = auth_token
         self.workspace_slug = workspace_slug
 
-    def _get_auth_token(self):
-        """
-        Makes the request to get an auth token and return it
-        """
-        mutation = {
-            'query': AUTH_MUTATION,
-            'variables':
-                {
-                    "email": "{email}".format(email=self.auth_email),
-                    "password": "{password}".format(password=self.auth_password)
-                }
-        }
-
-        resp = None
-        resp_json = None
-        try:
-            resp = requests.post(self.base_url, json=mutation)
-            resp.raise_for_status()
-            resp_json = resp.json()
-            return resp_json['data']['login']['access_token']
-        except (TypeError, KeyError, JSONDecodeError, requests.exceptions.HTTPError):
-            LOG.error('Error occurred getting access token. Response {}'.format(text_type(resp)))
-
-            if resp_json:
-                LOG.error('Response JSON: {}'.format(text_type(resp_json)))
-            elif resp:
-                LOG.error('Response body: {}'.format(text_type(resp.text)))
-
-            raise
-
     @_retry_segment_api()
-    def _call_segment_graphql(self, mutation):
+    def _call_segment_post(self, url, params):
         """
-        Actually makes the Segment GraphQL call.
+        Actually makes the Segment REST POST call.
 
         5xx errors and timeouts will be retried via _retry_segment_api,
         all others will bubble up.
-
-        We get the access token here instead of setting it up ahead of time
-        or in __init__ because these tokens seem to be very short-lived. If a
-        previous retirement step runs long, or if there are numerous retries,
-        the token might time out.
         """
-        access_token = self._get_auth_token()
-        headers = {"Authorization": "Bearer {}".format(access_token)}
-        return requests.post(self.base_url, json=mutation, headers=headers)
+        headers = {
+            "Authorization": "Bearer {}".format(self.auth_token),
+            "Content-Type": "application/json"
+        }
+        resp = requests.post(self.base_url + url, json=params, headers=headers)
+        resp.raise_for_status()
+        return resp
+
+    @_retry_segment_api()
+    def _call_segment_get(self, url):
+        """
+        Actually makes the Segment REST GET call.
+
+        5xx errors and timeouts will be retried via _retry_segment_api,
+        all others will bubble up.
+        """
+        headers = {
+            "Authorization": "Bearer {}".format(self.auth_token)
+        }
+        resp = requests.get(self.base_url + url, headers=headers)
+        resp.raise_for_status()
+        return resp
 
     def delete_learner(self, learner):
         """
-        Delete a single Segment user using the bulk user deletion GraphQL mutation.
+        Delete a single Segment user using the bulk user deletion REST API.
 
         :param learner: Single user retirement status row with its fields.
         """
@@ -185,19 +128,18 @@ class SegmentApi(object):
 
     def delete_learners(self, learners, chunk_size, beginning_idx=0):
         """
-        Sets up the Segment GraphQL calls to GDPR-delete users in chunks.
+        Sets up the Segment REST API calls to GDPR-delete users in chunks.
 
-        :param learners: List of learner dicts returned from LMS, should contain all
-            we need to retire this learner.
+        :param learners: List of learner dicts returned from LMS, should contain all we need to retire this learner.
+        :param chunk_size: How many learners should be retired in this batch.
+        :param beginning_idx: Index into learners where this batch should start.
         """
         curr_idx = beginning_idx
-        start_idx = 0
         while curr_idx < len(learners):
             start_idx = curr_idx
             end_idx = min(start_idx + chunk_size - 1, len(learners) - 1)
             LOG.info(
-                "Attempting Segment deletion with start index %s, \
-end index %s for learners (%s, %s) through (%s, %s)...",
+                "Attempting Segment deletion with start index %s, end index %s for learners (%s, %s) through (%s, %s)",
                 start_idx, end_idx,
                 learners[start_idx]['id'], learners[start_idx]['original_username'],
                 learners[end_idx]['id'], learners[end_idx]['original_username']
@@ -206,10 +148,10 @@ end index %s for learners (%s, %s) through (%s, %s)...",
             learner_vals = []
             for idx in range(start_idx, end_idx + 1):
                 for id_key in REQUIRED_IDENTIFYING_KEYS:
-                    learner_vals.append('"{}"'.format(learners[idx][id_key]))
+                    learner_vals.append(text_type(learners[idx][id_key]))
                 for id_key in OPTIONAL_IDENTIFYING_KEYS:
                     if id_key in learners[idx]:
-                        learner_vals.append('"{}"'.format(learners[idx][id_key]))
+                        learner_vals.append(text_type(learners[idx][id_key]))
 
             if len(learner_vals) >= MAXIMUM_USERS_IN_DELETE_REQUEST:
                 LOG.error(
@@ -218,13 +160,16 @@ end index %s for learners (%s, %s) through (%s, %s)...",
                 )
                 return
 
-            learners_str = '[' + ','.join(learner_vals) + ']'
-
-            mutation = {
-                'query': BULK_DELETE_MUTATION.format(self.workspace_slug, learners_str)
+            params = {
+                "regulation_type": "Suppress_With_Delete",
+                "attributes": {
+                    "name": "userId",
+                    "values": learner_vals
+                }
             }
 
-            resp = self._call_segment_graphql(mutation)
+            resp = self._call_segment_post(BULK_DELETE_URL.format(self.workspace_slug), params)
+
             try:
                 resp_json = resp.json()
             except JSONDecodeError:
@@ -235,9 +180,10 @@ end index %s for learners (%s, %s) through (%s, %s)...",
             # the data we need. If it doesn't exist we'll bubble up the error from Segment and
             # eat the TypeError / KeyError since they won't be relevant.
             try:
-                bulk_user_delete_id = resp_json['data'][BULK_DELETE_MUTATION_OPNAME]['id']
+                bulk_user_delete_id = resp_json['regulate_id']
                 LOG.info('Bulk user deletion queued. Id: {}'.format(bulk_user_delete_id))
-            except (TypeError, KeyError, JSONDecodeError):
+            except (TypeError, KeyError, JSONDecodeError) as exc:
+                LOG.exception(exc)
                 err = u'Error was encountered for learners between start/end indices ({}, {}) : {}'.format(
                     start_idx, end_idx,
                     text_type(resp_json)
@@ -254,27 +200,6 @@ end index %s for learners (%s, %s) through (%s, %s)...",
 
         :param bulk_delete_id: ID returned from a previously-submitted bulk delete request.
         """
-        query = {
-            'query': BULK_DELETE_STATUS_QUERY.format(bulk_delete_id)
-        }
-
-        resp = self._call_segment_graphql(query)
-        resp_json = resp.json()
-        LOG.info(text_type(resp_json))
-
-    def get_all_deletion_requests(self, per_page):
-        """
-        Queries the status of all previously submitted deletion requests.
-
-        TODO: Handle pagination by checking the returned "hasMore", "next", and "limit".
-              Details: https://segment.com/docs/guides/best-practices/user-deletion-and-suppression/
-
-        :param per_page: Number of requests to return with each GraphQL query.
-        """
-        query = {
-            'query': DELETION_REQUEST_LIST_QUERY.format(self.workspace_slug, per_page)
-        }
-
-        resp = self._call_segment_graphql(query)
+        resp = self._call_segment_get(BULK_DELETE_STATUS_URL.format(self.workspace_slug, bulk_delete_id))
         resp_json = resp.json()
         LOG.info(text_type(resp_json))
