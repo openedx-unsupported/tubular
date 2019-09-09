@@ -2,6 +2,8 @@
 Segment API call wrappers
 """
 import logging
+import sys
+import traceback
 
 import backoff
 import requests
@@ -32,7 +34,15 @@ def _backoff_handler(details):
     """
     Simple logging handler for when timeout backoff occurs.
     """
-    LOG.info('Trying again in {wait:0.1f} seconds after {tries} tries calling {target}'.format(**details))
+    LOG.error('Trying again in {wait:0.1f} seconds after {tries} tries calling {target}'.format(**details))
+
+    # Log the text response from any HTTPErrors, if possible
+    try:
+        LOG.error(traceback.format_exc())
+        exc = sys.exc_info()[1]
+        LOG.error("HTTPError code {}: {}".format(exc.response.status_code, exc.response.text))
+    except Exception as e:
+        pass
 
 
 def _wait_30_seconds():
@@ -168,21 +178,22 @@ class SegmentApi(object):
                 }
             }
 
-            resp = self._call_segment_post(BULK_DELETE_URL.format(self.workspace_slug), params)
+            resp_json = ""
 
             try:
-                resp_json = resp.json()
-            except JSONDecodeError:
-                LOG.error("Segment bulk delete response was invalid JSON: '%s'", resp.text)
-                raise
+                resp = self._call_segment_post(BULK_DELETE_URL.format(self.workspace_slug), params)
+                try:
+                    resp_json = resp.json()
+                    bulk_user_delete_id = resp_json['regulate_id']
+                    LOG.info('Bulk user deletion queued. Id: {}'.format(bulk_user_delete_id))
+                except JSONDecodeError:
+                    resp_json = resp.text
+                    raise
 
             # If we get here we got some kind of JSON response from Segment, we'll try to get
             # the data we need. If it doesn't exist we'll bubble up the error from Segment and
             # eat the TypeError / KeyError since they won't be relevant.
-            try:
-                bulk_user_delete_id = resp_json['regulate_id']
-                LOG.info('Bulk user deletion queued. Id: {}'.format(bulk_user_delete_id))
-            except (TypeError, KeyError, JSONDecodeError) as exc:
+            except (TypeError, KeyError, requests.exceptions.HTTPError, JSONDecodeError) as exc:
                 LOG.exception(exc)
                 err = u'Error was encountered for learners between start/end indices ({}, {}) : {}'.format(
                     start_idx, end_idx,
