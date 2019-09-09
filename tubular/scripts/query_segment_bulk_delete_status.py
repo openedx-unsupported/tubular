@@ -63,11 +63,10 @@ def query_bulk_delete_id(config_file, bulk_delete_id):
     config = CONFIG_OR_EXIT(config_file)
 
     segment_base_url = config['base_urls']['segment']
-    auth_email = config['segment_email']
-    auth_password = config['segment_password']
+    auth_token = config['segment_auth_tokenz']
     workplace_slug = config['segment_workspace_slug']
 
-    segment_api = SegmentApi(segment_base_url, auth_email, auth_password, workplace_slug)
+    segment_api = SegmentApi(segment_base_url, auth_token, workplace_slug)
 
     try:
         segment_api.get_bulk_delete_status(bulk_delete_id)

@@ -63,8 +63,7 @@ def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
             'region': 'fake_region',
         },
         'segment_workspace_slug': 'test_slug',
-        'segment_email': 'test-segment-retire@edx.org',
-        'segment_password': 'mysegmentpassword'
+        'segment_auth_token': 'fakeauthtoken',
     }
 
     if fetch_ecom_segment_id:

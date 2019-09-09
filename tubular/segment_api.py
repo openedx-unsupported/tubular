@@ -41,7 +41,7 @@ def _backoff_handler(details):
         LOG.error(traceback.format_exc())
         exc = sys.exc_info()[1]
         LOG.error("HTTPError code {}: {}".format(exc.response.status_code, exc.response.text))
-    except Exception as e:
+    except Exception:  # pylint: disable=broad-except
         pass
 
 

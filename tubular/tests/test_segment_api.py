@@ -4,12 +4,11 @@ Tests for the Segment API functionality
 import json
 import mock
 import pytest
-from simplejson.errors import JSONDecodeError
 
 import requests
 from six import text_type
 
-from tubular.segment_api import SegmentApi, BULK_DELETE_STATUS_URL, BULK_DELETE_URL
+from tubular.segment_api import SegmentApi, BULK_DELETE_URL
 
 
 FAKE_AUTH_TOKEN = 'FakeToken'
@@ -52,7 +51,6 @@ class FakeErrorResponse(object):
 
     def raise_for_status(self):
         raise requests.exceptions.HTTPError("", response=self)
-
 
 
 @pytest.fixture
