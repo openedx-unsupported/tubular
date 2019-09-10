@@ -57,6 +57,13 @@ class FrontendBuilder:
         return_code = proc.wait()
         if return_code != 0:
             self.FAIL('Could not run `npm install` for app {}.'.format(self.app_name))
+        npm_overrides = self.get_override_config()
+        if npm_overrides:
+            aliased_installs = ['{}@{}'.format(k, v) for k, v in npm_overrides.items()]
+            override_proc = subprocess.Popen(['npm install {}'.format(aliased_installs)], cwd=self.app_name, shell=True)
+            return_code = proc.wait()
+            if return_code != 0:
+                self.FAIL('Could not run `npm install` overrides for app {}.'.format(aliased_installs, self.app_name))
 
     def get_app_config(self):
         """ Combines the common and environment configs APP_CONFIG data """
@@ -65,6 +72,14 @@ class FrontendBuilder:
         if not app_config:
             self.LOG('Config variables do not exist for app {}.'.format(self.app_name))
         return app_config
+
+    def get_override_config(self):
+        """ Combines the common and environment configs NPM_OVERRIDES data """
+        override_config = self.common_cfg.get('NPM_OVERRIDES', {})
+        override_config.update(self.env_cfg.get('NPM_OVERRIDES', {}))
+        if not override_config:
+            self.LOG('No npm package overrides defined in config.')
+        return override_config
 
     def build_app(self, env_vars, fail_msg):
         """ Builds the app with environment variable."""
