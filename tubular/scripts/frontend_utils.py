@@ -63,7 +63,7 @@ class FrontendBuilder:
             override_proc = subprocess.Popen(['npm install {}'.format(aliased_installs)], cwd=self.app_name, shell=True)
             override_proc_return_code = override_proc.wait()
             if override_proc_return_code != 0:
-                self.FAIL('Could not run `npm install` overrides for app {}.'.format(aliased_installs, self.app_name))
+                self.FAIL('Could not run `npm install` overrides {} for app {}.'.format(aliased_installs, self.app_name))
 
     def get_app_config(self):
         """ Combines the common and environment configs APP_CONFIG data """
