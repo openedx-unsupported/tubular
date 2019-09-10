@@ -59,7 +59,7 @@ class FrontendBuilder:
             self.FAIL('Could not run `npm install` for app {}.'.format(self.app_name))
         npm_overrides = self.get_override_config()
         if npm_overrides:
-            aliased_installs = ['{}@{}'.format(k, v) for k, v in npm_overrides.items()]
+            aliased_installs = ['{}@{}'.format(k, v) for k, v in npm_overrides.items()].join(' ')
             override_proc = subprocess.Popen(['npm install {}'.format(aliased_installs)], cwd=self.app_name, shell=True)
             override_proc_return_code = override_proc.wait()
             if override_proc_return_code != 0:
