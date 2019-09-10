@@ -63,7 +63,7 @@ def query_bulk_delete_id(config_file, bulk_delete_id):
     config = CONFIG_OR_EXIT(config_file)
 
     segment_base_url = config['base_urls']['segment']
-    auth_token = config['segment_auth_tokenz']
+    auth_token = config['segment_auth_token']
     workplace_slug = config['segment_workspace_slug']
 
     segment_api = SegmentApi(segment_base_url, auth_token, workplace_slug)
