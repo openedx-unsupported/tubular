@@ -159,6 +159,8 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
         salesforce_token = config.get('salesforce_token', None)
         salesforce_domain = config.get('salesforce_domain', None)
         salesforce_assignee = config.get('salesforce_assignee', None)
+        segment_auth_token = config.get('segment_auth_token', None)
+        segment_workspace_slug = config.get('segment_workspace_slug', None)
 
         for state in config['retirement_pipeline']:
             for service, service_url in (
@@ -193,9 +195,8 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
         if segment_base_url:
             config['SEGMENT'] = SegmentApi(
                 segment_base_url,
-                config['segment_email'],
-                config['segment_password'],
-                config['segment_workspace_slug']
+                segment_auth_token,
+                segment_workspace_slug
             )
     except Exception as exc:  # pylint: disable=broad-except
         fail_func(fail_code, 'Unexpected error occurred!', exc)

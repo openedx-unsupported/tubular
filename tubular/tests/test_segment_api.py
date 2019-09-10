@@ -1,25 +1,24 @@
 """
 Tests for the Segment API functionality
 """
+import json
 import mock
 import pytest
-from simplejson.errors import JSONDecodeError
 
 import requests
+from six import text_type
 
-from tubular.segment_api import SegmentApi, BULK_DELETE_MUTATION, BULK_DELETE_MUTATION_OPNAME
+from tubular.segment_api import SegmentApi, BULK_DELETE_URL
 
 
 FAKE_AUTH_TOKEN = 'FakeToken'
 TEST_SEGMENT_CONFIG = {
     'projects_to_retire': ['project_1', 'project_2'],
     'learner': [{'id': 1, 'ecommerce_segment_id': 'ecommerce-20', 'original_username': 'test_user'}],
-    'fake_base_url': 'https://segment.invalid',
-    'fake_email': 'fake_email',
-    'fake_password': 'fake_password',
+    'fake_base_url': 'https://segment.invalid/',
     'fake_auth_token': FAKE_AUTH_TOKEN,
     'fake_workspace': 'FakeEdx',
-    'headers': {"Authorization": "Bearer {}".format(FAKE_AUTH_TOKEN)}
+    'headers': {"Authorization": "Bearer {}".format(FAKE_AUTH_TOKEN), "Content-Type": "application/json"}
 }
 
 
@@ -31,66 +30,27 @@ class FakeResponse(object):
         """
         Returns fake Segment retirement response data in the correct format
         """
-        return {'data': {BULK_DELETE_MUTATION_OPNAME: {'id': 1}}}
+        return {'regulate_id': 1}
+
+    def raise_for_status(self):
+        pass
 
 
 class FakeErrorResponse(object):
     """
     Fakes an error response
     """
-    def json(self):
-        """
-        Returns fake Segment retirement response error in the correct format
-        """
-        return {'error': 'Test error message'}
-
-
-class FakeAuthErrorResponse(object):
-    """
-    Fakes an error response
-    """
-    status_code = 200
-    text = 'There was an error authenticating.'
-
-    def json(self):
-        """
-        Returns fake Segment retirement response error in the correct format
-        """
-        raise JSONDecodeError('This is not JSON', 'test', 1, 1)
-
-    def raise_for_status(self):
-        return
-
-
-class FakeAuthRateLimitResponse(object):
-    """
-    Fakes a rate limited response
-    """
-    status_code = 429
-    text = 'Rate limit exceeded'
-
-    def raise_for_status(self):
-        raise requests.exceptions.HTTPError(self.text, response=self)
-
-
-class FakeAuth500Response(FakeAuthErrorResponse):
-    """
-    Fakes a server error response
-    """
     status_code = 500
-    text = 'Internal Server Error'
+    text = "{'error': 'Test error message'}"
+
+    def json(self):
+        """
+        Returns fake Segment retirement response error in the correct format
+        """
+        return json.loads(self.text)
 
     def raise_for_status(self):
-        raise requests.exceptions.HTTPError(self.text, response=self)
-
-
-@pytest.fixture(params=[FakeAuthErrorResponse, FakeAuthRateLimitResponse, FakeAuth500Response])
-def fake_auth_data_responses(request):
-    """
-    Pytest fixture that works similar to DDT, running each test with the
-    given parameter.
-    """
-    return request.param
+        raise requests.exceptions.HTTPError("", response=self)
 
 
 @pytest.fixture
@@ -99,17 +59,13 @@ def setup_bulk_delete():
     Fixture to setup common bulk delete items.
     """
     with mock.patch('requests.post') as mock_post:
-        with mock.patch('tubular.segment_api.SegmentApi._get_auth_token') as mock_get_auth_token:
-            mock_get_auth_token.return_value = FAKE_AUTH_TOKEN
+        segment = SegmentApi(
+            *[TEST_SEGMENT_CONFIG[key] for key in [
+                'fake_base_url', 'fake_auth_token', 'fake_workspace'
+            ]]
+        )
 
-            segment = SegmentApi(
-                *[TEST_SEGMENT_CONFIG[key] for key in [
-                    'fake_base_url', 'fake_email', 'fake_password', 'fake_workspace'
-                ]]
-            )
-            yield mock_post, segment
-
-            assert mock_get_auth_token.call_count == 1
+        yield mock_post, segment
 
 
 def test_bulk_delete_success(setup_bulk_delete):  # pylint: disable=redefined-outer-name
@@ -127,11 +83,20 @@ def test_bulk_delete_success(setup_bulk_delete):  # pylint: disable=redefined-ou
     learners_vals = []
     for curr_key in ['id', 'original_username', 'ecommerce_segment_id']:
         curr_id = learner[0][curr_key]
-        learners_vals.append('"{}"'.format(curr_id))
-    learners_str = '[' + ','.join(learners_vals) + ']'
-    fake_json = {'query': BULK_DELETE_MUTATION.format(TEST_SEGMENT_CONFIG['fake_workspace'], learners_str)}
+        learners_vals.append(text_type(curr_id))
+
+    fake_json = {
+        "regulation_type": "Suppress_With_Delete",
+        "attributes": {
+            "name": "userId",
+            "values": learners_vals
+        }
+    }
+
+    url = TEST_SEGMENT_CONFIG['fake_base_url'] + BULK_DELETE_URL.format(TEST_SEGMENT_CONFIG['fake_workspace'])
     mock_post.assert_any_call(
-        TEST_SEGMENT_CONFIG['fake_base_url'], json=fake_json, headers=TEST_SEGMENT_CONFIG['headers'])
+        url, json=fake_json, headers=TEST_SEGMENT_CONFIG['headers']
+    )
 
 
 def test_bulk_delete_error(setup_bulk_delete, caplog):  # pylint: disable=redefined-outer-name
@@ -145,31 +110,6 @@ def test_bulk_delete_error(setup_bulk_delete, caplog):  # pylint: disable=redefi
     with pytest.raises(Exception):
         segment.delete_learners(learner, 1000)
 
-    assert mock_post.call_count == 1
+    assert mock_post.call_count == 4
     assert "Error was encountered for learners between start/end indices (0, 0)" in caplog.text
     assert "{'error': 'Test error message'}" in caplog.text
-
-
-def test_auth_error(caplog, fake_auth_data_responses):  # pylint: disable=redefined-outer-name
-    """
-    Test Segment auth errors
-    """
-    # Auth is the first call made, so we just patch post here since these errors should
-    # prevent other calls from being made.
-    with mock.patch('tubular.segment_api.requests.post') as mock_post:
-        mock_post.return_value = fake_auth_data_responses()
-
-        segment = SegmentApi(
-            *[TEST_SEGMENT_CONFIG[key] for key in [
-                'fake_base_url', 'fake_email', 'fake_password', 'fake_workspace'
-            ]]
-        )
-
-        learner = TEST_SEGMENT_CONFIG['learner']
-
-        with pytest.raises((JSONDecodeError, requests.exceptions.HTTPError)):
-            segment.delete_learners(learner, 1000)
-
-        assert mock_post.call_count == 4
-        assert 'Error occurred getting access token' in caplog.text
-        assert fake_auth_data_responses.text in caplog.text
