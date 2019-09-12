@@ -57,13 +57,28 @@ class FrontendBuilder:
         return_code = proc.wait()
         if return_code != 0:
             self.FAIL('Could not run `npm install` for app {}.'.format(self.app_name))
-        npm_overrides = self.get_override_config()
-        if npm_overrides:
-            aliased_installs = ' '.join(['{}@{}'.format(k, v) for k, v in npm_overrides.items()])
-            override_proc = subprocess.Popen(['npm install npm && ./node_modules/.bin/npm install {}'.format(aliased_installs)], cwd=self.app_name, shell=True)
-            override_proc_return_code = override_proc.wait()
-            if override_proc_return_code != 0:
-                self.FAIL('Could not run `npm install npm && npm install` overrides {} for app {}.'.format(
+
+        self.install_npm_alias_requirements()
+
+    def install_npm_alias_requirements(self):
+        """ Install npm alias requirements for app to build """
+        npm_aliases = self.get_npm_aliases_config()
+        if npm_aliases:
+            # Install the latest version of npm that supports aliases (>= 6.9.0)
+            proc = subprocess.Popen(['npm install npm'], cwd=self.app_name, shell=True)
+            return_code = proc.wait()
+            if return_code != 0:
+                self.FAIL('Could not run `npm install npm` for app {}.'.format(self.app_name))
+
+            aliased_installs = ' '.join(['{}@{}'.format(k, v) for k, v in npm_aliases.items()])
+            install_aliases_proc = subprocess.Popen(
+                ['./node_modules/.bin/npm install {}'.format(aliased_installs)],
+                cwd=self.app_name,
+                shell=True
+            )
+            install_aliases_proc_return_code = install_aliases_proc.wait()
+            if install_aliases_proc_return_code != 0:
+                self.FAIL('Could not run `npm install` aliases {} for app {}.'.format(
                     aliased_installs, self.app_name
                 ))
 
@@ -75,13 +90,13 @@ class FrontendBuilder:
             self.LOG('Config variables do not exist for app {}.'.format(self.app_name))
         return app_config
 
-    def get_override_config(self):
-        """ Combines the common and environment configs NPM_OVERRIDES data """
-        override_config = self.common_cfg.get('NPM_OVERRIDES', {})
-        override_config.update(self.env_cfg.get('NPM_OVERRIDES', {}))
-        if not override_config:
-            self.LOG('No npm package overrides defined in config.')
-        return override_config
+    def get_npm_aliases_config(self):
+        """ Combines the common and environment configs NPM_ALIASES data """
+        npm_aliases_config = self.common_cfg.get('NPM_ALIASES', {})
+        npm_aliases_config.update(self.env_cfg.get('NPM_ALIASES', {}))
+        if not npm_aliases_config:
+            self.LOG('No npm package aliases defined in config.')
+        return npm_aliases_config
 
     def build_app(self, env_vars, fail_msg):
         """ Builds the app with environment variable."""
