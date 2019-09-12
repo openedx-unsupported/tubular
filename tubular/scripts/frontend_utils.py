@@ -53,17 +53,17 @@ class FrontendBuilder:
 
     def install_requirements(self):
         """ Install requirements for app to build """
-        proc = subprocess.Popen(['npm install npm && npm install'], cwd=self.app_name, shell=True)
+        proc = subprocess.Popen(['npm install'], cwd=self.app_name, shell=True)
         return_code = proc.wait()
         if return_code != 0:
-            self.FAIL('Could not run `npm install npm && npm install` for app {}.'.format(self.app_name))
+            self.FAIL('Could not run `npm install` for app {}.'.format(self.app_name))
         npm_overrides = self.get_override_config()
         if npm_overrides:
             aliased_installs = ' '.join(['{}@{}'.format(k, v) for k, v in npm_overrides.items()])
-            override_proc = subprocess.Popen(['npm install {}'.format(aliased_installs)], cwd=self.app_name, shell=True)
+            override_proc = subprocess.Popen(['npm install npm && ./node_modules/.bin/npm install {}'.format(aliased_installs)], cwd=self.app_name, shell=True)
             override_proc_return_code = override_proc.wait()
             if override_proc_return_code != 0:
-                self.FAIL('Could not run `npm install` overrides {} for app {}.'.format(
+                self.FAIL('Could not run `npm install npm && npm install` overrides {} for app {}.'.format(
                     aliased_installs, self.app_name
                 ))
 
