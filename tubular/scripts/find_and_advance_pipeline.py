@@ -29,7 +29,7 @@ LOG = logging.getLogger(__name__)
 
 @click.command()
 @click.option(
-    '--gocd_user',
+    '--gocd_username',
     help=u"Username to use in logging into GoCD.",
     required=True,
 )
@@ -77,14 +77,14 @@ LOG = logging.getLogger(__name__)
     default=sys.stdout
 )
 def find_and_advance_pipeline(
-        gocd_user, gocd_password, gocd_url, slack_token, slack_room,
+        gocd_username, gocd_password, gocd_url, slack_token, slack_room,
         pipeline, stage, check_ci_stage, relative_dt, out_file
 
 ):
     """
     Find the GoCD advancement pipeline that should be advanced/deployed to production - and advance it.
     """
-    gocd = GoCDAPI(gocd_user, gocd_password, gocd_url)
+    gocd = GoCDAPI(gocd_username, gocd_password, gocd_url)
 
     # If a datetime string was passed-in, convert it to a datetime.
     if relative_dt:
