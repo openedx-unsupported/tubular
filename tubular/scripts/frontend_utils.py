@@ -58,6 +58,31 @@ class FrontendBuilder:
         if return_code != 0:
             self.FAIL('Could not run `npm install` for app {}.'.format(self.app_name))
 
+        self.install_requirements_npm_aliases()
+
+    def install_requirements_npm_aliases(self):
+        """ Install npm alias requirements for app to build """
+        npm_aliases = self.get_npm_aliases_config()
+        if npm_aliases:
+            # Install the latest version of npm that supports aliases (>= 6.9.0)
+            proc = subprocess.Popen(['npm install npm'], cwd=self.app_name, shell=True)
+            return_code = proc.wait()
+            if return_code != 0:
+                self.FAIL('Could not run `npm install npm` for app {}.'.format(self.app_name))
+
+            aliased_installs = ' '.join(['{}@{}'.format(k, v) for k, v in npm_aliases.items()])
+            # Use the locally installed npm at ./node_modules/.bin/npm
+            install_aliases_proc = subprocess.Popen(
+                ['./node_modules/.bin/npm install {}'.format(aliased_installs)],
+                cwd=self.app_name,
+                shell=True
+            )
+            install_aliases_proc_return_code = install_aliases_proc.wait()
+            if install_aliases_proc_return_code != 0:
+                self.FAIL('Could not run `npm install` aliases {} for app {}.'.format(
+                    aliased_installs, self.app_name
+                ))
+
     def get_app_config(self):
         """ Combines the common and environment configs APP_CONFIG data """
         app_config = self.common_cfg.get('APP_CONFIG', {})
@@ -65,6 +90,14 @@ class FrontendBuilder:
         if not app_config:
             self.LOG('Config variables do not exist for app {}.'.format(self.app_name))
         return app_config
+
+    def get_npm_aliases_config(self):
+        """ Combines the common and environment configs NPM_ALIASES data """
+        npm_aliases_config = self.common_cfg.get('NPM_ALIASES', {})
+        npm_aliases_config.update(self.env_cfg.get('NPM_ALIASES', {}))
+        if not npm_aliases_config:
+            self.LOG('No npm package aliases defined in config.')
+        return npm_aliases_config
 
     def build_app(self, env_vars, fail_msg):
         """ Builds the app with environment variable."""
