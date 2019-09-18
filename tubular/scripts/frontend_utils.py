@@ -58,9 +58,9 @@ class FrontendBuilder:
         if return_code != 0:
             self.FAIL('Could not run `npm install` for app {}.'.format(self.app_name))
 
-        self.install_npm_alias_requirements()
+        self.install_requirements_npm_aliases()
 
-    def install_npm_alias_requirements(self):
+    def install_requirements_npm_aliases(self):
         """ Install npm alias requirements for app to build """
         npm_aliases = self.get_npm_aliases_config()
         if npm_aliases:
@@ -71,6 +71,7 @@ class FrontendBuilder:
                 self.FAIL('Could not run `npm install npm` for app {}.'.format(self.app_name))
 
             aliased_installs = ' '.join(['{}@{}'.format(k, v) for k, v in npm_aliases.items()])
+            # Use the locally installed npm at ./node_modules/.bin/npm
             install_aliases_proc = subprocess.Popen(
                 ['./node_modules/.bin/npm install {}'.format(aliased_installs)],
                 cwd=self.app_name,
