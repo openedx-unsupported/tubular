@@ -16,6 +16,7 @@ import traceback
 import click
 import yaml
 import requests
+import re
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -60,11 +61,16 @@ def retrieve_base_ami(environment, deployment, play, override, out_file):
         if override:
             ami_id = override
         else:
-            url = "https://cloud-images.ubuntu.com/locator/ec2/releasesTable"
-            ami_id = requests.get(url).json
+            url = ""
             ubuntu_version = config['base_ami_ubuntu_version']
-            # parse to get ami for ubuntu_version
-            ami_id = ami_id
+            if ubuntu_version == "16.04":
+                url = "http://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
+            elif ubuntu_version == "18.04":
+                url = "http://cloud-images.ubuntu.com/query/bionic/server/released.current.txt"
+            data = requests.get(url)
+            parse_ami = re.search('us-east-1(.+?)hvm', data.content)
+            extracted_latest_ami = parse_ami.group(1).strip()
+            ami_id = extracted_latest_ami
 
         ami_info = {
             # This is passed directly to an ansible script that expects a base_ami_id variable
@@ -74,8 +80,8 @@ def retrieve_base_ami(environment, deployment, play, override, out_file):
             'ami_id': ami_id,
         }
         ami_info.update(ec2.tags_for_ami(ami_id))
-        logging.info("Found active AMI ID for {env}-{dep}-{play}: {ami_id}".format(
-            env=environment, dep=deployment, play=play, ami_id=ami_id
+        logging.info("Found latest AMI ID : {ami_id}".format(
+            ami_id=ami_id
         ))
 
         if out_file:
