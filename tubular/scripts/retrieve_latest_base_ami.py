@@ -13,10 +13,11 @@ import io
 import sys
 import logging
 import traceback
+import re
 import click
 import yaml
 import requests
-import re
+
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -28,21 +29,6 @@ logging.basicConfig(level=logging.INFO)
 
 @click.command()
 @click.option(
-    '--environment', '-e',
-    help='Environment for AMI, e.g. prod, stage',
-    required=True,
-)
-@click.option(
-    '--deployment', '-d',
-    help='Deployment for AMI e.g. edx, edge',
-    required=True,
-)
-@click.option(
-    '--play', '-p',
-    help='Play for AMI, e.g. edxapp, insights, discovery',
-    required=True,
-)
-@click.option(
     '--override',
     help='Override AMI id to use',
 )
@@ -51,7 +37,7 @@ logging.basicConfig(level=logging.INFO)
     help='Output file for the AMI information yaml.',
     default=None,
 )
-def retrieve_base_ami(environment, deployment, play, override, out_file):
+def retrieve_base_ami(override, out_file):
     """
     Method used to retrieve the last base AMI ID used for an environment/deployment/play.
     """
