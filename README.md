@@ -8,7 +8,23 @@ Python scripts for integrating pipelines with various services/tools such as:
 * Jenkins
 * Drupal
 
-The scripts perform work to enable continuous delivery (CD) for https://edx.org. These scripts are called from various tasks/jobs/stages in GoCD pipelines - but could be called from any automation/CD framework.
+The scripts perform work to enable continuous delivery (CD) for https://edx.org. These scripts are called from various tasks/jobs/stages in GoCD pipelines - but could be called from any automation/CD framework.  
+
+## How to run the scripts in this repo
+
+The scripts in this repo are python Click scripts. You can learn more about Click here.
+https://click.palletsprojects.com/en/7.x/
+
+This is so that we can test them locally, and also run them as part of the deployment. You can view the documentation for each click command, and run it by doing the following:
+
+```
+virtualenv -p $(which python) .venv
+source .venv/bin/activate
+pip intsall -r requirements.txt
+python scripts/my_script.py --help
+python scripts/my_script.py --arg1 --arg2 --arg3
+```
+
 
 ## Configuration
 ```
@@ -31,18 +47,7 @@ otherwise noted.
 
 Please see ``LICENSE.txt`` for details.
 
-## How To Contribute
 
-Contributions are very welcome.
-
-Please read [How To Contribute](https://github.com/edx/edx-platform/blob/master/CONTRIBUTING.rst) for details.
-
-Even though they were written with ```edx-platform``` in mind, the guidelines
-should be followed for Open edX code in general.
-
-## Reporting Security Issues
-
-Please do not report security issues in public. Please email security@edx.org.
 
 ## Environment variables
 
@@ -67,3 +72,22 @@ Some general guidelines for tubular scripts:
 
 * Prefer --my-argument to --my_argument
 * Install your scripts by adding them to the console_scripts list in setup.cfg
+
+## Status: Sustained
+This codebase is currently sustained and maintained by the devops team, but not under any significant active development.  Retirement scripts are maintained by the Data engineering team.
+
+## How to get help
+edX employees can reach out for help by filing a devops support board ticket. edX employees can reach out for help by filing a devops support board ticket. https://openedx.atlassian.net/servicedesk/customer/portal/3  Open source bug fixes are welcome, but please review our contributors guide: https://edx.readthedocs.io/projects/edx-developer-guide/en/latest/process/contributor.html before opening a pull request.  If you are adding significant features aside from bug fixes it might be a good idea to email devops devops@edx.org and ask before beginning the work as the compoonent is not under active development.
+
+## How To Contribute
+
+Contributions are welcome.
+
+Please read [How To Contribute](https://github.com/edx/edx-platform/blob/master/CONTRIBUTING.rst) for details.
+
+Even though they were written with ```edx-platform``` in mind, the guidelines
+should be followed for Open edX code in general.
+
+## Reporting Security Issues
+
+Please do not report security issues in public. Please email security@edx.org.
