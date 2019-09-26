@@ -33,13 +33,17 @@ logging.basicConfig(level=logging.INFO)
     help='Override AMI id to use',
 )
 @click.option(
+    '--ubuntu_version',
+    help='Override AMI id to use',
+)
+@click.option(
     '--out_file',
     help='Output file for the AMI information yaml.',
     default=None,
 )
-def retrieve_base_ami(override, out_file):
+def retrieve_base_ami(override, ubuntu_version, out_file):
     """
-    Method used to retrieve the last base AMI ID used for an environment/deployment/play.
+    Method used to retrieve the latest AMI ID from Ubuntu cloud images locator.
     """
 
     try:
@@ -48,15 +52,13 @@ def retrieve_base_ami(override, out_file):
             ami_id = override
         else:
             url = ""
-            ubuntu_version = config['base_ami_ubuntu_version']
             if ubuntu_version == "16.04":
                 url = "http://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
             elif ubuntu_version == "18.04":
                 url = "http://cloud-images.ubuntu.com/query/bionic/server/released.current.txt"
             data = requests.get(url)
             parse_ami = re.search('us-east-1(.+?)hvm', data.content)
-            extracted_latest_ami = parse_ami.group(1).strip()
-            ami_id = extracted_latest_ami
+            ami_id = parse_ami.group(1).strip()
 
         ami_info = {
             # This is passed directly to an ansible script that expects a base_ami_id variable
