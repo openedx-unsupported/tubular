@@ -46,7 +46,7 @@ logging.basicConfig(level=logging.INFO)
     help='Output file for the AMI information yaml.',
     default=None,
 )
-def retrieve_base_ami(override, ubuntu_version, out_file, region):
+def retrieve_latest_base_ami(override, ubuntu_version, out_file, region):
     """
     Method used to retrieve the latest AMI ID from Ubuntu cloud images locator.
     """
@@ -91,4 +91,4 @@ def retrieve_base_ami(override, ubuntu_version, out_file, region):
     sys.exit(0)
 
 if __name__ == "__main__":
-    retrieve_base_ami()  # pylint: disable=no-value-for-parameter
+    retrieve_latest_base_ami()  # pylint: disable=no-value-for-parameter
