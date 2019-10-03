@@ -37,11 +37,16 @@ logging.basicConfig(level=logging.INFO)
     help='Override AMI id to use',
 )
 @click.option(
+    '--region',
+    help='AWS region for the AMI',
+    default="us-east-1",
+)
+@click.option(
     '--out_file',
     help='Output file for the AMI information yaml.',
     default=None,
 )
-def retrieve_base_ami(override, ubuntu_version, out_file):
+def retrieve_base_ami(override, ubuntu_version, out_file, region):
     """
     Method used to retrieve the latest AMI ID from Ubuntu cloud images locator.
     """
@@ -57,7 +62,7 @@ def retrieve_base_ami(override, ubuntu_version, out_file):
             elif ubuntu_version == "18.04":
                 url = "http://cloud-images.ubuntu.com/query/bionic/server/released.current.txt"
             data = requests.get(url)
-            parse_ami = re.search('us-east-1(.+?)hvm', data.content)
+            parse_ami = re.search('{0}(.+?)hvm'.format(region), data.content)
             ami_id = parse_ami.group(1).strip()
 
         ami_info = {
