@@ -59,13 +59,13 @@ def retrieve_latest_base_ami(override, ubuntu_version, out_file, region):
             url = ""
             click.secho('Ubuntu version :  {}'.format(ubuntu_version), fg='green')
             if ubuntu_version == "16.04":
-                url = "http://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
+                url = "https://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
                 click.secho('Xenial.\n: {}'.format(url), fg='green')
             elif ubuntu_version == "18.04":
-                url = "http://cloud-images.ubuntu.com/query/bionic/server/released.current.txt"
+                url = "https://cloud-images.ubuntu.com/query/bionic/server/released.current.txt"
                 click.secho('Bionic.\n: {}'.format(url), fg='green')
             if url == "":
-                url = "http://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
+                url = "https://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
             data = requests.get(url)
             parse_ami = re.findall('ebs-ssd(.+?)amd64(.+?){}(.+?)hvm'.format(region), data.content.decode('utf-8'))
             ami_id = parse_ami[0][2].strip()
