@@ -57,17 +57,17 @@ def retrieve_latest_base_ami(override, ubuntu_version, out_file, region):
             ami_id = override
         else:
             url = ""
-            logging.INFO('Ubuntu version :  {}'.format(ubuntu_version), fg='green')
+            click.secho('Ubuntu version :  {}'.format(ubuntu_version), fg='green')
             if ubuntu_version == "16.04":
                 url = "http://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
-                logging.INFO('Xenial Releases.\n: {}'.format(url), fg='green')
+                click.secho('Xenial.\n: {}'.format(url), fg='green')
             elif ubuntu_version == "18.04":
                 url = "http://cloud-images.ubuntu.com/query/bionic/server/released.current.txt"
-                logging.INFO('Bionic Releases.\n: {}'.format(url), fg='green')
+                click.secho('Bionic.\n: {}'.format(url), fg='green')
             data = requests.get(url)
             parse_ami = re.search('{0}(.+?)hvm'.format(region), data.content.decode('utf-8'))
             ami_id = parse_ami.group(1).strip()
-            logging.INFO('AMI ID fetched from Ubuntu Cloud Releases: {}'.format(ami_id), fg='red')
+            click.secho('AMI ID fetched from Ubuntu Cloud : {}'.format(ami_id), fg='red')
 
         ami_info = {
             # This is passed directly to an ansible script that expects a base_ami_id variable
@@ -93,7 +93,6 @@ def retrieve_latest_base_ami(override, ubuntu_version, out_file, region):
         sys.exit(1)
 
     sys.exit(0)
-
 
 if __name__ == "__main__":
     retrieve_latest_base_ami()  # pylint: disable=no-value-for-parameter
