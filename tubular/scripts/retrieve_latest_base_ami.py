@@ -29,6 +29,21 @@ logging.basicConfig(level=logging.INFO)
 
 @click.command()
 @click.option(
+    '--environment', '-e',
+    help='Environment for AMI, e.g. prod, stage',
+    required=True,
+)
+@click.option(
+    '--deployment', '-d',
+    help='Deployment for AMI e.g. edx, edge',
+    required=True,
+)
+@click.option(
+    '--play', '-p',
+    help='Play for AMI, e.g. edxapp, insights, discovery',
+    required=True,
+)
+@click.option(
     '--override',
     help='Override AMI id to use',
 )
@@ -46,26 +61,27 @@ logging.basicConfig(level=logging.INFO)
     help='Output file for the AMI information yaml.',
     default=None,
 )
-def retrieve_latest_base_ami(override, ubuntu_version, out_file, region):
+def retrieve_latest_base_ami(environment, deployment, play, override, ubuntu_version, out_file, region):
     """
     Method used to retrieve the latest AMI ID from Ubuntu cloud images locator.
+    Also adds tags from latest app ami for the pr messenger and wiki page writer to diff releases
     """
 
     try:
-        # edp_ami_id = ec2.active_ami_for_edp(environment, deployment, play)
+        edp_ami_id = ec2.active_ami_for_edp(environment, deployment, play)
         if override:
             ami_id = override
         else:
             url = ""
             click.secho('Ubuntu version :  {}'.format(ubuntu_version), fg='green')
             if ubuntu_version == "16.04":
-                url = "http://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
+                url = "https://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
                 click.secho('Xenial.\n: {}'.format(url), fg='green')
             elif ubuntu_version == "18.04":
-                url = "http://cloud-images.ubuntu.com/query/bionic/server/released.current.txt"
+                url = "https://cloud-images.ubuntu.com/query/bionic/server/released.current.txt"
                 click.secho('Bionic.\n: {}'.format(url), fg='green')
             if url == "":
-                url = "http://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
+                url = "https://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
             data = requests.get(url)
             parse_ami = re.findall('ebs-ssd(.+?)amd64(.+?){}(.+?)hvm'.format(region), data.content.decode('utf-8'))
             ami_id = parse_ami[0][2].strip()
@@ -78,7 +94,7 @@ def retrieve_latest_base_ami(override, ubuntu_version, out_file, region):
             # generating release pages easier.
             'ami_id': ami_id,
         }
-        ami_info.update(ec2.tags_for_ami(ami_id))
+        ami_info.update(ec2.tags_for_ami(edp_ami_id))
         logging.info("Found latest AMI ID : {ami_id}".format(
             ami_id=ami_id
         ))
