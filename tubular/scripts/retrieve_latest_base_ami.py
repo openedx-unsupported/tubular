@@ -65,8 +65,8 @@ def retrieve_latest_base_ami(override, ubuntu_version, out_file, region):
                 url = "http://cloud-images.ubuntu.com/query/bionic/server/released.current.txt"
                 click.secho('Bionic.\n: {}'.format(url), fg='green')
             data = requests.get(url)
-            parse_ami = re.search('{0}(.+?)hvm'.format(region), data.content.decode('utf-8'))
-            ami_id = parse_ami.group(1).strip()
+            parse_ami = re.findall('ebs-ssd(.+?)amd64(.+?){}(.+?)hvm'.format(region), data.content.decode('utf-8'))
+            ami_id = parse_ami[0][2].strip()
             click.secho('AMI ID fetched from Ubuntu Cloud : {}'.format(ami_id), fg='red')
 
         ami_info = {
