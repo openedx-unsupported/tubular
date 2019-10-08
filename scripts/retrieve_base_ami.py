@@ -1,1 +1,0 @@
-../tubular/scripts/retrieve_base_ami.py
