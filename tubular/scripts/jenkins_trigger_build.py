@@ -35,7 +35,6 @@ from tubular import jenkins  # pylint: disable=wrong-import-position
     u"--user_token",
     help=u"API token for the user. Available at {url}/user/{user_name)/configure",
     type=str,
-    required=True,
     envvar=u'JENKINS_USER_TOKEN'
 )
 @click.option(
@@ -48,7 +47,6 @@ from tubular import jenkins  # pylint: disable=wrong-import-position
     u"--token",
     help=u"The authorization token for the job. Must match that configured in the job definition.",
     type=str,
-    required=True,
     envvar=u'JENKINS_JOB_TOKEN'
 )
 @click.option(
