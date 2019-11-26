@@ -2,7 +2,9 @@
 from __future__ import absolute_import
 from __future__ import print_function, unicode_literals
 
+from base64 import b64decode
 from datetime import datetime, timedelta, time
+from urllib.request import urlretrieve
 import enum
 import logging
 import os
@@ -1071,3 +1073,15 @@ class GitHubAPI(object):
         query = "review:approved state:open"
         for issue in self.search_issues(query, 'pr', pr_base, '', ''):
             yield self.github_repo.get_pull(issue.number)
+
+    def file_contents(self, path):
+        """
+        Return the file contents at the specified path in the repo.
+        """
+        contents = self.github_repo.get_contents(path)
+        if contents.encoding == 'base64':
+            return b64decode(contents.content)
+        else:
+            local_path, _ = urlretrieve(contents.download_url)
+            with open(local_path) as local_contents:
+                return local_contents

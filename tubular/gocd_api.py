@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import print_function, unicode_literals
 
 import logging
+import re
 from collections import namedtuple
 from datetime import datetime, timedelta
 from dateutil import tz
@@ -157,3 +158,91 @@ class GoCDAPI(object):
                 advance_pipeline_name, relative_time, previous_release_cutoff
             )
         )
+
+    def recent_deployers(
+        self,
+        pipeline,
+        stages,
+        cutoff=30,
+        email_aliases=None,
+        allowed_email_domains=('edx.org', 'arbisoft.com')
+    ):
+        """
+        Return the set of edx emails for users that have changes that have deployed recently.
+
+        Arguments:
+            pipeline: The name of the pipeline that does the deployment
+            stages: The name of the stages in the pipeline that actually make changes that
+                are part of the deployment.
+            cutoff: The number of minutes to consider to be "recent" when collecting committers.
+            email_aliases: An iterable of groups of emails that are aliases.
+            allowed_email_domains: An iterable of email domains that should be returned
+        """
+        if email_aliases is None:
+            email_aliases = ()
+
+        def is_allowed_email(email):
+            if not allowed_email_domains:
+                return True
+
+            return any(
+                email.endswith('@{}'.format(domain))
+                for domain in allowed_email_domains
+            )
+
+        alias_map = {
+            original: {
+                alias
+                for alias in alias_group
+                if is_allowed_email(alias)
+            }
+            for alias_group in email_aliases
+            for original in alias_group
+        }
+
+        now = datetime.now()
+        recent = now - timedelta(minutes=cutoff)
+
+        recent_committers = set()
+        for pipeline_instance in self.client.pipelines.full_history(pipeline):
+            is_recent = any(_is_recent_stage(pipeline_instance[stage], recent) for stage in stages)
+            if is_recent:
+                recent_committers.update(
+                    modification.user_name
+                    for material_revision in pipeline_instance.data.build_cause.material_revisions
+                    for modification in material_revision.modifications
+                    if material_revision.changed and material_revision.material.type == 'Git'
+                )
+            else:
+                break
+
+        recent_commit_emails = {
+            re.match('.* <(.*)>', username).group(1)
+            for username in recent_committers
+            if username is not None
+        }
+
+        edx_aliased_emails = {
+            alias
+            for email in recent_commit_emails
+            for alias in alias_map.get(email, [email])
+        }
+
+        recent_allowed_emails = {
+            email for email in edx_aliased_emails
+            if is_allowed_email(email)
+        }
+
+        LOG.warning("Removed the following non-edX committers: %s", sorted(edx_aliased_emails - recent_allowed_emails))
+
+        return recent_allowed_emails
+
+
+def _job_trigger_times(stage):
+    for job in stage.jobs():
+        yield datetime.fromtimestamp(job.data.get('scheduled_date') / 1000)
+
+
+def _is_recent_stage(stage, recent):
+    job_trigger_timestamps = _job_trigger_times(stage)
+    return any(ts > recent for ts in job_trigger_timestamps)
