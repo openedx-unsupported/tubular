@@ -1,4 +1,4 @@
-atlassian-python-api==0.13.2; python_version >= '3.2'
+atlassian-python-api
 backoff==1.5.0
 boto==2.43.0
 click-log==0.1.8
