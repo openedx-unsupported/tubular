@@ -11,3 +11,8 @@ quality:
 
 test:
 	tox
+
+upgrade:
+	pip install -qr pip-tools.txt
+	pip-compile -v --no-emit-trusted-host --no-index --rebuild --upgrade pip-tools.in
+	pip-compile -v --no-emit-trusted-host --no-index --rebuild --upgrade requirements.in
