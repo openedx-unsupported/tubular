@@ -205,7 +205,7 @@ class GoCDAPI(object):
 
         recent_committers = set()
         for pipeline_instance in self.client.pipelines.full_history(pipeline):
-            is_recent = any(_is_recent_stage(pipeline_instance[stage], recent) for stage in stages)
+            is_recent = any(_is_recent_stage(pipeline_instance, stage, recent) for stage in stages)
             if is_recent:
                 recent_committers.update(
                     modification.user_name
@@ -243,6 +243,10 @@ def _job_trigger_times(stage):
         yield datetime.fromtimestamp(job.data.get('scheduled_date') / 1000)
 
 
-def _is_recent_stage(stage, recent):
+def _is_recent_stage(pipeline, stage_name, recent):
+    """Return whether this stage has triggered within the window defined by recent"""
+    stage = pipeline[stage_name]
+    if stage is None:
+        raise ValueError("{!r} isn't a stage in {}".format(stage_name, pipeline))
     job_trigger_timestamps = _job_trigger_times(stage)
     return any(ts > recent for ts in job_trigger_timestamps)
