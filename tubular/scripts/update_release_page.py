@@ -8,6 +8,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from os import path
+from datetime import datetime
 import sys
 import logging
 
@@ -62,7 +63,10 @@ EXPECTED_RELEASE_DATE = default_expected_release_date()
 )
 @click.option(
     '--title',
-    help=u"The title of this page.",
+    help=(
+        u"The title of this page. May contain the formatting value {timestamp} "
+        u"to insert the time of publishing into the wiki title"
+    ),
 )
 @click.option(
     '--github-token',
@@ -118,6 +122,10 @@ def create_release_page(
 
     if title is None:
         title = "{:%Y-%m-%d} Release".format(EXPECTED_RELEASE_DATE)
+
+    # This allows titles of the form "{timestamp:%Y-%m-%d} Release" and the like
+    # to format in the current timestamp
+    title = title.format(timestamp=datetime.now())
 
     if space is None:
         space = 'RELEASES'
