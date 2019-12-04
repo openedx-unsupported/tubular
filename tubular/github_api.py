@@ -204,10 +204,9 @@ class GitHubAPI(object):
                 If a context matches both exclude_contexts and include_contexts, it is *included*.
         """
         self.github_connection = Github(token)
-        self.github_repo = self.github_connection.get_repo('{org}/{repo}'.format(org=org, repo=repo))
-        self.github_org = self.github_connection.get_organization(org)
         self.org = org
         self.repo = repo
+        self._set_up_repo_and_org()
 
         if max_tries is None:
             max_tries = envvar_get_int("MAX_PR_TEST_POLL_TRIES", MAX_PR_TEST_TRIES_DEFAULT)
@@ -228,6 +227,12 @@ class GitHubAPI(object):
         self.include_contexts = None
         if include_contexts is not None:
             self.include_contexts = re.compile(include_contexts)
+
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                          jitter=backoff.random_jitter, on_backoff=_backoff_logger)
+    def _set_up_repo_and_org(self):
+        self.github_repo = self.github_connection.get_repo('{org}/{repo}'.format(org=self.org, repo=self.repo))
+        self.github_org = self.github_connection.get_organization(self.org)
 
     def get_rate_limit(self):
         """
