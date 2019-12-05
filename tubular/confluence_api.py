@@ -366,7 +366,7 @@ class ReleasePage(object):
         )
 
 
-def publish_page(url, user, password, space, parent_title, title, body):
+def publish_page(url, user, password, space, title, body, parent_title=None, parent_id=None):
     u"""
     Publish a page to Confluence.
 
@@ -380,9 +380,14 @@ def publish_page(url, user, password, space, parent_title, title, body):
         body: The storage-format contents of the page to publish.
     """
     conf = Confluence(url, user, password)
-    try:
-        parent_page = conf.get_page_by_title(space, parent_title)
-    except:
-        LOG.error(u'Failed to publish, TITLE: %s BODY: %s', title, body)
-        raise ValueError(u"Unable to retrieve page {!r} in space {!r}".format(parent_title, space))
-    return conf.update_or_create(parent_page[u'id'], title, body)
+    if parent_title is None and parent_id is None:
+        raise ValueError("Must pass a parent_title or parent_id")
+
+    if parent_id is None:
+        try:
+            parent_page = conf.get_page_by_title(space, parent_title)
+            parent_id = parent_page[u'id']
+        except:
+            LOG.error(u'Failed to publish, TITLE: %s BODY: %s', title, body)
+            raise ValueError(u"Unable to retrieve page {!r} in space {!r}".format(parent_title, space))
+    return conf.update_or_create(parent_id, title, body)
