@@ -65,7 +65,8 @@ EXPECTED_RELEASE_DATE = default_expected_release_date()
     '--title',
     help=(
         u"The title of this page. May contain the formatting value {timestamp} "
-        u"to insert the time of publishing into the wiki title"
+        u"to insert the time of publishing into the wiki title. May also include `/` "
+        u"characters, which will create hierarchy pages that just display children."
     ),
 )
 @click.option(
@@ -127,6 +128,9 @@ def create_release_page(
     # to format in the current timestamp
     title = title.format(timestamp=datetime.now())
 
+    folders = title.split('/')[:-1]
+    title = title.split('/')[-1]
+
     if space is None:
         space = 'RELEASES'
 
@@ -149,10 +153,42 @@ def create_release_page(
         gocd_url=gocd_url,
     )
 
-    publish_page(confluence_url, user, password, space, parent_title, title, page.format())
+    parent_id = None
+    parent_title_root = parent_title
+    for folder in folders:
+        result = publish_page(
+            confluence_url,
+            user,
+            password,
+            space,
+            folder,
+            """
+                <ac:structured-macro
+                    ac:name="children"
+                    ac:schema-version="2"
+                    data-layout="default"
+                    ac:macro-id="f71dd203-0b29-4ece-bfaa-9f9e3106267d"
+                />
+            """,
+            parent_title=parent_title,
+            parent_id=parent_id
+        )
+        parent_title = None
+        parent_id = result[u'id']
+
+    publish_page(
+        confluence_url,
+        user,
+        password,
+        space,
+        title,
+        page.format(),
+        parent_title=parent_title,
+        parent_id=parent_id
+    )
 
     yaml.safe_dump({
-        'parent_title': parent_title,
+        'parent_title': parent_title_root,
         'space': space,
         'title': title
     }, stream=out_file)
