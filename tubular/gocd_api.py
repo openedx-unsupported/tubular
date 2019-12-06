@@ -165,7 +165,7 @@ class GoCDAPI(object):
         stages,
         cutoff=30,
         email_aliases=None,
-        allowed_email_domains=('edx.org', 'arbisoft.com')
+        allowed_email_domains=('edx.org',)
     ):
         """
         Return the set of edx emails for users that have changes that have deployed recently.
