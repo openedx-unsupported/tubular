@@ -77,10 +77,10 @@ def update_recent_deployers(
     people_yaml_data = repo_tools_repo.file_contents('people.yaml')
     people_yaml = yaml.safe_load(people_yaml_data)
 
-    email_aliases = [
-        [user['email']] + user.get('other_emails', [])
-        for user in people_yaml.values()
-    ]
+    email_aliases = {
+        gh: [user['email']] + user.get('other_emails', [])
+        for gh, user in people_yaml.items()
+    }
 
     gocd = GoCDAPI(gocd_username, gocd_password, gocd_url)
     recent_deployers = set().union(*(
