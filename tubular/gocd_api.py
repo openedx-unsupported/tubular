@@ -175,11 +175,11 @@ class GoCDAPI(object):
             stages: The name of the stages in the pipeline that actually make changes that
                 are part of the deployment.
             cutoff: The number of minutes to consider to be "recent" when collecting committers.
-            email_aliases: An iterable of groups of emails that are aliases.
+            email_aliases: An map of github usernames to groups of emails that are aliases.
             allowed_email_domains: An iterable of email domains that should be returned
         """
         if email_aliases is None:
-            email_aliases = ()
+            email_aliases = {}
 
         def is_allowed_email(email):
             if not allowed_email_domains:
@@ -196,7 +196,7 @@ class GoCDAPI(object):
                 for alias in alias_group
                 if is_allowed_email(alias)
             }
-            for alias_group in email_aliases
+            for alias_group in email_aliases.values()
             for original in alias_group
         }
 
@@ -221,6 +221,16 @@ class GoCDAPI(object):
             for username in recent_committers
             if username is not None
         }
+
+        for email in recent_commit_emails:
+            # Match emails like 8483753+crice100@users.noreply.github.com
+            match = re.match(r'\d+\+(?P<gh_user>.*)@users.noreply.github.com', email)
+            if match:
+                alias_map[email] = {
+                    alias
+                    for alias in email_aliases.get(match.group('gh_user'), ())
+                    if is_allowed_email(alias)
+                }
 
         edx_aliased_emails = {
             alias
