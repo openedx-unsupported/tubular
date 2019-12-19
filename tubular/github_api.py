@@ -33,6 +33,7 @@ PR_PREFIX = '**EdX Release Notice**: '
 PR_MESSAGE_FORMAT = '{prefix} {message} {extra_text}'
 PR_MESSAGE_FILTER = '{prefix} {message}'
 
+PR_ON_STAGE= 'in preparation for a release to production.'
 PR_ON_STAGE_DATE_EXTRA = 'in preparation for a release to production on {date:%A, %B %d, %Y}. {extra_text}'
 
 DEFAULT_TAG_USERNAME = 'no_user'
@@ -1038,11 +1039,11 @@ class GitHubAPI(object):
         """
         if message_type is MessageType.stage:
             # HACK: In general, special behavior here should be minimized and the caller should add any additional
-            # information in extra_text
+            # information in extra_text.
             if deploy_date is None:
-                deploy_date = default_expected_release_date()
-
-            extra_text = PR_ON_STAGE_DATE_EXTRA.format(date=deploy_date, extra_text=extra_text)
+                extra_text = PR_ON_STAGE
+            else:
+                extra_text = PR_ON_STAGE_DATE_EXTRA.format(date=deploy_date, extra_text=extra_text)
 
         return self.message_pull_request(
             pr_number,
