@@ -33,7 +33,7 @@ PR_PREFIX = '**EdX Release Notice**: '
 PR_MESSAGE_FORMAT = '{prefix} {message} {extra_text}'
 PR_MESSAGE_FILTER = '{prefix} {message}'
 
-PR_ON_STAGE= 'in preparation for a release to production.'
+PR_ON_STAGE = 'in preparation for a release to production.'
 PR_ON_STAGE_DATE_EXTRA = 'in preparation for a release to production on {date:%A, %B %d, %Y}. {extra_text}'
 
 DEFAULT_TAG_USERNAME = 'no_user'
