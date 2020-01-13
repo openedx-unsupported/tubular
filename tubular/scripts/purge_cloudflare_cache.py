@@ -29,7 +29,7 @@ FAIL = partial(_fail, SCRIPT_SHORTNAME)
     "--hostname",
     help="Hostname of the app that is being cached",
 )
-def purge_cache(hostname):
+def purge_cloudflare_cache(hostname):
     """
         Purge the Cloudflare cache for the hostname.
         Cloudflare zones are named by domain.
@@ -49,4 +49,4 @@ def purge_cache(hostname):
         FAIL(1, 'Failed to purge the Cloudflare cache for hostname {}.'.format(hostname))
 
 if __name__ == "__main__":
-    purge_cache()  # pylint: disable=no-value-for-parameter
+    purge_cloudflare_cache()  # pylint: disable=no-value-for-parameter
