@@ -43,6 +43,7 @@ def batch(batchable, batch_size=1):
     Yields:
         list
     """
-    length = len(batchable)
+    batchable_list = list(batchable)
+    length = len(batchable_list)
     for index in range(0, length, batch_size):
-        yield batchable[index:index + batch_size]
+        yield batchable_list[index:index + batch_size]
