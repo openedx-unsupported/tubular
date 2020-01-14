@@ -192,13 +192,16 @@ class GoCDAPI(object):
 
         alias_map = {
             original: {
-                alias
+                alias.lower()
                 for alias in alias_group
                 if is_allowed_email(alias)
             }
             for alias_group in email_aliases.values()
             for original in alias_group
         }
+
+        for original in alias_map.keys():
+            alias_map.setdefault(original.lower(), set()).update(alias_map[original])
 
         now = datetime.now()
         recent = now - timedelta(minutes=cutoff)
@@ -208,7 +211,7 @@ class GoCDAPI(object):
             is_recent = any(_is_recent_stage(pipeline_instance, stage, recent) for stage in stages)
             if is_recent:
                 recent_committers.update(
-                    modification.user_name
+                    modification.user_name.lower()
                     for material_revision in pipeline_instance.data.build_cause.material_revisions
                     for modification in material_revision.modifications
                     if material_revision.changed and material_revision.material.type == 'Git'
