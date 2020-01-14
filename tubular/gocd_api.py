@@ -227,7 +227,7 @@ class GoCDAPI(object):
 
         for email in recent_commit_emails:
             # Match emails like 8483753+crice100@users.noreply.github.com
-            match = re.match(r'\d+\+(?P<gh_user>.*)@users.noreply.github.com', email)
+            match = re.match(r'(\d+\+)?(?P<gh_user>.*)@users.noreply.github.com', email)
             if match:
                 alias_map[email] = {
                     alias
