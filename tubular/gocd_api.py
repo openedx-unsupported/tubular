@@ -200,7 +200,7 @@ class GoCDAPI(object):
             for original in alias_group
         }
 
-        for original in alias_map.keys():
+        for original in list(alias_map.keys()):
             alias_map.setdefault(original.lower(), set()).update(alias_map[original])
 
         now = datetime.now()
