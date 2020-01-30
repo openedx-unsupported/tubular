@@ -26,6 +26,7 @@ from tubular.edx_api import CredentialsApi, EcommerceApi, LmsApi  # pylint: disa
 from tubular.segment_api import SegmentApi   # pylint: disable=wrong-import-position
 from tubular.sailthru_api import SailthruApi   # pylint: disable=wrong-import-position
 from tubular.salesforce_api import SalesforceApi   # pylint: disable=wrong-import-position
+from tubular.hubspot_api import HubspotAPI   # pylint: disable=wrong-import-position
 
 
 def _log(kind, message):
@@ -161,6 +162,7 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
         salesforce_assignee = config.get('salesforce_assignee', None)
         segment_auth_token = config.get('segment_auth_token', None)
         segment_workspace_slug = config.get('segment_workspace_slug', None)
+        hubspot_api_key = config.get('hubspot_api_key', None)
 
         for state in config['retirement_pipeline']:
             for service, service_url in (
@@ -185,6 +187,9 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
                 salesforce_domain,
                 salesforce_assignee
             )
+
+        if hubspot_api_key:
+            config['HUBSPOT'] = HubspotAPI(hubspot_api_key)
 
         if ecommerce_base_url:
             config['ECOMMERCE'] = EcommerceApi(lms_base_url, ecommerce_base_url, client_id, client_secret)
