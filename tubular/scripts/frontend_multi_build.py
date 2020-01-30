@@ -7,6 +7,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import os
+import shutil
 import sys
 from functools import partial
 
@@ -70,6 +71,9 @@ def frontend_build(common_config_file, env_config_file, app_name, version_file):
     # If the MULTISITE key is set, build the app once for each site (by setting
     # a HOSTNAME environment variable and store the each build output in
     # `dist/$HOSTNAME`.
+    multisite_directory_path = os.path.join('.', app_name, MULTISITE_PATH)
+    if os.path.exists(multisite_directory_path) and os.path.isdir(multisite_directory_path):
+        shutil.rmtree(multisite_directory_path)
     multisite_sites = builder.env_cfg.get('MULTISITE', [])
     os.makedirs(MULTISITE_PATH)
     for site_obj in multisite_sites:
