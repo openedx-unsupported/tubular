@@ -170,6 +170,7 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
                     ('CREDENTIALS', credentials_base_url),
                     ('SEGMENT', segment_base_url),
                     ('SAILTHRU', sailthru_key),
+                    ('HUBSPOT', hubspot_api_key)
             ):
                 if state[2] == service and service_url is None:
                     fail_func(fail_code, 'Service URL is not configured, but required for state {}'.format(state))
