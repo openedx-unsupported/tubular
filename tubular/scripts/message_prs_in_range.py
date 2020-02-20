@@ -173,7 +173,12 @@ def message_pr(api, message_type, pull_request, extra_text):
     """
     LOG.info("Github API Rate Limit: {}".format(api.get_rate_limit()))
     LOG.info(u"Posting message type %r to %d.", message_type.name, pull_request.number)
-    api.message_pr_with_type(pr_number=pull_request, message_type=message_type, extra_text=extra_text)
+
+    try:
+        api.message_pr_with_type(pr_number=pull_request, message_type=message_type, extra_text=extra_text)
+    except github.GithubException.UnknownObjectException as exc:
+        LOG.error(u"message_pr_with_type args were: pr_number={0} message_type={1} extra_text={2}", pull_request, message_type, extra_text)
+
 
 if __name__ == u"__main__":
     message_pull_requests()  # pylint: disable=no-value-for-parameter
