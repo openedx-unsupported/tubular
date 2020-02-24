@@ -152,7 +152,11 @@ def retrieve_pull_requests(api, base_sha, head_sha):
         An array of pull request objects
     """
     LOG.info("Github API Rate Limit: {}".format(api.get_rate_limit()))
-    pull_requests = api.get_pr_range(base_sha, head_sha)
+    try:
+        pull_requests = api.get_pr_range(base_sha, head_sha)
+    except github.GithubException.UnknownObjectException as exc:
+        LOG.error(u"github.GithubException.UnknownObjectException in retrieve_pull_requests(api, base_sha={0}, head_sha={1})", base_sha, head_sha)
+        raise exc
     return pull_requests
 
 
