@@ -9,6 +9,7 @@ import sys
 import logging
 import click
 import yaml
+from github.GithubException import UnknownObjectException
 
 
 # Add top-level module path to sys.path before importing tubular code.
@@ -154,7 +155,7 @@ def retrieve_pull_requests(api, base_sha, head_sha):
     LOG.info("Github API Rate Limit: {}".format(api.get_rate_limit()))
     try:
         pull_requests = api.get_pr_range(base_sha, head_sha)
-    except github.GithubException.UnknownObjectException as exc:
+    except UnknownObjectException as exc:
         LOG.error(u"github.GithubException.UnknownObjectException in retrieve_pull_requests(api, base_sha={0}, head_sha={1})", base_sha, head_sha)
         raise exc
     return pull_requests
@@ -180,7 +181,7 @@ def message_pr(api, message_type, pull_request, extra_text):
 
     try:
         api.message_pr_with_type(pr_number=pull_request, message_type=message_type, extra_text=extra_text)
-    except github.GithubException.UnknownObjectException as exc:
+    except UnknownObjectException as exc:
         LOG.error(u"message_pr_with_type args were: pr_number={0} message_type={1} extra_text={2}", pull_request, message_type, extra_text)
         raise exc
 
