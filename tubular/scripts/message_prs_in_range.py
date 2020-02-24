@@ -178,6 +178,7 @@ def message_pr(api, message_type, pull_request, extra_text):
         api.message_pr_with_type(pr_number=pull_request, message_type=message_type, extra_text=extra_text)
     except github.GithubException.UnknownObjectException as exc:
         LOG.error(u"message_pr_with_type args were: pr_number={0} message_type={1} extra_text={2}", pull_request, message_type, extra_text)
+        raise exc
 
 
 if __name__ == u"__main__":
