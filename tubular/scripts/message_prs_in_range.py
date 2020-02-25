@@ -9,6 +9,7 @@ import sys
 import logging
 import click
 import yaml
+from github.GithubException import UnknownObjectException
 
 
 # Add top-level module path to sys.path before importing tubular code.
@@ -71,6 +72,11 @@ LOG = logging.getLogger(__name__)
 @click.option(
     u'--extra_text', u'extra_text', default=''
 )
+@click.option(
+    u'--no-op',
+    help=u'Disable posting messages for testing',
+    is_flag=True
+)
 def message_pull_requests(org,
                           repo,
                           token,
@@ -81,7 +87,8 @@ def message_pull_requests(org,
                           head_ami_tags,
                           head_ami_tag_app,
                           message_type,
-                          extra_text):
+                          extra_text,
+                          no_op):
     u"""
     Message a range of Pull requests between the BASE and HEAD SHA specified.
 
@@ -99,6 +106,7 @@ def message_pull_requests(org,
         head_ami_tag_app (str): the app name to read the head_ami_tags
         message_type (str): type of message to send
         extra_text (str): Extra text to be inserted in the PR message
+        no_op (bool): Disable posting comments for testing
 
     Returns:
         None
@@ -120,7 +128,7 @@ def message_pull_requests(org,
     LOG.info("Github API Rate Limit: {}".format(api.get_rate_limit()))
     pull_requests = retrieve_pull_requests(api, base_sha, head_sha)
     for pull_request in pull_requests:
-        message_pr(api, MessageType[message_type], pull_request, extra_text)
+        message_pr(api, MessageType[message_type], pull_request, extra_text, no_op)
 
 
 def get_client(org, repo, token):
@@ -152,11 +160,16 @@ def retrieve_pull_requests(api, base_sha, head_sha):
         An array of pull request objects
     """
     LOG.info("Github API Rate Limit: {}".format(api.get_rate_limit()))
-    pull_requests = api.get_pr_range(base_sha, head_sha)
+    try:
+        pull_requests = api.get_pr_range(base_sha, head_sha)
+    except UnknownObjectException as exc:
+        LOG.error(u"github UnknownObjectException in retrieve_pull_requests(api, base_sha={0}, head_sha={1})".format(
+            base_sha, head_sha))
+        raise exc
     return pull_requests
 
 
-def message_pr(api, message_type, pull_request, extra_text):
+def message_pr(api, message_type, pull_request, extra_text, no_op):
     u"""
     Send a Message for a Pull request.
 
@@ -172,8 +185,18 @@ def message_pr(api, message_type, pull_request, extra_text):
         None
     """
     LOG.info("Github API Rate Limit: {}".format(api.get_rate_limit()))
-    LOG.info(u"Posting message type %r to %d.", message_type.name, pull_request.number)
-    api.message_pr_with_type(pr_number=pull_request, message_type=message_type, extra_text=extra_text)
+    if no_op:
+        LOG.info(u"No-op mode: Whould have posted message type %r to %d.", message_type.name, pull_request.number)
+    else:
+        LOG.info(u"Posting message type %r to %d.", message_type.name, pull_request.number)
+
+        try:
+            api.message_pr_with_type(pr_number=pull_request, message_type=message_type, extra_text=extra_text)
+        except UnknownObjectException as exc:
+            LOG.error(u"message_pr_with_type args were: pr_number={0} message_type={1} extra_text={2}".format(
+                pull_request, message_type, extra_text))
+            raise exc
+
 
 if __name__ == u"__main__":
     message_pull_requests()  # pylint: disable=no-value-for-parameter
