@@ -348,7 +348,7 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
                       max_tries=MAX_ATTEMPTS,
                       giveup=giveup_if_not_throttling,
                       factor=RETRY_FACTOR)
-def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=1800):
+def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=600):
     """
     Tag an asg with a tag named ASG_DELETE_TAG_KEY with a value of the MS since epoch UTC + ms_until_delete_delta
     that an ASG may be deleted.
