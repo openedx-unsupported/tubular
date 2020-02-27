@@ -42,7 +42,7 @@ def submit_slack_message(auth_token, channels, message):
     for channel in channels:
         msg_payload["channel"] = channel
         response = requests.post(post_url, json=msg_payload, headers=headers)
-
+        print("Response from Slack", response.text)
         if response.status_code not in (200, 201, 204):
             raise SlackMessageSendFailure(
                 "Message send to channel '{}' failed: {}".format(channel, response.text)
