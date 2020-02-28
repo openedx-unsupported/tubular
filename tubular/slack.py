@@ -8,6 +8,8 @@ import requests
 SLACK_API_URL = "https://slack.com"
 NOTIFICATION_POST = "/api/chat.postMessage"
 CONTENT_TYPE = "application/json"
+AUTH_HEADER_FIELD = "Authorization"
+
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
@@ -30,18 +32,18 @@ def submit_slack_message(auth_token, channels, message):
         message (str): Message to post to Slack channel.
     """
     post_url = "{}{}".format(SLACK_API_URL, NOTIFICATION_POST)
-
+    print(post_url)
     # to remove slack API warning
     headers = {
-        'Content-type': CONTENT_TYPE,
-        'Accept': 'text/plain'
+        AUTH_HEADER_FIELD: auth_token,
+        'Content-type': CONTENT_TYPE
     }
-
+    print(headers)
     for channel in channels:
         params = {
             "token": auth_token,
             "channel": channel,
-            "text": message,
+            "text": message
         }
         response = requests.post(post_url, params=params, headers=headers)
         print("\n \n Response from Slack", response.text)
