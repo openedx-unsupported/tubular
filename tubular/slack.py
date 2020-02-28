@@ -38,7 +38,7 @@ def submit_slack_message(auth_token, channels, message):
         AUTH_HEADER_FIELD: auth_token,
         'Content-type': CONTENT_TYPE
     }
-
+    print(headers)
     for channel in channels:
         params = {
             "token": auth_token,
