@@ -38,15 +38,12 @@ def submit_slack_message(auth_token, channels, message):
         AUTH_HEADER_FIELD: auth_token,
         'Content-type': CONTENT_TYPE
     }
-    print(headers)
     for channel in channels:
         params = {
-            "token": auth_token,
             "channel": channel,
             "text": message
         }
         response = requests.post(post_url, params=params, headers=headers)
-        print("\n \n Response from Slack", response.text)
         if response.status_code not in (200, 201, 204):
             raise SlackMessageSendFailure(
                 "Message send to channel '{}' failed: {}".format(channel, response.text)
