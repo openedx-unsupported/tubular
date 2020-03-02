@@ -34,11 +34,11 @@ def submit_slack_message(auth_token, channels, message):
     post_url = "{}{}".format(SLACK_API_URL, NOTIFICATION_POST)
     # to remove slack API warning
     headers = {
-        AUTH_HEADER_FIELD: auth_token,
         'Content-type': CONTENT_TYPE
     }
     for channel in channels:
         params = {
+            "token": auth_token,
             "channel": channel,
             "text": message
         }
