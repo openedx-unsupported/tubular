@@ -37,9 +37,7 @@ def submit_slack_msg(auth_token, channel, message):
     """
     Post a message to one or more Slack channels.
     """
-    click.secho('In slack :  {}: {}'.format(channel, message), fg='green')
     submit_slack_message(auth_token, channel, message)
-    click.secho('Function called :  {}: {}'.format(channel, message), fg='green')
     # An exit code of 0 means success and non-zero means failure.
     sys.exit(0)
 
