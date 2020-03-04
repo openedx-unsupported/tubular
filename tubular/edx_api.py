@@ -299,6 +299,14 @@ class LmsApi(BaseApiClient):
     @_retry_lms_api()
     def retirement_retire_proctoring_data(self, learner):
         """
+        Deletes or hashes learner data from edx-proctoring
+        """
+        with correct_exception():
+            return self._client.api.edx_proctoring.v1.retire_user(learner['user']['id']).post()
+
+    @_retry_lms_api()
+    def retirement_retire_proctoring_backend_data(self, learner):
+        """
         Removes the given learner from 3rd party proctoring backends
         """
         with correct_exception():
