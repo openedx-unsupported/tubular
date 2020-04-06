@@ -115,7 +115,7 @@ def _instance_elbs(instance_id, elbs):
 
 
 @backoff.on_exception(backoff.expo,
-                      BotoServerError,
+                      (BotoServerError, MultipleImagesFoundException),
                       max_tries=MAX_ATTEMPTS,
                       giveup=giveup_if_not_throttling,
                       factor=RETRY_FACTOR)
