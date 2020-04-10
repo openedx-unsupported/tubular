@@ -179,7 +179,7 @@ def asgs_for_cluster(cluster):
 
 
 @backoff.on_exception(backoff.expo,
-                      (RateLimitedException,),
+                      (RateLimitedException, BackendError),
                       max_tries=MAX_ATTEMPTS)
 def wait_for_task_completion(task_url, timeout):
     """
