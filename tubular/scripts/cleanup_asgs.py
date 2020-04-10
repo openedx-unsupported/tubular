@@ -35,7 +35,7 @@ def delete_asg():
         for asg in asgs:
             click.echo("Attempting to delete ASG {0}".format(asg.name))
             try:
-                asgard.delete_asg(asg.name)
+                asgard.delete_asg(asg.name, wait_for_deletion=False)
                 click.secho("Successfully deleted ASG {0}".format(asg.name), fg='green')
             except Exception as e:  # pylint: disable=broad-except
                 click.secho("Unable to delete ASG: {0} - {1}".format(asg, e), fg='red')

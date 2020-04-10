@@ -506,7 +506,7 @@ def disable_asg(asg):
                        TimeoutException,
                        BackendError),
                       max_tries=MAX_ATTEMPTS)
-def delete_asg(asg, fail_if_active=True, fail_if_last=True):
+def delete_asg(asg, fail_if_active=True, fail_if_last=True, wait_for_deletion=True):
     """
     Delete an ASG using asgard.
     curl -d "name=helloworld-example-v004" http://asgardprod/us-east-1/cluster/delete
@@ -548,10 +548,11 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True):
     response = requests.post(ASG_DELETE_URL,
                              data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
     task_url = response.url
-    task_status = wait_for_task_completion(task_url, 300)
-    if task_status['status'] == 'failed':
-        msg = "Failure while deleting ASG. Task Log: \n{}".format(task_status['log'])
-        raise BackendError(msg)
+    if wait_for_deletion:
+        task_status = wait_for_task_completion(task_url, 300)
+        if task_status['status'] == 'failed':
+            msg = "Failure while deleting ASG. Task Log: \n{}".format(task_status['log'])
+            raise BackendError(msg)
 
 
 @backoff.on_exception(backoff.expo,
