@@ -42,9 +42,9 @@ def export_learner_job_properties(learners, directory):
 
     for learner in learners:
         learner_name = learner['original_username'].lower()
-        filename = os.path.join(directory, 'learner_retire_{}'.format(learner_name))
+        filename = os.path.join(directory, u'learner_retire_{}'.format(learner_name))
         with open(filename, 'w') as learner_prop_file:
-            learner_prop_file.write('RETIREMENT_USERNAME={}\n'.format(learner['original_username']))
+            learner_prop_file.write('RETIREMENT_USERNAME={}\n'.format(learner['original_username']).encode('utf8'))
 
 
 def _poll_giveup(data):
