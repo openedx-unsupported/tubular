@@ -7,11 +7,11 @@ import json
 import os
 import subprocess
 import sys
-import backoff
 
 from datetime import datetime
 from functools import partial
 
+import backoff
 import CloudFlare
 import yaml
 from git import Repo
