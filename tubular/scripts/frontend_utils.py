@@ -11,6 +11,7 @@ import sys
 from datetime import datetime
 from functools import partial
 
+import backoff
 import CloudFlare
 import yaml
 from git import Repo
@@ -20,6 +21,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tubular.git_repo import LocalGitAPI  # pylint: disable=wrong-import-position
 from tubular.scripts.helpers import _log, _fail  # pylint: disable=wrong-import-position
+
+MAX_TRIES = 3
 
 
 class FrontendBuilder:
@@ -158,6 +161,9 @@ class FrontendDeployer:
             self.FAIL(1, 'Could not sync app {} with S3 bucket {}.'.format(self.app_name, bucket_uri))
         self.LOG('Frontend application {} successfully deployed to {}.'.format(self.app_name, bucket_name))
 
+    @backoff.on_exception(backoff.expo,
+                          (CloudFlare.exceptions.CloudFlareAPIError),
+                          max_tries=MAX_TRIES)
     def purge_cache(self, bucket_name):
         """
             Purge the Cloudflare cache for the frontend hostname.
@@ -171,9 +177,6 @@ class FrontendDeployer:
         zone_name = '.'.join(bucket_name.split('.')[-2:])  # Zone name is the TLD
         data = {'hosts': [bucket_name]}
         cloudflare_client = CloudFlare.CloudFlare()
-        try:
-            zone_id = cloudflare_client.zones.get(params={'name': zone_name})[0]['id']  # pylint: disable=no-member
-            cloudflare_client.zones.purge_cache.post(zone_id, data=data)  # pylint: disable=no-member
-            self.LOG('Successfully purged Cloudflare cache for hostname {}.'.format(bucket_name))
-        except (CloudFlare.exceptions.CloudFlareAPIError, IndexError, KeyError):
-            self.FAIL(1, 'Failed to purge the Cloudflare cache for hostname {}.'.format(bucket_name))
+        zone_id = cloudflare_client.zones.get(params={'name': zone_name})[0]['id']  # pylint: disable=no-member
+        cloudflare_client.zones.purge_cache.post(zone_id, data=data)  # pylint: disable=no-member
+        self.LOG('Successfully purged Cloudflare cache for hostname {}.'.format(bucket_name))
