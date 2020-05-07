@@ -87,7 +87,7 @@ def _retry_segment_api():
     return inner
 
 
-class SegmentApi(object):
+class SegmentApi:
     """
     Segment API client with convenience methods
     """

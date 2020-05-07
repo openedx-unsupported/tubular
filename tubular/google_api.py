@@ -41,17 +41,15 @@ class BatchRequestError(Exception):
     """
     Exception which indicates one or more failed requests inside of a batch request.
     """
-    pass
 
 
 class TriggerRetryException(Exception):
     """
     Exception which indicates one or more throttled requests inside of a batch request.
     """
-    pass
 
 
-class BaseApiClient(object):
+class BaseApiClient:
     """
     Base API client for google services.
 

@@ -19,9 +19,9 @@ import click
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
+from github.GithubException import GithubException  # pylint: disable=wrong-import-position
 from tubular.github_api import GitHubAPI  # pylint: disable=wrong-import-position
 from tubular.utils import exactly_one_set  # pylint: disable=wrong-import-position
-from github.GithubException import GithubException  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)

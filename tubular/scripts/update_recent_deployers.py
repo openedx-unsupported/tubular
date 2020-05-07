@@ -110,7 +110,6 @@ def update_recent_deployers(
                 click.echo(click.style('Removing user {!r} and retrying'.format(user), fg='red'))
                 recent_deployers.remove(user)
                 continue
-            else:
-                raise
+            raise
 
     # TODO: Make escalation to the non-deployers team happen immediately if recent-deployers is empty

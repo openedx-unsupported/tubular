@@ -9,7 +9,7 @@ from bson.objectid import ObjectId
 from pymongo import MongoClient
 
 
-class ModuleStore(object):
+class ModuleStore:
     """
     Handles pruning operations for the edx module store structures
 
@@ -142,7 +142,8 @@ class ModuleStore(object):
         file_exists = os.path.isfile(dataset_file)
 
         if not file_exists:
-            raise IOError("The specified file doesn't exist: %s", dataset_file)
+            raise IOError("The specified file doesn't exist:"
+                          " {dataset_file}".format(dataset_file=dataset_file))
 
         # load the file
         with open(dataset_file) as dataset:

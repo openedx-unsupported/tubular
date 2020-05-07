@@ -69,11 +69,11 @@ def replace_usernames(config_file, username_replacement_csv):
     """
     if not config_file:
         click.echo('A config file is required.')
-        exit(-1)
+        sys.exit(-1)
 
     if not username_replacement_csv:
         click.echo('A username replacement CSV file is required')
-        exit(-1)
+        sys.exit(-1)
 
     with io.open(config_file, 'r') as config:
         config_yaml = yaml.safe_load(config)
@@ -140,7 +140,7 @@ def replace_usernames(config_file, username_replacement_csv):
         write_responses(csv_writer, fully_failed_replacements, "FAILED")
 
     if partially_failed_replacements or fully_failed_replacements:
-        exit(-1)
+        sys.exit(-1)
 
 
 if __name__ == "__main__":

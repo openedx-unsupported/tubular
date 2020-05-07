@@ -20,20 +20,18 @@ class AdvancementPipelineNotFound(Exception):
     """
     Raise when not finding an appropriate advancement pipeline.
     """
-    pass
 
 
 class AdvancementPipelineAlreadyAdvanced(Exception):
     """
     Raise when appropriate advancement pipeline has already been advanced.
     """
-    pass
 
 
 PipelineInstance = namedtuple('PipelineInstance', ['name', 'counter', 'url'])
 
 
-class GoCDAPI(object):
+class GoCDAPI:
     """
     Interacts with the GoCD API to perform common tasks.
     """

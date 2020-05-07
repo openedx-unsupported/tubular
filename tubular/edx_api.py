@@ -21,10 +21,9 @@ class EdxGatewayTimeoutError(Exception):
     Exception used to indicate a 504 server error was returned.
     Differentiates from other 5xx errors.
     """
-    pass
 
 
-class BaseApiClient(object):
+class BaseApiClient:
     """
     API client base class used to submit API requests to a particular web service.
     """
@@ -127,8 +126,7 @@ def correct_exception():
         if err.response.status_code == 504:  # pylint: disable=no-member
             # Differentiate gateway errors so different backoff can be used.
             raise EdxGatewayTimeoutError(text_type(err))
-        else:
-            raise err
+        raise err
     except HttpClientError as err:
         if hasattr(err, 'content'):
             LOG.error("API Error: {}".format(err.content))

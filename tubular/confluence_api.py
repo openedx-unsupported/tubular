@@ -10,13 +10,14 @@ import logging  # pylint: disable=wrong-import-order
 import re  # pylint: disable=wrong-import-order
 
 from atlassian.confluence import Confluence  # pylint: disable=import-error
-from tubular.github_api import GitHubAPI
 
 from lxml.html import builder as E
 from lxml.html.builder import E as element_maker
 import lxml.html
 
-SECTION = element_maker.section
+from tubular.github_api import GitHubAPI
+
+SECTION = element_maker.section  # pylint: disable=no-member
 VersionDelta = namedtuple(u'VersionDelta', [u'app', u'base', u'new'])
 
 
@@ -62,7 +63,7 @@ class ReleaseStatus(Enum):
     ROLLED_BACK = u"Rolled back from Production"
 
 
-class AMI(object):
+class AMI:
     u"""
     An object capturing details about an AMI.
     """
@@ -272,7 +273,7 @@ def pr_table(token, jira_url, delta):
     )
 
 
-class ReleasePage(object):
+class ReleasePage:
     u"""
     An object that captures and renders all of the information needed for a Release Page.
     """

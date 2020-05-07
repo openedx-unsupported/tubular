@@ -60,7 +60,6 @@ class BackoffTriedException(Exception):
     """
     Raise this from a backoff handler to indicate that backoff was tried.
     """
-    pass
 
 
 @ddt

@@ -78,35 +78,30 @@ class SearchRateLimitError(Exception):
     """
     Error indicating that the rate limit for search has been hit. See: https://developer.github.com/v3/search.
     """
-    pass
 
 
 class NoValidCommitsError(Exception):
     """
     Error indicating that there are no commits with valid statuses
     """
-    pass
 
 
 class InvalidPullRequestError(Exception):
     """
     Error indicating that a PR could not be found
     """
-    pass
 
 
 class PullRequestCreationError(Exception):
     """
     Error indicating that a PR could not be created
     """
-    pass
 
 
 class GitTagMismatchError(Exception):
     """
     Error indicating that a tag is pointing at an incorrect SHA.
     """
-    pass
 
 
 def extract_message_summary(message, max_length=50):
@@ -116,8 +111,7 @@ def extract_message_summary(message, max_length=50):
     title = message.split('\n')[0] or ''
     if len(title) < max_length:
         return title
-    else:
-        return title[0:max_length] + '...'
+    return title[0:max_length] + '...'
 
 
 def default_expected_release_date(at_time=None, release_days=_NORMAL_RELEASE_WEEKDAYS):
@@ -178,7 +172,7 @@ def _constant_with_initial_wait(initial_wait=0, interval=1):
         yield interval
 
 
-class GitHubAPI(object):
+class GitHubAPI:
     """
     Manages requests to the GitHub api for a given org/repo
     """
