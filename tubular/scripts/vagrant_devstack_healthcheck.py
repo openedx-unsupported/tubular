@@ -82,9 +82,9 @@ def check_health():
     if failed_services:
         print("The following services have failed their health checks:")
         print(failed_services)
-        exit(1)
+        sys.exit(1)
 
-    exit(0)
+    sys.exit(0)
 
 
 @backoff.on_predicate(backoff.constant, interval=5, max_tries=5)

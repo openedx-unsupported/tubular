@@ -21,7 +21,6 @@ class UniqueTestException(Exception):
     """
     Mock exception to use in tests below.
     """
-    pass
 
 
 @ddt

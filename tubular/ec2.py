@@ -60,7 +60,7 @@ def get_all_autoscale_groups(names=None):
     fetched_asgs = autoscale_conn.get_all_groups(names=names)
     total_asgs = []
     while True:
-        total_asgs.extend([asg for asg in fetched_asgs])
+        total_asgs.extend(list(fetched_asgs))
         if fetched_asgs.next_token:
             fetched_asgs = autoscale_conn.get_all_groups(names=names, next_token=fetched_asgs.next_token)
         else:
@@ -87,7 +87,7 @@ def get_all_load_balancers(names=None):
     fetched_elbs = elb_conn.get_all_load_balancers(names)
     total_elbs = []
     while True:
-        total_elbs.extend([elb for elb in fetched_elbs])
+        total_elbs.extend(list(fetched_elbs))
         if fetched_elbs.next_token:
             fetched_elbs = elb_conn.get_all_load_balancers(names, fetched_elbs.next_token)
         else:

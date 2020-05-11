@@ -13,6 +13,7 @@ from collections import defaultdict
 import backoff
 import requests
 import six
+from boto.exception import EC2ResponseError
 import tubular.ec2 as ec2
 
 from tubular.exception import (
@@ -32,8 +33,6 @@ from tubular.exception import (
     RateLimitedException,
 )
 from tubular.utils import WAIT_SLEEP_TIME, DISABLE_OLD_ASG_WAIT_TIME
-
-from boto.exception import EC2ResponseError
 
 ASGARD_API_ENDPOINT = os.environ.get("ASGARD_API_ENDPOINTS", "http://dummy.url:8091/us-east-1")
 ASGARD_API_TOKEN = "asgardApiToken={}".format(os.environ.get("ASGARD_API_TOKEN", "dummy-token"))
@@ -248,7 +247,7 @@ def new_asg(cluster, ami_id):
               "until older ASGs have been removed automatically or remove " \
               "old ASGs manually via Asgard."
         raise BackendError(msg.format(cluster))
-    elif response.status_code != 200:
+    if response.status_code != 200:
         # The requests library follows redirects. The 200 comes from the job status page
         msg = "Error occured attempting to create new ASG for cluster {}.\nResponse: {}"
         raise BackendError(msg.format(cluster, response.text))
@@ -296,9 +295,9 @@ def _get_asgard_resource_info(url):
 
     if response.status_code == 404:
         raise ResourceDoesNotExistException('Resource for url {} does not exist'.format(url))
-    elif response.status_code >= 500:
+    if response.status_code >= 500:
         raise BackendError('Asgard experienced an error: {}'.format(response.text))
-    elif response.status_code != 200:
+    if response.status_code != 200:
         raise BackendError('Call to asgard failed with status code: {0}: {1}'
                            .format(response.status_code, response.text))
     LOG.debug("ASG info: {}".format(response.text))
@@ -741,7 +740,7 @@ def deploy(ami_id):
     }
 
 
-def _red_black_deploy(
+def _red_black_deploy(  # pylint: disable=too-many-statements
         new_cluster_asgs, baseline_cluster_asgs,
         secs_before_old_asgs_disabled=DISABLE_OLD_ASG_WAIT_TIME
 ):

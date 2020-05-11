@@ -49,7 +49,7 @@ def _fail(kind, code, message):
     except AttributeError:
         pass
 
-    exit(code)
+    sys.exit(code)
 
 
 def _fail_exception(kind, code, message, exc):

@@ -55,7 +55,7 @@ def get_learners_to_retire(config_file,
     """
     if not config_file:
         click.echo('A config file is required.')
-        exit(-1)
+        sys.exit(-1)
 
     with io.open(config_file, 'r') as config:
         config_yaml = yaml.safe_load(config)
@@ -83,7 +83,7 @@ def get_learners_to_retire(config_file,
                 learners_to_retire_cnt
             )
         )
-        exit(-1)
+        sys.exit(-1)
 
     export_learner_job_properties(
         learners_to_retire,

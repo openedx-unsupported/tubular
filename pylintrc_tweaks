@@ -1,3 +1,8 @@
 # pylintrc tweaks for use with edx_lint.
 [MASTER]
 load-plugins = edx_lint.pylint
+
+[MESSAGES CONTROL]
+disable+ =
+	too-many-function-args,
+	inconsistent-return-statements

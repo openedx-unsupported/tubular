@@ -19,7 +19,6 @@ class SlackMessageSendFailure(Exception):
     """
     Raised upon a failure to send a Slack message to a channel.
     """
-    pass
 
 
 def submit_slack_message(auth_token, channels, message):

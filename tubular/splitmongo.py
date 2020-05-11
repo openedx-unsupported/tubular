@@ -325,7 +325,7 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
         )
 
 
-class SplitMongoBackend(object):
+class SplitMongoBackend:
     """
     Interface to the MongoDB backend. This is currently the only supported KV
     store for the Split(DraftVersioning)ModuleStore, but having this as a

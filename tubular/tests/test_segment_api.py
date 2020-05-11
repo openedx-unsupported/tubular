@@ -22,7 +22,7 @@ TEST_SEGMENT_CONFIG = {
 }
 
 
-class FakeResponse(object):
+class FakeResponse:
     """
     Fakes out requests.post response
     """
@@ -36,7 +36,7 @@ class FakeResponse(object):
         pass
 
 
-class FakeErrorResponse(object):
+class FakeErrorResponse:
     """
     Fakes an error response
     """

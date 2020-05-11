@@ -12,7 +12,7 @@ RETIREMENT_TASK_DESCRIPTION = (
 )
 
 
-class SalesforceApi(object):
+class SalesforceApi:
     """
     Class for making Salesforce API calls
     """
@@ -78,7 +78,7 @@ class SalesforceApi(object):
             task_params['Description'] += note
         created_task = self._sf.Task.create(task_params)
         if created_task['success']:
-            LOG.info("Successfully salesforce task created task " + created_task['id'])
+            LOG.info("Successfully salesforce task created task %s", created_task['id'])
         else:
             LOG.error("Errors while creating task:")
             for error in created_task['errors']:

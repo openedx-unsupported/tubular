@@ -14,7 +14,7 @@ SAILTHRU_ERROR_NOT_FOUND = 'User not found with email:'
 MAX_ATTEMPTS = int(os.environ.get('RETRY_SAILTHRU_MAX_ATTEMPTS', 5))
 
 
-class SailthruApi(object):
+class SailthruApi:
     """
     Sailthru API client used to make all Sailthru calls.
     """

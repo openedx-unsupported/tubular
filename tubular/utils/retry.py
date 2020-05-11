@@ -50,7 +50,7 @@ def retry(attempts=MAX_ATTEMPTS, delay_seconds=DELAY_SECONDS, max_time_seconds=M
     return retry_decorator
 
 
-class LifecycleManager(object):
+class LifecycleManager:
     """
     Manages the lifecycle of a function to be retried using the retry wrapper: tubular.utils.retry.retry
     """
@@ -171,4 +171,3 @@ class RetryException(Exception):
     """
     Exception to use in retry tests.
     """
-    pass

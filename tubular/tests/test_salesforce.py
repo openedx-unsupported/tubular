@@ -5,8 +5,9 @@ import logging
 from contextlib import contextmanager
 import mock
 import pytest
-from tubular import salesforce_api
 from simple_salesforce import SalesforceError
+
+from tubular import salesforce_api
 
 
 @pytest.fixture

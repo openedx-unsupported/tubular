@@ -22,14 +22,12 @@ class InvalidGitRepoURL(Exception):
     """
     Raised when repo URL can't be parsed.
     """
-    pass
 
 
 class FastForwardMergeImpossible(Exception):
     """
     Raised when attempting a fast-forward-only merge that can't be done.
     """
-    pass
 
 
 def extract_repo_name(repo_url):
@@ -46,7 +44,7 @@ def extract_repo_name(repo_url):
     return match.group('name')
 
 
-class LocalGitAPI(object):
+class LocalGitAPI:
     """
     A set of helper functions for managing operations on local repos.
     """

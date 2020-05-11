@@ -18,6 +18,7 @@ import yaml
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
+from github.GithubException import GithubException  # pylint: disable=wrong-import-position
 from tubular.github_api import (  # pylint: disable=wrong-import-position
     GitHubAPI,
     NoValidCommitsError,
@@ -25,7 +26,6 @@ from tubular.github_api import (  # pylint: disable=wrong-import-position
     extract_message_summary,
     rc_branch_name_for_date
 )
-from github.GithubException import GithubException  # pylint: disable=wrong-import-position
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -182,22 +182,20 @@ def create_release_candidate(org,
     try:
         github_api.delete_branch(target_branch)
     except Exception:  # pylint: disable=broad-except
-        LOG.error("Unable to delete branch {branch_name}. " +
-                  "Will attempt to recreate"
-                  .format(branch_name=target_branch))
+        LOG.error("Unable to delete branch %s. "
+                  "Will attempt to recreate", target_branch)
 
     try:
         github_api.create_branch(target_branch, commit_hash)
     except Exception:  # pylint: disable=broad-except
-        LOG.error("Unable to recreate branch {branch_name}. Aborting"
-                  .format(branch_name=target_branch))
+        LOG.error("Unable to recreate branch %s. Aborting",
+                  target_branch)
         raise
 
     LOG.info(
-        "Creating Pull Request for {rc} into {pr_target}".format(
-            rc=target_branch,
-            pr_target=pr_target_branch
-        )
+        "Creating Pull Request for %s into %s",
+            target_branch,
+            pr_target_branch
     )
 
     try:
