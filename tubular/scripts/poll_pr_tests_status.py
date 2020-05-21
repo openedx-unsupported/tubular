@@ -56,7 +56,7 @@ LOG = logging.getLogger(__name__)
 @click.option(
     '--exclude-contexts',
     help=u"Regex defining which validation contexts to exclude from this status check.",
-    default="datreeio|Renovate|[Cc]odecov"
+    default="datreeio|Renovate|[Cc]odecov|Dependabot"
 )
 @click.option(
     '--include-contexts',
