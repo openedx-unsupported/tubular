@@ -4,11 +4,6 @@
 """
 Command-line script to drive the partner reporting part of the retirement process
 """
-# NOTE: Make sure that all non-ascii text written to standard output (including
-# print statements and logging) is manually encoded to bytes using a utf-8 or
-# other encoding.  We currently make use of this script within a context that
-# does NOT tolerate unicode text on sys.stdout, namely python 2 on Build
-# Jenkins.  PLAT-2287 tracks this Tech Debt.
 
 from __future__ import absolute_import, unicode_literals
 
@@ -77,7 +72,7 @@ Hello from edX. Dear {tags}, a new report listing the learners enrolled in your 
 
 def _check_all_learner_orgs_or_exit(config, learners):
     """
-    Checks all leaners and their orgs, ensuring that each org has a mapping to a partner Drive folder.
+    Checks all learners and their orgs, ensuring that each org has a mapping to a partner Drive folder.
     If any orgs are missing a mapping, fails after printing the mismatched orgs.
     """
     # Loop through all learner orgs, checking for their mappings.
