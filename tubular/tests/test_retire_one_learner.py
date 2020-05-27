@@ -226,7 +226,7 @@ def test_user_in_end_state(*args, **kwargs):
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
 
-    # pytest.parameterize doensn't play nicely with patch.multiple, this seemed more
+    # pytest.parameterize doesn't play nicely with patch.multiple, this seemed more
     # readable than the alternatives.
     for end_state in END_STATES:
         mock_get_retirement_state.return_value = {
