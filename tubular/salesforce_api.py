@@ -1,10 +1,15 @@
 """
 Salesforce API class that will call the Salesforce REST API using simple-salesforce.
 """
+import os
 import logging
+import backoff
+from requests.exceptions import ConnectionError as RequestsConnectionError
 from simple_salesforce import Salesforce
 
 LOG = logging.getLogger(__name__)
+
+MAX_ATTEMPTS = int(os.environ.get('RETRY_SALESFORCE_MAX_ATTEMPTS', 5))
 RETIREMENT_TASK_DESCRIPTION = (
     "A user data retirement request has been made for "
     "{email} who has been identified as a lead in Salesforce. "
@@ -20,7 +25,7 @@ class SalesforceApi:
         """
         Create API with credentials
         """
-        self._sf = Salesforce(
+        self._sf = self._get_salesforce_client(
             username=username,
             password=password,
             security_token=security_token,
@@ -30,6 +35,27 @@ class SalesforceApi:
         if not self.assignee_id:
             raise Exception("Could not find Salesforce user with username " + assignee_username)
 
+    @backoff.on_exception(
+        backoff.expo,
+        RequestsConnectionError,
+        max_tries=MAX_ATTEMPTS
+    )
+    def _get_salesforce_client(self, username, password, security_token, domain):
+        """
+        Returns a constructed Salesforce client and retries upon failure.
+        """
+        return Salesforce(
+            username=username,
+            password=password,
+            security_token=security_token,
+            domain=domain
+        )
+
+    @backoff.on_exception(
+        backoff.expo,
+        RequestsConnectionError,
+        max_tries=MAX_ATTEMPTS
+    )
     def get_lead_ids_by_email(self, email):
         """
         Given an id, query for a Lead with that email
@@ -46,6 +72,11 @@ class SalesforceApi:
                 LOG.warning("Multiple Ids returned for Lead with email {}".format(email))
             return ids
 
+    @backoff.on_exception(
+        backoff.expo,
+        RequestsConnectionError,
+        max_tries=MAX_ATTEMPTS
+    )
     def get_user_id(self, username):
         """
         Given a username, returns the user id for the User with that username
@@ -60,6 +91,11 @@ class SalesforceApi:
         else:
             return id_query['records'][0]['Id']
 
+    @backoff.on_exception(
+        backoff.expo,
+        RequestsConnectionError,
+        max_tries=MAX_ATTEMPTS
+    )
     def _create_retirement_task(self, email, lead_ids):
         """
         Creates a Salesforce Task instructing a user to manually retire the
