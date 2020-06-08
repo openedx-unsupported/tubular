@@ -18,7 +18,7 @@ pip install -e .[dev]
 ## Testing
 ```
 # Once, to install python versions:
-cat .python-versions | xargs -n1 pyenv install
+cat .python-version | xargs -n1 pyenv install
 
 # Run the tests
 tox
