@@ -5,10 +5,12 @@ A module to provide functionality for reading and manipulating OpsGenie.
 import json
 from requests import Session
 
+
 class OpsgenieMessageSendFailure(Exception):
     """
     Raised upon a failure to send an Opsgenie alert.
     """
+
 
 class OpsGenieAPI:
     """
