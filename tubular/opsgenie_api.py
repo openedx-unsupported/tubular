@@ -7,7 +7,7 @@ from requests import Session
 
 class OpsgenieMessageSendFailure(Exception):
     """
-    Raised upon a failure to send an Opsgenie message to a channel.
+    Raised upon a failure to send an Opsgenie alert.
     """
 
 class OpsGenieAPI:
