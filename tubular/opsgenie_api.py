@@ -41,20 +41,16 @@ class OpsGenieAPI:
         result.raise_for_status()
         return result
 
-    def alert_opsgenie(api_key, message, description):
+    def alert_opsgenie(self, message, description):
         post_url = 'https://api.opsgenie.com/v2/alerts'
-
-        headers = {
-            'Authorization': "GenieKey {}".format(api_key)
-        }
 
         alert_data = {
             'message': message,
             'description': description,
         }
 
-        response = requests.post(post_url, 
-                                 headers=headers, 
+        response = requests.post(post_url,
+                                 headers=headers,
                                  data=json.dumps(alert_data)
                                 )
 
@@ -62,5 +58,4 @@ class OpsGenieAPI:
             raise OpsgenieMessageSendFailure(
                 "Message {} failed: {}".format(message, response.text)
             )
-
 
