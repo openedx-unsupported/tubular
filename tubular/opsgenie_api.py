@@ -5,6 +5,10 @@ A module to provide functionality for reading and manipulating OpsGenie.
 import json
 from requests import Session
 
+class OpsgenieMessageSendFailure(Exception):
+    """
+    Raised upon a failure to send an Opsgenie message to a channel.
+    """
 
 class OpsGenieAPI:
     """
@@ -36,3 +40,27 @@ class OpsGenieAPI:
 
         result.raise_for_status()
         return result
+
+    def alert_opsgenie(api_key, message, description):
+        post_url = 'https://api.opsgenie.com/v2/alerts'
+
+        headers = {
+            'Authorization': "GenieKey {}".format(api_key)
+        }
+
+        alert_data = {
+            'message': message,
+            'description': description,
+        }
+
+        response = requests.post(post_url, 
+                                 headers=headers, 
+                                 data=json.dumps(alert_data)
+                                )
+
+        if response.status_code not in (200, 201, 204):
+            raise OpsgenieMessageSendFailure(
+                "Message {} failed: {}".format(message, response.text)
+            )
+
+
