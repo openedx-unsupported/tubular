@@ -1,3 +1,6 @@
+"""
+Command-line script to submit an alert to Opsgenie Api.
+"""
 from tubular.opsgenie_api import OpsGenieAPI
 
 
