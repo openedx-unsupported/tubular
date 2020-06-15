@@ -3,6 +3,7 @@
 """
 Command-line script to trigger a jenkins job
 """
+from datetime import datetime
 import logging
 import sys
 import os
@@ -132,7 +133,14 @@ def octomerge(
         ))
 
         merge_sha = local_repo.octopus_merge(target_branch, (pr.head.sha for pr in approved_prs))
+        # The tag encodes the time to ensure that it is a distinct tag.
+        release_name = 'release-{date}'.format(date=datetime.now().strftime("%Y%m%d%H%M%S"))
+        local_repo.repo.create_tag(
+            release_name,
+            ref=merge_sha,
+        )
         local_repo.push_branch(target_branch, force=True)
+        local_repo.push_tags()
 
         results = {
             'target_branch': target_branch,

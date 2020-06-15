@@ -156,6 +156,13 @@ class LocalGitAPI:
             self.repo.git.merge(*commitishes)
         return self.get_head_sha()
 
+    def push_tags(self, remote='origin', force=False):
+        """
+        Push all local tags up to the remote repo.
+        """
+        push_ref = 'refs/tags/*'
+        self.repo.remotes[remote].push(push_ref, force=force)
+
     def force_branch_to(self, branch, commitish, remote=None):
         """
         Reset branch to commitish.
