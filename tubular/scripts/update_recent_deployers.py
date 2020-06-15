@@ -7,8 +7,8 @@ import re
 
 import click
 import yaml
-
 from requests.exceptions import HTTPError
+
 from tubular.github_api import GitHubAPI
 from tubular.gocd_api import GoCDAPI  # pylint: disable=wrong-import-position
 from tubular.opsgenie_api import OpsGenieAPI
@@ -40,8 +40,8 @@ def _parse_pipeline_def(_ctx, _param, values):
 @click.option(
     '--pipelines', 'gocd_pipelines', multiple=True, required=True, callback=_parse_pipeline_def,
     help=(
-        "The name of the deployment pipeline and the stages in it that "
-        "trigger deployment actions. The format for each pipeline is pipeline_name[stage, stage]"
+            "The name of the deployment pipeline and the stages in it that "
+            "trigger deployment actions. The format for each pipeline is pipeline_name[stage, stage]"
     )
 )
 @click.option(
@@ -60,14 +60,14 @@ def _parse_pipeline_def(_ctx, _param, values):
     '--recent-cutoff', 'recent_cutoff', default=30, show_default=True, type=int,
     help="Number of minutes to consider as being recent")
 def update_recent_deployers(
-    opsgenie_api_key,
-    opsgenie_team_id,
-    gocd_pipelines,
-    gocd_username,
-    gocd_password,
-    gocd_url,
-    github_token,
-    recent_cutoff=30
+        opsgenie_api_key,
+        opsgenie_team_id,
+        gocd_pipelines,
+        gocd_username,
+        gocd_password,
+        gocd_url,
+        github_token,
+        recent_cutoff=30
 ):
     """
     Update an OpsGenie team to contain only those users whose changes were recently deployed

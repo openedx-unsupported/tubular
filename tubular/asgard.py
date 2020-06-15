@@ -1,9 +1,6 @@
 """
 Methods to interact with the Asgard API to perform various tasks.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 from datetime import datetime, timedelta
 import os
 import logging
@@ -265,7 +262,7 @@ def new_asg(cluster, ami_id):
     if newest_asg['desiredCapacity'] <= 0 or newest_asg['minSize'] <= 0:
         raise ASGCountZeroException(
             "New ASG {asg_name} created with 0 instances, aborting. Please check Asgard for more information"
-            .format(asg_name=newest_asg['autoScalingGroupName'])
+                .format(asg_name=newest_asg['autoScalingGroupName'])
         )
 
     return newest_asg['autoScalingGroupName']
@@ -579,7 +576,7 @@ def elbs_for_asg(asg):
         elbs = resp_json['group']['loadBalancerNames']
     except (KeyError, TypeError):
         msg = "Expected a dict with path ['group']['loadbalancerNames']. " \
-            "Got: {}".format(resp_json)
+              "Got: {}".format(resp_json)
         raise BackendDataError(msg)
     return elbs
 

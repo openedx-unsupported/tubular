@@ -3,11 +3,10 @@
 """
 Command-line script to fetch a deployed Drupal tag.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import sys
 from os import path
+
 import click
 
 # Add top-level module path to sys.path before importing tubular code.
@@ -34,6 +33,7 @@ def fetch_deployed_tag(app_id, env, client_id, secret, path_name):
         path_name (str): The path to write the tag name to.
     """
     drupal.fetch_deployed_tag(app_id, env, client_id, secret, path_name)
+
 
 if __name__ == "__main__":
     fetch_deployed_tag()  # pylint: disable=no-value-for-parameter

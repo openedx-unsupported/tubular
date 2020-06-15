@@ -3,14 +3,13 @@
 """
 Script to check the combined test status of a GitHub PR or commit SHA.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import io
-from os import path
-import os
 import logging
+import os
 import sys
+from os import path
+
 import click
 import yaml
 
@@ -71,8 +70,8 @@ LOG = logging.getLogger(__name__)
     default=None
 )
 def check_tests(
-    org, repo, token, input_file, pr_number, commit_hash,
-    out_file, exclude_contexts, include_contexts,
+        org, repo, token, input_file, pr_number, commit_hash,
+        out_file, exclude_contexts, include_contexts,
 ):
     """
     Check the current combined status of a GitHub PR/commit in a repo once.

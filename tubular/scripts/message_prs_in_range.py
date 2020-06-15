@@ -3,14 +3,14 @@
 """
 Command-line script message pull requests in a range
 """
-from __future__ import absolute_import
-from os import path
-import sys
+
 import logging
+import sys
+from os import path
+
 import click
 import yaml
 from github.GithubException import UnknownObjectException
-
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))

@@ -3,13 +3,12 @@
 """
 Command-line script to merge a PR.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import io
-from os import path
-import sys
 import logging
+import sys
+from os import path
+
 import click
 import yaml
 

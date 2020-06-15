@@ -3,9 +3,9 @@
 """
 Command-line script to trigger a jenkins job
 """
-from __future__ import absolute_import
-from os import path
+
 import sys
+from os import path
 
 import click
 import click_log
@@ -89,6 +89,7 @@ def trigger(url, user_name, user_token, job, token, cause, param, timeout, expec
     status = jenkins.trigger_build(url, user_name, user_token, job, token, cause, param, timeout)
     if status != expected_status:
         raise click.ClickException(u'Job finished with unexpected status {}'.format(status))
+
 
 if __name__ == u"__main__":
     trigger()  # pylint: disable=no-value-for-parameter

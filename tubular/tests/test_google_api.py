@@ -1,24 +1,22 @@
 """
 Test google API
 """
-from __future__ import unicode_literals
 
-from datetime import datetime, timedelta
 import json
 import sys
 import unittest
-from io import BytesIO
-
 # Gives a version of zip which returns an iterable even under python 2.
 from builtins import zip  # pylint: disable=redefined-builtin
-
+from datetime import datetime, timedelta
+from io import BytesIO
 from itertools import cycle
+
+import six
+from googleapiclient.http import HttpMockSequence
 from mock import patch
 from pytz import UTC
-import six
 from six.moves import range  # use the range function introduced in python 3
 
-from googleapiclient.http import HttpMockSequence
 from tubular.google_api import BatchRequestError, DriveApi, FOLDER_MIMETYPE, GOOGLE_API_MAX_BATCH_SIZE
 
 # For info about this file, see tubular/tests/discovery-drive.json.README.rst
@@ -592,7 +590,8 @@ ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
         )
 
     @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
-    def test_comment_files_with_nonexistent_file(self, mock_from_service_account_file):  # pylint: disable=unused-argument
+    def test_comment_files_with_nonexistent_file(self,
+                                                 mock_from_service_account_file):  # pylint: disable=unused-argument
         """
         Test case for commenting on files, where some files are nonexistent.
         """

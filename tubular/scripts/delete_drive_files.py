@@ -2,12 +2,11 @@
 """
 Command-line script to delete Google Drive files by ID.
 """
-from __future__ import absolute_import, unicode_literals
 
-from functools import partial
-from os import path
 import logging
 import sys
+from functools import partial
+from os import path
 
 import click
 

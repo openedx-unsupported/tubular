@@ -1,10 +1,9 @@
 """
 Tests for tubular.git_repo.GitRepo
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 from unittest import TestCase
+
 import ddt
 from git import GitCommandError, Repo
 from mock import patch, MagicMock
@@ -18,6 +17,7 @@ class GitRepoTestCase(TestCase):
     Tests the calls using the git CLI.
     All network calls are mocked out.
     """
+
     @patch('tubular.git_repo.rmtree', autospec=True)
     @patch('tubular.git_repo.Repo', autospec=True)
     def test_merge_branch_success(self, mock_repo, mock_rmtree):

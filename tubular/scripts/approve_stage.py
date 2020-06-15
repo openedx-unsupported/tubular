@@ -5,12 +5,10 @@ Command-line script to click the "manual" gate in gocd.
 """
 
 # pylint: disable=invalid-name
-from __future__ import absolute_import
-from __future__ import unicode_literals
-from __future__ import print_function
 
 import os
 import sys
+
 import click
 from yagocd import Yagocd
 
@@ -58,6 +56,7 @@ def approve_stage(go_server_url, username, secret, pipeline_name, pipeline_count
         auth=(username, secret),
     )
     client.stages.run(pipeline_name, pipeline_counter, stage_name)
+
 
 if __name__ == "__main__":
     approve_stage()  # pylint: disable=no-value-for-parameter

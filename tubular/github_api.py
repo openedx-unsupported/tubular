@@ -1,6 +1,4 @@
 """ Provides Access to the GitHub API """
-from __future__ import absolute_import
-from __future__ import print_function, unicode_literals
 
 from base64 import b64decode
 from datetime import datetime, timedelta, time
@@ -449,7 +447,7 @@ class GitHubAPI:
             ctx: value
             for (ctx, value) in results.items()
             if (self.include_contexts and self.include_contexts.search(ctx)) or
-            not (self.exclude_contexts and self.exclude_contexts.search(ctx))
+               not (self.exclude_contexts and self.exclude_contexts.search(ctx))
         }
 
     def aggregate_validation_results(self, results):

@@ -8,7 +8,6 @@ import unicodedata
 
 import yaml
 
-
 TEST_RETIREMENT_PIPELINE = [
     ['RETIRING_FORUMS', 'FORUMS_COMPLETE', 'LMS', 'retirement_retire_forum'],
     ['RETIRING_EMAIL_LISTS', 'EMAIL_LISTS_COMPLETE', 'LMS', 'retirement_retire_mailings'],

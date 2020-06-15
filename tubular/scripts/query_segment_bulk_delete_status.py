@@ -2,7 +2,6 @@
 """
 Command-line script to check status of a bulk delete users request from Segment.
 """
-from __future__ import absolute_import, unicode_literals
 
 from functools import partial
 from os import path

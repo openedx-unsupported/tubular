@@ -4,8 +4,6 @@ Script to detect and prune old Structure documents from the "Split" Modulestore
 MongoDB (edxapp.modulestore.structures by default). See docstring/help for the
 "make_plan" and "prune" commands for more details.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import logging
 import os
@@ -28,10 +26,10 @@ click_log.basic_config(LOG)
     '--connection',
     default="mongodb://localhost:27017",
     help=(
-        'Connection string to the target mongo database. This defaults to '
-        'localhost without password (that will work against devstack). '
-        'You may need to use urllib.parse.quote_plus() to percent-escape '
-        'your username and password.'
+            'Connection string to the target mongo database. This defaults to '
+            'localhost without password (that will work against devstack). '
+            'You may need to use urllib.parse.quote_plus() to percent-escape '
+            'your username and password.'
     )
 )
 @click.option(
@@ -82,29 +80,25 @@ def cli(ctx, connection, database_name):
     '--retain',
     default=2,
     type=click.IntRange(0, None),
-    help=(
-        "The maximum number of intermediate structures to preserve for any "
-        "single branch of an active version. This value does not include the "
-        "active or original structures (those are always preserved). Defaults "
-        "to 2. Put 0 here if you want to prune as much as possible."
-    )
+    help=("The maximum number of intermediate structures to preserve for any "
+          "single branch of an active version. This value does not include the "
+          "active or original structures (those are always preserved). Defaults "
+          "to 2. Put 0 here if you want to prune as much as possible."
+          )
 )
 @click.option(
     '--delay',
     default=15000,
     type=click.IntRange(0, None),
-    help=(
-        "Delay in milliseconds between queries to fetch structures from MongoDB "
-        "during plan creation. Tune to adjust load on the database."
-    )
+    help=("Delay in milliseconds between queries to fetch structures from MongoDB "
+          "during plan creation. Tune to adjust load on the database."
+          )
 )
 @click.option(
     '--batch-size',
     default=10000,
     type=click.IntRange(1, None),
-    help=(
-        "How many Structures do we fetch at a time?"
-    )
+    help="How many Structures do we fetch at a time?"
 )
 @click.pass_context
 def make_plan(ctx, plan_file, details, retain, delay, batch_size):
@@ -145,28 +139,21 @@ def make_plan(ctx, plan_file, details, retain, delay, batch_size):
     '--delay',
     default=15000,
     type=click.IntRange(0, None),
-    help=(
-        "Delay in milliseconds between batch deletions during pruning. Tune to "
-        "adjust load on the database."
-    )
-)
+    help=("Delay in milliseconds between batch deletions during pruning. Tune to "
+          "adjust load on the database."))
 @click.option(
     '--batch-size',
     default=1000,
     type=click.IntRange(1, None),
-    help=(
-        "How many Structures do we delete at a time? Tune to adjust load on "
-        "the database."
-    )
+    help=("How many Structures do we delete at a time? Tune to adjust load on "
+          "the database.")
 )
 @click.option(
     '--start',
     default=None,
-    help=(
-        "Structure ID to start deleting from. Specifying a Structure ID that "
-        "is not in the Change Plan is an error. Specifying a Structure ID that "
-        "has already been deleted is NOT an error, so it's safe to re-run."
-    )
+    help=("Structure ID to start deleting from. Specifying a Structure ID that "
+          "is not in the Change Plan is an error. Specifying a Structure ID that "
+          "has already been deleted is NOT an error, so it's safe to re-run.")
 )
 @click.pass_context
 def prune(ctx, plan_file, delay, batch_size, start):

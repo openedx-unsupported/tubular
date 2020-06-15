@@ -1,15 +1,14 @@
 """
 Tests of the utility code.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 from copy import copy
+
 import boto
-from boto.ec2.autoscale.launchconfig import LaunchConfiguration
-from boto.ec2.autoscale.group import AutoScalingGroup
-from boto.ec2.autoscale import Tag
 import six
+from boto.ec2.autoscale import Tag
+from boto.ec2.autoscale.group import AutoScalingGroup
+from boto.ec2.autoscale.launchconfig import LaunchConfiguration
 
 
 def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):

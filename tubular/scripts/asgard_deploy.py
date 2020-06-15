@@ -4,16 +4,14 @@
 Command-line script used to deploy an AMI.
 """
 # pylint: disable=invalid-name
-from __future__ import absolute_import
-from __future__ import unicode_literals
-from __future__ import print_function
 
 import io
+import logging
 import os
 import sys
-import logging
 import time
 import traceback
+
 import click
 import yaml
 
@@ -21,7 +19,6 @@ import yaml
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tubular import asgard  # pylint: disable=wrong-import-position
-
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -91,6 +88,7 @@ def deploy(ami_id, config_file, out_file, dry_run):
         sys.exit(1)
 
     sys.exit(0)
+
 
 if __name__ == "__main__":
     deploy()  # pylint: disable=no-value-for-parameter

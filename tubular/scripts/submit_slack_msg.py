@@ -3,11 +3,10 @@
 """
 Command-line script to submit a Slack message to one or more channels.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
-from os import path
 import sys
+from os import path
+
 import click
 
 # Add top-level module path to sys.path before importing tubular code.

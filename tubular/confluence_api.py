@@ -2,7 +2,6 @@ u"""
 Functions for interacting with the Confluence API and for rendering
 Confluence pages.
 """
-from __future__ import absolute_import
 
 from collections import namedtuple
 from enum import Enum
@@ -67,6 +66,7 @@ class AMI:
     u"""
     An object capturing details about an AMI.
     """
+
     def __init__(self, ami_id, environment, deployment, play, **versions):
         self.ami_id = ami_id
         self.environment = environment
@@ -277,6 +277,7 @@ class ReleasePage:
     u"""
     An object that captures and renders all of the information needed for a Release Page.
     """
+
     def __init__(
             self, github_token, jira_url, status, ami_pairs, gocd_url=None,
     ):

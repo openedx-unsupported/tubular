@@ -8,14 +8,13 @@ new username is not unique. It then calls all other services to replace the
 username in their DBs.
 
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
-from os import path
 import csv
 import io
-import sys
 import logging
+import sys
+from os import path
+
 import click
 import yaml
 

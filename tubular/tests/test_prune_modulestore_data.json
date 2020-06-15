@@ -1,218 +1,218 @@
 {
-    "active_versions": [
-        {
-            "_id": "583602b0e9ec21ec98727b81",
-            "versions": {
-                "draft-branch": "595f47eae9ec2154eceba297",
-                "published-branch": "595f47eae9ec2154eceba295"
-            }
-        },
-        {
-            "_id": "5836042ae9ec21ec8d727b81",
-            "versions": {
-                "library": "5876bb3077238e18e7d9c33e"
-            }
-        },
-        {
-            "_id": "59975760ce3cb24d8ce50509",
-            "versions": {
-                "draft-branch": "5997577fce3cb24d88e5050c",
-                "published-branch": "59975784ce3cb24d88e5050d"
-            }
-        },
-        {
-            "_id": "59975998ce3cb22ddc351880",
-            "versions": {
-                "draft-branch": "599759c5ce3cb24d86e5050d",
-                "published-branch": "599759d1ce3cb24d86e5050f"
-            }
-        }
-    ],
-    "structures": [
-        {
-            "_id": "595f47eae9ec2154eceba297",
-            "original_version": "583602b0e9ec21ec98727b80",
-            "previous_version": "58dd9d18620de9c0be7937c3"
-        },
-        {
-            "_id": "58dd9d18620de9c0be7937c3",
-            "previous_version": "58dd0fd4620de9c0c9793627",
-            "original_version": "583602b0e9ec21ec98727b80"
-        },
-        {
-            "_id": "58dd0fd4620de9c0c9793627",
-            "previous_version": "58dd0fd4620de9c0c9ea7e27",
-            "original_version": "583602b0e9ec21ec98727b80"
-        },
-        {
-            "_id": "58dd0fd4620de9c0c9ea7e27",
-            "previous_version": "58cd0fd4620dedc0c9ea7e29",
-            "original_version": "583602b0e9ec21ec98727b80"
-        },
-        {
-            "_id": "58cd0fd4620dedc0c9ea7e29",
-            "previous_version": "583602b0e9ec21ec98727b80",
-            "original_version": "583602b0e9ec21ec98727b80"
-        },
-        {
-            "_id": "583602b0e9ec21ec98727b80",
-            "previous_version": null,
-            "original_version": "583602b0e9ec21ec98727b80"
-        },
-        {
-            "_id": "583602b0e9ec21ec98727b82",
-            "previous_version": null,
-            "original_version": "583602b0e9ec21ec98727b82"
-        },
-        {
-            "_id": "595f47eae9ec2154eceba295",
-            "original_version": "583602b0e9ec21ec98727b82",
-            "previous_version": "58dd9d18620de9c0be7937c4"
-        },
-        {
-            "_id": "58dd9d18620de9c0be7937c4",
-            "previous_version": "58dd0fd4620de9c0c9793625",
-            "original_version": "583602b0e9ec21ec98727b82"
-        },
-        {
-            "_id": "58dd0fd4620de9c0c9793625",
-            "original_version": "583602b0e9ec21ec98727b82",
-            "previous_version": "583602b0e9ec21ec98727b82"
-        },
-        {
-            "_id": "5876bb3077238e18e7d9c33e",
-            "original_version": "5836042ae9ec21ec8d727b80",
-            "previous_version": "5876ba1077238e18d5d9c3e1"
-        },
-        {
-            "_id": "5876ba1077238e18d5d9c3e1",
-            "previous_version": "584b4f9b77238edd2c55ff1a",
-            "original_version": "5836042ae9ec21ec8d727b80"
-        },
-        {
-            "_id": "584b4f9b77238edd2c55ff1a",
-            "original_version": "5836042ae9ec21ec8d727b80",
-            "previous_version": "584b4f7677238edd2155ff51"
-        },
-        {
-            "_id": "584b4f7677238edd2155ff51",
-            "previous_version": "5836042ae9ec21ec8d727b80",
-            "original_version": "5836042ae9ec21ec8d727b80"
-        },
-        {
-            "_id": "5836042ae9ec21ec8d727b80",
-            "previous_version": null,
-            "original_version": "5836042ae9ec21ec8d727b80"
-        },
-        {
-            "_id": "59975763ce3cb24d86e50508",
-            "original_version": "59975760ce3cb24d8ce50508",
-            "previous_version": "59975760ce3cb24d8ce50508"
-        },
-        {
-            "_id": "59975760ce3cb24d8ce5050a",
-            "previous_version": null,
-            "original_version": "59975760ce3cb24d8ce5050a"
-        },
-        {
-            "_id": "59975760ce3cb24d8ce50508",
-            "previous_version": null,
-            "original_version": "59975760ce3cb24d8ce50508"
-        },
-        {
-            "_id": "59975763ce3cb24d86e50509",
-            "original_version": "59975760ce3cb24d8ce5050a",
-            "previous_version": "59975760ce3cb24d8ce5050a"
-        },
-        {
-            "_id": "59975764ce3cb24d88e50508",
-            "previous_version": "59975763ce3cb24d86e50508",
-            "original_version": "59975760ce3cb24d8ce50508"
-        },
-        {
-            "_id": "59975764ce3cb24d88e50509",
-            "previous_version": "59975763ce3cb24d86e50509",
-            "original_version": "59975760ce3cb24d8ce5050a"
-        },
-        {
-            "_id": "59975766ce3cb24d86e5050b",
-            "original_version": "59975760ce3cb24d8ce50508",
-            "previous_version": "59975764ce3cb24d88e50508"
-        },
-        {
-            "_id": "59975769ce3cb24d8ce5050d",
-            "previous_version": "59975766ce3cb24d86e5050b",
-            "original_version": "59975760ce3cb24d8ce50508"
-        },
-        {
-            "_id": "59975769ce3cb24d8ce5050e",
-            "original_version": "59975760ce3cb24d8ce50508",
-            "previous_version": "59975769ce3cb24d8ce5050d"
-        },
-        {
-            "_id": "59975770ce3cb24d88e5050a",
-            "original_version": "59975760ce3cb24d8ce5050a",
-            "previous_version": "59975764ce3cb24d88e50509"
-        },
-        {
-            "_id": "59975779ce3cb24d88e5050b",
-            "previous_version": "59975769ce3cb24d8ce5050e",
-            "original_version": "59975760ce3cb24d8ce50508"
-        },
-        {
-            "_id": "5997577ece3cb24d8ce50510",
-            "original_version": "59975760ce3cb24d8ce50508",
-            "previous_version": "59975779ce3cb24d88e5050b"
-        },
-        {
-            "_id": "5997577fce3cb24d88e5050c",
-            "previous_version": "5997577ece3cb24d8ce50510",
-            "original_version": "59975760ce3cb24d8ce50508"
-        },
-        {
-            "_id": "59975784ce3cb24d88e5050d",
-            "previous_version": "59975770ce3cb24d88e5050a",
-            "original_version": "59975760ce3cb24d8ce5050a"
-        },
-        {
-            "_id": "59975998ce3cb22ddc35187e",
-            "original_version": "59975760ce3cb24d8ce50508",
-            "previous_version": "5997577fce3cb24d88e5050c"
-        },
-        {
-            "_id": "599759bcce3cb24d87e50507",
-            "original_version": "59975760ce3cb24d8ce5050a",
-            "previous_version": "59975784ce3cb24d88e5050d"
-        },
-        {
-            "_id": "599759c0ce3cb24d8ce50512",
-            "previous_version": "59975998ce3cb22ddc35187e",
-            "original_version": "59975760ce3cb24d8ce50508"
-        },
-        {
-            "_id": "599759c0ce3cb24d8ce50513",
-            "previous_version": "599759bcce3cb24d87e50507",
-            "original_version": "59975760ce3cb24d8ce5050a"
-        },
-        {
-            "_id": "599759c1ce3cb24d8ce50515",
-            "original_version": "59975760ce3cb24d8ce50508",
-            "previous_version": "599759c0ce3cb24d8ce50512"
-        },
-        {
-            "_id": "599759c5ce3cb24d86e5050d",
-            "previous_version": "599759c1ce3cb24d8ce50515",
-            "original_version": "59975760ce3cb24d8ce50508"
-        },
-        {
-            "_id": "599759c7ce3cb24d86e5050e",
-            "original_version": "59975760ce3cb24d8ce5050a",
-            "previous_version": "599759c0ce3cb24d8ce50513"
-        },
-        {
-            "_id": "599759d1ce3cb24d86e5050f",
-            "previous_version": "599759c7ce3cb24d86e5050e",
-            "original_version": "59975760ce3cb24d8ce5050a"
-        }
-    ]
+  "active_versions": [
+    {
+      "_id": "583602b0e9ec21ec98727b81",
+      "versions": {
+        "draft-branch": "595f47eae9ec2154eceba297",
+        "published-branch": "595f47eae9ec2154eceba295"
+      }
+    },
+    {
+      "_id": "5836042ae9ec21ec8d727b81",
+      "versions": {
+        "library": "5876bb3077238e18e7d9c33e"
+      }
+    },
+    {
+      "_id": "59975760ce3cb24d8ce50509",
+      "versions": {
+        "draft-branch": "5997577fce3cb24d88e5050c",
+        "published-branch": "59975784ce3cb24d88e5050d"
+      }
+    },
+    {
+      "_id": "59975998ce3cb22ddc351880",
+      "versions": {
+        "draft-branch": "599759c5ce3cb24d86e5050d",
+        "published-branch": "599759d1ce3cb24d86e5050f"
+      }
+    }
+  ],
+  "structures": [
+    {
+      "_id": "595f47eae9ec2154eceba297",
+      "original_version": "583602b0e9ec21ec98727b80",
+      "previous_version": "58dd9d18620de9c0be7937c3"
+    },
+    {
+      "_id": "58dd9d18620de9c0be7937c3",
+      "previous_version": "58dd0fd4620de9c0c9793627",
+      "original_version": "583602b0e9ec21ec98727b80"
+    },
+    {
+      "_id": "58dd0fd4620de9c0c9793627",
+      "previous_version": "58dd0fd4620de9c0c9ea7e27",
+      "original_version": "583602b0e9ec21ec98727b80"
+    },
+    {
+      "_id": "58dd0fd4620de9c0c9ea7e27",
+      "previous_version": "58cd0fd4620dedc0c9ea7e29",
+      "original_version": "583602b0e9ec21ec98727b80"
+    },
+    {
+      "_id": "58cd0fd4620dedc0c9ea7e29",
+      "previous_version": "583602b0e9ec21ec98727b80",
+      "original_version": "583602b0e9ec21ec98727b80"
+    },
+    {
+      "_id": "583602b0e9ec21ec98727b80",
+      "previous_version": null,
+      "original_version": "583602b0e9ec21ec98727b80"
+    },
+    {
+      "_id": "583602b0e9ec21ec98727b82",
+      "previous_version": null,
+      "original_version": "583602b0e9ec21ec98727b82"
+    },
+    {
+      "_id": "595f47eae9ec2154eceba295",
+      "original_version": "583602b0e9ec21ec98727b82",
+      "previous_version": "58dd9d18620de9c0be7937c4"
+    },
+    {
+      "_id": "58dd9d18620de9c0be7937c4",
+      "previous_version": "58dd0fd4620de9c0c9793625",
+      "original_version": "583602b0e9ec21ec98727b82"
+    },
+    {
+      "_id": "58dd0fd4620de9c0c9793625",
+      "original_version": "583602b0e9ec21ec98727b82",
+      "previous_version": "583602b0e9ec21ec98727b82"
+    },
+    {
+      "_id": "5876bb3077238e18e7d9c33e",
+      "original_version": "5836042ae9ec21ec8d727b80",
+      "previous_version": "5876ba1077238e18d5d9c3e1"
+    },
+    {
+      "_id": "5876ba1077238e18d5d9c3e1",
+      "previous_version": "584b4f9b77238edd2c55ff1a",
+      "original_version": "5836042ae9ec21ec8d727b80"
+    },
+    {
+      "_id": "584b4f9b77238edd2c55ff1a",
+      "original_version": "5836042ae9ec21ec8d727b80",
+      "previous_version": "584b4f7677238edd2155ff51"
+    },
+    {
+      "_id": "584b4f7677238edd2155ff51",
+      "previous_version": "5836042ae9ec21ec8d727b80",
+      "original_version": "5836042ae9ec21ec8d727b80"
+    },
+    {
+      "_id": "5836042ae9ec21ec8d727b80",
+      "previous_version": null,
+      "original_version": "5836042ae9ec21ec8d727b80"
+    },
+    {
+      "_id": "59975763ce3cb24d86e50508",
+      "original_version": "59975760ce3cb24d8ce50508",
+      "previous_version": "59975760ce3cb24d8ce50508"
+    },
+    {
+      "_id": "59975760ce3cb24d8ce5050a",
+      "previous_version": null,
+      "original_version": "59975760ce3cb24d8ce5050a"
+    },
+    {
+      "_id": "59975760ce3cb24d8ce50508",
+      "previous_version": null,
+      "original_version": "59975760ce3cb24d8ce50508"
+    },
+    {
+      "_id": "59975763ce3cb24d86e50509",
+      "original_version": "59975760ce3cb24d8ce5050a",
+      "previous_version": "59975760ce3cb24d8ce5050a"
+    },
+    {
+      "_id": "59975764ce3cb24d88e50508",
+      "previous_version": "59975763ce3cb24d86e50508",
+      "original_version": "59975760ce3cb24d8ce50508"
+    },
+    {
+      "_id": "59975764ce3cb24d88e50509",
+      "previous_version": "59975763ce3cb24d86e50509",
+      "original_version": "59975760ce3cb24d8ce5050a"
+    },
+    {
+      "_id": "59975766ce3cb24d86e5050b",
+      "original_version": "59975760ce3cb24d8ce50508",
+      "previous_version": "59975764ce3cb24d88e50508"
+    },
+    {
+      "_id": "59975769ce3cb24d8ce5050d",
+      "previous_version": "59975766ce3cb24d86e5050b",
+      "original_version": "59975760ce3cb24d8ce50508"
+    },
+    {
+      "_id": "59975769ce3cb24d8ce5050e",
+      "original_version": "59975760ce3cb24d8ce50508",
+      "previous_version": "59975769ce3cb24d8ce5050d"
+    },
+    {
+      "_id": "59975770ce3cb24d88e5050a",
+      "original_version": "59975760ce3cb24d8ce5050a",
+      "previous_version": "59975764ce3cb24d88e50509"
+    },
+    {
+      "_id": "59975779ce3cb24d88e5050b",
+      "previous_version": "59975769ce3cb24d8ce5050e",
+      "original_version": "59975760ce3cb24d8ce50508"
+    },
+    {
+      "_id": "5997577ece3cb24d8ce50510",
+      "original_version": "59975760ce3cb24d8ce50508",
+      "previous_version": "59975779ce3cb24d88e5050b"
+    },
+    {
+      "_id": "5997577fce3cb24d88e5050c",
+      "previous_version": "5997577ece3cb24d8ce50510",
+      "original_version": "59975760ce3cb24d8ce50508"
+    },
+    {
+      "_id": "59975784ce3cb24d88e5050d",
+      "previous_version": "59975770ce3cb24d88e5050a",
+      "original_version": "59975760ce3cb24d8ce5050a"
+    },
+    {
+      "_id": "59975998ce3cb22ddc35187e",
+      "original_version": "59975760ce3cb24d8ce50508",
+      "previous_version": "5997577fce3cb24d88e5050c"
+    },
+    {
+      "_id": "599759bcce3cb24d87e50507",
+      "original_version": "59975760ce3cb24d8ce5050a",
+      "previous_version": "59975784ce3cb24d88e5050d"
+    },
+    {
+      "_id": "599759c0ce3cb24d8ce50512",
+      "previous_version": "59975998ce3cb22ddc35187e",
+      "original_version": "59975760ce3cb24d8ce50508"
+    },
+    {
+      "_id": "599759c0ce3cb24d8ce50513",
+      "previous_version": "599759bcce3cb24d87e50507",
+      "original_version": "59975760ce3cb24d8ce5050a"
+    },
+    {
+      "_id": "599759c1ce3cb24d8ce50515",
+      "original_version": "59975760ce3cb24d8ce50508",
+      "previous_version": "599759c0ce3cb24d8ce50512"
+    },
+    {
+      "_id": "599759c5ce3cb24d86e5050d",
+      "previous_version": "599759c1ce3cb24d8ce50515",
+      "original_version": "59975760ce3cb24d8ce50508"
+    },
+    {
+      "_id": "599759c7ce3cb24d86e5050e",
+      "original_version": "59975760ce3cb24d8ce5050a",
+      "previous_version": "599759c0ce3cb24d8ce50513"
+    },
+    {
+      "_id": "599759d1ce3cb24d86e5050f",
+      "previous_version": "599759c7ce3cb24d86e5050e",
+      "original_version": "59975760ce3cb24d8ce5050a"
+    }
+  ]
 }

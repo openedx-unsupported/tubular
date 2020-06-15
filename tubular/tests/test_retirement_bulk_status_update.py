@@ -1,11 +1,9 @@
 """
 Test the retirement_bulk_status_update.py script
 """
-from __future__ import print_function
-
-from mock import patch, DEFAULT
 
 from click.testing import CliRunner
+from mock import patch, DEFAULT
 
 from tubular.scripts.retirement_bulk_status_update import (
     ERR_BAD_CONFIG,

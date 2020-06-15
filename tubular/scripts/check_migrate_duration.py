@@ -4,15 +4,14 @@
 Command-line script to check if a migration's duration exceeded a certain
 migration duration threshold.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import io
+import logging
 import os
 import sys
-import logging
-import yaml
+
 import click
+import yaml
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

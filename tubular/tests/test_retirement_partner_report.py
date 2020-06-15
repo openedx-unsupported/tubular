@@ -2,13 +2,12 @@
 """
 Test the retire_one_learner.py script
 """
-from __future__ import print_function
 
 import csv
 import os
+import time
 import unicodedata
 from datetime import date
-import time
 
 from click.testing import CliRunner
 from mock import DEFAULT, patch
@@ -39,7 +38,6 @@ from tubular.scripts.retirement_partner_report import (
     _generate_report_files_or_exit  # pylint: disable=protected-access
 )
 from tubular.tests.retirement_helpers import fake_config_file, fake_google_secrets_file, FAKE_ORGS, TEST_PLATFORM_NAME
-
 
 TEST_CONFIG_YML_NAME = 'test_config.yml'
 TEST_GOOGLE_SECRETS_FILENAME = 'test_google_secrets.json'

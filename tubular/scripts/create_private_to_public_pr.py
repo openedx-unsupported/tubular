@@ -5,7 +5,6 @@ Command-line script to create a PR moving any merged changes from a tracking bra
 into a branch being tracked in a public repo. Used to automate the merging of security fixes from a
 private repo into a public repo.
 """
-from __future__ import absolute_import
 
 import io
 from os import path

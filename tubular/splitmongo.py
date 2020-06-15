@@ -73,6 +73,7 @@ class StructuresGraph(namedtuple('DatabaseSummary', 'branches structures')):
     This is partly because we don't really need to traverse the vast majority of
     the graph. Look at `ChangePlan` for details on why that is.
     """
+
     def traverse_ids(self, start_id, limit=None, include_start=False):
         """
         Given a Structure ID to start from, this will iterate through the
@@ -113,6 +114,7 @@ class ActiveVersionBranch(namedtuple('ActiveVersionBranch', 'id branch structure
     published-branch or draft-branch was most recently modified. Again, this is
     not used for pruning, but just provides debug information.
     """
+
     def __str__(self):
         return "Active Version {} [{}] {} for {}".format(
             self.id,
@@ -131,6 +133,7 @@ class Structure(namedtuple('Structure', 'id original_id previous_id')):
     We use a namedtuple for this specifically because it's more space efficient
     than a dict, and we can have millions of Structures.
     """
+
     def is_original(self):
         """Is this Structure an original (i.e. should never be deleted)?"""
         return self.previous_id is None
@@ -153,6 +156,7 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
     Backend to figure out how to implement a ChangePlan safely and efficiently
     in order to do the actual updates.
     """
+
     def dump(self, file_obj):
         """Serialize ChangePlan to a file (JSON format)."""
         json.dump(
@@ -334,6 +338,7 @@ class SplitMongoBackend:
     The methods on this class should accept and return backend-agnostic data
     structures, so no BSON details should leak out.
     """
+
     def __init__(self, mongo_connection_str, db_name):
         self._db = MongoClient(
             mongo_connection_str,

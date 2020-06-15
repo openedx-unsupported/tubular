@@ -3,13 +3,12 @@
 """
 Command-line script to allow only AMI deployments to stage - and no other environments.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
-from os import path
-import sys
 import logging
+import sys
 import traceback
+from os import path
+
 import click
 
 # Add top-level module path to sys.path before importing tubular code.
@@ -35,6 +34,7 @@ def restrict_ami_to_stage(ami_id):
         sys.exit(1)
 
     sys.exit(0 if is_stage else 1)
+
 
 if __name__ == "__main__":
     restrict_ami_to_stage()  # pylint: disable=no-value-for-parameter

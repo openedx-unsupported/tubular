@@ -4,15 +4,15 @@
 Command-line script to push the results of a merge of private changes to public back over to the private
 repo to keep the repo branches in-sync.
 """
-from __future__ import absolute_import
 
 import io
-from os import path
-import sys
 import logging
-import yaml
+import sys
+from os import path
+
 import click
 import click_log
+import yaml
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -114,6 +114,7 @@ def push_public_to_private(private_org,
             output_yaml,
             sys.stdout,
         )
+
 
 if __name__ == u"__main__":
     push_public_to_private()  # pylint: disable=no-value-for-parameter

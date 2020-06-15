@@ -4,16 +4,14 @@
 Command-line script to create a PR to merge a source branch into a target branch.
 Both the source and target branches are assumed to already exist.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import io
-from os import path
-import sys
 import logging
+import sys
+from os import path
+
 import click
 import yaml
-
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -101,7 +99,7 @@ def create_pull_request(org,
         )
 
         if title is None:
-            title = "Automated merge of {source} into {target}" .format(
+            title = "Automated merge of {source} into {target}".format(
                 source=source_branch,
                 target=target_branch
             )

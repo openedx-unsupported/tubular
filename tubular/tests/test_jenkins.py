@@ -1,22 +1,19 @@
 """
 Tests for triggering a Jenkins job.
 """
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
 
-from itertools import islice
 import json
 import re
 import unittest
+from itertools import islice
 
 import backoff
 import ddt
-from mock import Mock, mock_open, patch, call
 import requests_mock
+from mock import Mock, mock_open, patch, call
 
-from tubular.exception import BackendError
 import tubular.jenkins as jenkins
+from tubular.exception import BackendError
 
 BASE_URL = u'https://test-jenkins'
 USER_ID = u'foo'
@@ -59,6 +56,7 @@ class TestProperties(unittest.TestCase):
     """
     Test the Jenkins property-creating methods.
     """
+
     def test_properties_files(self):
         learners = [
             {
@@ -85,6 +83,7 @@ class TestBackoff(unittest.TestCase):
     u"""
     Test of custom backoff code (wait time generator and max_tries)
     """
+
     @ddt.data(
         (2, 1, 1, 2, [1]),
         (2, 1, 2, 3, [1, 1]),
@@ -128,6 +127,7 @@ class TestJenkinsAPI(unittest.TestCase):
     """
     Tests for interacting with the Jenkins API
     """
+
     @requests_mock.Mocker()
     def test_failure(self, mock):
         """
@@ -154,6 +154,7 @@ class TestJenkinsAPI(unittest.TestCase):
         u"""
         Test triggering a jenkins job
         """
+
         def text_callback(request, context):
             u""" What to return from the mock. """
             # This is the initial call that jenkinsapi uses to

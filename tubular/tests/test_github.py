@@ -1,23 +1,20 @@
 """
 Tests for tubular.github_api.GitHubAPI
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 from datetime import datetime, date
 from hashlib import sha1
-
 from unittest import TestCase
-import ddt
-from mock import patch, Mock
 
+import ddt
+import six
 from github import GithubException, Github
 from github import UnknownObjectException
 from github.Branch import Branch
 from github.Commit import Commit
-from github.Comparison import Comparison
-from github.CommitStatus import CommitStatus
 from github.CommitCombinedStatus import CommitCombinedStatus
+from github.CommitStatus import CommitStatus
+from github.Comparison import Comparison
 from github.GitCommit import GitCommit
 from github.GitRef import GitRef
 from github.Issue import Issue
@@ -26,8 +23,8 @@ from github.NamedUser import NamedUser
 from github.Organization import Organization
 from github.PullRequest import PullRequest
 from github.Repository import Repository
+from mock import patch, Mock
 
-import six
 from tubular import github_api
 from tubular.exception import InvalidUrlException
 from tubular.github_api import (
@@ -58,6 +55,7 @@ class GitHubApiTestCase(TestCase):
     Tests the requests creation/response handling for the Github API
     All Network calls should be mocked out.
     """
+
     def setUp(self):
         with patch.object(Github, 'get_organization', return_value=Mock(spec=Organization)) as org_mock:
             with patch.object(Github, 'get_repo', return_value=Mock(spec=Repository)) as repo_mock:
@@ -275,7 +273,8 @@ class GitHubApiTestCase(TestCase):
             commit_mock.get_combined_status.return_value = mock_combined_status
             self.repo_mock.get_commit.return_value = commit_mock
             commit_mock._requester = Mock()  # pylint: disable=protected-access
-            commit_mock._requester.requestJsonAndCheck.return_value = ({}, {'check_suites': []})   # pylint: disable=protected-access
+            commit_mock._requester.requestJsonAndCheck.return_value = (
+                {}, {'check_suites': []})  # pylint: disable=protected-access
         else:
             mock_combined_status = Mock(spec=CommitCombinedStatus)
             mock_combined_status.statuses = []
@@ -327,15 +326,13 @@ class GitHubApiTestCase(TestCase):
         assert result[1] == url_dict
 
     @ddt.data(
-        (
-            None,
-            None,
-            [
-                '{}-{}'.format(state, valtype)
-                for state in ['passed', 'pending', None, 'failed']
-                for valtype in ['status', 'check']
-            ]
-        ),
+        (None,
+         None,
+         [
+             '{}-{}'.format(state, valtype)
+             for state in ['passed', 'pending', None, 'failed']
+             for valtype in ['status', 'check']
+         ]),
         ('status', None, ['passed-check', 'pending-check', 'None-check', 'failed-check']),
         ('check', None, ['passed-status', 'pending-status', 'None-status', 'failed-status']),
         ('check', 'passed', ['passed-status', 'passed-check', 'pending-status', 'None-status', 'failed-status']),
@@ -346,9 +343,9 @@ class GitHubApiTestCase(TestCase):
         filterable_states = ['passed', 'pending', None, 'failed']
 
         with patch.object(
-            Github,
-            'get_organization',
-            return_value=Mock(name='org-mock', spec=Organization)
+                Github,
+                'get_organization',
+                return_value=Mock(name='org-mock', spec=Organization)
         ):
             with patch.object(Github, 'get_repo', return_value=Mock(name='repo-mock', spec=Repository)) as repo_mock:
                 api = GitHubAPI(
@@ -584,18 +581,12 @@ class ReleaseUtilsTestCase(TestCase):
 
     @ddt.data(
         ('some title', 'some title'),
-        (
-            'some incredibly long title that will eventually be cut off',
-            'some incredibly long title that will eventually be...'
-        ),
-        (
-            'some title with\na new line in it',
-            'some title with'
-        ),
-        (
-            'some incredibly long title that will eventually be cut \noff',
-            'some incredibly long title that will eventually be...'
-        )
+        ('some incredibly long title that will eventually be cut off',
+         'some incredibly long title that will eventually be...'),
+        ('some title with\na new line in it',
+         'some title with'),
+        ('some incredibly long title that will eventually be cut \noff',
+         'some incredibly long title that will eventually be...')
     )
     @ddt.unpack
     def test_extract_short(self, message, expected):

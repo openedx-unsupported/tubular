@@ -1,18 +1,15 @@
 """
 Direct git commands on a GitHub repo.
 """
-from __future__ import absolute_import
-from __future__ import print_function, unicode_literals
 
-from contextlib import contextmanager
 import logging
 import re
+from contextlib import contextmanager
 
-from six.moves import urllib
 from git import Repo
-from git.util import rmtree
 from git.exc import GitCommandError
-
+from git.util import rmtree
+from six.moves import urllib
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)

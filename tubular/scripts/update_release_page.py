@@ -3,24 +3,21 @@
 """
 Command-line script to create or update the release page for a specific release.
 """
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
 
-from os import path
-from datetime import datetime
-import sys
 import logging
+import sys
+from datetime import datetime
+from os import path
 
 import click
 import click_log
 import yaml
 
-
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from tubular.confluence_api import ReleasePage, publish_page, AMI, ReleaseStatus  # pylint: disable=wrong-import-position
+from tubular.confluence_api import ReleasePage, publish_page, AMI, \
+    ReleaseStatus  # pylint: disable=wrong-import-position
 from tubular.github_api import (  # pylint: disable=wrong-import-position
     default_expected_release_date,
 )
@@ -63,11 +60,10 @@ EXPECTED_RELEASE_DATE = default_expected_release_date()
 )
 @click.option(
     '--title',
-    help=(
-        u"The title of this page. May contain the formatting value {timestamp} "
-        u"to insert the time of publishing into the wiki title. May also include `/` "
-        u"characters, which will create hierarchy pages that just display children."
-    ),
+    help=(u"The title of this page. May contain the formatting value {timestamp} "
+          u"to insert the time of publishing into the wiki title. May also include `/` "
+          u"characters, which will create hierarchy pages that just display children."
+          ),
 )
 @click.option(
     '--github-token',

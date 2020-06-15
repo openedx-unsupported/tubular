@@ -2,7 +2,6 @@
 """
 Test the bulk_delete_segment_users.py script
 """
-from __future__ import print_function
 
 from click.testing import CliRunner
 from mock import patch
@@ -15,7 +14,6 @@ from tubular.scripts.bulk_delete_segment_users import (
     bulk_delete_segment_users
 )
 from tubular.tests.retirement_helpers import fake_config_file, FAKE_ORGS
-
 
 TEST_CONFIG_YML_NAME = 'test_config.yml'
 TEST_RETIRED_USERS_CSV_NAME = 'test_users_to_delete.yml'

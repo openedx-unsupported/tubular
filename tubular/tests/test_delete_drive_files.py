@@ -2,7 +2,6 @@
 """
 Test the delete_drive_files.py script
 """
-from __future__ import print_function
 
 from click.testing import CliRunner
 from mock import patch
@@ -18,7 +17,6 @@ from tubular.scripts.delete_drive_files import (
     delete_files
 )
 from tubular.tests.retirement_helpers import fake_config_file, fake_google_secrets_file, FAKE_ORGS
-
 
 TEST_CONFIG_YML_NAME = 'test_config.yml'
 TEST_GOOGLE_SECRETS_FILENAME = 'test_google_secrets.json'

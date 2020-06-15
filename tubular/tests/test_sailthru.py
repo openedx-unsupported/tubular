@@ -1,13 +1,14 @@
 """
 Tests for the Sailthru API functionality
 """
-import os
 import logging
+import os
+
 import mock
 import pytest
+from sailthru.sailthru_error import SailthruClientError
 from six.moves import reload_module
 
-from sailthru.sailthru_error import SailthruClientError
 # This module is imported separately solely so it can be re-loaded below.
 from tubular import sailthru_api
 # This SailthruApi class will be used without being re-loaded.

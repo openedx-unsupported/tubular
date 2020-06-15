@@ -434,7 +434,6 @@ class ModuleStore:
 
         # defensive: ensure that version_retention >=3
         if version_retention < self._minimum_version_retention:
-
             message_template = "Version retention of %s is below the minimum allowed and is being updated to %s"
             self.log(message_template % (version_retention, self._minimum_version_retention), "info")
 
@@ -464,7 +463,6 @@ class ModuleStore:
                         # if the tree exceeds the minimum number of elements,
                         # identify tree elements that should be removed
                         if len(version_ancestry_list) > version_retention:
-
                             # track the required version: first & last
                             versions_to_retain.extend(version_ancestry_list[:2])
                             versions_to_retain.append(version_ancestry_list[-1])

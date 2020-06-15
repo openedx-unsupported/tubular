@@ -2,13 +2,12 @@
 """
 Command-line script to bulk delete users from Segment.
 """
-from __future__ import absolute_import, unicode_literals
 
-from functools import partial
-from os import path
 import csv
 import logging
 import sys
+from functools import partial
+from os import path
 
 import click
 

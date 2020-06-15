@@ -2,7 +2,6 @@
 """
 Command-line script to bulk archive and cleanup retired learners from LMS
 """
-from __future__ import absolute_import, unicode_literals
 
 from functools import partial
 from os import path
@@ -31,7 +30,6 @@ from tubular.scripts.helpers import (
     _setup_lms_api_or_exit
 )
 
-
 SCRIPT_SHORTNAME = 'Archive and Cleanup'
 
 # Return codes for various fail cases
@@ -47,7 +45,6 @@ FAIL = partial(_fail, SCRIPT_SHORTNAME)
 FAIL_EXCEPTION = partial(_fail_exception, SCRIPT_SHORTNAME)
 CONFIG_OR_EXIT = partial(_config_or_exit, FAIL_EXCEPTION, ERR_BAD_CONFIG)
 SETUP_LMS_OR_EXIT = partial(_setup_lms_api_or_exit, FAIL, ERR_SETUP_FAILED)
-
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
@@ -73,8 +70,8 @@ def _on_s3_backoff(details):
 @backoff.on_exception(
     backoff.expo,
     (
-        BotoClientError,
-        BotoServerError
+            BotoClientError,
+            BotoServerError
     ),
     on_backoff=lambda details: _on_s3_backoff(details),  # pylint: disable=unnecessary-lambda,
     max_time=120,  # 2 minutes

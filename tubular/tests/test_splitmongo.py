@@ -5,18 +5,17 @@ IMPORTANT: If you are making changes to this code, please re-enable the
 TestSplitMongoBackend tests and run them locally against the MongoDB instance
 in your Docker Devstack. See the TestSplitMongoBackend docstring for more info.
 """
+import itertools
+import textwrap
+import unittest
 from datetime import datetime
 from io import StringIO
 from unittest.mock import patch
-import unittest
-import itertools
-import textwrap
 
+import ddt
 from bson.objectid import ObjectId
 from opaque_keys.edx.locator import CourseLocator, LibraryLocator
 from pymongo import MongoClient
-
-import ddt
 
 from tubular.splitmongo import (
     ActiveVersionBranch, ChangePlan, Structure, SplitMongoBackend, StructuresGraph
@@ -80,6 +79,7 @@ class TestCourseChangePlan(unittest.TestCase):
     """
     ChangePlans for single and multiple courses.
     """
+
     def test_simple(self):
         """Simple happy path ChangePlans."""
         graph = create_test_graph(["1", "2", "3", "4"])
@@ -211,6 +211,7 @@ class TestSplitMongoBackendHelpers(unittest.TestCase):
 
     Requires no actual database connection.
     """
+
     def test_parse_structure_doc(self):
         """Test basic parsing of Structures."""
         original_structure = SplitMongoBackend.parse_structure_doc(

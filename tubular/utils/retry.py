@@ -1,14 +1,12 @@
 """
 Code used to retry calls that fail.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-import time
+
 import logging
 import os
-
-from functools import wraps
+import time
 from datetime import datetime, timedelta
+from functools import wraps
 
 MAX_ATTEMPTS = int(os.environ.get('RETRY_MAX_ATTEMPTS', 5))
 DELAY_SECONDS = os.environ.get('RETRY_DELAY_SECONDS', 5)
@@ -33,6 +31,7 @@ def retry(attempts=MAX_ATTEMPTS, delay_seconds=DELAY_SECONDS, max_time_seconds=M
     Raises:
         The final exception raised by the wrapped function
     """
+
     def retry_decorator(func_to_wrap):
         """
         Implementation of retry decorator.
@@ -46,7 +45,9 @@ def retry(attempts=MAX_ATTEMPTS, delay_seconds=DELAY_SECONDS, max_time_seconds=M
             Function to wrap the function which is retried.
             """
             return LifecycleManager(attempts, delay_seconds, max_time_seconds).execute(func_to_wrap, *args, **kwargs)
+
         return function_wrapper
+
     return retry_decorator
 
 

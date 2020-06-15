@@ -4,13 +4,13 @@
 Command-line script used to delete a specified Auto-Scaling Group via Asgard.
 """
 # pylint: disable=invalid-name
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
-from os import path
-import sys
+
 import logging
+import sys
 import traceback
+from os import path
+
 import click
 
 # Add top-level module path to sys.path before importing tubular code.
@@ -36,6 +36,7 @@ def delete_asg(asg_name):
         sys.exit(1)
 
     sys.exit(0)
+
 
 if __name__ == "__main__":
     delete_asg()  # pylint: disable=no-value-for-parameter

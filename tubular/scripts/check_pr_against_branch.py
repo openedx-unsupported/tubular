@@ -3,11 +3,10 @@
 """
 Script to check if a PR's base is the specified branch.
 """
-from __future__ import absolute_import
-from __future__ import print_function
 
-from os import path
 import sys
+from os import path
+
 import click
 
 # Add top-level module path to sys.path before importing tubular code.

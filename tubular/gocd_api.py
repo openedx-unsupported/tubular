@@ -1,7 +1,4 @@
 """ Commands to interact with the GoCD API. """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function, unicode_literals
 
 import logging
 import re
@@ -35,6 +32,7 @@ class GoCDAPI:
     """
     Interacts with the GoCD API to perform common tasks.
     """
+
     def __init__(self, username, password, go_server_url):
         self.client = yagocd(
             server=go_server_url,
@@ -75,6 +73,7 @@ class GoCDAPI:
         Returns:
             PipelineInstance: Named tuple containing pipeline instance to advance.
         """
+
         def has_advanced(pipeline_instance, stage_name):
             """
             Check to see if a pipeline from a value stream map has been advanced.
@@ -158,12 +157,12 @@ class GoCDAPI:
         )
 
     def recent_deployers(
-        self,
-        pipeline,
-        stages,
-        cutoff=30,
-        email_aliases=None,
-        allowed_email_domains=('edx.org',)
+            self,
+            pipeline,
+            stages,
+            cutoff=30,
+            email_aliases=None,
+            allowed_email_domains=('edx.org',)
     ):
         """
         Return the set of edx emails for users that have changes that have deployed recently.

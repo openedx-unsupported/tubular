@@ -1,11 +1,9 @@
 """
 Test the retirement_archive_and_cleanup.py script
 """
-from __future__ import print_function
-
-from mock import patch, DEFAULT
 
 from click.testing import CliRunner
+from mock import patch, DEFAULT
 
 from tubular.scripts.retirement_archive_and_cleanup import (
     ERR_ARCHIVING,

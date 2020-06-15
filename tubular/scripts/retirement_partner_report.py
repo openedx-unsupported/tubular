@@ -5,18 +5,16 @@
 Command-line script to drive the partner reporting part of the retirement process
 """
 
-from __future__ import absolute_import, unicode_literals
-
-from collections import defaultdict, OrderedDict
-from datetime import date
-from functools import partial
 import logging
 import os
 import sys
 import unicodedata
-import unicodecsv as csv
+from collections import defaultdict, OrderedDict
+from datetime import date
+from functools import partial
 
 import click
+import unicodecsv as csv
 from six import text_type
 
 # Add top-level module path to sys.path before importing tubular code.
@@ -31,7 +29,6 @@ from tubular.scripts.helpers import (
     _log,
     _setup_lms_api_or_exit
 )
-
 
 # Return codes for various fail cases
 ERR_SETUP_FAILED = -1
@@ -323,7 +320,7 @@ def _add_comments_to_files(config, file_ids):
             LOG(
                 'WARNING: could not find a POC for the following partner: "{}". '
                 'Double check the partner folder permissions in Google Drive.'
-                .format(partner)
+                    .format(partner)
             )
         else:
             tag_string = ' '.join('+' + email for email in external_emails[partner])

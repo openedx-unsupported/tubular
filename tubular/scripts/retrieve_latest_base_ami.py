@@ -4,20 +4,18 @@
 Command-line script used to retrieve the last base AMI ID used for an environment/deployment/play.
 """
 # pylint: disable=invalid-name
-from __future__ import absolute_import
-from __future__ import unicode_literals
-from __future__ import print_function
 
-from os import path
+
 import io
-import sys
 import logging
-import traceback
 import re
-import click
-import yaml
-import requests
+import sys
+import traceback
+from os import path
 
+import click
+import requests
+import yaml
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -111,6 +109,7 @@ def retrieve_latest_base_ami(environment, deployment, play, override, ubuntu_ver
         sys.exit(1)
 
     sys.exit(0)
+
 
 if __name__ == "__main__":
     retrieve_latest_base_ami()  # pylint: disable=no-value-for-parameter

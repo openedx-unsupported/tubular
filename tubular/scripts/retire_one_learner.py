@@ -20,13 +20,12 @@ retirement_pipeline:
     - ['RETIRING_ENROLLMENTS', 'ENROLLMENTS_COMPLETE', 'LMS', 'retirement_unenroll']
     - ['RETIRING_LMS', 'LMS_COMPLETE', 'LMS', 'retirement_lms_retire']
 """
-from __future__ import absolute_import, unicode_literals
 
+import logging
+import sys
 from functools import partial
 from os import path
 from time import time
-import logging
-import sys
 
 import click
 from six import text_type
@@ -60,7 +59,6 @@ FAIL = partial(_fail, SCRIPT_SHORTNAME)
 FAIL_EXCEPTION = partial(_fail_exception, SCRIPT_SHORTNAME)
 CONFIG_OR_EXIT = partial(_config_or_exit, FAIL_EXCEPTION, ERR_BAD_CONFIG)
 SETUP_ALL_APIS_OR_EXIT = partial(_setup_all_apis_or_exit, FAIL_EXCEPTION, ERR_SETUP_FAILED)
-
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 

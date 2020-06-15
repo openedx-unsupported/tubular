@@ -3,16 +3,13 @@
 """
 Command-line script to purge Cloudflare cache by hostname.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import sys
 from functools import partial
 from os import path
 
-import click
-
 import CloudFlare
+import click
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -47,6 +44,7 @@ def purge_cloudflare_cache(hostname):
         LOG('Successfully purged Cloudflare cache for hostname {}.'.format(hostname))
     except (CloudFlare.exceptions.CloudFlareAPIError, IndexError, KeyError):
         FAIL(1, 'Failed to purge the Cloudflare cache for hostname {}.'.format(hostname))
+
 
 if __name__ == "__main__":
     purge_cloudflare_cache()  # pylint: disable=no-value-for-parameter

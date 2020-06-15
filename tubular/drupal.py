@@ -1,8 +1,6 @@
 """
 Methods to interact with the Drupal API to perform various tasks.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import io
 import logging

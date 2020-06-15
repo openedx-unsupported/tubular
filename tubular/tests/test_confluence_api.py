@@ -2,12 +2,10 @@
 Tests of tubular.confluence_api.
 """
 
-from __future__ import absolute_import
-
 import textwrap
 
-from mock import patch, Mock
 import pytest
+from mock import patch, Mock
 
 try:
     # Attempt to import the atlassian module to see if we can even run these tests.
@@ -21,7 +19,6 @@ else:
 @patch(u'tubular.confluence_api.GitHubAPI')
 @pytest.mark.skipif(AMI is None, reason=u"Tests require Confluence API")
 def test_release_page(mock_github):
-
     mock_github().get_pr_range.return_value = [
         Mock(
             merged_by=Mock(login=u'user_a', html_url=u'user_html_a'),

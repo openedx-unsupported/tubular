@@ -10,7 +10,6 @@ from slumber.exceptions import HttpClientError, HttpServerError, HttpNotFoundErr
 
 from edx_rest_api_client.client import EdxRestApiClient
 
-
 LOG = logging.getLogger(__name__)
 
 OAUTH_ACCESS_TOKEN_URL = "/oauth2/access_token"
@@ -90,6 +89,7 @@ def _retry_lms_api():
     """
     Decorator which enables retries with sane backoff defaults for LMS APIs.
     """
+
     def inner(func):  # pylint: disable=missing-docstring
         func_with_backoff = backoff.on_exception(
             backoff.expo,
@@ -111,6 +111,7 @@ def _retry_lms_api():
             on_backoff=lambda details: _backoff_handler(details)  # pylint: disable=unnecessary-lambda
         )
         return func_with_backoff(func_with_timeout_backoff(func))
+
     return inner
 
 
@@ -139,6 +140,7 @@ class LmsApi(BaseApiClient):
     """
     LMS API client with convenience methods for making API calls.
     """
+
     @_retry_lms_api()
     def learners_to_retire(self, states_to_request, cool_off_days=7):
         """
@@ -346,6 +348,7 @@ class EcommerceApi(BaseApiClient):
     """
     Ecommerce API client with convenience methods for making API calls.
     """
+
     @_retry_lms_api()
     def retire_learner(self, learner):
         """
@@ -381,6 +384,7 @@ class CredentialsApi(BaseApiClient):
     """
     Credentials API client with convenience methods for making API calls.
     """
+
     @_retry_lms_api()
     def retire_learner(self, learner):
         """
@@ -406,6 +410,7 @@ class DiscoveryApi(BaseApiClient):
     """
     Discovery API client with convenience methods for making API calls.
     """
+
     def replace_usernames(self, username_mappings):
         """
         Calls the discovery API to replace usernames.

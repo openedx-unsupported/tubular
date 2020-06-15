@@ -1,21 +1,21 @@
 """
 Tests of the code interacting with the Asgard API.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
+import itertools
 import os
 import unittest
-import itertools
+
 import boto
 import mock
 import requests_mock
-
 from ddt import ddt, data, unpack
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
 from six.moves import urllib, reload_module
+
 import tubular.asgard as asgard
+from tubular.ec2 import tag_asg_for_deletion
 from tubular.exception import (
     BackendError,
     CannotDeleteActiveASG,
@@ -24,7 +24,6 @@ from tubular.exception import (
     RateLimitedException
 )
 from tubular.tests.test_utils import create_asg_with_tags, create_elb
-from tubular.ec2 import tag_asg_for_deletion
 
 # Disable the retry decorator and reload the asgard module. This will ensure that tests do not fail because of the retry
 # decorator recalling a method when using httpretty with side effect iterators
@@ -32,29 +31,28 @@ os.environ['TUBULAR_RETRY_ENABLED'] = "false"
 os.environ['RETRY_MAX_ATTEMPTS'] = "1"
 reload_module(asgard)  # pylint: disable=too-many-function-args
 
-
 SAMPLE_CLUSTER_LIST = [
     {
         "cluster": "loadtest-edx-edxapp",
         "autoScalingGroups":
-        [
-            "loadtest-edx-edxapp-v058",
-            "loadtest-edx-edxapp-v059"
-        ]
+            [
+                "loadtest-edx-edxapp-v058",
+                "loadtest-edx-edxapp-v059"
+            ]
     },
     {
         "cluster": "loadtest-edx-insights",
         "autoScalingGroups":
-        [
-            "loadtest-edx-insights-v002"
-        ]
+            [
+                "loadtest-edx-insights-v002"
+            ]
     },
     {
         "cluster": "loadtest-edx-worker",
         "autoScalingGroups":
-        [
-            "loadtest-edx-worker-v034"
-        ]
+            [
+                "loadtest-edx-worker-v034"
+            ]
     }
 ]
 
@@ -65,10 +63,10 @@ BAD_CLUSTER_JSON1 = """
 BAD_CLUSTER_JSON2 = [
     {
         "autoScalingGroups":
-        [
-            "loadtest-edx-edxapp-v058",
-            "loadtest-edx-edxapp-v059"
-        ]
+            [
+                "loadtest-edx-edxapp-v058",
+                "loadtest-edx-edxapp-v059"
+            ]
     }
 ]
 
@@ -78,10 +76,10 @@ VALID_CLUSTER_JSON_INFO = [
     {
         "autoScalingGroupName": "loadtest-edx-edxapp-v058",
         "availabilityZones":
-        [
-            "us-east-1b",
-            "us-east-1c"
-        ],
+            [
+                "us-east-1b",
+                "us-east-1c"
+            ],
         "createdTime": "2016-02-10T12:23:10Z",
         "defaultCooldown": 300,
         "desiredCapacity": 4,
@@ -90,10 +88,10 @@ VALID_CLUSTER_JSON_INFO = [
     {
         "autoScalingGroupName": "loadtest-edx-edxapp-v059",
         "availabilityZones":
-        [
-            "us-east-1b",
-            "us-east-1c"
-        ],
+            [
+                "us-east-1b",
+                "us-east-1c"
+            ],
         "createdTime": "2016-02-10T12:23:10Z",
         "defaultCooldown": 300,
         "desiredCapacity": 4,
@@ -105,16 +103,15 @@ VALID_SINGLE_ASG_CLUSTER_INFO_JSON = [
     {
         "autoScalingGroupName": "loadtest-edx-edxapp-v060",
         "availabilityZones":
-        [
-            "us-east-1b",
-            "us-east-1c"
-        ],
+            [
+                "us-east-1b",
+                "us-east-1c"
+            ],
         "createdTime": "2016-02-10T12:23:10Z",
         "defaultCooldown": 300,
         "desiredCapacity": 4
     }
 ]
-
 
 ASGS_FOR_EDXAPP_BEFORE = [
     {
@@ -182,9 +179,9 @@ def deleted_asg_in_progress(name):
         "group": {
             "autoScalingGroupName": name,
             "loadBalancerNames":
-            [
-                "app_elb"
-            ],
+                [
+                    "app_elb"
+                ],
             "status": "deleted",
             "launchingSuspended": False,
             "desiredCapacity": 4,
@@ -247,67 +244,66 @@ def enabled_asg(name):
 
 FAILED_SAMPLE_TASK = {
     "log":
-    [
-        "2016-02-11_02:31:18 Started on thread Task:Force Delete Auto Scaling Group 'loadtest-edx-edxapp-v060'.",
-        "2016-02-11_02:31:18 Deregistering all instances in 'loadtest-edx-edxapp-v060' from load balancers",
-        "2016-02-11_02:31:18 Deregister all instances in Auto Scaling Group 'loadtest-edx-edxapp-v060' from ELBs",
-        "2016-02-11_02:31:19 Deleting auto scaling group 'loadtest-edx-edxapp-v060'",
-        "2016-02-11_02:31:19 Delete Auto Scaling Group 'loadtest-edx-edxapp-v060'",
-        "2016-02-11_02:31:19 Auto scaling group 'loadtest-edx-edxapp-v060' will be deleted after deflation finishes",
-        (
-            "2016-02-11_02:41:24 Exception: com.netflix.asgard.push.PushException: Timeout waiting "
-            "10m for auto scaling group 'loadtest-edx-edxapp-v060' to disappear from AWS."
-        )
-    ],
+        [
+            "2016-02-11_02:31:18 Started on thread Task:Force Delete Auto Scaling Group 'loadtest-edx-edxapp-v060'.",
+            "2016-02-11_02:31:18 Deregistering all instances in 'loadtest-edx-edxapp-v060' from load balancers",
+            "2016-02-11_02:31:18 Deregister all instances in Auto Scaling Group 'loadtest-edx-edxapp-v060' from ELBs",
+            "2016-02-11_02:31:19 Deleting auto scaling group 'loadtest-edx-edxapp-v060'",
+            "2016-02-11_02:31:19 Delete Auto Scaling Group 'loadtest-edx-edxapp-v060'",
+            "2016-02-11_02:31:19 Auto scaling group 'loadtest-edx-edxapp-v060' will be deleted after deflation "
+            "finishes",
+            (
+                "2016-02-11_02:41:24 Exception: com.netflix.asgard.push.PushException: Timeout waiting "
+                "10m for auto scaling group 'loadtest-edx-edxapp-v060' to disappear from AWS."
+            )
+        ],
     "status": "failed",
     "operation": "",
     "durationString": "10m 6s",
     "updateTime": "2016-02-11 02:41:24 UTC"
 }
 
-
 COMPLETED_SAMPLE_TASK = {
     "log":
-    [
-        "2016-02-11_02:31:11 Started on thread Task:Stopping traffic to instances of loadtest-edx-edxapp-v060.",
-        "2016-02-11_02:31:11 Disabling new instance launching for auto scaling group 'loadtest-edx-edxapp-v060'",
-        "2016-02-11_02:31:12 Disabling instance termination for auto scaling group 'loadtest-edx-edxapp-v060'",
-        "2016-02-11_02:31:12 Disabling adding instances to ELB for auto scaling group 'loadtest-edx-edxapp-v060'",
-        "2016-02-11_02:31:12 Completed in 0s."
-    ],
+        [
+            "2016-02-11_02:31:11 Started on thread Task:Stopping traffic to instances of loadtest-edx-edxapp-v060.",
+            "2016-02-11_02:31:11 Disabling new instance launching for auto scaling group 'loadtest-edx-edxapp-v060'",
+            "2016-02-11_02:31:12 Disabling instance termination for auto scaling group 'loadtest-edx-edxapp-v060'",
+            "2016-02-11_02:31:12 Disabling adding instances to ELB for auto scaling group 'loadtest-edx-edxapp-v060'",
+            "2016-02-11_02:31:12 Completed in 0s."
+        ],
     "status": "completed",
     "operation": "",
     "durationString": "0s",
     "updateTime": "2016-02-11 02:31:12 UTC"
 }
 
-
 RUNNING_SAMPLE_TASK = {
     "log":
-    [
-        (
-            "2016-02-11_19:03:34 Started on thread Task:Creating auto scaling group 'loadtest-edx-edxapp-v059', "
-            "min 4, max 4, traffic prevented."
-        ),
-        "2016-02-11_19:03:34 Group 'loadtest-edx-edxapp-v059' will start with 0 instances",
-        "2016-02-11_19:03:34 Create Auto Scaling Group 'loadtest-edx-edxapp-v059'",
-        (
-            "2016-02-11_19:03:34 Create Launch Configuration 'loadtest-edx-edxapp-v059-20160211190334' "
-            "with image 'ami-f2032998'"
-        ),
-        "2016-02-11_19:03:35 Create Autoscaling Group 'loadtest-edx-edxapp-v059'",
-        "2016-02-11_19:03:35 Disabling adding instances to ELB for auto scaling group 'loadtest-edx-edxapp-v059'",
-        (
-            "2016-02-11_19:03:35 Launch Config 'loadtest-edx-edxapp-v059-20160211190334' has been created. "
-            "Auto Scaling Group 'loadtest-edx-edxapp-v059' has been created. "
-        ),
-        "2016-02-11_19:03:35 Create 1 LifecycleHook",
-        "2016-02-11_19:03:35 Create LifecycleHook with loadtest-edx-GetTrackingLogs",
-        "2016-02-11_19:03:36 Resizing group 'loadtest-edx-edxapp-v059' to min 4, max 4",
-        "2016-02-11_19:03:36 Setting group 'loadtest-edx-edxapp-v059' to min 4 max 4",
-        "2016-02-11_19:03:36 Update Autoscaling Group 'loadtest-edx-edxapp-v059'",
-        "2016-02-11_19:03:37 Group 'loadtest-edx-edxapp-v059' has 0 instances. Waiting for 4 to exist."
-    ],
+        [
+            (
+                "2016-02-11_19:03:34 Started on thread Task:Creating auto scaling group 'loadtest-edx-edxapp-v059', "
+                "min 4, max 4, traffic prevented."
+            ),
+            "2016-02-11_19:03:34 Group 'loadtest-edx-edxapp-v059' will start with 0 instances",
+            "2016-02-11_19:03:34 Create Auto Scaling Group 'loadtest-edx-edxapp-v059'",
+            (
+                "2016-02-11_19:03:34 Create Launch Configuration 'loadtest-edx-edxapp-v059-20160211190334' "
+                "with image 'ami-f2032998'"
+            ),
+            "2016-02-11_19:03:35 Create Autoscaling Group 'loadtest-edx-edxapp-v059'",
+            "2016-02-11_19:03:35 Disabling adding instances to ELB for auto scaling group 'loadtest-edx-edxapp-v059'",
+            (
+                "2016-02-11_19:03:35 Launch Config 'loadtest-edx-edxapp-v059-20160211190334' has been created. "
+                "Auto Scaling Group 'loadtest-edx-edxapp-v059' has been created. "
+            ),
+            "2016-02-11_19:03:35 Create 1 LifecycleHook",
+            "2016-02-11_19:03:35 Create LifecycleHook with loadtest-edx-GetTrackingLogs",
+            "2016-02-11_19:03:36 Resizing group 'loadtest-edx-edxapp-v059' to min 4, max 4",
+            "2016-02-11_19:03:36 Setting group 'loadtest-edx-edxapp-v059' to min 4 max 4",
+            "2016-02-11_19:03:36 Update Autoscaling Group 'loadtest-edx-edxapp-v059'",
+            "2016-02-11_19:03:37 Group 'loadtest-edx-edxapp-v059' has 0 instances. Waiting for 4 to exist."
+        ],
     "status": "running",
     "operation": "Group 'loadtest-edx-edxapp-v059' has 0 instances. Waiting for 4 to exist.",
     "durationString": "16s",
@@ -316,57 +312,57 @@ RUNNING_SAMPLE_TASK = {
 
 AWS_RATE_LIMIT_EXCEPTION = {
     "log":
-    [
-        (
-            "2017-10-18_16:14:34 Started on thread Task:Creating auto scaling group "
-            "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271', min 15, max 15, traffic prevented."
-        ),
-        "2017-10-18_16:14:34 Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' will start with 0 instances",
-        "2017-10-18_16:14:34 Create Auto Scaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
-        ("2017-10-18_16:14:34 Create Launch Configuration "
-         "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' with image 'ami-abbf6fd1'"),
-        "2017-10-18_16:14:34 Create Autoscaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
-        ("2017-10-18_16:14:35 Disabling adding instances "
-         "to ELB for auto scaling group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'"),
-        (
-            "2017-10-18_16:14:35 Launch Config "
-            "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' has been created. "
-            "Auto Scaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' has been created. "
-        ),
-        '2017-10-18_16:14:35 Create 2 Scaling Policies',
-        "2017-10-18_16:14:35 Create Scaling Policy 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1779'",
-        "2017-10-18_16:14:35 Create Alarm 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1779'",
-        "2017-10-18_16:14:36 Create Scaling Policy 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1780'",
-        "2017-10-18_16:14:36 Create Alarm 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1780'",
-        "2017-10-18_16:14:36 Resizing group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' to min 15, max 15",
-        "2017-10-18_16:14:36 Setting group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' to min 15 max 15",
-        "2017-10-18_16:14:36 Update Autoscaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
-        ("2017-10-18_16:14:36 Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'"
-         " has 0 instances. Waiting for 15 to exist."),
-        (
-            '2017-10-18_16:19:11 Exception: com.amazonaws.AmazonServiceException: Rate exceeded (Service: '
-            'AmazonAutoScaling; Status Code: 400; Error Code: '
-            'Throttling; Request ID: 1324046b-b420-11e7-a9eb-7fe7ac63f645)'
-        )
-    ],
+        [
+            (
+                "2017-10-18_16:14:34 Started on thread Task:Creating auto scaling group "
+                "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271', min 15, max 15, traffic prevented."
+            ),
+            "2017-10-18_16:14:34 Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' will start with "
+            "0 instances",
+            "2017-10-18_16:14:34 Create Auto Scaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
+            ("2017-10-18_16:14:34 Create Launch Configuration "
+             "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' with image 'ami-abbf6fd1'"),
+            "2017-10-18_16:14:34 Create Autoscaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
+            ("2017-10-18_16:14:35 Disabling adding instances "
+             "to ELB for auto scaling group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'"),
+            (
+                "2017-10-18_16:14:35 Launch Config "
+                "'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-20171018161434' has been created. "
+                "Auto Scaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' has been created. "
+            ),
+            '2017-10-18_16:14:35 Create 2 Scaling Policies',
+            "2017-10-18_16:14:35 Create Scaling Policy 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1779'",
+            "2017-10-18_16:14:35 Create Alarm 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1779'",
+            "2017-10-18_16:14:36 Create Scaling Policy 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1780'",
+            "2017-10-18_16:14:36 Create Alarm 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271-1780'",
+            "2017-10-18_16:14:36 Resizing group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' to min 15,"
+            " max 15",
+            "2017-10-18_16:14:36 Setting group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271' to min 15 max 15",
+            "2017-10-18_16:14:36 Update Autoscaling Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'",
+            ("2017-10-18_16:14:36 Group 'stage-mckinsey-EdxappServerAsGroup-BX9JH5ALH5PD-v271'"
+             " has 0 instances. Waiting for 15 to exist."),
+            (
+                '2017-10-18_16:19:11 Exception: com.amazonaws.AmazonServiceException: Rate exceeded (Service: '
+                'AmazonAutoScaling; Status Code: 400; Error Code: '
+                'Throttling; Request ID: 1324046b-b420-11e7-a9eb-7fe7ac63f645)'
+            )
+        ],
     "status": "failed",
     "operation": "",
     "durationString": "0s",
     "updateTime": "2016-02-11 02:31:12 UTC"
 }
 
-
 SAMPLE_ASG_INFO = {
     "group": {
         "loadBalancerNames":
-        [
-            "app_elb"
-        ],
+            [
+                "app_elb"
+            ],
         "desiredCapacity": 4,
         "minSize": 4
     }
 }
-
 
 SAMPLE_WORKER_ASG_INFO = {
     "group": {
@@ -607,46 +603,42 @@ class TestAsgard(unittest.TestCase):
         self.assertEqual(expected_asg, asgard.new_asg(cluster, ami_id))
 
     @data(
-        (  # task to deploy a cluster failed.
-            "http://some.host/task/1234.json",
-            302,
-            {"server": asgard.ASGARD_API_ENDPOINT},
-            "",
-            FAILED_SAMPLE_TASK,
-            200,
-            VALID_CLUSTER_JSON_INFO,
-            BackendError
-        ),
-        (  # Cluster not found after creation
-            "http://some.host/task/1234.json",
-            302,
-            {"server": asgard.ASGARD_API_ENDPOINT},
-            "",
-            FAILED_SAMPLE_TASK,
-            404,
-            VALID_CLUSTER_JSON_INFO,
-            BackendError
-        ),
-        (  # Task creation failed
-            "http://some.host/task/1234.json",
-            500,
-            {"server": asgard.ASGARD_API_ENDPOINT},
-            "",
-            FAILED_SAMPLE_TASK,
-            200,
-            VALID_CLUSTER_JSON_INFO,
-            BackendError
-        ),
-        (  # failed to create ASG
-            "http://some.host/task/1234.json",
-            404,
-            {"server": asgard.ASGARD_API_ENDPOINT},
-            "",
-            FAILED_SAMPLE_TASK,
-            200,
-            VALID_CLUSTER_JSON_INFO,
-            BackendError
-        ),
+        ("http://some.host/task/1234.json",  # task to deploy a cluster failed.
+         302,
+         {"server": asgard.ASGARD_API_ENDPOINT},
+         "",
+         FAILED_SAMPLE_TASK,
+         200,
+         VALID_CLUSTER_JSON_INFO,
+         BackendError
+         ),
+        ("http://some.host/task/1234.json",  # Cluster not found after creation
+         302,
+         {"server": asgard.ASGARD_API_ENDPOINT},
+         "",
+         FAILED_SAMPLE_TASK,
+         404,
+         VALID_CLUSTER_JSON_INFO,
+         BackendError
+         ),
+        ("http://some.host/task/1234.json",  # Task creation failed
+         500,
+         {"server": asgard.ASGARD_API_ENDPOINT},
+         "",
+         FAILED_SAMPLE_TASK,
+         200,
+         VALID_CLUSTER_JSON_INFO,
+         BackendError
+         ),
+        ("http://some.host/task/1234.json",  # failed to create ASG
+         404,
+         {"server": asgard.ASGARD_API_ENDPOINT},
+         "",
+         FAILED_SAMPLE_TASK,
+         200,
+         VALID_CLUSTER_JSON_INFO,
+         BackendError
+         ),
     )
     @unpack
     def test_new_asg_failure(self,
@@ -722,6 +714,7 @@ class TestAsgard(unittest.TestCase):
         """
         Tests an ASG disable that is cancelled due to the ASG pending deletion.
         """
+
         def post_callback(request, context):  # pylint: disable=unused-argument
             """
             Callback method for POST.

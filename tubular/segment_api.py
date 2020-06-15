@@ -63,6 +63,7 @@ def _retry_segment_api():
     """
     Decorator which enables retries with sane backoff defaults
     """
+
     def inner(func):  # pylint: disable=missing-docstring
         func_with_decode_backoff = backoff.on_exception(
             backoff.expo,
@@ -84,6 +85,7 @@ def _retry_segment_api():
             on_backoff=lambda details: _backoff_handler(details)  # pylint: disable=unnecessary-lambda
         )
         return func_with_decode_backoff(func_with_backoff(func_with_timeout_backoff(func)))
+
     return inner
 
 
@@ -91,6 +93,7 @@ class SegmentApi:
     """
     Segment API client with convenience methods
     """
+
     def __init__(self, base_url, auth_token, workspace_slug):
         self.base_url = base_url
         self.auth_token = auth_token

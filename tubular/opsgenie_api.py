@@ -16,6 +16,7 @@ class OpsGenieAPI:
     """
     A class for manipulating OpsGenie using an API Integration.
     """
+
     def __init__(self, auth_token):
         self.session = Session()
         self.session.headers['Authorization'] = "GenieKey {}".format(auth_token)

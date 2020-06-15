@@ -2,18 +2,16 @@
 Tests for pruning modulestore
 """
 
-from __future__ import absolute_import
-
 import logging
 import os
 import sys
 import tempfile
 import unittest
+
 import tubular.modulestore as modulestore
 
 
 class TestModuleStorePruning(unittest.TestCase):
-
     """
     Test basic modulestore pruning
 
@@ -232,6 +230,7 @@ class TestModuleStorePruning(unittest.TestCase):
         removed_structures = ['58dd0fd4620de9c0c9793627', '58cd0fd4620dedc0c9ea7e29', '58dd0fd4620de9c0c9ea7e27']
 
         self.prune_structure(retained_structure_ids=retained_structures, removed_structure_ids=removed_structures)
+
 
 if __name__ == '__main__':
     unittest.main()

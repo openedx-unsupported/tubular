@@ -3,15 +3,15 @@
 """
 Command-line script to merge a branch.
 """
-from __future__ import absolute_import
 
 import io
-from os import path
-import sys
 import logging
-import yaml
+import sys
+from os import path
+
 import click
 import click_log
+import yaml
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -97,6 +97,7 @@ def merge_branch(org,
             default_flow_style=False,
             explicit_start=True
         )
+
 
 if __name__ == u"__main__":
     merge_branch()  # pylint: disable=no-value-for-parameter

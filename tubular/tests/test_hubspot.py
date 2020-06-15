@@ -1,8 +1,8 @@
 """
 Tests for the Sailthru API functionality
 """
-import os
 import logging
+import os
 import unittest
 
 import mock
@@ -11,7 +11,6 @@ from six.moves import reload_module
 
 # This module is imported separately solely so it can be re-loaded below.
 from tubular import hubspot_api
-
 # This HubspotAPI class will be used without being re-loaded.
 from tubular.hubspot_api import HubspotAPI
 
@@ -26,6 +25,7 @@ class TestHubspot(unittest.TestCase):
     """
     Class containing tests of all code interacting with Hubspot.
     """
+
     def setUp(self):
         super(TestHubspot, self).setUp()
         self.test_learner = {'original_email': 'foo@bar.com'}

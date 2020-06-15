@@ -3,11 +3,10 @@
 """
 Command-line script to deploy a Drupal release.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import sys
 from os import path
+
 import click
 
 # Add top-level module path to sys.path before importing tubular code.
@@ -35,6 +34,7 @@ def deploy(app_id, env, client_id, secret, branch_or_tag):
         branch_or_tag (str): The branch or tag to deploy to the specified environment.
     """
     drupal.deploy(app_id, env, client_id, secret, branch_or_tag)
+
 
 if __name__ == "__main__":
     deploy()  # pylint: disable=no-value-for-parameter

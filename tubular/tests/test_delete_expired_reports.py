@@ -2,7 +2,6 @@
 """
 Test the retire_one_learner.py script
 """
-from __future__ import print_function
 
 import os
 

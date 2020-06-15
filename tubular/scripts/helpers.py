@@ -7,7 +7,6 @@ Common helper methods to use in tubular scripts.
 # does NOT tolerate unicode text on sys.stdout, namely python 2 on Build
 # Jenkins.  PLAT-2287 tracks this Tech Debt.
 
-from __future__ import print_function
 
 import io
 import json

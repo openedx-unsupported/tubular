@@ -18,6 +18,7 @@ class SailthruApi:
     """
     Sailthru API client used to make all Sailthru calls.
     """
+
     def __init__(self, sailthru_key, sailthru_secret):
         """
         Create a Sailthru client using credentials.

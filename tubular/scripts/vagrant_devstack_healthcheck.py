@@ -5,16 +5,14 @@ Command-line script to click the "manual" gate in gocd.
 """
 
 # pylint: disable=invalid-name
-from __future__ import absolute_import
-from __future__ import unicode_literals
-from __future__ import print_function
 
-from collections import namedtuple
-from urllib.request import urlopen
-from urllib.error import URLError
 
 import os
 import sys
+from collections import namedtuple
+from urllib.error import URLError
+from urllib.request import urlopen
+
 import backoff
 import click
 

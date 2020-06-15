@@ -3,6 +3,7 @@ Tests for the Salesforce API functionality
 """
 import logging
 from contextlib import contextmanager
+
 import mock
 import pytest
 from simple_salesforce import SalesforceError

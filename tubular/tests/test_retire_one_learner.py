@@ -1,10 +1,9 @@
 """
 Test the retire_one_learner.py script
 """
-from __future__ import print_function
-from mock import patch, DEFAULT
 
 from click.testing import CliRunner
+from mock import patch, DEFAULT
 from slumber.exceptions import HttpNotFoundError
 
 from tubular.scripts.retire_one_learner import (

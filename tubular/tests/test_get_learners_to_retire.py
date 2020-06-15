@@ -3,9 +3,9 @@ Test the get_learners_to_retire.py script
 """
 
 import os
-from mock import patch, DEFAULT
 
 from click.testing import CliRunner
+from mock import patch, DEFAULT
 from slumber.exceptions import HttpClientError, HttpServerError
 
 from tubular.scripts.get_learners_to_retire import (

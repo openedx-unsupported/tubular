@@ -21,6 +21,7 @@ class SalesforceApi:
     """
     Class for making Salesforce API calls
     """
+
     def __init__(self, username, password, security_token, domain, assignee_username):
         """
         Create API with credentials

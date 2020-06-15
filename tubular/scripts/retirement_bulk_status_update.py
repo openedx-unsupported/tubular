@@ -2,7 +2,6 @@
 """
 Command-line script to bulk update retirement states in LMS
 """
-from __future__ import absolute_import, unicode_literals
 
 from datetime import datetime
 from functools import partial
@@ -25,7 +24,6 @@ from tubular.scripts.helpers import (
     _setup_lms_api_or_exit
 )
 
-
 SCRIPT_SHORTNAME = 'Bulk Status'
 
 # Return codes for various fail cases
@@ -40,7 +38,6 @@ FAIL = partial(_fail, SCRIPT_SHORTNAME)
 FAIL_EXCEPTION = partial(_fail_exception, SCRIPT_SHORTNAME)
 CONFIG_OR_EXIT = partial(_config_or_exit, FAIL_EXCEPTION, ERR_BAD_CONFIG)
 SETUP_LMS_OR_EXIT = partial(_setup_lms_api_or_exit, FAIL, ERR_SETUP_FAILED)
-
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 

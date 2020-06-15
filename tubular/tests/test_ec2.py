@@ -1,27 +1,26 @@
 """
 Tests of the code interacting with the boto EC2 API.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
-import unittest
 import datetime
+import unittest
 
+import boto
 import ddt
 import mock
+import six
+from boto.exception import BotoServerError
 from moto import mock_ec2, mock_autoscaling, mock_elb
 from moto.ec2.utils import random_ami_id
-import boto
-from boto.exception import BotoServerError
-import six
+
 import tubular.ec2 as ec2
-from tubular.tests.test_utils import create_asg_with_tags, create_elb, clone_elb_instances_with_state
 from tubular.exception import (
     ImageNotFoundException,
     TimeoutException,
     MissingTagException,
     MultipleImagesFoundException
 )
+from tubular.tests.test_utils import create_asg_with_tags, create_elb, clone_elb_instances_with_state
 from tubular.utils import EDP
 
 
@@ -389,12 +388,14 @@ class TestEC2(unittest.TestCase):
             """
             Stub class for mocking datetime.
             """
+
             @classmethod
             def utcnow(cls):
                 """
                 Stub method returning a UTC datetime.
                 """
                 return cls(2016, 5, 18, 1, 0, 0, 0)
+
         built_in_datetime = ec2.datetime
 
         # The instance of datetime becomes local to the module it's import in to. We must patch datetime using the
@@ -466,69 +467,68 @@ class TestEC2(unittest.TestCase):
 
     @ddt.data(
         (
-            [
-                {
-                    'ami_id': 'ami-1234fug',
-                    'tags': {'Name': 'gocd automation run'}
-                },
-                {
-                    'ami_id': 'ami-puppydog',
-                    'tags': {'Name': 'Normal Instance run by dogs'}
-                }
-            ], 0, 'do_not_delete', {'tag:Name': 'gocd*'}, 1
-        ),
+                [
+                    {
+                        'ami_id': 'ami-1234fug',
+                        'tags': {'Name': 'gocd automation run'}
+                    },
+                    {
+                        'ami_id': 'ami-puppydog',
+                        'tags': {'Name': 'Normal Instance run by dogs'}
+                    }
+                ], 0, 'do_not_delete', {'tag:Name': 'gocd*'}, 1),
+
         (
-            [
-                {
-                    'ami_id': 'ami-1234fug',
-                    'tags': {'Name': 'gocd automation run'}
-                },
-                {
-                    'ami_id': 'ami-puppydog',
-                    'tags': {'Name': 'Hamster_Dance_001 '}
-                }
-            ], 1, 'do_not_delete', {'tag:Name': 'gocd*'}, 0
-        ),
+                [
+                    {
+                        'ami_id': 'ami-1234fug',
+                        'tags': {'Name': 'gocd automation run'}
+                    },
+                    {
+                        'ami_id': 'ami-puppydog',
+                        'tags': {'Name': 'Hamster_Dance_001 '}
+                    }
+                ], 1, 'do_not_delete', {'tag:Name': 'gocd*'}, 0),
+
         (
-            [
-                {
-                    'ami_id': 'ami-1234fug',
-                    'tags': {'Name': 'gocd automation run', 'do_not_delete': 'true'}
-                },
-                {
-                    'ami_id': 'ami-puppydog',
-                    'tags': {'Name': 'Hamster_Dance_001'},
-                }
-            ], 0, 'do_not_delete', {'tag:Name': 'gocd*'}, 0
-        ),
+                [
+                    {
+                        'ami_id': 'ami-1234fug',
+                        'tags': {'Name': 'gocd automation run', 'do_not_delete': 'true'}
+                    },
+                    {
+                        'ami_id': 'ami-puppydog',
+                        'tags': {'Name': 'Hamster_Dance_001'},
+                    }
+                ], 0, 'do_not_delete', {'tag:Name': 'gocd*'}, 0),
+
         (
-            [
-                {
-                    'ami_id': 'ami-1234fug',
-                    'tags': {'Name': 'gocd automation run', 'do_not_delete': 'true'}
-                },
-                {
-                    'ami_id': 'ami-puppydog',
-                    'tags': {'Name': 'Hamster_Dance_001'},
-                }
-            ], 1, 'do_not_delete', {'tag:Name': 'gocd*'}, 0
-        ),
+                [
+                    {
+                        'ami_id': 'ami-1234fug',
+                        'tags': {'Name': 'gocd automation run', 'do_not_delete': 'true'}
+                    },
+                    {
+                        'ami_id': 'ami-puppydog',
+                        'tags': {'Name': 'Hamster_Dance_001'},
+                    }
+                ], 1, 'do_not_delete', {'tag:Name': 'gocd*'}, 0),
+
         (
-            [
-                {
-                    'ami_id': 'ami-1234fug',
-                    'tags': {'Name': 'gocd automation run 001'}
-                },
-                {
-                    'ami_id': 'ami-puppydog',
-                    'tags': {'Name': 'Hamster_Dance_001'},
-                },
-                {
-                    'ami_id': 'ami-1234fug',
-                    'tags': {'Name': 'gocd automation run 002'}
-                },
-            ], 0, 'do_not_delete', {'tag:Name': 'gocd*'}, 2
-        ),
+                [
+                    {
+                        'ami_id': 'ami-1234fug',
+                        'tags': {'Name': 'gocd automation run 001'}
+                    },
+                    {
+                        'ami_id': 'ami-puppydog',
+                        'tags': {'Name': 'Hamster_Dance_001'},
+                    },
+                    {
+                        'ami_id': 'ami-1234fug',
+                        'tags': {'Name': 'gocd automation run 002'}
+                    },
+                ], 0, 'do_not_delete', {'tag:Name': 'gocd*'}, 2),
     )
     @ddt.unpack
     @mock_ec2

@@ -6,12 +6,12 @@
   ],
   "untagged_asg": [
     {
-      "untagged_asg": {} 
+      "untagged_asg": {}
     },
     0,
     []
   ],
-  "multiple_bad_asgs" : [
+  "multiple_bad_asgs": [
     {
       "untagged_asg": {},
       "partially_tagged_asg": {
@@ -22,7 +22,7 @@
     0,
     []
   ],
-  "one_good_asg" : [
+  "one_good_asg": [
     {
       "untagged_asg": {},
       "partially_tagged_asg_1": {
@@ -36,9 +36,11 @@
       }
     },
     1,
-    ["fully_tagged_asg"]
+    [
+      "fully_tagged_asg"
+    ]
   ],
-  "two_good_one_with_delete_tag" : [
+  "two_good_one_with_delete_tag": [
     {
       "fully_tagged_asg_1": {
         "environment": "foo",
@@ -54,10 +56,13 @@
         "environment": "foo",
         "deployment": "bar",
         "play": "baz",
-        "delete_on_ts":"2016-05-27T18:30:16.574222"
+        "delete_on_ts": "2016-05-27T18:30:16.574222"
       }
     },
     2,
-    ["fully_tagged_asg_1", "fully_tagged_asg_2"]
+    [
+      "fully_tagged_asg_1",
+      "fully_tagged_asg_2"
+    ]
   ]
 }

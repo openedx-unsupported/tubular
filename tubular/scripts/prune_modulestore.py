@@ -30,11 +30,10 @@ https://github.com/edx/edx-platform/blob/master/common/lib/xmodule/xmodule/modul
 
 """
 
-from __future__ import absolute_import
-from os import path
-
 import logging
 import sys
+from os import path
+
 import click
 import click_log
 
@@ -77,7 +76,6 @@ def prune_modulestore(
         version_retention,
         active_version_filter,
         database_name):
-
     """
     Main script entry point for pruning the edxapp modulestore structures
     """

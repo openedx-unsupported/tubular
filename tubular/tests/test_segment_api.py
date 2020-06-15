@@ -2,9 +2,9 @@
 Tests for the Segment API functionality
 """
 import json
+
 import mock
 import pytest
-
 import requests
 from six import text_type
 
@@ -26,6 +26,7 @@ class FakeResponse:
     """
     Fakes out requests.post response
     """
+
     def json(self):
         """
         Returns fake Segment retirement response data in the correct format

@@ -2,7 +2,6 @@
 """
 Command-line script to delete GDPR partner reports on Google Drive that were created over N days ago.
 """
-from __future__ import absolute_import, unicode_literals
 
 from datetime import datetime, timedelta
 from functools import partial
