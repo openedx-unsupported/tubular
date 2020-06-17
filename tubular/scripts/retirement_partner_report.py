@@ -155,19 +155,19 @@ def _get_orgs_and_learners_or_exit(config):
 
 def _add_reporting_org(orgs, org_name, org_headings, learner):
     """
-    Add the learner to the reporting org
+    Add the learner to the org
     """
-    if org_name in orgs:
-        reporting_org = orgs[org_name]
-    else:
-        reporting_org = {
+    # Create the org, if necessary
+    orgs[org_name] = orgs.get(
+        org_name,
+        {
             ORGS_CONFIG_FIELD_HEADINGS_KEY: org_headings,
             ORGS_CONFIG_LEARNERS_KEY: []
         }
-        orgs[org_name] = reporting_org
+    )
 
-    # Save the learner in the org list
-    reporting_org[ORGS_CONFIG_LEARNERS_KEY].append(learner)
+    # Add the learner to the list of learners in the org
+    orgs[org_name][ORGS_CONFIG_LEARNERS_KEY].append(learner)
 
 
 def _generate_report_files_or_exit(config, report_data, output_dir):
