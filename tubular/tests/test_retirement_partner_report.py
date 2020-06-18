@@ -281,12 +281,6 @@ def test_successful_report_org_config(*args, **kwargs):
     mock_driveapi.return_value = None
     expected_num_users = 1
 
-    expected_fields = {
-        'heading_1': 'h1val',
-        'heading_2': 'h2val',
-        'heading_3': 'h3val',
-    }
-
     orgs_config = [
         {
             ORGS_CONFIG_ORG_KEY: 'orgCustom',
@@ -294,6 +288,7 @@ def test_successful_report_org_config(*args, **kwargs):
         }
     ]
 
+    # Input from the LMS
     report_data = [
         {
             'heading_1': 'h1val',
@@ -304,6 +299,13 @@ def test_successful_report_org_config(*args, **kwargs):
             ORGS_CONFIG_KEY: orgs_config
         }
     ]
+
+    # Resulting csv file content
+    expected_fields = {
+        'heading_1': 'h1val',
+        'heading_2': 'h2val',
+        'heading_3': 'h3val',
+    }
 
     mock_retirement_report.return_value = report_data
 
@@ -704,16 +706,19 @@ def test_file_content_custom_headings():
 
         # Custom headings and values
         ch1 = 'special_id'
-        ch1v = '123445676543'
+        ch1v = '134456765432'
         ch2 = 'alternate_heading_for_email'
         ch2v = 'zxcvbvcxz@blah.com'
         custom_field_headings = [ch1, ch2]
 
         org_name = 'my_delightful_org'
+        username = 'unique_user'
         learner_data = [
             {
                 ch1: ch1v,
-                ch2: ch2v
+                ch2: ch2v,
+                LEARNER_ORIGINAL_USERNAME_KEY: username,
+                LEARNER_CREATED_KEY: DELETION_TIME,
             }
         ]
         report_data = {
@@ -742,3 +747,6 @@ def test_file_content_custom_headings():
             for h in DEFAULT_FIELD_HEADINGS:
                 # Verify default field headings are not present
                 assert h not in file_content
+            # Verify default field values are not present
+            assert username not in file_content
+            assert DELETION_TIME not in file_content
