@@ -28,7 +28,7 @@ FAKE_ORGS = {
 
 TEST_PLATFORM_NAME = 'fakename'
 
-TEST_BLACKLISTED_NOTIFICATION_DOMAINS = {
+TEST_DENIED_NOTIFICATION_DOMAINS = {
     '@edx.org',
     '@partner-reporting-automation.iam.gserviceaccount.com',
 }
@@ -55,7 +55,7 @@ def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
         'partner_report_platform_name': TEST_PLATFORM_NAME,
         'org_partner_mapping': orgs,
         'drive_partners_folder': 'FakeDriveID',
-        'blacklisted_notification_domains': TEST_BLACKLISTED_NOTIFICATION_DOMAINS,
+        'denied_notification_domains': TEST_DENIED_NOTIFICATION_DOMAINS,
         'sailthru_key': 'fake_sailthru_key',
         'sailthru_secret': 'fake_sailthru_secret',
         's3_archive': {

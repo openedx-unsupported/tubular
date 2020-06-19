@@ -243,14 +243,14 @@ def _add_comments_to_files(config, file_ids):
         for partner in file_ids
     }
 
-    # throw out all blacklisted addresses, and flatten the permissions dicts to just the email:
+    # throw out all denied addresses, and flatten the permissions dicts to just the email:
     external_emails = {
         partner: [
             perm['emailAddress']
             for perm in permissions[partner]
             if not any(
-                perm['emailAddress'].lower().endswith(blacklisted_domain.lower())
-                for blacklisted_domain in config['blacklisted_notification_domains']
+                perm['emailAddress'].lower().endswith(denied_domain.lower())
+                for denied_domain in config['denied_notification_domains']
             )
         ]
         for partner in permissions
