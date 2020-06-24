@@ -22,7 +22,6 @@ from tubular.opsgenie_api import OpsGenieAPI
     required=True,
     help="Message in the body of Opsgenie Alert",
 )
-
 def alert_opsgenie(auth_token, message, description):
     """
     Sends an alert to an opsgenie team
