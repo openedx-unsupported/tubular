@@ -15,6 +15,7 @@ from mock import DEFAULT, patch
 from six import PY2, itervalues
 
 from tubular.scripts.retirement_partner_report import (
+    DEFAULT_FIELD_HEADINGS,
     ERR_BAD_CONFIG,
     ERR_BAD_SECRETS,
     ERR_CLEANUP,
@@ -26,8 +27,16 @@ from tubular.scripts.retirement_partner_report import (
     ERR_SETUP_FAILED,
     ERR_UNKNOWN_ORG,
     ERR_DRIVE_LISTING,
+    LEARNER_CREATED_KEY,
+    LEARNER_ORIGINAL_USERNAME_KEY,
+    ORGS_CONFIG_FIELD_HEADINGS_KEY,
+    ORGS_CONFIG_KEY,
+    ORGS_CONFIG_LEARNERS_KEY,
+    ORGS_CONFIG_ORG_KEY,
+    ORGS_KEY,
     REPORTING_FILENAME_PREFIX,
-    generate_report
+    generate_report,
+    _generate_report_files_or_exit  # pylint: disable=protected-access
 )
 from tubular.tests.retirement_helpers import fake_config_file, fake_google_secrets_file, FAKE_ORGS, TEST_PLATFORM_NAME
 
@@ -37,13 +46,32 @@ TEST_GOOGLE_SECRETS_FILENAME = 'test_google_secrets.json'
 DELETION_TIME = time.strftime("%Y-%m-%dT%H:%M:%S")
 UNICODE_NAME_CONSTANT = '阿碧'
 USER_ID = '12345'
+TEST_ORGS_CONFIG = [
+    {
+        ORGS_CONFIG_ORG_KEY: 'orgCustom',
+        ORGS_CONFIG_FIELD_HEADINGS_KEY: ['heading_1', 'heading_2', 'heading_3']
+    },
+    {
+        ORGS_CONFIG_ORG_KEY: 'otherCustomOrg',
+        ORGS_CONFIG_FIELD_HEADINGS_KEY: ['unique_id']
+    }
+]
+DEFAULT_FIELD_VALUES = {
+    'user_id': USER_ID,
+    LEARNER_ORIGINAL_USERNAME_KEY: 'username',
+    'original_email': 'invalid',
+    'original_name': UNICODE_NAME_CONSTANT,
+    'deletion_completed': DELETION_TIME
+}
 
 
-def _call_script(expect_success=True, config_orgs=None):
+def _call_script(expect_success=True, expected_num_rows=10, config_orgs=None, expected_fields=None):
     """
     Call the retired learner script with the given username and a generic, temporary config file.
     Returns the CliRunner.invoke results
     """
+    if expected_fields is None:
+        expected_fields = DEFAULT_FIELD_VALUES
     if config_orgs is None:
         config_orgs = FAKE_ORGS
 
@@ -96,53 +124,47 @@ def _call_script(expect_success=True, config_orgs=None):
                     reader = csv.DictReader(csvfile)
                     rows = []
                     for row in reader:
-                        # Check the user_id value is in the correct place
-                        assert USER_ID in row['user_id']
-
-                        # Check username value is in the correct place
-                        assert 'username' in row['original_username']
-
-                        # Check email value is in the correct place
-                        assert 'invalid' in row['original_email']
-
-                        # Check name value is in the correct place
-                        assert UNICODE_NAME_CONSTANT in row['original_name']
-
-                        # Check deletion_completed value is in the correct place
-                        assert DELETION_TIME in row['deletion_completed']
-
+                        for field_key in expected_fields:
+                            field_value = expected_fields[field_key]
+                            assert field_value in row[field_key]
                         rows.append(row)
 
-                # Confirm that there are rows at all
-                assert rows
+                # Confirm the number of rows
+                assert len(rows) == expected_num_rows
     return result
 
 
-def _fake_retirement_report_user(seed_val, user_orgs=None):
+def _fake_retirement_report_user(seed_val, user_orgs=None, user_orgs_config=None):
     """
     Creates unique user to populate a fake report with.
     - seed_val is a number or other unique value for this user, will be formatted into
       user values to make sure they're distinct.
     - user_orgs, if given, should be a list of orgs that will be associated with the user.
+    - user_orgs_config, if given, should be a list of dicts mapping orgs to their customized
+        field headings. These orgs will also be associated with the user.
     """
-    if user_orgs is None:
-        user_orgs = list(FAKE_ORGS.keys())
-
-    return {
+    user_info = {
         'user_id': USER_ID,
-        'original_username': 'username_{}'.format(seed_val),
+        LEARNER_ORIGINAL_USERNAME_KEY: 'username_{}'.format(seed_val),
         'original_email': 'user_{}@foo.invalid'.format(seed_val),
         'original_name': '{} {}'.format(UNICODE_NAME_CONSTANT, seed_val),
-        'orgs': user_orgs,
-        'created': DELETION_TIME,
+        LEARNER_CREATED_KEY: DELETION_TIME,
     }
 
+    if user_orgs is not None:
+        user_info[ORGS_KEY] = user_orgs
 
-def _fake_retirement_report(num_users=10):
+    if user_orgs_config is not None:
+        user_info[ORGS_CONFIG_KEY] = user_orgs_config
+
+    return user_info
+
+
+def _fake_retirement_report(num_users=10, user_orgs=None, user_orgs_config=None):
     """
     Fake the output of a retirement report with unique users
     """
-    return [_fake_retirement_report_user(i) for i in range(num_users)]
+    return [_fake_retirement_report_user(i, user_orgs, user_orgs_config) for i in range(num_users)]
 
 
 @patch('tubular.google_api.DriveApi.__init__')
@@ -188,7 +210,7 @@ def test_successful_report(*args, **kwargs):
     mock_walk_files.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in FAKE_ORGS.values()]
     mock_create_files.side_effect = ['foo', 'bar', 'baz']
     mock_driveapi.return_value = None
-    mock_retirement_report.return_value = _fake_retirement_report()
+    mock_retirement_report.return_value = _fake_retirement_report(user_orgs=list(FAKE_ORGS.keys()))
 
     result = _call_script()
 
@@ -213,7 +235,92 @@ def test_successful_report(*args, **kwargs):
 
     # Make sure we tried to remove the users from the queue
     mock_retirement_cleanup.assert_called_with(
-        [{'original_username': user['original_username']} for user in mock_retirement_report.return_value]
+        [{'original_username': user[LEARNER_ORIGINAL_USERNAME_KEY]} for user in mock_retirement_report.return_value]
+    )
+
+    assert 'All reports completed and uploaded to Google.' in result.output
+
+
+@patch('tubular.google_api.DriveApi.__init__')
+@patch('tubular.google_api.DriveApi.create_file_in_folder')
+@patch('tubular.google_api.DriveApi.walk_files')
+@patch('tubular.google_api.DriveApi.list_permissions_for_files')
+@patch('tubular.google_api.DriveApi.create_comments_for_files')
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    retirement_partner_report=DEFAULT,
+    retirement_partner_cleanup=DEFAULT
+)
+def test_successful_report_org_config(*args, **kwargs):
+    mock_get_access_token = args[0]
+    mock_create_comments = args[1]
+    mock_list_permissions = args[2]
+    mock_walk_files = args[3]
+    mock_create_files = args[4]
+    mock_driveapi = args[5]
+    mock_retirement_report = kwargs['retirement_partner_report']
+    mock_retirement_cleanup = kwargs['retirement_partner_cleanup']
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_create_comments.return_value = None
+    fake_custom_orgs = {
+        'orgCustom': 'firstBlah'
+    }
+    fake_partners = list(itervalues(fake_custom_orgs))
+    mock_list_permissions.return_value = {
+        'folder' + partner: [
+            {'emailAddress': 'some.contact@example.com'},  # The POC.
+            {'emailAddress': 'another.contact@edx.org'},
+        ]
+        for partner in fake_partners[:2]
+    }
+    mock_walk_files.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in
+                                    fake_custom_orgs.values()]
+    mock_create_files.side_effect = ['foo', 'bar', 'baz']
+    mock_driveapi.return_value = None
+    expected_num_users = 1
+
+    orgs_config = [
+        {
+            ORGS_CONFIG_ORG_KEY: 'orgCustom',
+            ORGS_CONFIG_FIELD_HEADINGS_KEY: ['heading_1', 'heading_2', 'heading_3']
+        }
+    ]
+
+    # Input from the LMS
+    report_data = [
+        {
+            'heading_1': 'h1val',
+            'heading_2': 'h2val',
+            'heading_3': 'h3val',
+            LEARNER_ORIGINAL_USERNAME_KEY: 'blah',
+            LEARNER_CREATED_KEY: DELETION_TIME,
+            ORGS_CONFIG_KEY: orgs_config
+        }
+    ]
+
+    # Resulting csv file content
+    expected_fields = {
+        'heading_1': 'h1val',
+        'heading_2': 'h2val',
+        'heading_3': 'h3val',
+    }
+
+    mock_retirement_report.return_value = report_data
+
+    result = _call_script(expected_num_rows=expected_num_users, config_orgs=fake_custom_orgs,
+                          expected_fields=expected_fields)
+
+    # Make sure we're getting the LMS token
+    mock_get_access_token.assert_called_once()
+
+    # Make sure that we get the report
+    mock_retirement_report.assert_called_once()
+
+    # Make sure we tried to remove the users from the queue
+    mock_retirement_cleanup.assert_called_with(
+        [{'original_username': user[LEARNER_ORIGINAL_USERNAME_KEY]} for user in mock_retirement_report.return_value]
     )
 
     assert 'All reports completed and uploaded to Google.' in result.output
@@ -413,13 +520,44 @@ def test_unknown_org(*args, **kwargs):
 
     orgs = ['orgA', 'orgB']
 
-    mock_retirement_report.return_value = [_fake_retirement_report_user(i, orgs) for i in range(10)]
+    mock_retirement_report.return_value = [_fake_retirement_report_user(i, orgs, TEST_ORGS_CONFIG) for i in range(10)]
 
     result = _call_script(expect_success=False)
 
     assert result.exit_code == ERR_UNKNOWN_ORG
     assert 'orgA' in result.output
     assert 'orgB' in result.output
+    assert 'orgCustom' in result.output
+    assert 'otherCustomOrg' in result.output
+
+
+@patch('tubular.google_api.DriveApi.__init__')
+@patch('tubular.google_api.DriveApi.walk_files')
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    retirement_partner_report=DEFAULT)
+def test_unknown_org_custom(*args, **kwargs):
+    mock_get_access_token = args[0]
+    mock_drive_init = args[2]
+    mock_retirement_report = kwargs['retirement_partner_report']
+
+    mock_drive_init.return_value = None
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+
+    custom_orgs_config = [
+        {
+            ORGS_CONFIG_ORG_KEY: 'singleCustomOrg',
+            ORGS_CONFIG_FIELD_HEADINGS_KEY: ['first_heading', 'second_heading']
+        }
+    ]
+
+    mock_retirement_report.return_value = [_fake_retirement_report_user(i, None, custom_orgs_config) for i in range(2)]
+
+    result = _call_script(expect_success=False)
+
+    assert result.exit_code == ERR_UNKNOWN_ORG
+    assert 'organizations {\'singleCustomOrg\'} do not exist' in result.output
 
 
 @patch('tubular.google_api.DriveApi.__init__')
@@ -438,7 +576,7 @@ def test_reporting_error(*args):
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
     mock_dictwriter.side_effect = Exception(error_msg)
     mock_drive_init.return_value = None
-    mock_retirement_report.return_value = _fake_retirement_report()
+    mock_retirement_report.return_value = _fake_retirement_report(user_orgs=list(FAKE_ORGS.keys()))
 
     result = _call_script(expect_success=False)
 
@@ -468,13 +606,13 @@ def test_cleanup_error(*args, **kwargs):
     mock_driveapi.return_value = None
     mock_walk_files.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in FAKE_ORGS.values()]
 
-    mock_retirement_report.return_value = _fake_retirement_report()
+    mock_retirement_report.return_value = _fake_retirement_report(user_orgs=list(FAKE_ORGS.keys()))
     mock_retirement_cleanup.side_effect = Exception('Mock cleanup exception')
 
     result = _call_script(expect_success=False)
 
     assert mock_retirement_cleanup.called_with(
-        [user['original_username'] for user in mock_retirement_report.return_value]
+        [user[LEARNER_ORIGINAL_USERNAME_KEY] for user in mock_retirement_report.return_value]
     )
 
     assert result.exit_code == ERR_CLEANUP
@@ -524,7 +662,7 @@ def test_google_unicode_folder_names(*args, **kwargs):
     ]
     mock_create_files.side_effect = ['foo', 'bar', 'baz']
     mock_driveapi.return_value = None
-    mock_retirement_report.return_value = _fake_retirement_report()
+    mock_retirement_report.return_value = _fake_retirement_report(user_orgs=list(FAKE_ORGS.keys()))
 
     config_orgs = {
         'org1': unicodedata.normalize('NFKC', u'TéstX'),
@@ -553,7 +691,62 @@ def test_google_unicode_folder_names(*args, **kwargs):
 
     # Make sure we tried to remove the users from the queue
     mock_retirement_cleanup.assert_called_with(
-        [{'original_username': user['original_username']} for user in mock_retirement_report.return_value]
+        [{'original_username': user[LEARNER_ORIGINAL_USERNAME_KEY]} for user in mock_retirement_report.return_value]
     )
 
     assert 'All reports completed and uploaded to Google.' in result.output
+
+
+def test_file_content_custom_headings():
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        config = {'partner_report_platform_name': 'fake_platform_name'}
+        tmp_output_dir = 'test_output_dir'
+        os.mkdir(tmp_output_dir)
+
+        # Custom headings and values
+        ch1 = 'special_id'
+        ch1v = '134456765432'
+        ch2 = 'alternate_heading_for_email'
+        ch2v = 'zxcvbvcxz@blah.com'
+        custom_field_headings = [ch1, ch2]
+
+        org_name = 'my_delightful_org'
+        username = 'unique_user'
+        learner_data = [
+            {
+                ch1: ch1v,
+                ch2: ch2v,
+                LEARNER_ORIGINAL_USERNAME_KEY: username,
+                LEARNER_CREATED_KEY: DELETION_TIME,
+            }
+        ]
+        report_data = {
+            org_name: {
+                ORGS_CONFIG_FIELD_HEADINGS_KEY: custom_field_headings,
+                ORGS_CONFIG_LEARNERS_KEY: learner_data
+            }
+        }
+
+        partner_filenames = _generate_report_files_or_exit(config, report_data, tmp_output_dir)
+
+        assert len(partner_filenames) == 1
+        filename = partner_filenames[org_name]
+        with open(filename) as f:
+            file_content = f.read()
+
+            # Custom field headings
+            for ch in custom_field_headings:
+                # Verify custom field headings are present
+                assert ch in file_content
+            # Verify custom field values are present
+            assert ch1v in file_content
+            assert ch2v in file_content
+
+            # Default field headings
+            for h in DEFAULT_FIELD_HEADINGS:
+                # Verify default field headings are not present
+                assert h not in file_content
+            # Verify default field values are not present
+            assert username not in file_content
+            assert DELETION_TIME not in file_content

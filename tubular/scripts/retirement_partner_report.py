@@ -69,6 +69,17 @@ NOTIFICATION_MESSAGE_TEMPLATE = """
 Hello from edX. Dear {tags}, a new report listing the learners enrolled in your institution’s courses on edx.org that have requested deletion of their edX account and associated personal data within the last week has been published to Google Drive. Please access your folder to see the latest report. If you have any questions, please contact your edX Project Coordinator.
 """.strip()
 
+LEARNER_CREATED_KEY = 'created'  # This key is currently required to exist in the learner
+LEARNER_ORIGINAL_USERNAME_KEY = 'original_username'  # This key is currently required to exist in the learner
+ORGS_KEY = 'orgs'
+ORGS_CONFIG_KEY = 'orgs_config'
+ORGS_CONFIG_ORG_KEY = 'org'
+ORGS_CONFIG_FIELD_HEADINGS_KEY = 'field_headings'
+ORGS_CONFIG_LEARNERS_KEY = 'learners'
+
+# Default field headings for the CSV file
+DEFAULT_FIELD_HEADINGS = ['user_id', 'original_username', 'original_email', 'original_name', 'deletion_completed']
+
 
 def _check_all_learner_orgs_or_exit(config, learners):
     """
@@ -78,9 +89,18 @@ def _check_all_learner_orgs_or_exit(config, learners):
     # Loop through all learner orgs, checking for their mappings.
     mismatched_orgs = set()
     for learner in learners:
-        for org in learner['orgs']:
-            if org not in config['org_partner_mapping']:
-                mismatched_orgs.add(org)
+        # Check the orgs with standard fields
+        if ORGS_KEY in learner:
+            for org in learner[ORGS_KEY]:
+                if org not in config['org_partner_mapping']:
+                    mismatched_orgs.add(org)
+
+        # Check the orgs with custom configurations (orgs with custom fields)
+        if ORGS_CONFIG_KEY in learner:
+            for org_config in learner[ORGS_CONFIG_KEY]:
+                org_name = org_config[ORGS_CONFIG_ORG_KEY]
+                if org_name not in config['org_partner_mapping']:
+                    mismatched_orgs.add(org_name)
     if mismatched_orgs:
         FAIL(
             ERR_UNKNOWN_ORG,
@@ -101,26 +121,53 @@ def _get_orgs_and_learners_or_exit(config):
 
         _check_all_learner_orgs_or_exit(config, learners)
 
-        orgs = defaultdict(list)
+        orgs = defaultdict()
         usernames = []
 
-        # Organize the learners, create separate dicts per partner, make sure partner is in the mapping.
-        # learners can appear in more than one dict.
+        # Organize the learners, create separate dicts per partner, making sure each partner is in the mapping.
+        # Learners can appear in more than one dict. It is assumed that each org has 1 and only 1 set of field headings.
         for learner in learners:
-            usernames.append({'original_username': learner['original_username']})
+            usernames.append({'original_username': learner[LEARNER_ORIGINAL_USERNAME_KEY]})
 
             # Use the datetime upon which the record was 'created' in the partner reporting queue
             # as the approximate time upon which user retirement was completed ('deletion_completed')
             # for the record's user.
-            learner['deletion_completed'] = learner['created']
+            learner['deletion_completed'] = learner[LEARNER_CREATED_KEY]
 
-            for org in learner['orgs']:
-                reporting_org = config['org_partner_mapping'][org]
-                orgs[reporting_org].append(learner)
+            # Create a list of orgs who should be notified about this user
+            if ORGS_KEY in learner:
+                for org_name in learner[ORGS_KEY]:
+                    reporting_org_name = config['org_partner_mapping'][org_name]
+                    _add_reporting_org(orgs, reporting_org_name, DEFAULT_FIELD_HEADINGS, learner)
+
+            # Check for orgs with custom fields
+            if ORGS_CONFIG_KEY in learner:
+                for org_config in learner[ORGS_CONFIG_KEY]:
+                    org_name = org_config[ORGS_CONFIG_ORG_KEY]
+                    org_headings = org_config[ORGS_CONFIG_FIELD_HEADINGS_KEY]
+                    reporting_org_name = config['org_partner_mapping'][org_name]
+                    _add_reporting_org(orgs, reporting_org_name, org_headings, learner)
 
         return orgs, usernames
     except Exception as exc:  # pylint: disable=broad-except
         FAIL_EXCEPTION(ERR_FETCHING_LEARNERS, 'Unexpected exception occurred!', exc)
+
+
+def _add_reporting_org(orgs, org_name, org_headings, learner):
+    """
+    Add the learner to the org
+    """
+    # Create the org, if necessary
+    orgs[org_name] = orgs.get(
+        org_name,
+        {
+            ORGS_CONFIG_FIELD_HEADINGS_KEY: org_headings,
+            ORGS_CONFIG_LEARNERS_KEY: []
+        }
+    )
+
+    # Add the learner to the list of learners in the org
+    orgs[org_name][ORGS_CONFIG_LEARNERS_KEY].append(learner)
 
 
 def _generate_report_files_or_exit(config, report_data, output_dir):
@@ -132,33 +179,47 @@ def _generate_report_files_or_exit(config, report_data, output_dir):
     # already up there.
     partner_filenames = {}
 
-    for partner in report_data:
-        LOG('Starting report for partner {}: {} learners to add'.format(partner, len(report_data[partner])))
-
+    for partner_name in report_data:
         try:
-            # Fields for each learner to write, in order these are also the header names
-            fields = ['user_id', 'original_username', 'original_email', 'original_name', 'deletion_completed']
-            outfile = os.path.join(output_dir, '{}_{}_{}_{}.csv'.format(
-                REPORTING_FILENAME_PREFIX, config['partner_report_platform_name'], partner, date.today().isoformat()
-            ))
-
-            # If there is already a file for this date, assume it is bad and replace it
-            try:
-                os.remove(outfile)
-            except OSError:
-                pass
-
-            with open(outfile, 'wb') as f:
-                writer = csv.DictWriter(f, fields, dialect=csv.excel, extrasaction='ignore')
-                writer.writeheader()
-                writer.writerows(report_data[partner])
-
-            partner_filenames[partner] = outfile
-            LOG('Report complete for partner {}'.format(partner))
+            partner = report_data[partner_name]
+            partner_headings = partner[ORGS_CONFIG_FIELD_HEADINGS_KEY]
+            partner_learners = partner[ORGS_CONFIG_LEARNERS_KEY]
+            outfile = _generate_report_file_or_exit(config, output_dir, partner_name, partner_headings,
+                                                    partner_learners)
+            partner_filenames[partner_name] = outfile
+            LOG('Report complete for partner {}'.format(partner_name))
         except Exception as exc:  # pylint: disable=broad-except
-            FAIL_EXCEPTION(ERR_REPORTING, 'Error reporting retirement for partner {}'.format(partner), exc)
+            FAIL_EXCEPTION(ERR_REPORTING, 'Error reporting retirement for partner {}'.format(partner_name), exc)
 
     return partner_filenames
+
+
+def _generate_report_file_or_exit(config, output_dir, partner, field_headings, field_values):
+    """
+    Create a CSV file for the partner
+    """
+    LOG('Starting report for partner {}: {} learners to add. Field headings are {}'.format(
+        partner,
+        len(field_values),
+        field_headings
+    ))
+
+    outfile = os.path.join(output_dir, '{}_{}_{}_{}.csv'.format(
+        REPORTING_FILENAME_PREFIX, config['partner_report_platform_name'], partner, date.today().isoformat()
+    ))
+
+    # If there is already a file for this date, assume it is bad and replace it
+    try:
+        os.remove(outfile)
+    except OSError:
+        pass
+
+    with open(outfile, 'wb') as f:
+        writer = csv.DictWriter(f, field_headings, dialect=csv.excel, extrasaction='ignore')
+        writer.writeheader()
+        writer.writerows(field_values)
+
+    return outfile
 
 
 def _config_drive_folder_map_or_exit(config):
