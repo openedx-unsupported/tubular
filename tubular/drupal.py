@@ -6,31 +6,32 @@ from __future__ import unicode_literals
 
 import io
 import logging
+import json
 import requests
-from requests.auth import HTTPBasicAuth
 from tubular.utils.retry import retry
 from tubular.exception import BackendError
 
 
-ACQUIA_ENDPOINT = "https://cloudapi.acquia.com/v1"
-REALM = "prod"
-SITE = "edx"
+ACQUIA_ENDPOINT = "https://cloud.acquia.com/api"
 DATABASE = "edx"
-FETCH_TAG_URL = "{root}/sites/{realm}:{site}/envs/{{env}}.json".format(
-    root=ACQUIA_ENDPOINT, realm=REALM, site=SITE
+
+TOKEN_URL = "https://accounts.acquia.com/api/auth/oauth/token"
+FETCH_ENV_URL = "{root}/applications/{{applicationUuid}}/environments".format(
+    root=ACQUIA_ENDPOINT
 )
-CLEAR_CACHE_URL = "{root}/sites/{realm}:{site}/envs/{{env}}/domains/{{domain}}/cache.json".format(
-    root=ACQUIA_ENDPOINT, realm=REALM, site=SITE
+FETCH_TAG_URL = "{root}/environments/{{environmentId}}".format(
+    root=ACQUIA_ENDPOINT
 )
-DEPLOY_URL = "{root}/sites/{realm}:{site}/envs/{{env}}/code-deploy.json?path={{branch_or_tag}}".format(
-    root=ACQUIA_ENDPOINT, realm=REALM, site=SITE
+CLEAR_CACHE_URL = "{root}/environments/{{environmentId}}/domains/{{domain}}/actions/clear-varnish".format(
+    root=ACQUIA_ENDPOINT
 )
-BACKUP_DATABASE_URL = "{root}/sites/{realm}:{site}/envs/{{env}}/dbs/{database}/backups.json".format(
-    root=ACQUIA_ENDPOINT, realm=REALM, site=SITE, database=DATABASE
+DEPLOY_URL = "{root}/environments/{{environmentId}}/code/actions/switch".format(
+    root=ACQUIA_ENDPOINT
 )
-CHECK_TASKS_URL = "{root}/sites/{realm}:{site}/tasks/{{id}}.json".format(
-    root=ACQUIA_ENDPOINT, realm=REALM, site=SITE
+BACKUP_DATABASE_URL = "{root}/environments/{{environmentId}}/databases/{{databaseName}}/backups".format(
+    root=ACQUIA_ENDPOINT
 )
+
 # Maps environments to domains.
 VALID_ENVIRONMENTS = {
     "acceptance": [
@@ -81,20 +82,27 @@ VALID_ENVIRONMENTS = {
 LOG = logging.getLogger(__name__)
 
 
-def get_api_client(username, password):
+def get_api_token(client_id, client_secret):
     """
-    Creates an API Client and authenticates the client.
+    Get api token from Acquia to be used for future calls.
 
     Args:
-        username (str): The username used to authenticate the client
-        password (str): The password used to authenticate the client
+        client_id (str): The client id generated via Acquia
+        password (str): The secret key generated via Acquia
 
     Returns:
-        The authenticated API Client
+        The access token
     """
-    api_client = requests.Session()
-    api_client.auth = HTTPBasicAuth(username, password)
-    return api_client
+
+    data = {'grant_type': 'client_credentials'}
+    access_token_response = requests.post(TOKEN_URL,
+                                          data=data,
+                                          verify=False,
+                                          allow_redirects=False,
+                                          auth=(client_id, client_secret))
+
+    tokens = json.loads(access_token_response.text)
+    return tokens['access_token']
 
 
 def parse_response(response, error_message):
@@ -109,9 +117,9 @@ def parse_response(response, error_message):
         The JSON representation of the response if no errors.
 
     Raises:
-        BackendError: Raised if the response's status code is not 200.
+        BackendError: Raised if the response's status code is not 200 or 202.
     """
-    if response.status_code != 200:
+    if response.status_code != 200 and response.status_code != 202:
         msg = "{specific}\nStatus Code: {status}\nBody: {body}".format(specific=error_message,
                                                                        status=response.status_code, body=response.text)
         LOG.error(msg)
@@ -119,15 +127,80 @@ def parse_response(response, error_message):
     return response.json()
 
 
+def get_acquia_v2(url, access_token):
+    """
+    Perform get request to Acquia v2 end point.
+
+    Args:
+        url (str): Acquia v2 end point.
+        access_token (str): token to authenticate client
+
+    Returns:
+        The Response object.
+    """
+    api_call_headers = {'Authorization': 'Bearer ' + access_token}
+    api_call_response = requests.get(url, headers=api_call_headers, verify=False)
+
+    return api_call_response
+
+
+def post_acquia_v2(url, access_token, body=None):
+    """
+    Perform post request to Acquia v2 end point.
+
+    Args:
+        url (str): Acquia v2 end point.
+        access_token (str): token to authenticate client
+        body (dict): json data to be send to end point
+
+    Returns:
+        The Response object.
+    """
+
+    api_call_headers = {'Authorization': 'Bearer ' + access_token}
+    api_call_response = requests.post(url, headers=api_call_headers, json=body, verify=False)
+    return api_call_response
+
+
+def fetch_environment_uid(app_id, env, token):
+    """
+    Fetches environment uid based on environment name
+
+    Args:
+        app_id (str): Application id assigned to Drupal instance.
+        env (str): The environment to clear varnish caches in (e.g. test or prod)
+        token (str): token to authenticate client
+
+    Returns:
+        environment id (str): The identifier is a key consisting of the internal database ID
+        of the environment and the application UUID
+
+    Raises:
+        KeyError: Raised if env value is invalid.
+    """
+    response = get_acquia_v2(FETCH_ENV_URL.format(applicationUuid=app_id), token)
+    response_json = parse_response(response, "Failed to get environment detail.")
+    envs = response_json["_embedded"]["items"]
+
+    environment_id = None
+    for e in envs:
+        if e['name'] == env:
+            environment_id = e['id']
+            break
+
+    return environment_id
+
+
 @retry()
-def fetch_deployed_tag(env, username, password, path_name):
+def fetch_deployed_tag(app_id, env, client_id, secret, path_name):
     """
     Fetches the currently deployed tag in the given environment
 
     Args:
+        app_id (str): Application id assigned to Drupal instance.
         env (str): The environment to clear varnish caches in (e.g. test or prod)
-        username (str): The Acquia username necessary to run the command.
-        password (str): The Acquia password necessary to run the command.
+        client_id (str): The Acquia api client id necessary to run the command.
+        secret (str): The Acquia api secret key to run the command.
         path_name (str): The path to write the tag name to.
 
     Returns:
@@ -137,24 +210,28 @@ def fetch_deployed_tag(env, username, password, path_name):
         KeyError: Raised if env value is invalid.
     """
     __ = VALID_ENVIRONMENTS[env]
-    api_client = get_api_client(username, password)
-    response = api_client.get(FETCH_TAG_URL.format(env=env))
-    response_json = parse_response(response, "Failed to fetch the deployed tag.")
-    tag_name = response_json["vcs_path"]
-    with io.open(path_name.format(env=env), "w") as f:
-        f.write(tag_name)
-    return tag_name
+
+    token = get_api_token(client_id, secret)
+    environmentId = fetch_environment_uid(app_id, env, token)
+    if environmentId:
+        response = get_acquia_v2(FETCH_TAG_URL.format(environmentId=environmentId), token)
+        response_json = parse_response(response, "Failed to fetch the deployed tag.")
+        tag_name = response_json["vcs"]["path"]
+        with io.open(path_name.format(env=env), "w") as f:
+            f.write(tag_name)
+        return tag_name
 
 
 @retry()
-def clear_varnish_cache(env, username, password):
+def clear_varnish_cache(app_id, env, client_id, secret):
     """
     Clears the Varnish cache from all domains in a Drupal environment.
 
     Args:
+        app_id (str): Application id assigned to Drupal instance.
         env (str): The environment to clear varnish caches in (e.g. test or prod)
-        username (str): The Acquia username necessary to run the command.
-        password (str): The Acquia password necessary to run the command.
+        client_id (str): The Acquia api client id necessary to run the command.
+        secret (str): The Acquia api secret key to run the command.
 
     Returns:
         True if all of the Varnish caches are successfully cleared.
@@ -163,32 +240,36 @@ def clear_varnish_cache(env, username, password):
         KeyError: Raised if env value is invalid.
         BackendError: Raised if the varnish cache fails to clear in any of the domains.
     """
-    api_client = get_api_client(username, password)
     domains = VALID_ENVIRONMENTS[env]
     failure = ""
-    for domain in domains:
-        response = api_client.delete(CLEAR_CACHE_URL.format(env=env, domain=domain))
-        error_message = "Failed to clear cache in {domain}.".format(domain=domain)
-        try:
-            response_json = parse_response(response, error_message)
-        except BackendError:
-            failure = failure + error_message + "\n"
-            continue
-        check_state(response_json["id"], username, password)
-    if failure:
-        raise BackendError(failure)
-    return True
+
+    token = get_api_token(client_id, secret)
+    environmentId = fetch_environment_uid(app_id, env, token)
+    if environmentId:
+        for domain in domains:
+            response = post_acquia_v2(CLEAR_CACHE_URL.format(environmentId=environmentId, domain=domain), token)
+            error_message = "Failed to clear cache in {domain}.".format(domain=domain)
+            try:
+                response_json = parse_response(response, error_message)
+            except BackendError:
+                failure = failure + error_message + "\n"
+                continue
+            check_state(response_json['_links']['notification']['href'], token)
+        if failure:
+            raise BackendError(failure)
+        return True
 
 
 @retry()
-def deploy(env, username, password, branch_or_tag):
+def deploy(app_id, env, client_id, secret, branch_or_tag):
     """
     Deploys a given branch or tag to the specified environment.
 
     Args:
+        app_id (str): Application id assigned to Drupal instance.
         env (str): The environment to deploy code in (e.g. test or prod)
-        username (str): The Acquia username necessary to run the command.
-        password (str): The Acquia password necessary to run the command.
+        client_id (str): The Acquia api client id necessary to run the command.
+        secret (str): The Acquia api secret key to run the command.
         branch_or_tag (str): The branch or tag to deploy to the specified environment.
 
     Returns:
@@ -198,21 +279,25 @@ def deploy(env, username, password, branch_or_tag):
         KeyError: Raised if env value is invalid.
     """
     __ = VALID_ENVIRONMENTS[env]
-    api_client = get_api_client(username, password)
-    response = api_client.post(DEPLOY_URL.format(env=env, branch_or_tag=branch_or_tag))
-    response_json = parse_response(response, "Failed to deploy code.")
-    return check_state(response_json["id"], username, password)
+    token = get_api_token(client_id, secret)
+    environmentId = fetch_environment_uid(app_id, env, token)
+    if environmentId:
+        body = {"branch": branch_or_tag}
+        response = post_acquia_v2(DEPLOY_URL.format(environmentId=environmentId), token, body)
+        response_json = parse_response(response, "Failed to deploy code.")
+        return check_state(response_json['_links']['notification']['href'], token)
 
 
 @retry()
-def backup_database(env, username, password):
+def backup_database(app_id, env, client_id, secret):
     """
     Creates a backup of the database in the specified environment.
 
     Args:
+        app_id (str): Application id assigned to our Drupal instance.
         env (str): The environment the database backup will take place in (e.g. test or prod)
-        username (str): The Acquia username necessary to run the command.
-        password (str): The Acquia password necessary to run the command.
+        client_id (str): The Acquia api client id necessary to run the command.
+        secret (str): The Acquia api secret key to run the command.
 
     Returns:
         True if a database backup is successfully created.
@@ -221,34 +306,34 @@ def backup_database(env, username, password):
         KeyError: Raised if env value is invalid.
     """
     __ = VALID_ENVIRONMENTS[env]
-    api_client = get_api_client(username, password)
-    response = api_client.post(BACKUP_DATABASE_URL.format(env=env))
-    response_json = parse_response(response, "Failed to backup database.")
-    return check_state(response_json["id"], username, password)
+    token = get_api_token(client_id, secret)
+    environmentId = fetch_environment_uid(app_id, env, token)
+    if environmentId:
+        response = post_acquia_v2(BACKUP_DATABASE_URL.format(environmentId=environmentId, databaseName=DATABASE), token)
+        response_json = parse_response(response, "Failed to backup database.")
+        return check_state(response_json['_links']['notification']['href'], token)
 
 
 @retry(attempts=30, delay_seconds=10, max_time_seconds=300)
-def check_state(task_id, username, password):
+def check_state(notification_url, token):
     """
-    Checks the state of the response to verify it is "done"
+    Checks the status of the response to verify it is "done"
 
     Args:
-        task_id (int): The task id to check the state of.
-        username (str): The Acquia username necessary to run the command.
-        password (str): The Acquia password necessary to run the command.
+        notification_url (str): The notification url to use to check the state of.
+        token (str): token to authenticate client
 
     Returns:
-        True if state of the response is "done"
+        True if status of the response is "completed"
 
     Raises:
         BackendError: Raised so the method will retry since immediately after receiving the
-            response, the state will still be "waiting". Can"t rely on parse_response since
-            the response should return a 200, just not the state wanted.
+            response, the status will still be "in-progress". Can"t rely on parse_response since
+            the response should return a 200, just not the status wanted.
     """
-    api_client = get_api_client(username, password)
-    response = api_client.get(CHECK_TASKS_URL.format(id=task_id))
+    response = get_acquia_v2(notification_url, token)
     response_json = parse_response(response, "Failed to check state of response.")
-    if response_json["state"] == "done":
+    if response_json["status"] == "completed":
         return True
-    raise BackendError("Check state failed. The state of the response was {state}, not done as expected.\n"
-                       "JSON Data: {response}".format(state=response_json["state"], response=response_json))
+    raise BackendError("Check status failed. The status of the response was {status}, not done as expected.\n"
+                       "JSON Data: {response}".format(status=response_json["status"], response=response_json))
