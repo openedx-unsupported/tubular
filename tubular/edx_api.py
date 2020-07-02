@@ -416,3 +416,17 @@ class DiscoveryApi(BaseApiClient):
         request_data = {"username_mappings": username_mappings}
         with correct_exception():
             return self._client.api.v1.replace_usernames.post(data=request_data)
+
+
+class DemographicsApi(BaseApiClient):
+    """
+    Demographics API client
+    """
+    @_retry_lms_api()
+    def retire_learner(self, learner):
+        # TODO: can we get LMS_USER_ID from this `learner` object?
+        params = {'data': {'username': learner['original_username']}}
+        # TODO some call to the demographics service
+        with correct_exception():
+            return self._client.demographics.api.retire.post(**params)
+        
