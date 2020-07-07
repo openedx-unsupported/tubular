@@ -424,9 +424,11 @@ class DemographicsApi(BaseApiClient):
     """
     @_retry_lms_api()
     def retire_learner(self, learner):
+        """
+        Performs the learner retiement step for Credentials
+        """
         # TODO: can we get LMS_USER_ID from this `learner` object?
         params = {'data': {'username': learner['original_username']}}
         # TODO some call to the demographics service
         with correct_exception():
             return self._client.demographics.api.retire.post(**params)
-        
