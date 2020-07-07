@@ -238,7 +238,7 @@ class LmsApi(BaseApiClient):
         with correct_exception():
             return self._client.api.enrollment.v1.unenroll.post(**params)
 
-    # This endpoint additionaly returns 500 when the EdxNotes backend service is unavailable.
+    # This endpoint additionally returns 500 when the EdxNotes backend service is unavailable.
     @_retry_lms_api()
     def retirement_retire_notes(self, learner):
         """
@@ -384,7 +384,7 @@ class CredentialsApi(BaseApiClient):
     @_retry_lms_api()
     def retire_learner(self, learner):
         """
-        Performs the learner retiement step for Credentials
+        Performs the learner retirement step for Credentials
         """
         params = {'data': {'username': learner['original_username']}}
         with correct_exception():
@@ -425,10 +425,9 @@ class DemographicsApi(BaseApiClient):
     @_retry_lms_api()
     def retire_learner(self, learner):
         """
-        Performs the learner retiement step for Credentials
+        Performs the learner retirement step for Demographics
         """
         # TODO: can we get LMS_USER_ID from this `learner` object?
         params = {'data': {'username': learner['original_username']}}
-        # TODO some call to the demographics service
         with correct_exception():
-            return self._client.demographics.api.retire.post(**params)
+            return self._client.demographics.api.v1.retire_demographics.post(**params)
