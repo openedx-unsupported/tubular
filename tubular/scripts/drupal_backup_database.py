@@ -17,19 +17,20 @@ from tubular import drupal  # pylint: disable=wrong-import-position
 
 
 @click.command()
+@click.option("--app_id", help="The application id for drupal instance.", type=str, required=True)
 @click.option("--env", help="The environment the database backup will take place in.", type=str, required=True)
-@click.option("--username", help="The Acquia username necessary to run the command.", type=str, required=True)
-@click.option("--password", help="The Acquia password necessary to run the command.", type=str, required=True)
-def backup_database(env, username, password):
+@click.option("--client_id", help="The Acquia api client id necessary to run the command.", type=str, required=True)
+@click.option("--secret", help="The Acquia password necessary to run the command.", type=str, required=True)
+def backup_database(app_id, env, client_id, secret):
     """
     Creates a backup of the database in the specified environment.
 
     Args:
-        env (str): The environment the database backup will take place in (e.g. test or prod)
-        username (str): The Acquia username necessary to run the command.
-        password (str): The Acquia password necessary to run the command.
-    """
-    drupal.backup_database(env, username, password)
+        app_id (str): The application id for drupal instance.
+        env (str): The environment to clear varnish caches in (e.g. test or prod)
+        client_id (str): The Acquia api client id necessary to run the command.
+        secret (str): The Acquia api secret key to run the command.    """
+    drupal.backup_database(app_id, env, client_id, secret)
 
 if __name__ == "__main__":
     backup_database()  # pylint: disable=no-value-for-parameter

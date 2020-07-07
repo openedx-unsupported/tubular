@@ -17,22 +17,24 @@ from tubular import drupal  # pylint: disable=wrong-import-position
 
 
 @click.command()
+@click.option("--app_id", help="The application id for drupal instance.", type=str, required=True)
 @click.option("--env", help="The environment to deploy code in.", type=str, required=True)
-@click.option("--username", help="The Acquia username necessary to run the command.", type=str, required=True)
-@click.option("--password", help="The Acquia password necessary to run the command.", type=str, required=True)
+@click.option("--client_id", help="The Acquia api client id necessary to run the command.", type=str, required=True)
+@click.option("--secret", help="The Acquia api secret key to run the command.", type=str, required=True)
 @click.option("--branch_or_tag", help="The branch or tag name to be deployed to the environment.",
               type=str, required=True)
-def deploy(env, username, password, branch_or_tag):
+def deploy(app_id, env, client_id, secret, branch_or_tag):
     """
     Deploys a given tag to the specified environment.
 
     Arguments:
+        app_id (str): The application id for drupal instance.
         env (str): The environment to deploy code in (e.g. test or prod)
-        username (str): The Acquia username necessary to run the command.
-        password (str): The Acquia password necessary to run the command.
+        client_id (str): The Acquia api client id necessary to run the command.
+        secret (str): The Acquia api secret key to run the command.
         branch_or_tag (str): The branch or tag to deploy to the specified environment.
     """
-    drupal.deploy(env, username, password, branch_or_tag)
+    drupal.deploy(app_id, env, client_id, secret, branch_or_tag)
 
 if __name__ == "__main__":
     deploy()  # pylint: disable=no-value-for-parameter

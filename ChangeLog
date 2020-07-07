@@ -1,6 +1,151 @@
 CHANGES
 =======
 
+* Upgrade Acquia Cloud Api endpoints
+* MICROBA-391 Allow custom field headings in partner report (#428)
+* lint
+* making args work?
+* Update variable names and comments to be more inclusive (#429)
+* more linter love
+* lint
+* more lint
+* lint and errors
+* delete extra colon
+* added script to setup.cfg
+* Tag releases to ensure they are not pruned prematurely
+* revise comment
+* adding alert\_opsgenie method
+* Fix readme, update python versions to match travis, and remove unused AUTHORS file (#424)
+* Upgrade the tubular requirements to move to httplib2 0.18.0
+* Add retry logic around Salesforce API call
+* Remove old comment (#421)
+* Ignore the dependabot context on test status
+* Add tests in python 3.8
+* fix tests
+* add retrays to frontend app cloudflare purge cache
+* Make cleanup\_asgs.py not wait for ASGs to delete
+* Make cleanup\_asgs.py more verbose to aid debugging
+* Retry on BackendErro when waiting for task completion
+* Backoff on MultipleImagesFoundException
+* Add retirement endpoint for pii owned by edx-proctoring (#411)
+* move slack token to params
+* clean tubular code of the debug statements
+* clean tubular code of the debug statements
+* slack token
+* slack token
+* fixed tubular to send messages to slack
+* adding logging stmts to slack api
+* debug slack
+* debug slack
+* cut down the asg delete tag
+* Fix pylint complaints
+* Add no-op mode for testing
+* Fix log lines to use format
+* Add missing import
+* Add exception logging in retrieve\_pull\_requests
+* Reraise exception
+* Updating message\_pr\_in\_range logging so we can debug what it cannot find
+* Fail retirement setup if hubspot key doesn't exist
+* Add new Hubspot API to retirement configuration
+* Address an inconsistent rebuildability of multisite mfe builds
+* Add hubpot API for user retirement
+* Fix 'dictionary changed size during iteration' error in gocd\_api.py
+* fix bug for retirement partner job in py 35
+* Allow for users.noreply.github.com emails that don't have numerical prefixes
+* Convert all recent-committer emails to lowercase
+* Allow cloudflare purge to be called via cmd line
+* Fix test errors from commit 2112f80
+* Add cloudflare cache clear script
+* Remove date part of edx-pipeline-bot message by default
+* Map @user.noreply.github.com emails back to their edx email addresses
+* Only use edx.org emails for opsgenie teams
+* Supported titles with nesting for better hierarchy
+* Format the current timestamp into release wiki titles on request
+* Add timeout retry to github repo and org initialization
+* Add better error messages when updating recent deployers
+* Add a script to fill an opsgenie team with users who had changes recently deployed to a service
+* Relax the atlassian-python-api version restriction to resolve requests versions
+* Sort requirements.in
+* Add an upgrade target to the Makefile
+* Don't require jenkins tokens because they aren't both always required
+* Revert "Revert "remove old retrieve ami script""
+* Revert "remove old retrieve ami script"
+* remove old retrieve ami script
+* Add tags from current edp back to yaml output
+* Switch to https URLs
+* Make script executable
+* Add symlink
+* fix
+* fix region
+* fix regex
+* updated tubular script to build from scratch
+* updated tubular script to build from scratch
+* Revert "tubular script"
+* Revert "debug"
+* debug
+* fixed script naming
+* fixed region
+* fixes
+* extract latest ami
+* extract latest ami
+* tubular script
+* feat: add npm package aliases to frontend builder (#370)
+* Make gocd creds variables/options consistent
+* Update Segment API to REST from GraphQL (#368)
+* Fix frontend multi build's app config heirarchy
+* Remove multi-bucket deployments for MFEs
+* Have multideploy MFEs also exist in single bucket
+* Output status of each test so you know what failed
+* Clarify comment
+* Make logger variables consistent
+* Style fixes
+* Style fixes
+* Update test
+* Allow advancer to check if ci failed DEVOPS-9053
+* Clarify comment
+* Taking repo ownership of GoCD (#361)
+* Remove python 3.4, no longer supported by PyGithub
+* Upgrade PyGithub to fix rate limit detection
+* Fix github tests for api rate limit logging
+* Fix FE multi-build script paths
+* Add new FE multi build and deploy scripts to setup
+* Fix more linter errors
+* Fix linter errors again
+* Fix linter errors
+* Move backoff logic into github API library
+* Fix jitter
+* Make frontend scripts executable
+* Fix issues with non-string exception data (#353)
+* Allow multisite MFEs to set own app config
+* Fix tests broken by PR #350
+* Add loggin of backoff and fix jitter
+* Add logging of rate limit
+* Use the correct set of values for the \_poll\_commit return
+* Correctly check the output of \_poll\_commit for success
+* Only keep polling while the commit is actually pending
+* Actually run the polling function
+* Allow for filtering of validations when checking status (and filter the common ones)
+* Handle Nones better in in check-suites
+* Report commit statuses by using both github statuses and check-suite results
+* Upgrade pyyaml to use latest secure release
+* Add error log when unable to decode Segment response as JSON
+* Update frontend scripts to use hostname
+* fix tests
+* use key name to terminate gocd instances
+* Extend backoff retries to Segment auth calls (#338)
+* Make seperate FE build and deploy scripts for multisite
+* Mark as Python 3.6 compliant
+* Make partner report cleanup respect environment (#335)
+* Fix bugs in partner report cleanup script, increase debug output (#333)
+* Update messages for jenkins job
+* Added messages for jenkins job
+* Add logging for failed wiki page creation
+* Retry Segment auth errors, bubble up auth error messages
+* Allow Segment error messages to bubble up
+* Fix csv writer for username replacement
+* Add symlink for replace\_usernames script
+* Add username replacement script
+* Fix the Proctoring retirement call
 * [retirement archiver] Make S3 credentials optional
 * add salesforce api and calls to retire user
 * Add link to slack room for debugging e2e failures
