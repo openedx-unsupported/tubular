@@ -14,7 +14,7 @@ from six import text_type
 MAX_TRIES = 4
 
 # These are the required/optional keys in the learner dict that contain IDs we need to retire from Segment.
-REQUIRED_IDENTIFYING_KEYS = ['id', 'original_username']
+REQUIRED_IDENTIFYING_KEYS = [('user', 'id'), 'original_username']
 OPTIONAL_IDENTIFYING_KEYS = ['ecommerce_segment_id']
 
 # The Segment Config API for bulk deleting users for a particular workspace
@@ -127,6 +127,19 @@ class SegmentApi:
         resp.raise_for_status()
         return resp
 
+    def _get_value_from_learner(self, learner, key):
+        """
+        Return the value from a learner dict for the given key or 2-tuple of keys.
+
+        Allows us to map things like learner['user']['id'] in a single entry in REQUIRED_IDENTIFYING_KEYS.
+        """
+        if isinstance(key, tuple):
+            val = learner[key[0]][key[1]]
+        else:
+            val = learner[key]
+
+        return text_type(val)
+
     def delete_learner(self, learner):
         """
         Delete a single Segment user using the bulk user deletion REST API.
@@ -151,17 +164,17 @@ class SegmentApi:
             LOG.info(
                 "Attempting Segment deletion with start index %s, end index %s for learners (%s, %s) through (%s, %s)",
                 start_idx, end_idx,
-                learners[start_idx]['id'], learners[start_idx]['original_username'],
-                learners[end_idx]['id'], learners[end_idx]['original_username']
+                learners[start_idx]['user']['id'], learners[start_idx]['original_username'],
+                learners[end_idx]['user']['id'], learners[end_idx]['original_username']
             )
 
             learner_vals = []
             for idx in range(start_idx, end_idx + 1):
                 for id_key in REQUIRED_IDENTIFYING_KEYS:
-                    learner_vals.append(text_type(learners[idx][id_key]))
+                    learner_vals.append(self._get_value_from_learner(learners[idx], id_key))
                 for id_key in OPTIONAL_IDENTIFYING_KEYS:
                     if id_key in learners[idx]:
-                        learner_vals.append(text_type(learners[idx][id_key]))
+                        learner_vals.append(self._get_value_from_learner(learners[idx], id_key))
 
             if len(learner_vals) >= MAXIMUM_USERS_IN_DELETE_REQUEST:
                 LOG.error(

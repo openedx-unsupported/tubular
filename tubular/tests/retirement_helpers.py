@@ -72,6 +72,40 @@ def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
     yaml.safe_dump(config, f)
 
 
+def get_fake_user_retirement():
+    """
+    Return a "learner" used in retirment in the serialized format we get from LMS.
+    """
+    return {
+        'id': 1,
+        'current_state': {
+            'id': 1,
+            'state_name': 'PENDING',
+            'state_execution_order': 10,
+        },
+        'last_state': {
+            'id': 1,
+            'state_name': 'PENDING',
+            'state_execution_order': 10,
+        },
+        'original_username': 'foo_username',
+        'original_email': 'foo@edx.invalid',
+        'original_name': 'Foo User',
+        'retired_username': 'retired_user__asdf123',
+        'retired_email': 'retired_user__asdf123@edx.invalid',
+        'ecommerce_segment_id': 'ecommerce-90',
+        'user': {
+            'id': 9009,
+            'username': 'foo_username',
+            'email': 'foo@edx.invalid',
+            'profile': {
+                'id': 10009,
+                'name': 'Foo User'
+            }
+        },
+    }
+
+
 def fake_google_secrets_file(f):
     """
     Create a fake google secrets file for a single test.

@@ -9,12 +9,12 @@ import requests
 from six import text_type
 
 from tubular.segment_api import SegmentApi, BULK_DELETE_URL
-
+from tubular.tests.retirement_helpers import get_fake_user_retirement
 
 FAKE_AUTH_TOKEN = 'FakeToken'
 TEST_SEGMENT_CONFIG = {
     'projects_to_retire': ['project_1', 'project_2'],
-    'learner': [{'id': 1, 'ecommerce_segment_id': 'ecommerce-20', 'original_username': 'test_user'}],
+    'learner': [get_fake_user_retirement(), ],
     'fake_base_url': 'https://segment.invalid/',
     'fake_auth_token': FAKE_AUTH_TOKEN,
     'fake_workspace': 'FakeEdx',
@@ -80,10 +80,12 @@ def test_bulk_delete_success(setup_bulk_delete):  # pylint: disable=redefined-ou
 
     assert mock_post.call_count == 1
 
-    learners_vals = []
-    for curr_key in ['id', 'original_username', 'ecommerce_segment_id']:
-        curr_id = learner[0][curr_key]
-        learners_vals.append(text_type(curr_id))
+    expected_learner = get_fake_user_retirement()
+    learners_vals = [
+        text_type(expected_learner['user']['id']),
+        expected_learner['original_username'],
+        expected_learner['ecommerce_segment_id'],
+    ]
 
     fake_json = {
         "regulation_type": "Suppress_With_Delete",
