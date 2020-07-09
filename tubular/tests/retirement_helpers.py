@@ -116,6 +116,8 @@ def get_fake_user_retirement(
                 "name": current_name
             }
         },
+        "created": "2018-10-18T20:08:03.724805",
+        "modified": "2018-10-18T20:08:03.724805",
     }
 
 
