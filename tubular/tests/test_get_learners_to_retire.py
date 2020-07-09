@@ -11,7 +11,7 @@ from slumber.exceptions import HttpClientError, HttpServerError
 from tubular.scripts.get_learners_to_retire import (
     get_learners_to_retire
 )
-from tubular.tests.retirement_helpers import fake_config_file
+from tubular.tests.retirement_helpers import fake_config_file, get_fake_user_retirement
 
 
 def _call_script(expected_user_files, cool_off_days=1, output_dir='test', user_count_error_threshold=200):
@@ -55,8 +55,8 @@ def test_success(*args, **kwargs):
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
     mock_get_learners_to_retire.return_value = [
-        {'original_username': 'test_user1'},
-        {'original_username': 'test_user2'},
+        get_fake_user_retirement(original_username='test_user1'),
+        get_fake_user_retirement(original_username='test_user2'),
     ]
 
     result = _call_script(2)
@@ -121,8 +121,8 @@ def test_too_many_users(*args, **kwargs):
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
     mock_get_learners_to_retire.return_value = [
-        {'original_username': 'test_user1'},
-        {'original_username': 'test_user2'},
+        get_fake_user_retirement(original_username='test_user1'),
+        get_fake_user_retirement(original_username='test_user2'),
     ]
 
     result = _call_script(0, user_count_error_threshold=1)

@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* Fix ID issue with Segment retirement API
 * Upgrade Acquia Cloud Api endpoints
 * MICROBA-391 Allow custom field headings in partner report (#428)
 * lint

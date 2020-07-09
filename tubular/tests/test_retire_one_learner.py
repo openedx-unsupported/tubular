@@ -17,7 +17,7 @@ from tubular.scripts.retire_one_learner import (
     ERR_USER_IN_WORKING_STATE,
     retire_learner
 )
-from tubular.tests.retirement_helpers import fake_config_file
+from tubular.tests.retirement_helpers import fake_config_file, get_fake_user_retirement
 
 
 def _call_script(username, fetch_ecom_segment_id=False):
@@ -58,12 +58,7 @@ def test_successful_retirement(*args, **kwargs):
     mock_lms_retire = kwargs['retirement_lms_retire']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
-    mock_get_retirement_state.return_value = {
-        'original_username': username,
-        'current_state': {
-            'state_name': 'PENDING'
-        }
-    }
+    mock_get_retirement_state.return_value = get_fake_user_retirement(original_username=username)
 
     result = _call_script(username, fetch_ecom_segment_id=True)
 
@@ -135,10 +130,7 @@ def test_bad_learner(*args, **kwargs):
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
 
     # Broken API call, no state returned
-    mock_get_retirement_state.return_value = {
-        'original_username': username
-    }
-
+    mock_get_retirement_state.side_effect = HttpNotFoundError
     result = _call_script(username)
 
     assert mock_get_access_token.call_count == 3
@@ -146,7 +138,6 @@ def test_bad_learner(*args, **kwargs):
     mock_update_learner_state.assert_not_called()
 
     assert result.exit_code == ERR_BAD_LEARNER
-    assert 'KeyError' in result.output
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
@@ -163,12 +154,10 @@ def test_user_in_working_state(*args, **kwargs):
     mock_update_learner_state = kwargs['update_learner_retirement_state']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
-    mock_get_retirement_state.return_value = {
-        'original_username': username,
-        'current_state': {
-            'state_name': 'RETIRING_FORUMS'
-        }
-    }
+    mock_get_retirement_state.return_value = get_fake_user_retirement(
+        original_username=username,
+        current_state_name='RETIRING_FORUMS'
+    )
 
     result = _call_script(username)
 
@@ -194,13 +183,10 @@ def test_user_in_bad_state(*args, **kwargs):
     mock_update_learner_state = kwargs['update_learner_retirement_state']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
-    mock_get_retirement_state.return_value = {
-        'original_username': username,
-        'current_state': {
-            'state_name': bad_state
-        }
-    }
-
+    mock_get_retirement_state.return_value = get_fake_user_retirement(
+        original_username=username,
+        current_state_name=bad_state
+    )
     result = _call_script(username)
 
     assert mock_get_access_token.call_count == 3
@@ -272,12 +258,10 @@ def test_skipping_states(*args, **kwargs):
     mock_lms_retire = kwargs['retirement_lms_retire']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
-    mock_get_retirement_state.return_value = {
-        'original_username': username,
-        'current_state': {
-            'state_name': 'EMAIL_LISTS_COMPLETE'
-        }
-    }
+    mock_get_retirement_state.return_value = get_fake_user_retirement(
+        original_username=username,
+        current_state_name='EMAIL_LISTS_COMPLETE'
+    )
 
     result = _call_script(username)
 
@@ -338,12 +322,9 @@ def test_get_segment_id_success(*args, **kwargs):
 
     # The learner starts off with these values, 'ecommerce_segment_id' is added during script
     # startup
-    mock_get_retirement_state.return_value = {
-        'original_username': username,
-        'current_state': {
-            'state_name': 'PENDING'
-        }
-    }
+    mock_get_retirement_state.return_value = get_fake_user_retirement(
+        original_username=username,
+    )
 
     _call_script(username, fetch_ecom_segment_id=True)
     mock_get_tracking_key.assert_called_once_with(mock_get_retirement_state.return_value)
@@ -375,12 +356,9 @@ def test_get_segment_id_not_found(*args, **kwargs):
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
     mock_get_tracking_key.side_effect = HttpNotFoundError('{} not found'.format(username))
 
-    mock_get_retirement_state.return_value = {
-        'original_username': username,
-        'current_state': {
-            'state_name': 'PENDING'
-        }
-    }
+    mock_get_retirement_state.return_value = get_fake_user_retirement(
+        original_username=username,
+    )
 
     result = _call_script(username, fetch_ecom_segment_id=True)
     mock_get_tracking_key.assert_called_once_with(mock_get_retirement_state.return_value)
@@ -414,6 +392,10 @@ def test_get_segment_id_error(*args, **kwargs):
 
     test_exception_message = 'Test Exception!'
     mock_get_tracking_key.side_effect = Exception(test_exception_message)
+
+    mock_get_retirement_state.return_value = get_fake_user_retirement(
+        original_username=username,
+    )
 
     mock_get_retirement_state.return_value = {
         'original_username': username,

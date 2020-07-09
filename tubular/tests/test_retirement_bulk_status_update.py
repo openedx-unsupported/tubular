@@ -15,7 +15,7 @@ from tubular.scripts.retirement_bulk_status_update import (
     ERR_UPDATING,
     update_statuses
 )
-from tubular.tests.retirement_helpers import fake_config_file
+from tubular.tests.retirement_helpers import fake_config_file, get_fake_user_retirement
 
 
 def _call_script(initial_state='COMPLETE', new_state='PENDING', start_date='2018-01-01', end_date='2018-01-15'):
@@ -47,10 +47,11 @@ def fake_learners_to_retire():
     A simple hard-coded list of fake learners with the only piece of
     information this script cares about.
     """
+
     return [
-        {'original_username': 'user1'},
-        {'original_username': 'user2'},
-        {'original_username': 'user3'},
+        get_fake_user_retirement(original_username="user1"),
+        get_fake_user_retirement(original_username="user2"),
+        get_fake_user_retirement(original_username="user3"),
     ]
 
 

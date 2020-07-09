@@ -46,9 +46,9 @@ def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
         'client_id': 'bogus id',
         'client_secret': 'supersecret',
         'base_urls': {
-            'credentials': 'https://credentials.stage.edx.org/',
-            'lms': 'https://stage-edx-edxapp.edx.org/',
-            'ecommerce': 'https://ecommerce.stage.edx.org/',
+            'credentials': 'https://credentials.stage.edx.invalid/',
+            'lms': 'https://stage-edx-edxapp.edx.invalid/',
+            'ecommerce': 'https://ecommerce.stage.edx.invalid/',
             'segment': 'https://segment.invalid/graphql',
         },
         'retirement_pipeline': TEST_RETIREMENT_PIPELINE,
@@ -72,35 +72,48 @@ def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
     yaml.safe_dump(config, f)
 
 
-def get_fake_user_retirement():
+def get_fake_user_retirement(
+        original_username="foo_username",
+        original_email="foo@edx.invalid",
+        original_name="Foo User",
+        retired_username="retired_user__asdf123",
+        retired_email="retired_user__asdf123",
+        ecommerce_segment_id="ecommerce-90",
+        user_id=9009,
+        current_username="foo_username",
+        current_email="foo@edx.invalid",
+        current_name="Foo User",
+        current_state_name="PENDING",
+        last_state_name="PENDING",
+):
     """
     Return a "learner" used in retirment in the serialized format we get from LMS.
     """
     return {
-        'id': 1,
-        'current_state': {
-            'id': 1,
-            'state_name': 'PENDING',
-            'state_execution_order': 10,
+        "id": 1,
+        "current_state": {
+            "id": 1,
+            "state_name": current_state_name,
+            "state_execution_order": 10,
         },
-        'last_state': {
-            'id': 1,
-            'state_name': 'PENDING',
-            'state_execution_order': 10,
+        "last_state": {
+            "id": 1,
+            "state_name": last_state_name,
+            "state_execution_order": 10,
         },
-        'original_username': 'foo_username',
-        'original_email': 'foo@edx.invalid',
-        'original_name': 'Foo User',
-        'retired_username': 'retired_user__asdf123',
-        'retired_email': 'retired_user__asdf123@edx.invalid',
-        'ecommerce_segment_id': 'ecommerce-90',
-        'user': {
-            'id': 9009,
-            'username': 'foo_username',
-            'email': 'foo@edx.invalid',
-            'profile': {
-                'id': 10009,
-                'name': 'Foo User'
+        "original_username": original_username,
+        "original_email": original_email,
+        "original_name": original_name,
+        "retired_username": retired_username,
+        "retired_email": retired_email,
+        "ecommerce_segment_id": ecommerce_segment_id,
+        "user": {
+            "id": user_id,
+            "username": current_username,
+            "email": current_email,
+            "profile": {
+                "id": 10009,
+                "name": current_name
             }
         },
     }
