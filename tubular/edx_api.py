@@ -238,7 +238,7 @@ class LmsApi(BaseApiClient):
         with correct_exception():
             return self._client.api.enrollment.v1.unenroll.post(**params)
 
-    # This endpoint additionaly returns 500 when the EdxNotes backend service is unavailable.
+    # This endpoint additionally returns 500 when the EdxNotes backend service is unavailable.
     @_retry_lms_api()
     def retirement_retire_notes(self, learner):
         """
@@ -384,7 +384,7 @@ class CredentialsApi(BaseApiClient):
     @_retry_lms_api()
     def retire_learner(self, learner):
         """
-        Performs the learner retiement step for Credentials
+        Performs the learner retirement step for Credentials
         """
         params = {'data': {'username': learner['original_username']}}
         with correct_exception():
@@ -404,7 +404,7 @@ class CredentialsApi(BaseApiClient):
 
 class DiscoveryApi(BaseApiClient):
     """
-    Discovery API client with convenience methods for making API calls)
+    Discovery API client with convenience methods for making API calls.
     """
     def replace_usernames(self, username_mappings):
         """
@@ -416,3 +416,23 @@ class DiscoveryApi(BaseApiClient):
         request_data = {"username_mappings": username_mappings}
         with correct_exception():
             return self._client.api.v1.replace_usernames.post(data=request_data)
+
+
+class DemographicsApi(BaseApiClient):
+    """
+    Demographics API client.
+    """
+    @_retry_lms_api()
+    def retire_learner(self, learner):
+        """
+        Performs the learner retirement step for Demographics. Passes the learner's LMS User Id instead of username.
+        """
+        params = {'data': {'lms_user_id': learner['user']['id']}}
+        # If the user we are retiring has no data in the Demographics DB the request will return a 404. We
+        # catch the HttpNotFoundError and return True in order to prevent this error getting raised and
+        # incorrectly causing the learner to enter an ERROR state during retirement.
+        try:
+            with correct_exception():
+                return self._client.demographics.api.v1.retire_demographics.post(**params)
+        except HttpNotFoundError:
+            return True
