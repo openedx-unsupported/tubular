@@ -16,7 +16,7 @@ from tubular.scripts.retirement_archive_and_cleanup import (
     ERR_SETUP_FAILED,
     archive_and_cleanup
 )
-from tubular.tests.retirement_helpers import fake_config_file
+from tubular.tests.retirement_helpers import fake_config_file, get_fake_user_retirement
 
 
 def _call_script(cool_off_days=37):
@@ -45,21 +45,15 @@ def _fake_learner(ordinal):
     """
     Creates a simple fake learner
     """
-    return {
-        'user': {'id': ordinal},
-        'original_username': 'test{}'.format(ordinal),
-        'original_email': 'test{}@edx.invalid'.format(ordinal),
-        'original_name': 'test {}'.format(ordinal),
-        'retired_username': 'retired_{}'.format(ordinal),
-        'retired_email': 'retired_test{}@edx.invalid'.format(ordinal),
-        'last_state': {
-            'id': 30,
-            'state_name': 'COMPLETE',
-            'state_execution_order': 30
-        },
-        'created': '2018-10-18T20:08:03.724805',
-        'modified': '2018-10-18T20:08:03.724805',
-    }
+    return get_fake_user_retirement(
+        user_id=ordinal,
+        original_username='test{}'.format(ordinal),
+        original_email='test{}@edx.invalid'.format(ordinal),
+        original_name='test {}'.format(ordinal),
+        retired_username='retired_{}'.format(ordinal),
+        retired_email='retired_test{}@edx.invalid'.format(ordinal),
+        last_state_name='COMPLETE'
+    )
 
 
 def fake_learners_to_retire():
