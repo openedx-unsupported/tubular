@@ -73,6 +73,7 @@ def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
 
 
 def get_fake_user_retirement(
+        retirement_id=1,
         original_username="foo_username",
         original_email="foo@edx.invalid",
         original_name="Foo User",
@@ -90,7 +91,7 @@ def get_fake_user_retirement(
     Return a "learner" used in retirment in the serialized format we get from LMS.
     """
     return {
-        "id": 1,
+        "id": retirement_id,
         "current_state": {
             "id": 1,
             "state_name": current_state_name,
