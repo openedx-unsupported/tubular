@@ -178,19 +178,15 @@ class SegmentApi:
         # Send a list of one learner to be deleted by the multiple learner deletion call.
         return self.delete_learners([learner], 1)
 
-    def unsuppress_learners_by_key(self, key, learners, ids_to_skip, chunk_size, beginning_idx=0):
+    def unsuppress_learners_by_key(self, key, learners, chunk_size, beginning_idx=0):
         """
         Sets up the Segment REST API calls to UNSUPPRESS users in chunks.
 
         :param key: Key in the learner dict to pull the ID we care about from.
         :param learners: List of learner dicts to be worked on. We only use the key passed in.
-        :param ids_to_skip: List of IDs that we should not UNSUPPRESS.
         :param chunk_size: How many learners should be retired in this batch.
         :param beginning_idx: Index into learners where this batch should start.
         """
-        # Force all skip ids to strings, since that's what they'll be compared with
-        ids_to_skip = [text_type(id) for id in ids_to_skip]
-
         curr_idx = beginning_idx
         while curr_idx < len(learners):
             start_idx = curr_idx
@@ -206,9 +202,7 @@ class SegmentApi:
 
             learner_vals = []
             for idx in range(start_idx, end_idx + 1):
-                learner_val = self._get_value_from_learner(learners[idx], key)
-                if learner_val not in ids_to_skip:
-                    learner_vals.append(learner_val)
+                learner_vals.append(self._get_value_from_learner(learners[idx], key))
 
             if len(learner_vals) >= MAXIMUM_USERS_IN_REGULATION_REQUEST:
                 LOG.error(

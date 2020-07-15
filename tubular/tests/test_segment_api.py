@@ -129,7 +129,7 @@ def test_bulk_unsuppress_success(setup_regulation_api):  # pylint: disable=redef
     mock_post.return_value = FakeResponse()
 
     learner = TEST_SEGMENT_CONFIG['learner']
-    segment.unsuppress_learners_by_key('original_username', learner, [], 100)
+    segment.unsuppress_learners_by_key('original_username', learner, 100)
 
     assert mock_post.call_count == 1
 
@@ -149,38 +149,6 @@ def test_bulk_unsuppress_success(setup_regulation_api):  # pylint: disable=redef
     )
 
 
-def test_bulk_unsuppress_skip_keys(setup_regulation_api):  # pylint: disable=redefined-outer-name
-    """
-    Test that skip keys are actually skipped
-    """
-    mock_post, segment = setup_regulation_api
-    mock_post.return_value = FakeResponse()
-
-    learners = [
-        get_fake_user_retirement(retirement_id=1),
-        get_fake_user_retirement(retirement_id=2),
-        get_fake_user_retirement(retirement_id=3)
-    ]
-
-    # This should skip the second username
-    segment.unsuppress_learners_by_key('id', learners, [2, ], 100)
-
-    assert mock_post.call_count == 1
-
-    fake_json = {
-        "regulation_type": "Unsuppress",
-        "attributes": {
-            "name": "userId",
-            "values": ["1", "3"]
-        }
-    }
-
-    url = TEST_SEGMENT_CONFIG['fake_base_url'] + BULK_REGULATE_URL.format(TEST_SEGMENT_CONFIG['fake_workspace'])
-    mock_post.assert_any_call(
-        url, json=fake_json, headers=TEST_SEGMENT_CONFIG['headers']
-    )
-
-
 def test_bulk_unsuppress_error(setup_regulation_api, caplog):  # pylint: disable=redefined-outer-name
     """
     Test simple error case
@@ -190,7 +158,7 @@ def test_bulk_unsuppress_error(setup_regulation_api, caplog):  # pylint: disable
 
     learner = TEST_SEGMENT_CONFIG['learner']
     with pytest.raises(Exception):
-        segment.unsuppress_learners_by_key('original_username', learner, [], 100)
+        segment.unsuppress_learners_by_key('original_username', learner, 100)
 
     assert mock_post.call_count == 4
     assert "Error was encountered for for params:" in caplog.text
