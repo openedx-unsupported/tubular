@@ -435,4 +435,5 @@ class DemographicsApi(BaseApiClient):
             with correct_exception():
                 return self._client.demographics.api.v1.retire_demographics.post(**params)
         except HttpNotFoundError:
+            LOG.info("No demographics data found for user")
             return True
