@@ -161,7 +161,7 @@ class SegmentApi:
         # eat the TypeError / KeyError since they won't be relevant.
         except (TypeError, KeyError, requests.exceptions.HTTPError, JSONDecodeError) as exc:
             LOG.exception(exc)
-            err = u'Error was encountered for for params: {} \n\n Response: {}'.format(
+            err = u'Error was encountered for params: {} \n\n Response: {}'.format(
                 params,
                 text_type(resp_json)
             ).encode('utf-8')
@@ -169,14 +169,14 @@ class SegmentApi:
 
             raise Exception(err)
 
-    def delete_learner(self, learner):
+    def delete_and_suppress_learner(self, learner):
         """
-        Delete a single Segment user using the bulk user deletion REST API.
+        Delete AND suppress a single Segment user using the bulk user deletion REST API.
 
         :param learner: Single user retirement status row with its fields.
         """
         # Send a list of one learner to be deleted by the multiple learner deletion call.
-        return self.delete_learners([learner], 1)
+        return self.delete_and_suppress_learners([learner], 1)
 
     def unsuppress_learners_by_key(self, key, learners, chunk_size, beginning_idx=0):
         """
@@ -191,7 +191,7 @@ class SegmentApi:
         while curr_idx < len(learners):
             start_idx = curr_idx
             end_idx = min(start_idx + chunk_size - 1, len(learners) - 1)
-            print("{}, {}, {}".format(start_idx, end_idx, learners))
+
             LOG.info(
                 "Attempting unsuppress for key '%s', start index %s, end index %s for learners '%s' through '%s'",
                 key,
@@ -223,7 +223,7 @@ class SegmentApi:
 
             curr_idx += chunk_size
 
-    def delete_learners(self, learners, chunk_size, beginning_idx=0):
+    def delete_and_suppress_learners(self, learners, chunk_size, beginning_idx=0):
         """
         Sets up the Segment REST API calls to GDPR-delete users in chunks.
 

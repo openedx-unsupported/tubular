@@ -60,7 +60,7 @@ def _call_script(expect_success=True, config_orgs=None, learners_to_delete=None)
     return result
 
 
-@patch('tubular.segment_api.SegmentApi.delete_learners')
+@patch('tubular.segment_api.SegmentApi.delete_and_suppress_learners')
 def test_successful_deletion(*args):
     mock_delete_learners = args[0]
 
@@ -76,7 +76,7 @@ def test_successful_deletion(*args):
     assert mock_delete_learners.call_count == 1
 
 
-@patch('tubular.segment_api.SegmentApi.delete_learners')
+@patch('tubular.segment_api.SegmentApi.delete_and_suppress_learners')
 def test_unknown_error(*args):
     mock_delete_learners = args[0]
     mock_delete_learners.side_effect = Exception('Unknown error.')

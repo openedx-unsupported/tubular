@@ -76,7 +76,7 @@ def test_bulk_delete_success(setup_regulation_api):  # pylint: disable=redefined
     mock_post.return_value = FakeResponse()
 
     learner = TEST_SEGMENT_CONFIG['learner']
-    segment.delete_learners(learner, 1000)
+    segment.delete_and_suppress_learners(learner, 1000)
 
     assert mock_post.call_count == 1
 
@@ -110,10 +110,10 @@ def test_bulk_delete_error(setup_regulation_api, caplog):  # pylint: disable=red
 
     learner = TEST_SEGMENT_CONFIG['learner']
     with pytest.raises(Exception):
-        segment.delete_learners(learner, 1000)
+        segment.delete_and_suppress_learners(learner, 1000)
 
     assert mock_post.call_count == 4
-    assert "Error was encountered for for params:" in caplog.text
+    assert "Error was encountered for params:" in caplog.text
     assert "9009" in caplog.text
     assert "foo_username" in caplog.text
     assert "ecommerce-90" in caplog.text
@@ -161,7 +161,7 @@ def test_bulk_unsuppress_error(setup_regulation_api, caplog):  # pylint: disable
         segment.unsuppress_learners_by_key('original_username', learner, 100)
 
     assert mock_post.call_count == 4
-    assert "Error was encountered for for params:" in caplog.text
+    assert "Error was encountered for params:" in caplog.text
     assert "9009" not in caplog.text
     assert "foo_username" in caplog.text
     assert "ecommerce-90" not in caplog.text
