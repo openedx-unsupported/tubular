@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 """
-Command-line script to bulk delete users from Segment.
+Command-line script to bulk unsuppress users from Segment.
 """
 from __future__ import absolute_import, unicode_literals
 
@@ -30,13 +30,16 @@ DEFAULT_CHUNK_SIZE = 5000
 ERR_NO_CONFIG = -1
 ERR_BAD_CONFIG = -2
 ERR_NO_CSV_FILE = -3
-ERR_DELETING_USERS = -4
+ERR_UNSUPPRESSING_USERS = -4
+ERR_BAD_KEY = -5
 
-SCRIPT_SHORTNAME = 'bulk_delete_segment_users'
+SCRIPT_SHORTNAME = 'bulk_unsuppress_segment_users'
 LOG = partial(_log, SCRIPT_SHORTNAME)
 FAIL = partial(_fail, SCRIPT_SHORTNAME)
 FAIL_EXCEPTION = partial(_fail_exception, SCRIPT_SHORTNAME)
 CONFIG_OR_EXIT = partial(_config_or_exit, FAIL_EXCEPTION, ERR_BAD_CONFIG)
+
+KNOWN_KEYS = ('retirement_id', 'id', 'original_username', 'ecommerce_segment_id')
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
@@ -52,26 +55,33 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
     help='YAML file that contains retirement-related configuration for this environment.'
 )
 @click.option(
-    '--retired_users_csv',
-    help='CSV file with all users to delete from Segment.'
+    '--suppressed_users_csv',
+    help='CSV file with all users to unsuppress from Segment.'
+)
+@click.option(
+    '--user_key',
+    help='The key in the user dict we should unsuppress. One of: {}'.format(KNOWN_KEYS)
 )
 @click.option(
     '--chunk_size',
     default=DEFAULT_CHUNK_SIZE,
-    help='Maximum number of Segment deletions to perform in each deletion request.'
+    help='Maximum number of Segment regulations to perform in each deletion request.'
 )
-def bulk_delete_segment_users(dry_run, config_file, retired_users_csv, chunk_size):
+def bulk_unsuppress_segment_users(dry_run, config_file, suppressed_users_csv, user_key, chunk_size):
     """
-    Deletes the users in the CSV file from Segment.
+    Unsuppresses the users in the CSV file from Segment.
     """
     if not config_file:
         FAIL(ERR_NO_CONFIG, 'No config file passed in.')
 
-    if not retired_users_csv:
+    if not suppressed_users_csv:
         FAIL(ERR_NO_CSV_FILE, 'No users CSV file passed in.')
 
-    LOG('Starting Segment user deletion using config file "{}" and users file "{}"'.format(
-        config_file, retired_users_csv
+    if not user_key or user_key not in KNOWN_KEYS:
+        FAIL(ERR_BAD_KEY, 'Invalid key passed in {}. Must be one of {}'.format(user_key, KNOWN_KEYS))
+
+    LOG('Starting Segment user unsuppression using config file "{}" and users file "{}"'.format(
+        config_file, suppressed_users_csv
     ))
 
     config = CONFIG_OR_EXIT(config_file)
@@ -83,14 +93,14 @@ def bulk_delete_segment_users(dry_run, config_file, retired_users_csv, chunk_siz
     segment_api = SegmentApi(segment_base_url, auth_token, workplace_slug)
 
     # Read the CSV file. Log the number of user rows read.
-    with open(retired_users_csv, 'r') as csv_file:
+    with open(suppressed_users_csv, 'r') as csv_file:
         users_reader = csv.reader(csv_file)
         users_rows = list(users_reader)
-        LOG("Read {} user rows from CSV file '{}'.".format(len(users_rows), retired_users_csv))
+        LOG("Read {} user rows from CSV file '{}'.".format(len(users_rows), suppressed_users_csv))
 
-    users_to_delete = []
+    users = []
     for user_info in users_rows:
-        users_to_delete.append(
+        users.append(
             {
                 'retirement_id': user_info[0],
                 'id': user_info[1],
@@ -98,14 +108,14 @@ def bulk_delete_segment_users(dry_run, config_file, retired_users_csv, chunk_siz
                 'ecommerce_segment_id': user_info[3]
             }
         )
-    LOG('Attempting Segment deletion of {} users...'.format(len(users_to_delete)))
+    LOG('Attempting Segment unsuppression of {} users...'.format(len(users)))
     if not dry_run:
         try:
-            segment_api.delete_and_suppress_learners(users_to_delete, chunk_size)
+            segment_api.unsuppress_learners_by_key(user_key, users, chunk_size)
         except Exception as exc:  # pylint: disable=broad-except
-            FAIL_EXCEPTION(ERR_DELETING_USERS, 'Unexpected error occurred!', exc)
+            FAIL_EXCEPTION(ERR_UNSUPPRESSING_USERS, 'Unexpected error occurred!', exc)
 
 
 if __name__ == '__main__':
     # pylint: disable=unexpected-keyword-arg, no-value-for-parameter
-    bulk_delete_segment_users(auto_envvar_prefix='RETIREMENT')
+    bulk_unsuppress_segment_users(auto_envvar_prefix='RETIREMENT')

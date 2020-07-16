@@ -8,7 +8,7 @@ import pytest
 import requests
 from six import text_type
 
-from tubular.segment_api import SegmentApi, BULK_DELETE_URL
+from tubular.segment_api import SegmentApi, BULK_REGULATE_URL
 from tubular.tests.retirement_helpers import get_fake_user_retirement
 
 FAKE_AUTH_TOKEN = 'FakeToken'
@@ -54,7 +54,7 @@ class FakeErrorResponse:
 
 
 @pytest.fixture
-def setup_bulk_delete():
+def setup_regulation_api():
     """
     Fixture to setup common bulk delete items.
     """
@@ -68,15 +68,15 @@ def setup_bulk_delete():
         yield mock_post, segment
 
 
-def test_bulk_delete_success(setup_bulk_delete):  # pylint: disable=redefined-outer-name
+def test_bulk_delete_success(setup_regulation_api):  # pylint: disable=redefined-outer-name
     """
     Test simple success case
     """
-    mock_post, segment = setup_bulk_delete
+    mock_post, segment = setup_regulation_api
     mock_post.return_value = FakeResponse()
 
     learner = TEST_SEGMENT_CONFIG['learner']
-    segment.delete_learners(learner, 1000)
+    segment.delete_and_suppress_learners(learner, 1000)
 
     assert mock_post.call_count == 1
 
@@ -95,23 +95,75 @@ def test_bulk_delete_success(setup_bulk_delete):  # pylint: disable=redefined-ou
         }
     }
 
-    url = TEST_SEGMENT_CONFIG['fake_base_url'] + BULK_DELETE_URL.format(TEST_SEGMENT_CONFIG['fake_workspace'])
+    url = TEST_SEGMENT_CONFIG['fake_base_url'] + BULK_REGULATE_URL.format(TEST_SEGMENT_CONFIG['fake_workspace'])
     mock_post.assert_any_call(
         url, json=fake_json, headers=TEST_SEGMENT_CONFIG['headers']
     )
 
 
-def test_bulk_delete_error(setup_bulk_delete, caplog):  # pylint: disable=redefined-outer-name
+def test_bulk_delete_error(setup_regulation_api, caplog):  # pylint: disable=redefined-outer-name
     """
     Test simple error case
     """
-    mock_post, segment = setup_bulk_delete
+    mock_post, segment = setup_regulation_api
     mock_post.return_value = FakeErrorResponse()
 
     learner = TEST_SEGMENT_CONFIG['learner']
     with pytest.raises(Exception):
-        segment.delete_learners(learner, 1000)
+        segment.delete_and_suppress_learners(learner, 1000)
 
     assert mock_post.call_count == 4
-    assert "Error was encountered for learners between start/end indices (0, 0)" in caplog.text
-    assert "{'error': 'Test error message'}" in caplog.text
+    assert "Error was encountered for params:" in caplog.text
+    assert "9009" in caplog.text
+    assert "foo_username" in caplog.text
+    assert "ecommerce-90" in caplog.text
+    assert "Suppress_With_Delete" in caplog.text
+    assert "Test error message" in caplog.text
+
+
+def test_bulk_unsuppress_success(setup_regulation_api):  # pylint: disable=redefined-outer-name
+    """
+    Test simple success case
+    """
+    mock_post, segment = setup_regulation_api
+    mock_post.return_value = FakeResponse()
+
+    learner = TEST_SEGMENT_CONFIG['learner']
+    segment.unsuppress_learners_by_key('original_username', learner, 100)
+
+    assert mock_post.call_count == 1
+
+    expected_learner = get_fake_user_retirement()
+
+    fake_json = {
+        "regulation_type": "Unsuppress",
+        "attributes": {
+            "name": "userId",
+            "values": [expected_learner['original_username'], ]
+        }
+    }
+
+    url = TEST_SEGMENT_CONFIG['fake_base_url'] + BULK_REGULATE_URL.format(TEST_SEGMENT_CONFIG['fake_workspace'])
+    mock_post.assert_any_call(
+        url, json=fake_json, headers=TEST_SEGMENT_CONFIG['headers']
+    )
+
+
+def test_bulk_unsuppress_error(setup_regulation_api, caplog):  # pylint: disable=redefined-outer-name
+    """
+    Test simple error case
+    """
+    mock_post, segment = setup_regulation_api
+    mock_post.return_value = FakeErrorResponse()
+
+    learner = TEST_SEGMENT_CONFIG['learner']
+    with pytest.raises(Exception):
+        segment.unsuppress_learners_by_key('original_username', learner, 100)
+
+    assert mock_post.call_count == 4
+    assert "Error was encountered for params:" in caplog.text
+    assert "9009" not in caplog.text
+    assert "foo_username" in caplog.text
+    assert "ecommerce-90" not in caplog.text
+    assert "Unsuppress" in caplog.text
+    assert "Test error message" in caplog.text
