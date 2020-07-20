@@ -204,6 +204,13 @@ class GoCDAPI:
         now = datetime.now()
         recent = now - timedelta(minutes=cutoff)
 
+        # Ignore the following repos as changes in them don't go out with deployments
+        ignore_repos = [
+            'edx-ops/edge-secure',
+            'edx-ops/edx-secure',
+            'edx/edx-internal',
+            'edx/edge-internal',
+        ]
         recent_committers = set()
         for pipeline_instance in self.client.pipelines.full_history(pipeline):
             is_recent = any(_is_recent_stage(pipeline_instance, stage, recent) for stage in stages)
@@ -212,7 +219,8 @@ class GoCDAPI:
                     modification.user_name.lower()
                     for material_revision in pipeline_instance.data.build_cause.material_revisions
                     for modification in material_revision.modifications
-                    if material_revision.changed and material_revision.material.type == 'Git'
+                    if material_revision.changed and material_revision.material.type == 'Git' and
+                    not any(repo in material_revision.material.description for repo in ignore_repos)
                 )
             else:
                 break
