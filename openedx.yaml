@@ -6,3 +6,4 @@ supporting_teams:
 nick: tubul
 oeps:
   oep-7: true     # Python 3.6
+  oep-18: true

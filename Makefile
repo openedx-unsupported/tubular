@@ -12,7 +12,11 @@ quality:
 test:
 	tox
 
+# Define PIP_COMPILE_OPTS=-v to get more information during make upgrade.
+PIP_COMPILE = pip-compile --no-emit-trusted-host --no-index --rebuild --upgrade  $(PIP_COMPILE_OPTS)
+
+upgrade: export CUSTOM_COMPILE_COMMAND=make upgrade
 upgrade:
-	pip install -qr pip-tools.txt
-	pip-compile -v --no-emit-trusted-host --no-index --rebuild --upgrade pip-tools.in
-	pip-compile -v --no-emit-trusted-host --no-index --rebuild --upgrade requirements.in
+	pip install -qr requirements/pip-tools.txt
+	$(PIP_COMPILE) -o requirements/pip-tools.txt requirements/pip-tools.in
+	$(PIP_COMPILE) -o requirements/base.txt requirements/base.in
