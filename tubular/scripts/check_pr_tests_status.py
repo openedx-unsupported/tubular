@@ -102,18 +102,33 @@ def check_tests(
     if input_file:
         input_vars = yaml.safe_load(io.open(input_file, 'r'))
         pr_number = input_vars['pr_number']
-        status_success, test_statuses = gh_utils.check_combined_status_pull_request(pr_number)
+        combined_status_success, test_statuses = gh_utils.check_combined_status_pull_request(pr_number)
         git_obj = 'PR #{}'.format(pr_number)
     elif pr_number:
-        status_success, test_statuses = gh_utils.check_combined_status_pull_request(pr_number)
+        combined_status_success, test_statuses = gh_utils.check_combined_status_pull_request(pr_number)
         git_obj = 'PR #{}'.format(pr_number)
     elif commit_hash:
-        status_success, test_statuses = gh_utils.check_combined_status_commit(commit_hash)
+        combined_status_success, test_statuses = gh_utils.check_combined_status_commit(commit_hash)
         git_obj = 'commit hash {}'.format(commit_hash)
 
     LOG.info("{}: Combined status of {} is {}.".format(
-        sys.argv[0], git_obj, "success" if status_success else "failed"
+        sys.argv[0], git_obj, "success" if combined_status_success else "failed"
     ))
+
+    ignore_list = ['GitHub Actions']
+
+    status_success = True
+
+    for test_name, details in test_statuses.items():
+        url, test_status_string = details.split(" ", 1)
+        test_status_success = True if test_status_string == "success" else False
+        status_string = "success" if test_status_success else "failed"
+        if not test_status_success:
+            if test_name in ignore_list:
+                LOG.info("Ignoring failure of \"{test_name}\" because it is in the ignore list".format(test_name=test_name))
+            else:
+                LOG.info("Commit failed due to \"{test_name}\": {details}".format(test_name=test_name, details=details))
+                status_success = False
 
     dirname = os.path.dirname(out_file.name)
     if dirname:
