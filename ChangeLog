@@ -1,7 +1,14 @@
 CHANGES
 =======
 
-* Fix ID issue with Segment retirement API
+* Pin pytest to fix test failures
+* Ignore Github Actions Results PSRE-168
+* Ignore internal & secure in recent deployers
+* OEP-18 compliance
+* Add Segment unsuppression API (#435)
+* MICROBA-447 | Add logging for demographics retirement
+* Fix Segment retirement ID issue (#434)
+* MICROBA-447 | Add support for removing user data from Demographics IDA
 * Upgrade Acquia Cloud Api endpoints
 * MICROBA-391 Allow custom field headings in partner report (#428)
 * lint
