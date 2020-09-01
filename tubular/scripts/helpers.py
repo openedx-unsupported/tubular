@@ -22,7 +22,7 @@ from six import text_type
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from tubular.edx_api import CredentialsApi, DemographicsApi, EcommerceApi, LmsApi  # pylint: disable=wrong-import-position
+from tubular.edx_api import CredentialsApi, DemographicsApi, EcommerceApi, LicenseManagerApi, LmsApi  # pylint: disable=wrong-import-position
 from tubular.segment_api import SegmentApi   # pylint: disable=wrong-import-position
 from tubular.sailthru_api import SailthruApi   # pylint: disable=wrong-import-position
 from tubular.salesforce_api import SalesforceApi   # pylint: disable=wrong-import-position
@@ -152,6 +152,7 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
         credentials_base_url = config['base_urls'].get('credentials', None)
         segment_base_url = config['base_urls'].get('segment', None)
         demographics_base_url = config['base_urls'].get('demographics', None)
+        license_manager_base_url = config['base_urls'].get('license_manager', None)
         client_id = config['client_id']
         client_secret = config['client_secret']
         sailthru_key = config.get('sailthru_key', None)
@@ -202,6 +203,14 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
 
         if demographics_base_url:
             config['DEMOGRAPHICS'] = DemographicsApi(lms_base_url, demographics_base_url, client_id, client_secret)
+
+        if license_manager_base_url:
+            config['LICENSE_MANAGER'] = LicenseManagerApi(
+                lms_base_url,
+                license_manager_base_url,
+                client_id,
+                client_secret,
+            )
 
         if segment_base_url:
             config['SEGMENT'] = SegmentApi(
