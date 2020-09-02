@@ -120,14 +120,15 @@ def check_tests(
     status_success = True
 
     for test_name, details in test_statuses.items():
-        url, test_status_string = details.split(" ", 1)
-        test_status_success = True if test_status_string == "success" else False
-        status_string = "success" if test_status_success else "failed"
+        _url, test_status_string = details.split(" ", 1)
+        test_status_success = bool(test_status_string == "success")
         if not test_status_success:
             if test_name in ignore_list:
-                LOG.info("Ignoring failure of \"{test_name}\" because it is in the ignore list".format(test_name=test_name))
+                LOG.info("Ignoring failure of \"{test_name}\" because it is in the ignore list".format(
+                         test_name=test_name))
             else:
-                LOG.info("Commit failed due to \"{test_name}\": {details}".format(test_name=test_name, details=details))
+                LOG.info("Commit failed due to \"{test_name}\": {details}".format(
+                         test_name=test_name, details=details))
                 status_success = False
 
     dirname = os.path.dirname(out_file.name)
