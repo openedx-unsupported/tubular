@@ -437,3 +437,30 @@ class DemographicsApi(BaseApiClient):
         except HttpNotFoundError:
             LOG.info("No demographics data found for user")
             return True
+
+
+class LicenseManagerApi(BaseApiClient):
+    """
+    License Manager API client.
+    """
+    @_retry_lms_api()
+    def retire_learner(self, learner):
+        """
+        Performs the learner retirement step for License manager. Passes the learner's LMS User Id in addition to
+        username.
+        """
+        params = {
+            'data': {
+                'lms_user_id': learner['user']['id'],
+                'original_username': learner['original_username'],
+            },
+        }
+        # If the user we are retiring has no data in the License Manager DB the request will return a 404. We
+        # catch the HttpNotFoundError and return True in order to prevent this error getting raised and
+        # incorrectly causing the learner to enter an ERROR state during retirement.
+        try:
+            with correct_exception():
+                return self._client.api.v1.retire_user.post(**params)
+        except HttpNotFoundError:
+            LOG.info("No license manager data found for user")
+            return True
