@@ -61,7 +61,11 @@ class BaseApiClient:
                 oauth_base_url + OAUTH_ACCESS_TOKEN_URL, client_id, client_secret, token_type='jwt'
             )
         except HttpClientError as err:
-            LOG.error("API Error: {}".format(err.content))
+            LOG.error("API Error: {} with status code: {} fetching access token for client: {}".format(
+                err.content,
+                err.response.status_code,  # pylint: disable=no-member
+                client_id,
+            ))
             raise
 
 
@@ -128,10 +132,14 @@ def correct_exception():
             raise EdxGatewayTimeoutError(text_type(err))
         raise err
     except HttpClientError as err:
+        status_code = err.response.status_code  # pylint: disable=no-member
         if hasattr(err, 'content'):
-            LOG.error("API Error: {}".format(err.content))
+            LOG.error("API Error: {} with status code: {}".format(err.content, status_code))
         else:
-            LOG.error("API Error: {}".format(text_type(err)))
+            LOG.error("API Error: {} with status code: {} for response without content".format(
+                text_type(err),
+                status_code,
+            ))
         raise err
 
 
