@@ -119,10 +119,15 @@ def _retry_lms_api():
 
 
 @contextmanager
-def correct_exception():
+def correct_exception(log_404_as_error=True):
     """
     Context manager that differentiates 504 gateway timeouts from other 5xx server errors.
     Re-raises any unhandled exceptions.
+
+    Params:
+        log_404_as_error (bool): Whether or not to log a response code of 404 as an error. Pass False for
+            services like license-manager where 404 is a valid response that represents there was no data for that
+            user.
     """
     try:
         yield
@@ -133,6 +138,10 @@ def correct_exception():
         raise err
     except HttpClientError as err:
         status_code = err.response.status_code  # pylint: disable=no-member
+        if status_code == 404 and not log_404_as_error:
+            # Immediately raise the error so that a 404 isn't logged as an API error in this case.
+            raise err
+
         if hasattr(err, 'content'):
             LOG.error("API Error: {} with status code: {}".format(err.content, status_code))
         else:
@@ -440,7 +449,7 @@ class DemographicsApi(BaseApiClient):
         # catch the HttpNotFoundError and return True in order to prevent this error getting raised and
         # incorrectly causing the learner to enter an ERROR state during retirement.
         try:
-            with correct_exception():
+            with correct_exception(log_404_as_error=False):
                 return self._client.demographics.api.v1.retire_demographics.post(**params)
         except HttpNotFoundError:
             LOG.info("No demographics data found for user")
@@ -467,7 +476,7 @@ class LicenseManagerApi(BaseApiClient):
         # catch the HttpNotFoundError and return True in order to prevent this error getting raised and
         # incorrectly causing the learner to enter an ERROR state during retirement.
         try:
-            with correct_exception():
+            with correct_exception(log_404_as_error=False):
                 return self._client.api.v1.retire_user.post(**params)
         except HttpNotFoundError:
             LOG.info("No license manager data found for user")
