@@ -2,8 +2,6 @@
 Convenience functions built on top of boto that are useful
 when we deploy using asgard.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import os
 import logging
@@ -245,11 +243,9 @@ def validate_edp(ami_id, environment, deployment, play):
         True if AMI EDP matches specified EDP, otherwise False.
     """
     edp = edp_for_ami(ami_id)
-    edp_matched = (
-        edp.environment == environment and
-        edp.deployment == deployment and
-        edp.play == play
-    )
+    edp_matched = (edp.environment == environment and
+                   edp.deployment == deployment and
+                   edp.play == play)
     if not edp_matched:
         LOG.info("AMI {0} EDP did not match specified: {1} != ({2}, {3}, {4})".format(
             ami_id, edp, environment, deployment, play

@@ -1,8 +1,6 @@
 """
 Tests of the code interacting with the boto EC2 API.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import unittest
 import datetime
@@ -389,12 +387,14 @@ class TestEC2(unittest.TestCase):
             """
             Stub class for mocking datetime.
             """
+
             @classmethod
             def utcnow(cls):
                 """
                 Stub method returning a UTC datetime.
                 """
                 return cls(2016, 5, 18, 1, 0, 0, 0)
+
         built_in_datetime = ec2.datetime
 
         # The instance of datetime becomes local to the module it's import in to. We must patch datetime using the

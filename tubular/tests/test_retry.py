@@ -1,8 +1,6 @@
 """
 Tests of the code which retrys calls.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import os
 import datetime
@@ -28,6 +26,7 @@ class TestLifecycleManager(unittest.TestCase):
     """
     Tests for the retry decorator Lifecycle Manager
     """
+
     def test_max_attempts_less_than_1(self):
         self.assertRaises(retry.RetryException, retry.LifecycleManager, 0, 1, 1)
 
@@ -61,6 +60,7 @@ class TestLifecycleManager(unittest.TestCase):
             """
             Class to mock datetime.
             """
+
             @classmethod
             def utcnow(cls):
                 """
@@ -75,12 +75,16 @@ class TestLifecycleManager(unittest.TestCase):
         retry.datetime = NewDateTime
 
         manager = retry.LifecycleManager(1, 1, 300)
-        self.assertEqual(manager._max_datetime, curr_time + datetime.timedelta(0, 300))  # pylint: disable=protected-access
+        # pylint: disable=protected-access
+        self.assertEqual(manager._max_datetime,
+                         curr_time + datetime.timedelta(0, 300))
         self.assertFalse(manager.max_time_reached())
 
         # set the expiration in the past and ensure that max_time_reached returns True
         manager = retry.LifecycleManager(1, 1, -1)
-        self.assertEqual(manager._max_datetime, curr_time + datetime.timedelta(0, -1))  # pylint: disable=protected-access
+        # pylint: disable=protected-access
+        self.assertEqual(manager._max_datetime,
+                         curr_time + datetime.timedelta(0, -1))
         self.assertTrue(manager.max_time_reached())
 
         # restore the default functionality of retry.datetime

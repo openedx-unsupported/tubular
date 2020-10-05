@@ -3,7 +3,7 @@
 """
 Command-line script to merge a branch.
 """
-from __future__ import absolute_import
+
 
 import io
 from os import path

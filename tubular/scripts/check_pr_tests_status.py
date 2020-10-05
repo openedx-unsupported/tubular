@@ -3,8 +3,6 @@
 """
 Script to check the combined test status of a GitHub PR or commit SHA.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import io
 from os import path
@@ -71,8 +69,8 @@ LOG = logging.getLogger(__name__)
     default=None
 )
 def check_tests(
-    org, repo, token, input_file, pr_number, commit_hash,
-    out_file, exclude_contexts, include_contexts,
+        org, repo, token, input_file, pr_number, commit_hash,
+        out_file, exclude_contexts, include_contexts,
 ):
     """
     Check the current combined status of a GitHub PR/commit in a repo once.
@@ -125,10 +123,10 @@ def check_tests(
         if not test_status_success:
             if test_name in ignore_list:
                 LOG.info("Ignoring failure of \"{test_name}\" because it is in the ignore list".format(
-                         test_name=test_name))
+                    test_name=test_name))
             else:
                 LOG.info("Commit failed due to \"{test_name}\": {details}".format(
-                         test_name=test_name, details=details))
+                    test_name=test_name, details=details))
                 status_success = False
 
     dirname = os.path.dirname(out_file.name)

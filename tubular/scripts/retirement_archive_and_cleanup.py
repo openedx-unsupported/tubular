@@ -2,7 +2,7 @@
 """
 Command-line script to bulk archive and cleanup retired learners from LMS
 """
-from __future__ import absolute_import, unicode_literals
+
 
 from functools import partial
 from os import path

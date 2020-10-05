@@ -4,8 +4,6 @@
 Command-line script to check if a migration's duration exceeded a certain
 migration duration threshold.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import io
 import os

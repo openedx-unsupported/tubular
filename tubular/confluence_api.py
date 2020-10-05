@@ -2,7 +2,7 @@ u"""
 Functions for interacting with the Confluence API and for rendering
 Confluence pages.
 """
-from __future__ import absolute_import
+
 
 from collections import namedtuple
 from enum import Enum

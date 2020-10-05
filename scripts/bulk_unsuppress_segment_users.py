@@ -2,7 +2,7 @@
 """
 Command-line script to bulk unsuppress users from Segment.
 """
-from __future__ import absolute_import, unicode_literals
+
 
 from functools import partial
 from os import path

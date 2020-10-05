@@ -3,8 +3,6 @@
 """
 Command-line script to clear the Varnish cache for an environment.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import sys
 from os import path
@@ -32,6 +30,7 @@ def clear_varnish_cache(app_id, env, client_id, secret):
         secret (str): The Acquia api secret key to run the command.
     """
     drupal.clear_varnish_cache(app_id, env, client_id, secret)
+
 
 if __name__ == "__main__":
     clear_varnish_cache()  # pylint: disable=no-value-for-parameter

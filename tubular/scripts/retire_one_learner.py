@@ -21,7 +21,7 @@ retirement_pipeline:
     - ['RETIRING_ENROLLMENTS', 'ENROLLMENTS_COMPLETE', 'LMS', 'retirement_unenroll']
     - ['RETIRING_LMS', 'LMS_COMPLETE', 'LMS', 'retirement_lms_retire']
 """
-from __future__ import absolute_import, unicode_literals
+
 
 from functools import partial
 from os import path

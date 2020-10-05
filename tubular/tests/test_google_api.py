@@ -1,7 +1,7 @@
 """
 Test google API
 """
-from __future__ import unicode_literals
+
 
 from datetime import datetime, timedelta
 import json

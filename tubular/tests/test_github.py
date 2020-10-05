@@ -1,8 +1,6 @@
 """
 Tests for tubular.github_api.GitHubAPI
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 from datetime import datetime, date
 from hashlib import sha1
@@ -58,6 +56,7 @@ class GitHubApiTestCase(TestCase):
     Tests the requests creation/response handling for the Github API
     All Network calls should be mocked out.
     """
+
     def setUp(self):
         with patch.object(Github, 'get_organization', return_value=Mock(spec=Organization)) as org_mock:
             with patch.object(Github, 'get_repo', return_value=Mock(spec=Repository)) as repo_mock:
@@ -275,7 +274,9 @@ class GitHubApiTestCase(TestCase):
             commit_mock.get_combined_status.return_value = mock_combined_status
             self.repo_mock.get_commit.return_value = commit_mock
             commit_mock._requester = Mock()  # pylint: disable=protected-access
-            commit_mock._requester.requestJsonAndCheck.return_value = ({}, {'check_suites': []})   # pylint: disable=protected-access
+            # pylint: disable=protected-access
+            commit_mock._requester.requestJsonAndCheck.return_value = (
+                {}, {'check_suites': []})
         else:
             mock_combined_status = Mock(spec=CommitCombinedStatus)
             mock_combined_status.statuses = []
@@ -286,7 +287,8 @@ class GitHubApiTestCase(TestCase):
             commit_mock.get_combined_status.return_value = mock_combined_status
             self.repo_mock.get_commit.return_value = commit_mock
             commit_mock._requester = Mock()  # pylint: disable=protected-access
-            commit_mock._requester.requestJsonAndCheck.return_value = (  # pylint: disable=protected-access
+            # pylint: disable=protected-access
+            commit_mock._requester.requestJsonAndCheck.return_value = (
                 {},
                 {
                     'check_suites': [
@@ -346,9 +348,9 @@ class GitHubApiTestCase(TestCase):
         filterable_states = ['passed', 'pending', None, 'failed']
 
         with patch.object(
-            Github,
-            'get_organization',
-            return_value=Mock(name='org-mock', spec=Organization)
+                Github,
+                'get_organization',
+                return_value=Mock(name='org-mock', spec=Organization)
         ):
             with patch.object(Github, 'get_repo', return_value=Mock(name='repo-mock', spec=Repository)) as repo_mock:
                 api = GitHubAPI(
@@ -372,7 +374,8 @@ class GitHubApiTestCase(TestCase):
         commit_mock.get_combined_status.return_value = mock_combined_status
         repo_mock.return_value.get_commit.return_value = commit_mock
         commit_mock._requester = Mock(name='_requester')  # pylint: disable=protected-access
-        commit_mock._requester.requestJsonAndCheck.return_value = (  # pylint: disable=protected-access
+        # pylint: disable=protected-access
+        commit_mock._requester.requestJsonAndCheck.return_value = (
             {},
             {
                 'check_suites': [

@@ -1,6 +1,4 @@
 """ Commands to interact with the Slack API. """
-from __future__ import absolute_import
-from __future__ import print_function, unicode_literals
 
 import logging
 import requests
@@ -9,7 +7,6 @@ SLACK_API_URL = "https://slack.com"
 NOTIFICATION_POST = "/api/chat.postMessage"
 CONTENT_TYPE = "application/json"
 AUTH_HEADER_FIELD = "Authorization"
-
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)

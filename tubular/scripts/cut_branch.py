@@ -3,9 +3,6 @@
 """
 Command-line script to create a release candidate for an application
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import io
 from os import path
 import sys
@@ -154,6 +151,7 @@ def create_release_candidate(org,
             default_flow_style=False,
             explicit_start=True
         )
+
 
 if __name__ == "__main__":
     create_release_candidate()  # pylint: disable=no-value-for-parameter

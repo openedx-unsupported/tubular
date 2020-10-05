@@ -30,7 +30,7 @@ https://github.com/edx/edx-platform/blob/master/common/lib/xmodule/xmodule/modul
 
 """
 
-from __future__ import absolute_import
+
 from os import path
 
 import logging
