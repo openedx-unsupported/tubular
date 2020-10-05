@@ -1,8 +1,6 @@
 """
 Methods to interact with the Drupal API to perform various tasks.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import io
 import logging
@@ -10,7 +8,6 @@ import json
 import requests
 from tubular.utils.retry import retry
 from tubular.exception import BackendError
-
 
 ACQUIA_ENDPOINT = "https://cloud.acquia.com/api"
 DATABASE = "edx"

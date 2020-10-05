@@ -4,7 +4,7 @@
 Command-line script to push the results of a merge of private changes to public back over to the private
 repo to keep the repo branches in-sync.
 """
-from __future__ import absolute_import
+
 
 import io
 from os import path

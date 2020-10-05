@@ -3,8 +3,6 @@
 """
 Command-line script used to delete AWS EC2 instances that have been leftover from incomplete gocd runs
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import sys
 import logging

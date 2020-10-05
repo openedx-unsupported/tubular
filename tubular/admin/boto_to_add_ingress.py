@@ -4,8 +4,6 @@
 Command-line script which, for each ASG (app) in each VPC, adds a rule to each SG associated
 with the ASG's launch configuration that allows SSH ingress from the GoCD agents' SG.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import logging
 import six

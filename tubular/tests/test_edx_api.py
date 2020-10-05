@@ -1,9 +1,6 @@
 """
 Tests for edX API calls.
 """
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import unittest
 from ddt import ddt, data
@@ -19,6 +16,7 @@ class TestBaseApiClient(unittest.TestCase):
     """
     Test the edX base API client.
     """
+
     def test_get_access_token(self):
         """
         Test the get_access_token method.
@@ -67,6 +65,7 @@ class TestLmsApi(unittest.TestCase):
     """
     Test the edX LMS API client.
     """
+
     def test_retrieve_learner_queue(self):
         with patch('tubular.edx_api.BaseApiClient.get_access_token') as mock:
             mock.return_value = ('THIS_IS_A_JWT', None)

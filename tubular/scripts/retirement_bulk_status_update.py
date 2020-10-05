@@ -2,7 +2,7 @@
 """
 Command-line script to bulk update retirement states in LMS
 """
-from __future__ import absolute_import, unicode_literals
+
 
 from datetime import datetime
 from functools import partial

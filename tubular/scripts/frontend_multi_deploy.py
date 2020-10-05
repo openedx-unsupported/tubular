@@ -3,8 +3,6 @@
 """
 Command-line script to deploy a frontend app to s3.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import sys
 from functools import partial
@@ -17,7 +15,6 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.scripts.frontend_utils import FrontendDeployer  # pylint: disable=wrong-import-position
 from tubular.scripts.helpers import _log, _fail  # pylint: disable=wrong-import-position
-
 
 SCRIPT_SHORTNAME = 'Deploy frontend'
 LOG = partial(_log, SCRIPT_SHORTNAME)
@@ -70,6 +67,7 @@ def frontend_deploy(env_config_file, app_name, app_dist, purge_cache):
     deployer.deploy_site(bucket_name, app_dist)
     if purge_cache:
         deployer.purge_cache(bucket_name)
+
 
 if __name__ == "__main__":
     frontend_deploy()  # pylint: disable=no-value-for-parameter

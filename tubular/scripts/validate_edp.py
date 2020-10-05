@@ -3,8 +3,6 @@
 """
 Command-line script to validate that an AMI was built for a particular EDP.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 from os import path
 import sys
@@ -58,6 +56,7 @@ def validate_cli(ami_id, environment, deployment, play):
         sys.exit(1)
 
     sys.exit(0 if edp_matched else 1)
+
 
 if __name__ == "__main__":
     validate_cli()  # pylint: disable=no-value-for-parameter

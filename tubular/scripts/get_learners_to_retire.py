@@ -4,8 +4,6 @@
 Command-line script to retrieve list of learners that have requested to be retired.
 The script calls the appropriate LMS endpoint to get this list of learners.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 from os import path
 import io

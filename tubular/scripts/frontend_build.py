@@ -3,8 +3,6 @@
 """
 Command-line script to build a frontend application.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import os
 import sys
@@ -74,6 +72,7 @@ def frontend_build(common_config_file, env_config_file, app_name, version_file):
             env_config_file,
         )
     )
+
 
 if __name__ == "__main__":
     frontend_build()  # pylint: disable=no-value-for-parameter

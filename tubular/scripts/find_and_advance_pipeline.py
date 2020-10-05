@@ -4,9 +4,6 @@
 Command-line script to find the next release pipeline to advance
 and then advance it by triggering the manual stage.
 """
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
 
 from os import path
 import os
@@ -15,7 +12,6 @@ import logging
 import yaml
 from dateutil import parser
 import click
-
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))

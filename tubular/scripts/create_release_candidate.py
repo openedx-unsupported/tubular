@@ -3,9 +3,6 @@
 """
 Command-line script to create a release candidate for an application
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import io
 from os import path
 import sys
@@ -13,7 +10,6 @@ import logging
 import datetime
 import click
 import yaml
-
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -39,6 +35,7 @@ def valid_date(_, __, date_str):
         return datetime.datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
         click.BadParameter("Not a valid date: '{0}'.".format(date_str))
+
 
 EXPECTED_RELEASE_DATE = default_expected_release_date()
 
@@ -194,12 +191,12 @@ def create_release_candidate(org,
 
     LOG.info(
         "Creating Pull Request for %s into %s",
-            target_branch,
-            pr_target_branch
+        target_branch,
+        pr_target_branch
     )
 
     try:
-        pr_title = "Release Candidate {rc}" .format(
+        pr_title = "Release Candidate {rc}".format(
             rc=rc_branch_name_for_date(release_date.date())
         )
         pull_request = github_api.create_pull_request(

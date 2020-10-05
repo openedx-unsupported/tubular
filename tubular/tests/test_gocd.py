@@ -1,8 +1,6 @@
 """
 Tests for tubular.gocd_api.GoCDAPI
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 from functools import partial
 from datetime import datetime
@@ -26,6 +24,7 @@ def convert_to_timestamp(dtime):
     """
     utc_naive = dtime.replace(tzinfo=None) - dtime.utcoffset()
     return (utc_naive - datetime(1970, 1, 1)).total_seconds()
+
 
 VALID_JOB_TRIGGER_TIME_MS = convert_to_timestamp(datetime(2017, 2, 16, 15, 30, 00, tzinfo=tz.gettz('EST'))) * 1000
 INVALID_JOB_TRIGGER_TIME_MS = convert_to_timestamp(datetime(2017, 2, 17, 10, 30, 00, tzinfo=tz.gettz('EST'))) * 1000

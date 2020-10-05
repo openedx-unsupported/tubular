@@ -1,8 +1,6 @@
 """
 Methods to interact with the Jenkins API to perform various tasks.
 """
-from __future__ import absolute_import
-from __future__ import division
 
 import logging
 import math
@@ -134,6 +132,7 @@ def trigger_build(base_url, user_name, user_token, job_name, job_token,
     Raises:
         BackendError: if the Jenkins job could not be triggered successfully
     """
+
     @backoff.on_predicate(
         backoff.constant,
         interval=60,

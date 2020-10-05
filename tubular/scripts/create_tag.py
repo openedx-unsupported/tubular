@@ -3,8 +3,6 @@
 """
 Command-line script to create a tag for a particular SHA.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import io
 from os import path
@@ -14,7 +12,6 @@ import datetime
 import yaml
 from pytz import timezone
 import click
-
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))

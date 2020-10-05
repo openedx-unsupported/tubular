@@ -1,7 +1,7 @@
 """
 Test the retirement_archive_and_cleanup.py script
 """
-from __future__ import print_function
+
 
 from mock import patch, DEFAULT
 

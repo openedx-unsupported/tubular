@@ -1,8 +1,6 @@
 """
 Tests of the code interacting with the Drupal API.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import os
 import shutil
@@ -23,7 +21,7 @@ TEST_CLIENT_ID = 'client'
 TEST_SECRET = 'secret'
 TEST_TOKEN = 'test-token'
 TEST_TAG = "tags/foo-bar"
-TEST_NOTIFICATION_URL = "https://test-server/api/{}/notification/1234ffdd-0b22-4abcd-a949-1fd0fca61c6c".\
+TEST_NOTIFICATION_URL = "https://test-server/api/{}/notification/1234ffdd-0b22-4abcd-a949-1fd0fca61c6c". \
     format(ACQUIA_ENV_ID)
 PATH_NAME = "../target/{env}_tag_name.txt"
 DIR_NAME = PATH_NAME[:PATH_NAME.rfind("/")]
@@ -33,6 +31,7 @@ class TestDrupal(unittest.TestCase):
     """
     Class containing tests of all code interacting with Drupal.
     """
+
     @patch('tubular.drupal.get_acquia_v2')
     def test_check_state_waiting(self, mock_get_request):
         """

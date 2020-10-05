@@ -1,7 +1,7 @@
 """
 Test the retire_one_learner.py script
 """
-from __future__ import print_function
+
 from mock import patch, DEFAULT
 
 from click.testing import CliRunner

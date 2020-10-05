@@ -1,8 +1,8 @@
 """
 Code used to retry calls that fail.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
+
+
 import time
 import logging
 import os

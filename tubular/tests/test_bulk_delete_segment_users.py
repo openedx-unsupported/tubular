@@ -2,7 +2,7 @@
 """
 Test the bulk_delete_segment_users.py script
 """
-from __future__ import print_function
+
 
 from click.testing import CliRunner
 from mock import patch

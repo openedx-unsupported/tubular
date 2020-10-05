@@ -1,8 +1,6 @@
 """
 Convenience functions using boto and AWS SES to send email.
 """
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
 import logging
 import backoff
