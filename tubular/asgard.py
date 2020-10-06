@@ -29,6 +29,7 @@ from tubular.exception import (
     ResourceDoesNotExistException,
     TimeoutException,
     RateLimitedException,
+    JavaSocketException,
 )
 from tubular.utils import WAIT_SLEEP_TIME, DISABLE_OLD_ASG_WAIT_TIME
 
@@ -209,6 +210,9 @@ def wait_for_task_completion(task_url, timeout):
     raise TimeoutException("Timed out while waiting for task {}".format(task_url))
 
 
+@backoff.on_exception(backoff.expo,
+                      JavaSocketException,
+                      max_tries=MAX_ATTEMPTS)
 def new_asg(cluster, ami_id):
     """
     Create a new ASG in the given asgard cluster using the given AMI.
@@ -253,6 +257,8 @@ def new_asg(cluster, ami_id):
     response = wait_for_task_completion(response.url, ASGARD_NEW_ASG_CREATION_TIMEOUT)
     if response['status'] == 'failed':
         msg = "Failure during new ASG creation. Task Log: \n{}".format(response['log'])
+        if "java.net.SocketException" in response['log']:
+            raise JavaSocketException(msg)
         raise BackendError(msg)
 
     # Potential Race condition if multiple people are making ASGs for the same cluster
