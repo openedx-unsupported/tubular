@@ -28,6 +28,10 @@ class BackendDataError(BackendError):
     pass
 
 
+class JavaSocketException(BackendError):
+    pass
+
+
 class ResourceDoesNotExistException(Exception):
     pass
 
