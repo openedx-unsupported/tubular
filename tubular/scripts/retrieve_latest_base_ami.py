@@ -77,6 +77,9 @@ def retrieve_latest_base_ami(environment, deployment, play, override, ubuntu_ver
             elif ubuntu_version == "18.04":
                 url = "https://cloud-images.ubuntu.com/query/bionic/server/released.current.txt"
                 click.secho('Bionic.\n: {}'.format(url), fg='green')
+            elif ubuntu_version == "20.04":
+                url = "https://cloud-images.ubuntu.com/query/focal/server/released.current.txt"
+                click.secho('Focal.\n: {}'.format(url), fg='green')
             if url == "":
                 url = "https://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
             data = requests.get(url)
