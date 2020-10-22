@@ -164,10 +164,6 @@ def active_ami_for_edp(env, dep, play):
                 LOG.info("Instance {} state: {} - asg {} enabled: {}".format(
                     instance.id, instance.state, asg.name, asg_enabled))
 
-    if len(amis) > 1:
-        msg = "Multiple AMIs found for {}-{}-{}, should have only one.".format(env, dep, play)
-        raise MultipleImagesFoundException(msg)
-
     if not amis:
         msg = "No AMIs found for {}-{}-{}.".format(env, dep, play)
         raise ImageNotFoundException(msg)
