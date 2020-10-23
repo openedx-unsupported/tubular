@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* ISRE-587 - update giveup logic
 * Fix tox/pytest
 * Ignore Github Actions Results PSRE-168
 * Ignore internal & secure in recent deployers
