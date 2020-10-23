@@ -36,8 +36,7 @@ def giveup_if_not_throttling(ex):
 
     Returns:
         False if the throttling string is not found.
-    Raises:
-        MultipleImagesFoundException if ex is of type MultipleImagesFoundException
+        True if ex is of type MultipleImagesFoundException
     """
     if isinstance(ex, MultipleImagesFoundException):
         return True
