@@ -36,7 +36,16 @@ def giveup_if_not_throttling(ex):
 
     Returns:
         False if the throttling string is not found.
+    Raises:
+        MultipleImagesFoundException if ex is of type MultipleImagesFoundException
     """
+    if isinstance(ex, MultipleImagesFoundException):
+        msg = (
+            "Raising MultipleImagesFoundException from giveup_if_not_throttling "
+            "because we want to bubble up exception to caller."
+        )
+        LOG.error(msg)
+        raise MultipleImagesFoundException(msg)
     return not (str(ex.status) == "400" and ex.body and '<Code>Throttling</Code>' in ex.body)
 
 
