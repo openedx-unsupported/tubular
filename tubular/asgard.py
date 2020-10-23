@@ -257,7 +257,7 @@ def new_asg(cluster, ami_id):
     response = wait_for_task_completion(response.url, ASGARD_NEW_ASG_CREATION_TIMEOUT)
     if response['status'] == 'failed':
         msg = "Failure during new ASG creation. Task Log: \n{}".format(response['log'])
-        if "java.net.SocketException" in response['log']:
+        if "java.net.SocketException" in response['log'][-1]:
             raise JavaSocketException(msg)
         raise BackendError(msg)
 
