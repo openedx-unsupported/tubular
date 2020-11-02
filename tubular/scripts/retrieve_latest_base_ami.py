@@ -70,7 +70,7 @@ def retrieve_latest_base_ami(environment, deployment, play, override, ubuntu_ver
             ami_id = override
         else:
             url = ""
-            click.secho('Ubuntu version :  {}'.format(ubuntu_version), fg='green')
+            click.secho('Ubuntu version requested: {}'.format(ubuntu_version), fg='green')
             if ubuntu_version == "16.04":
                 url = "https://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
                 click.secho('Xenial.\n: {}'.format(url), fg='green')
@@ -82,6 +82,7 @@ def retrieve_latest_base_ami(environment, deployment, play, override, ubuntu_ver
                 click.secho('Focal.\n: {}'.format(url), fg='green')
             if url == "":
                 url = "https://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
+                click.secho('Using default xenial images.\n: {}'.format(url), fg='red')
             data = requests.get(url)
             parse_ami = re.findall('ebs-ssd(.+?)amd64(.+?){}(.+?)hvm'.format(region), data.content.decode('utf-8'))
             ami_id = parse_ami[0][2].strip()
