@@ -4,7 +4,7 @@ atlassian-python-api
 backoff==1.5.0
 boto==2.43.0
 click-log==0.1.8
-click>=6.2,<7.0
+click
 cloudflare==2.1.0
 edx-opaque-keys==0.4.0
 edx-rest-api-client==1.7.1

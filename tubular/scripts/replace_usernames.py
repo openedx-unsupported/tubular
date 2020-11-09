@@ -33,7 +33,7 @@ def write_responses(writer, replacements, status):
         writer.writerow([original_username, new_username, status])
 
 
-@click.command()
+@click.command("replace_usernames")
 @click.option(
     '--config_file',
     help='File in which YAML config exists that overrides all other params.'

@@ -16,7 +16,7 @@ LOG_FILENAME = 'security_group_change.txt'
 logging.basicConfig(level=logging.INFO)
 
 
-@click.command()
+@click.command("add_ingress_rule")
 @click.option(
     '--dry-run',
     is_flag=True,

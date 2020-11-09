@@ -26,7 +26,7 @@ LOG = logging.getLogger(__name__)
 EST = timezone('US/Eastern')
 
 
-@click.command()
+@click.command("create_tag")
 @click.option(
     '--org',
     help='Org from the GitHub repository URL of https://github.com/<org>/<repo>',

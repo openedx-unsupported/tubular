@@ -66,7 +66,7 @@ def _config_or_exit(config_file, google_secrets_file):
         FAIL_EXCEPTION(ERR_BAD_SECRETS, 'Failed to read secrets file {}'.format(google_secrets_file), exc)
 
 
-@click.command()
+@click.command("delete_expired_reports")
 @click.option(
     '--config_file',
     help='YAML file that contains retirement-related configuration for this environment.'

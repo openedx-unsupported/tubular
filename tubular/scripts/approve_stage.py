@@ -16,7 +16,7 @@ from yagocd import Yagocd
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-@click.command()
+@click.command("approve_stage")
 @click.option(
     '--go-server-url',
     required=True,

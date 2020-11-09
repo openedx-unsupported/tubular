@@ -190,7 +190,7 @@ def _cleanup_retirements_or_exit(config, learners):
         FAIL_EXCEPTION(ERR_DELETING, 'Unexpected error occurred deleting retirements!', exc)
 
 
-@click.command()
+@click.command("archive_and_cleanup")
 @click.option(
     '--config_file',
     help='YAML file that contains retirement-related configuration for this environment.'

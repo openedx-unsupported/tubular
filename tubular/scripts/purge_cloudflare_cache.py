@@ -22,7 +22,7 @@ LOG = partial(_log, SCRIPT_SHORTNAME)
 FAIL = partial(_fail, SCRIPT_SHORTNAME)
 
 
-@click.command()
+@click.command("purge_cloudflare_cache")
 @click.option(
     "--hostname",
     help="Hostname of the app that is being cached",

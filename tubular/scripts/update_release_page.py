@@ -31,7 +31,7 @@ LOG = logging.getLogger(__name__)
 EXPECTED_RELEASE_DATE = default_expected_release_date()
 
 
-@click.command()
+@click.command("create_release_page")
 @click.option(
     '-c', '--compare', 'ami_pairs',
     help=u"A pair of paths to AMI description yaml files.",

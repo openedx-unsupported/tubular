@@ -53,7 +53,7 @@ SERVICES = [
 ]
 
 
-@click.command()
+@click.command("check_health")
 def check_health():
     """
     Check the health of all the services in the SERVICE array. Each individual service must be marked as enabled in

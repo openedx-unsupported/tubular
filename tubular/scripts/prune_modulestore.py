@@ -48,7 +48,7 @@ LOG = logging.getLogger(__name__)
 
 
 # parameter handling
-@click.command()
+@click.command("prune_modulestore")
 @click.option(
     '--connection',
     default=None,

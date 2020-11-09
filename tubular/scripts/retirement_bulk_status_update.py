@@ -92,7 +92,7 @@ def _update_learners_or_exit(config, learners, new_state):
         FAIL_EXCEPTION(ERR_UPDATING, 'Unexpected error occurred updating users!', exc)
 
 
-@click.command()
+@click.command("update_statuses")
 @click.option(
     '--config_file',
     help='YAML file that contains retirement-related configuration for this environment.'

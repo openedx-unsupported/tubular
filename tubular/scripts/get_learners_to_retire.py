@@ -22,7 +22,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 LOG = logging.getLogger(__name__)
 
 
-@click.command()
+@click.command("get_learners_to_retire")
 @click.option(
     '--config_file',
     help='File in which YAML config exists that overrides all other params.'

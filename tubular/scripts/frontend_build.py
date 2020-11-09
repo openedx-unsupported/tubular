@@ -21,7 +21,7 @@ LOG = partial(_log, SCRIPT_SHORTNAME)
 FAIL = partial(_fail, SCRIPT_SHORTNAME)
 
 
-@click.command()
+@click.command("frontend_build")
 @click.option(
     '--common-config-file',
     help='File from which common configuration variables are read.',

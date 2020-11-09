@@ -335,7 +335,7 @@ def _add_comments_to_files(config, file_ids):
         LOG('WARNING: there was an error adding Google Drive comments to the csv files: {}'.format(exc))
 
 
-@click.command()
+@click.command("generate_report")
 @click.option(
     '--config_file',
     help='YAML file that contains retirement related configuration for this environment.'

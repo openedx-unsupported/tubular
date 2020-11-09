@@ -21,7 +21,7 @@ LOG = partial(_log, SCRIPT_SHORTNAME)
 FAIL = partial(_fail, SCRIPT_SHORTNAME)
 
 
-@click.command()
+@click.command("frontend_deploy")
 @click.option(
     '--env-config-file',
     help='File from which to read environment configuration variables.',
