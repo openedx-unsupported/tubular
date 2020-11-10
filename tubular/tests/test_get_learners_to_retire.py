@@ -86,7 +86,7 @@ def test_lms_down(*args, **kwargs):
     assert mock_get_access_token.call_count == 1
     mock_get_learners_to_retire.assert_called_once()
 
-    assert result.exit_code == -1
+    assert result.exit_code == 1
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
@@ -107,7 +107,7 @@ def test_misconfigured(*args, **kwargs):
     assert mock_get_access_token.call_count == 1
     mock_get_learners_to_retire.assert_called_once()
 
-    assert result.exit_code == -1
+    assert result.exit_code == 1
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token')
