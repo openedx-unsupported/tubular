@@ -112,6 +112,7 @@ def create_release_page(
     """
     if in_file and any([parent_title, space, title]):
         raise click.BadOptionUsage(
+            "in_file",
             "Either --in-file or --parent-title/--space/--title must be specified, but not both."
         )
 
