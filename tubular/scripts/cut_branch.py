@@ -23,7 +23,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
-@click.command()
+@click.command("create_release_candidate")
 @click.option(
     '--org',
     help='Org from the GitHub repository URL of https://github.com/<org>/<repo>',

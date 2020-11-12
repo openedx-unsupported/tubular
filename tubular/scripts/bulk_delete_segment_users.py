@@ -41,7 +41,7 @@ CONFIG_OR_EXIT = partial(_config_or_exit, FAIL_EXCEPTION, ERR_BAD_CONFIG)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
-@click.command()
+@click.command("bulk_delete_segment_users")
 @click.option(
     '--dry_run',
     is_flag=True,

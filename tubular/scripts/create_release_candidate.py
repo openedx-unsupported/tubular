@@ -40,7 +40,7 @@ def valid_date(_, __, date_str):
 EXPECTED_RELEASE_DATE = default_expected_release_date()
 
 
-@click.command()
+@click.command("create_release_candidate")
 @click.option(
     '--org',
     help='Org from the GitHub repository URL of https://github.com/<org>/<repo>',

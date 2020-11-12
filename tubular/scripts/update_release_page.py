@@ -31,7 +31,7 @@ LOG = logging.getLogger(__name__)
 EXPECTED_RELEASE_DATE = default_expected_release_date()
 
 
-@click.command()
+@click.command("create_release_page")
 @click.option(
     '-c', '--compare', 'ami_pairs',
     help=u"A pair of paths to AMI description yaml files.",
@@ -112,6 +112,7 @@ def create_release_page(
     """
     if in_file and any([parent_title, space, title]):
         raise click.BadOptionUsage(
+            "in_file",
             "Either --in-file or --parent-title/--space/--title must be specified, but not both."
         )
 

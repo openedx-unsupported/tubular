@@ -14,7 +14,7 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from tubular.slack import submit_slack_message  # pylint: disable=wrong-import-position
 
 
-@click.command()
+@click.command("submit_slack_msg")
 @click.option(
     '--auth_token',
     required=True,

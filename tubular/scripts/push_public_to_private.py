@@ -23,7 +23,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
-@click.command()
+@click.command("push_public_to_private")
 @click.option(
     u'--private_org',
     help=u'Org from the private GitHub repository URL of https://github.com/<org>/<repo>',

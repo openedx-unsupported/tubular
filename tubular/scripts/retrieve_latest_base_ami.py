@@ -24,7 +24,7 @@ from tubular import ec2  # pylint: disable=wrong-import-position
 logging.basicConfig(level=logging.INFO)
 
 
-@click.command()
+@click.command("retrieve_latest_base_ami")
 @click.option(
     '--environment', '-e',
     help='Environment for AMI, e.g. prod, stage',

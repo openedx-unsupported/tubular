@@ -44,7 +44,7 @@ KNOWN_KEYS = ('retirement_id', 'id', 'original_username', 'ecommerce_segment_id'
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
-@click.command()
+@click.command("bulk_unsuppress_segment_users")
 @click.option(
     '--dry_run',
     is_flag=True,

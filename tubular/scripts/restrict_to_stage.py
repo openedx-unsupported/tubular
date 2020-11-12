@@ -18,7 +18,7 @@ from tubular.ec2 import is_stage_ami  # pylint: disable=wrong-import-position
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
-@click.command()
+@click.command("restrict_ami_to_stage")
 @click.option('--ami_id', '-a', envvar='AMI_ID', help='The ami-id to deploy', required=True)
 def restrict_ami_to_stage(ami_id):
     """

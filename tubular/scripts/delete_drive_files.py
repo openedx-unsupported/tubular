@@ -44,7 +44,7 @@ CONFIG_WITH_DRIVE_OR_EXIT = partial(_config_with_drive_or_exit, FAIL_EXCEPTION, 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
-@click.command()
+@click.command("delete_files")
 @click.option(
     '--config_file',
     help='YAML file that contains retirement-related configuration for this environment.'

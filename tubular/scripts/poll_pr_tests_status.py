@@ -21,7 +21,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
-@click.command()
+@click.command("poll_tests")
 @click.option(
     '--org',
     help='Org from the GitHub repository URL of https://github.com/<org>/<repo>',

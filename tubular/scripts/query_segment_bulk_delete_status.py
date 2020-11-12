@@ -40,7 +40,7 @@ CONFIG_OR_EXIT = partial(_config_or_exit, FAIL_EXCEPTION, ERR_BAD_CONFIG)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
-@click.command()
+@click.command("query_bulk_delete_id")
 @click.option(
     '--config_file',
     help='YAML file that contains retirement-related configuration for this environment.'

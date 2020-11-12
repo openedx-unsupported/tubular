@@ -6,7 +6,7 @@ import click
 from tubular.opsgenie_api import OpsGenieAPI
 
 
-@click.command()
+@click.command("alert_opsgenie")
 @click.option(
     '--auth_token',
     required=True,

@@ -148,7 +148,7 @@ def _get_ecom_segment_id(config, learner):
         FAIL_EXCEPTION(ERR_SETUP_FAILED, 'Unexpected error fetching Ecommerce tracking id!', text_type(exc))
 
 
-@click.command()
+@click.command("retire_learner")
 @click.option(
     '--username',
     help='The original username of the user to retire'

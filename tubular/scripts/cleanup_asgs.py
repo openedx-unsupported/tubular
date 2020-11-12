@@ -20,7 +20,7 @@ from tubular.ec2 import get_asgs_pending_delete  # pylint: disable=wrong-import-
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
-@click.command()
+@click.command("delete_asg")
 def delete_asg():
     """
     Method to delete AWS Auto-Scaling Groups via Asgard that are tagged for deletion.

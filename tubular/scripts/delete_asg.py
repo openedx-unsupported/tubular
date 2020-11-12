@@ -20,7 +20,7 @@ from tubular import asgard  # pylint: disable=wrong-import-position
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
-@click.command()
+@click.command("delete_asg")
 @click.option('--asg_name', envvar='ASG_NAME', help='the name of the Autoscale Group to delete', required=True)
 def delete_asg(asg_name):
     """

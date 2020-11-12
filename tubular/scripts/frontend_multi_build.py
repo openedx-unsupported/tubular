@@ -23,7 +23,7 @@ FAIL = partial(_fail, SCRIPT_SHORTNAME)
 MULTISITE_PATH = './multisite/dist'
 
 
-@click.command()
+@click.command("frontend_build")
 @click.option(
     '--common-config-file',
     help='File from which common configuration variables are read.',

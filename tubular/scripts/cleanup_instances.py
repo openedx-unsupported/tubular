@@ -15,7 +15,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
-@click.command()
+@click.command("terminate_instances")
 @click.option(
     '--region',
     help='aws region',

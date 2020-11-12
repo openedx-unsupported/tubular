@@ -14,7 +14,7 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from tubular import drupal  # pylint: disable=wrong-import-position
 
 
-@click.command()
+@click.command("clear_varnish_cache")
 @click.option("--app_id", help="The application id for drupal instance.", type=str, required=True)
 @click.option("--env", help="The environment to clear varnish caches in.", type=str, required=True)
 @click.option("--client_id", help="The Acquia api client id necessary to run the command.", type=str, required=True)

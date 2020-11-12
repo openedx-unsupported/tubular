@@ -18,7 +18,7 @@ from tubular.ec2 import validate_edp  # pylint: disable=wrong-import-position
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
-@click.command()
+@click.command("validate_cli")
 @click.option(
     '--ami_id', '-a',
     envvar='AMI_ID',

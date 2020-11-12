@@ -23,7 +23,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
-@click.command()
+@click.command("find_and_advance_pipeline")
 @click.option(
     '--gocd_username',
     help=u"Username to use in logging into GoCD.",
