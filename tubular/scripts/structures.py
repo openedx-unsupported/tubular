@@ -66,7 +66,7 @@ def cli(ctx, connection, database_name):
     ctx.obj['BACKEND'] = SplitMongoBackend(connection, database_name)
 
 
-@cli.command()
+@cli.command("make_plan")
 @click_log.simple_verbosity_option(default='INFO')
 @click_log.init()
 @click.argument('plan_file', type=click.File('w'))
