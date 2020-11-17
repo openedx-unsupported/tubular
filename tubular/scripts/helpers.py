@@ -165,9 +165,6 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
         segment_auth_token = config.get('segment_auth_token', None)
         segment_workspace_slug = config.get('segment_workspace_slug', None)
         hubspot_api_key = config.get('hubspot_api_key', None)
-        hubspot_aws_region = config.get('hubspot_aws_region', None)
-        hubspot_from_address = config.get('hubspot_from_address', None)
-        hubspot_alert_email = config.get('hubspot_alert_email', None)
 
         for state in config['retirement_pipeline']:
             for service, service_url in (
@@ -196,12 +193,7 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
             )
 
         if hubspot_api_key:
-            config['HUBSPOT'] = HubspotAPI(
-                hubspot_api_key,
-                hubspot_aws_region,
-                hubspot_from_address,
-                hubspot_alert_email
-            )
+            config['HUBSPOT'] = HubspotAPI(hubspot_api_key)
 
         if ecommerce_base_url:
             config['ECOMMERCE'] = EcommerceApi(lms_base_url, ecommerce_base_url, client_id, client_secret)

@@ -7,8 +7,6 @@ import logging
 import backoff
 import requests
 
-from tubular.tubular_email import send_email
-
 LOG = logging.getLogger(__name__)
 MAX_ATTEMPTS = int(os.environ.get('RETRY_HUBSPOT_MAX_ATTEMPTS', 5))
 
@@ -25,17 +23,8 @@ class HubspotAPI:
     Hubspot API client used to make calls to Hubspot
     """
 
-    def __init__(
-        self,
-        hubspot_api_key,
-        aws_region,
-        from_address,
-        alert_email
-    ):
+    def __init__(self, hubspot_api_key):
         self.api_key = hubspot_api_key
-        self.aws_region = aws_region
-        self.from_address = from_address
-        self.alert_email = alert_email
 
     @backoff.on_exception(
         backoff.expo,
@@ -65,7 +54,6 @@ class HubspotAPI:
         error_msg = ""
         if req.status_code == 200:
             LOG.info("User successfully deleted from Hubspot")
-            self.send_marketing_alert(vid)
         elif req.status_code == 401:
             error_msg = "Hubspot user deletion failed due to authorized API call"
         elif req.status_code == 404:
@@ -99,17 +87,3 @@ class HubspotAPI:
             )
             LOG.error(error_msg)
             raise HubspotException(error_msg)
-
-    def send_marketing_alert(self, vid):
-        """
-        Notify marketing with user's Hubspot `vid` upon successful deletion.
-        """
-        subject = "Alert: Hubspot Deletion"
-        body = "Learner with the VID \"{}\" has been deleted from Hubspot.".format(vid)
-        send_email(
-            self.aws_region,
-            self.from_address,
-            [self.alert_email],
-            subject,
-            body
-        )
