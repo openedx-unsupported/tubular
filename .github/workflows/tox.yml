@@ -1,0 +1,20 @@
+name: tox
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.5', '3.8']
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        architecture: x64
+    - run: rm -f /etc/boto.cfg
+    - run: pip3 install --upgrade pip setuptools
+    - run: pip3 install tox
+    - run: tox -- -n0
