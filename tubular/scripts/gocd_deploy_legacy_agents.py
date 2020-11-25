@@ -43,14 +43,22 @@ def put_elastic_profile(host, token, profile_id, etag, data):
         profile_id=profile_id)
 
     headers = {
-            'Accept': 'application/vnd.go.cd.v2+json',
-            'Authorization': "bearer {token}".format(token=token),
-            'Content-Type': 'application/json',
-            'If-Match': etag,
+        'Accept': 'application/vnd.go.cd.v2+json',
+        'Authorization': "bearer {token}".format(token=token),
+        'Content-Type': 'application/json',
+        'If-Match': etag,
     }
     r = requests.put(url, json=data, headers=headers)
     r.raise_for_status()
     return r
+
+
+def is_pod_configuration(property):
+    """
+    Returns true if the key is a pod configuration in
+    a GoCD elastic profile property list
+    """
+    return property['key'] == 'PodConfiguration'
 
 
 def update_image_in_elastic_profile(host, token, image, tag, profile_id):
@@ -61,7 +69,6 @@ def update_image_in_elastic_profile(host, token, image, tag, profile_id):
     response = get_elastic_profile(host, token, profile_id)
     etag = response.headers['etag']
     elastic_profile = response.json()
-    is_pod_configuration = lambda property: property['key'] == 'PodConfiguration'
     pod_configuration_index = next(i for i, v in enumerate(elastic_profile['properties']) if is_pod_configuration(v))
     pod_configuration = elastic_profile['properties'][pod_configuration_index]
     pod_configuration_value = pod_configuration['value']
