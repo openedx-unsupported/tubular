@@ -53,12 +53,12 @@ def put_elastic_profile(host, token, profile_id, etag, data):
     return r
 
 
-def is_pod_configuration(property):
+def is_pod_configuration(ep_property):
     """
     Returns true if the key is a pod configuration in
-    a GoCD elastic profile property list
+    a GoCD elastic profile ep_property list
     """
-    return property['key'] == 'PodConfiguration'
+    return ep_property['key'] == 'PodConfiguration'
 
 
 def update_image_in_elastic_profile(host, token, image, tag, profile_id):
