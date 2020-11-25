@@ -91,13 +91,7 @@ def update_image_in_elastic_profile(host, token, image, tag, profile_id):
 @click.option('--image', help='image to change the tag on eg: myregistry/myapp', required=True)
 @click.option('--tag', help='new tag of the image to replace', required=True)
 @click.option('--profile_id', help='new tag of the image to replace', required=True)
-def deploy_gocd_legacy_agents(
-    token,
-    host,
-    image,
-    tag,
-    profile_id,
-                            ):
+def deploy_gocd_legacy_agents(token, host, image, tag, profile_id):
     """
     For the specified profile get the pod yaml and replace the tag of any images that
     match with the new tag for a given profile
