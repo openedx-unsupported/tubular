@@ -11,7 +11,7 @@ from sailthru.sailthru_error import SailthruClientError
 # This module is imported separately solely so it can be re-loaded below.
 from tubular import sailthru_api
 # This SailthruApi class will be used without being re-loaded.
-from tubular.sailthru_api import SailthruApi
+from tubular.sailthru_api import SailthruApi, SailthruUserDeletionError
 
 # Change the number of retries for Sailthru API's delete_user call to 1.
 # Then reload sailthru_api so only a single retry is performed.
@@ -36,6 +36,14 @@ def test_sailthru_delete_client_error(test_learner):  # pylint: disable=redefine
         reloaded_sailthru_api = sailthru_api.SailthruApi('key', 'secret')  # pylint: disable=redefined-outer-name
         reloaded_sailthru_api._sailthru_client.api_delete.side_effect = SailthruClientError()  # pylint: disable=protected-access
         with pytest.raises(SailthruClientError):
+            reloaded_sailthru_api.delete_user(test_learner)
+
+
+def test_sailthru_delete_api_error(test_learner):  # pylint: disable=redefined-outer-name
+    with mock.patch('tubular.sailthru_api.SailthruClient'):
+        reloaded_sailthru_api = sailthru_api.SailthruApi('key', 'secret')  # pylint: disable=redefined-outer-name
+        reloaded_sailthru_api._sailthru_client.api_delete.side_effect = SailthruUserDeletionError()  # pylint: disable=protected-access
+        with pytest.raises(SailthruUserDeletionError):
             reloaded_sailthru_api.delete_user(test_learner)
 
 

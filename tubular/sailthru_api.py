@@ -14,6 +14,12 @@ SAILTHRU_ERROR_NOT_FOUND = 'User not found with email:'
 MAX_ATTEMPTS = int(os.environ.get('RETRY_SAILTHRU_MAX_ATTEMPTS', 5))
 
 
+class SailthruUserDeletionError(Exception):
+    """
+    Exception thrown for a Sailthru user deletion error.
+    """
+
+
 class SailthruApi:
     """
     Sailthru API client used to make all Sailthru calls.
@@ -26,7 +32,7 @@ class SailthruApi:
 
     @backoff.on_exception(
         backoff.expo,
-        SailthruClientError,
+        (SailthruClientError, SailthruUserDeletionError),
         max_tries=MAX_ATTEMPTS
     )
     def delete_user(self, learner):
@@ -48,6 +54,6 @@ class SailthruApi:
                     error.get_message()
                 ).encode('utf-8')
                 LOG.error(error_msg)
-                raise Exception(error_msg)
+                raise SailthruUserDeletionError(error_msg)
 
         LOG.info("User successfully deleted from Sailthru.")
