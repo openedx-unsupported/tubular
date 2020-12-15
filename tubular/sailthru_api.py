@@ -18,11 +18,11 @@ class SailthruApi:
     """
     Sailthru API client used to make all Sailthru calls.
     """
-    def __init__(self, sailthru_key, sailthru_secret):
+    def __init__(self, sailthru_key, sailthru_password):
         """
         Create a Sailthru client using credentials.
         """
-        self._sailthru_client = SailthruClient(sailthru_key, sailthru_secret)
+        self._sailthru_client = SailthruClient(sailthru_key, sailthru_password)
 
     @backoff.on_exception(
         backoff.expo,
