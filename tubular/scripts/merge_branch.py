@@ -58,7 +58,6 @@ LOG = logging.getLogger(__name__)
     help=u'Path to a reference repo to use to speed up cloning',
 )
 @click_log.simple_verbosity_option(default=u'INFO')
-@click_log.init()
 def merge_branch(org,
                  repo,
                  source_branch,

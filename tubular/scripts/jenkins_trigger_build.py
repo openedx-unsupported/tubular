@@ -83,7 +83,6 @@ from tubular import jenkins  # pylint: disable=wrong-import-position
     ])
 )
 @click_log.simple_verbosity_option(default=u'INFO')
-@click_log.init()
 def trigger(url, user_name, user_token, job, token, cause, param, timeout, expected_status):
     u"""Trigger a jenkins job. """
     status = jenkins.trigger_build(url, user_name, user_token, job, token, cause, param, timeout)

@@ -71,7 +71,6 @@ LOG = logging.getLogger(__name__)
     help='name of the edx mongo database containing the course structures to prune'
 )
 @click_log.simple_verbosity_option(default='INFO')
-@click_log.init()
 def prune_modulestore(
         connection,
         version_retention,
