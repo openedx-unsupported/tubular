@@ -12,3 +12,6 @@
 
 # Cryptography's most recent version doesn't support Python 3.5
 cryptography<3.3
+
+# The 0.9.3 version of the toml module fails installation - because internal version 0.9.3 != 0.9.3.1 as labeled.
+toml>=0.9.4
