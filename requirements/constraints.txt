@@ -9,3 +9,6 @@
 # linking to it here is good.
 
 # TODO: Many pinned dependencies should be unpinned and/or moved to this constraints file.
+
+# Cryptography's most recent version doesn't support Python 3.5
+cryptography<3.3

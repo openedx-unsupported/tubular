@@ -16,7 +16,7 @@ chardet==3.0.4            # via requests
 click-log==0.3.2          # via -r requirements/base.in
 click==7.1.2              # via -r requirements/base.in, click-log
 cloudflare==2.1.0         # via -r requirements/base.in
-cryptography==3.3.1       # via authlib
+cryptography==3.2.1       # via -c requirements/constraints.txt, authlib
 decorator==4.4.2          # via validators
 deprecated==1.2.10        # via atlassian-python-api, pygithub
 django-crum==0.7.9        # via edx-django-utils
