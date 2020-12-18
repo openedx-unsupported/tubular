@@ -73,6 +73,7 @@ def update_recent_deployers(
     Update an OpsGenie team to contain only those users whose changes were recently deployed
     by a particular GoCD pipeline.
     """
+    assert False
     repo_tools_repo = GitHubAPI('edx', 'repo-tools-data', github_token)
     people_yaml_data = repo_tools_repo.file_contents('people.yaml')
     people_yaml = yaml.safe_load(people_yaml_data)
