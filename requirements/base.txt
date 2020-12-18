@@ -59,7 +59,7 @@ uritemplate==3.0.1        # via google-api-python-client
 urllib3==1.26.1           # via requests
 validators==0.18.1        # via -r requirements/base.in
 wrapt==1.11.2             # via -r requirements/base.in, deprecated
--e git+git://github.com/blind-gh0st/yagocd.git@12784b41b9a2ae583761307d7adc3075945fa17e              # via -r requirements/base.in
+yagocd -e git+git://github.com/blind-gh0st/yagocd.git@12784b41b9a2ae583761307d7adc3075945fa17e              # via -r requirements/base.in
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
