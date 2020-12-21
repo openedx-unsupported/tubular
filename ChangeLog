@@ -1,5 +1,6 @@
 CHANGES
 =======
+<<<<<<< HEAD
 
 * pycodestyle, remove unneeded pinning
 * Iterating..
@@ -32,6 +33,13 @@ CHANGES
 * Add license-manager retirement to pipeline
 * Fix pylint complaints
 * Pin pytest to fix test failures
+=======
+* ISRE-639 - Remove Unusued GoCD calls to approve pipeline stages to reduce scope of replacing yagocd
+* MST-482 - Send email alert upon successful Hubspot deletion
+* ISRE-588 - update javasocketerror raise logic
+* ISRE-587 - update giveup logic
+* Fix tox/pytest
+>>>>>>> 80974d7 (Removing any unused yagocd code to reduce the scope of removing the dependency)
 * Ignore Github Actions Results PSRE-168
 * Ignore internal & secure in recent deployers
 * OEP-18 compliance
