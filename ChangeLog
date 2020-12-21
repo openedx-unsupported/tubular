@@ -1,6 +1,6 @@
 CHANGES
 =======
-
+* ISRE-639 - Remove Unusued GoCD calls to approve pipeline stages to reduce scope of replacing yagocd
 * MST-482 - Send email alert upon successful Hubspot deletion
 * ISRE-588 - update javasocketerror raise logic
 * ISRE-587 - update giveup logic
