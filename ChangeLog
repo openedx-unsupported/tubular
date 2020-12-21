@@ -1,10 +1,28 @@
 CHANGES
 =======
 
-* MST-482 - Send email alert upon successful Hubspot deletion
-* ISRE-588 - update javasocketerror raise logic
-* ISRE-587 - update giveup logic
-* Fix tox/pytest
+* Adding deploy script to deploy gocd agents (#461)
+* Adding a tubular pipeline for deploying things with docker instead of legacy agents (#460)
+* replace travis with GHA
+* update make\_plan for click
+* Upgrading from click 6.7 to 7 to fix a collision in gocd20 pipelines that occurs due to a missing separate install of python which causes an unintentional downgrade (#456)
+* Bump cryptography from 2.9.2 to 3.2 in /requirements (#455)
+* Improving the log hygiene for base amis
+* Allow HubspotAPI to send email to marketing upon successful deletion
+* ISRE-588 | check most recent log for java socket error (#453)
+* ISRE-587 | Adding logic to properly raise multiple image exception er… (#452)
+* removed exception
+* Revert "Revert "Add ability to grab focal base image for deployment pipelines""
+* Revert "Add ability to grab focal base image for deployment pipelines"
+* Add ability to grab focal base image for deployment pipelines
+* Catch and retry new\_asg on socket exception. (#446)
+* Removed deprecated future imports (#445)
+* ran 2to3 to remove deprecated imports
+* Add option to disable logging 404s as an error (#444)
+* Log more info on api error for debugging
+* Add license-manager retirement to pipeline
+* Fix pylint complaints
+* Pin pytest to fix test failures
 * Ignore Github Actions Results PSRE-168
 * Ignore internal & secure in recent deployers
 * OEP-18 compliance
