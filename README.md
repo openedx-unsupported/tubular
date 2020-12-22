@@ -8,7 +8,7 @@ Python scripts for integrating pipelines with various services/tools such as:
 * Jenkins
 * Drupal
 
-The scripts perform work to enable continuous delivery (CD) for https://edx.org. These scripts are called from various tasks/jobs/stages in GoCD pipelines - but could be called from any automation/CD framework.
+The scripts perform work to enable continuous delivery (CD) for https://edx.org. These scripts are called from various tasks/jobs/stages in GoCD pipelines - but could be called from any automation/CD framework. 
 
 ## Configuration
 ```
