@@ -25,4 +25,4 @@ jobs:
     - run: pip freeze
     - env:
         TOXENV: ${{ matrix.tox-env }}
-      run: tox -- -n0
+      run: tox
