@@ -1,6 +1,9 @@
 CHANGES
 =======
 
+* This is working locally, lets see if it works in GA
+* Removing merge conflict (#473)
+* Updating pycodestyleversion (#472)
 * Adding deploy script to deploy gocd agents (#461)
 * Adding a tubular pipeline for deploying things with docker instead of legacy agents (#460)
 * replace travis with GHA
