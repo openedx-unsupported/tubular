@@ -2,12 +2,17 @@ name: tox
 
 on: [push, pull_request]
 
+
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.5', '3.8']
+        include:
+          - python-version: '3.5'
+            tox-env: py35
+          - python-version: '3.8'
+            tox-env: py38
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
@@ -17,4 +22,7 @@ jobs:
     - run: rm -f /etc/boto.cfg
     - run: pip3 install --upgrade pip setuptools
     - run: pip3 install tox
-    - run: tox -- -n0
+    - run: pip freeze
+    - env:
+        TOXENV: ${{ matrix.tox-env }}
+      run: tox -- -n0
