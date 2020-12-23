@@ -15,7 +15,7 @@ chardet==4.0.0            # via requests
 click-log==0.3.2          # via -r requirements/base.in
 click==7.1.2              # via -r requirements/base.in, click-log
 cloudflare==2.1.0         # via -r requirements/base.in
-cryptography==3.3.1       # via authlib
+cryptography==3.2.1       # via authlib
 decorator==4.4.2          # via validators
 deprecated==1.2.10        # via atlassian-python-api, pygithub
 easydict==1.9             # via yagocd
@@ -27,7 +27,7 @@ gitdb==4.0.5              # via gitpython
 gitpython==3.1.11         # via -r requirements/base.in
 google-api-python-client==1.7.3  # via -r requirements/base.in
 google-auth-httplib2==0.0.4  # via google-api-python-client
-google-auth==1.24.0       # via google-api-python-client, google-auth-httplib2
+google-auth==1.23.0       # via google-api-python-client, google-auth-httplib2
 httplib2==0.18.1          # via google-api-python-client, google-auth-httplib2
 idna==2.10                # via requests
 jenkinsapi==0.3.3         # via -r requirements/base.in
