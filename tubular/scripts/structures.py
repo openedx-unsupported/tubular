@@ -68,7 +68,6 @@ def cli(ctx, connection, database_name):
 
 @cli.command("make_plan")
 @click_log.simple_verbosity_option(default='INFO')
-@click_log.init()
 @click.argument('plan_file', type=click.File('w'))
 @click.option(
     '--details',
@@ -131,7 +130,6 @@ def make_plan(ctx, plan_file, details, retain, delay, batch_size):
 
 @cli.command()
 @click_log.simple_verbosity_option(default='INFO')
-@click_log.init()
 @click.argument('plan_file', type=click.File('r'))
 @click.option(
     '--delay',
