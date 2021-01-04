@@ -101,7 +101,6 @@ EXPECTED_RELEASE_DATE = default_expected_release_date()
     type=click.File(),
 )
 @click_log.simple_verbosity_option(default=u'INFO')
-@click_log.init()
 def create_release_page(
         ami_pairs, confluence_url, user, password, parent_title,
         space, title, github_token, jira_url, gocd_url, status,
