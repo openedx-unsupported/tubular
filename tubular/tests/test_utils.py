@@ -6,6 +6,8 @@ from copy import copy
 import boto
 from boto.ec2.autoscale.launchconfig import LaunchConfiguration
 from boto.ec2.autoscale.group import AutoScalingGroup
+from boto.vpc.subnet import Subnet
+from boto.vpc import VPCConnection
 from boto.ec2.autoscale import Tag
 import six
 
@@ -37,6 +39,7 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         elbs = []
 
     # Create asgs
+    vpcconn = VPCConnection()
     conn = boto.ec2.autoscale.connect_to_region('us-east-1')
     config = LaunchConfiguration(
         name='{}_lc'.format(asg_name),
@@ -44,6 +47,9 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         instance_type='t2.medium',
     )
     conn.create_launch_configuration(config)
+    vpc = vpcconn.create_vpc('10.0.0.0/24')
+    subnetc = vpcconn.create_subnet(vpc.id, '10.0.0.0/28', 'us-east-1c')
+    subnetb = vpcconn.create_subnet(vpc.id, '10.0.0.16/28', 'us-east-1b')
 
     group = AutoScalingGroup(
         name=asg_name,
@@ -57,7 +63,7 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         min_size=2,
         launch_config=config,
         placement_group="test_placement",
-        vpc_zone_identifier='subnet-1233abcd',
+        vpc_zone_identifier="{subnetbid},{subnetcid}".format(subnetbid=subnetb.id, subnetcid=subnetc.id),
         termination_policies=["OldestInstance", "NewestInstance"],
         tags=tag_list,
     )

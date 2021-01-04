@@ -7,7 +7,7 @@ import datetime
 
 import ddt
 import mock
-from moto import mock_ec2, mock_autoscaling, mock_elb
+from moto import mock_ec2_deprecated, mock_autoscaling_deprecated, mock_elb_deprecated
 from moto.ec2.utils import random_ami_id
 import boto
 from boto.exception import BotoServerError
@@ -44,7 +44,7 @@ class TestEC2(unittest.TestCase):
         ami.add_tag("play", play)
         return ami_id
 
-    @mock_ec2
+    @mock_ec2_deprecated
     def test_ami_edp_validate_for_bad_id(self):
         # Bad AMI Id
         self.assertRaises(
@@ -68,28 +68,28 @@ class TestEC2(unittest.TestCase):
         (False, ("baz", "bar", "foo")),
     )
     @ddt.unpack
-    @mock_ec2
+    @mock_ec2_deprecated
     def test_ami_edp_validate_ami_id(self, expected_ret, edp):
         fake_ami_id = self._make_fake_ami()
         self.assertEqual(ec2.validate_edp(fake_ami_id, *edp), expected_ret)
 
-    @mock_ec2
+    @mock_ec2_deprecated
     def test_restrict_ami_to_stage(self):
         self.assertEqual(True, ec2.is_stage_ami(self._make_fake_ami(environment='stage')))
         self.assertEqual(False, ec2.is_stage_ami(self._make_fake_ami(environment='prod')))
         self.assertEqual(False, ec2.is_stage_ami(self._make_fake_ami(deployment='stage', play='stage')))
 
-    @mock_elb
-    @mock_ec2
-    @mock_autoscaling
+    @mock_elb_deprecated
+    @mock_ec2_deprecated
+    @mock_autoscaling_deprecated
     def test_ami_for_edp_missing_edp(self):
         # Non-existent EDP
         with self.assertRaises(ImageNotFoundException):
             ec2.active_ami_for_edp('One', 'Two', 'Three')
 
-    @mock_autoscaling
-    @mock_elb
-    @mock_ec2
+    @mock_autoscaling_deprecated
+    @mock_elb_deprecated
+    @mock_ec2_deprecated
     def test_ami_for_edp_success(self):
         fake_ami_id = self._make_fake_ami()
         fake_elb_name = "healthy-lb-1"
@@ -109,9 +109,9 @@ class TestEC2(unittest.TestCase):
         self.assertEqual(ec2.active_ami_for_edp('foo', 'bar', 'baz'), fake_ami_id)
 
     @unittest.skip("Test always fails due to not successfuly creating two different AMI IDs in single ELB.")
-    @mock_autoscaling
-    @mock_elb
-    @mock_ec2
+    @mock_autoscaling_deprecated
+    @mock_elb_deprecated
+    @mock_ec2_deprecated
     def test_ami_for_edp_multiple_amis(self):
         fake_ami_id1 = self._make_fake_ami()
         fake_ami_id2 = self._make_fake_ami()
@@ -139,12 +139,12 @@ class TestEC2(unittest.TestCase):
         with self.assertRaises(MultipleImagesFoundException):
             ec2.active_ami_for_edp('foo', 'bar', 'baz')
 
-    @mock_ec2
+    @mock_ec2_deprecated
     def test_edp_for_ami_bad_id(self):
         # Bad AMI Id
         self.assertRaises(ImageNotFoundException, ec2.edp_for_ami, "ami-fakeid")
 
-    @mock_ec2
+    @mock_ec2_deprecated
     def test_edp_for_untagged_ami(self):
         ec2_connection = boto.connect_ec2()
         reservation = ec2_connection.run_instances(random_ami_id())
@@ -154,7 +154,7 @@ class TestEC2(unittest.TestCase):
         # AMI Exists but isn't tagged.
         self.assertRaises(MissingTagException, ec2.edp_for_ami, ami_id)
 
-    @mock_ec2
+    @mock_ec2_deprecated
     def test_edp2_for_tagged_ami(self):
         actual_edp = ec2.edp_for_ami(self._make_fake_ami())
         expected_edp = EDP("foo", "bar", "baz")
@@ -162,8 +162,8 @@ class TestEC2(unittest.TestCase):
         # Happy Path
         self.assertEqual(expected_edp, actual_edp)
 
-    @mock_autoscaling
-    @mock_ec2
+    @mock_autoscaling_deprecated
+    @mock_ec2_deprecated
     @ddt.file_data("test_asgs_for_edp_data.json")
     def test_asgs_for_edp(self, params):
         asgs, expected_returned_count, expected_asg_names_list = params
@@ -187,8 +187,8 @@ class TestEC2(unittest.TestCase):
 
     )
     @ddt.unpack
-    @mock_autoscaling
-    @mock_ec2
+    @mock_autoscaling_deprecated
+    @mock_ec2_deprecated
     def test_get_all_autoscale_groups(self, asg_count, expected_result_count, name_filter):
         """
         While I have attempted to test for pagination the moto library does not seem to support this and returns
@@ -203,14 +203,14 @@ class TestEC2(unittest.TestCase):
         if name_filter:
             self.assertTrue(all(asg.name in name_filter for asg in asgs))
 
-    @mock_autoscaling
-    @mock_ec2
+    @mock_autoscaling_deprecated
+    @mock_ec2_deprecated
     def test_wait_for_in_service(self):
         create_asg_with_tags("healthy_asg", {"foo": "bar"})
         self.assertEqual(None, ec2.wait_for_in_service(["healthy_asg"], 2))
 
-    @mock_autoscaling
-    @mock_ec2
+    @mock_autoscaling_deprecated
+    @mock_ec2_deprecated
     def test_wait_for_in_service_lifecycle_failure(self):
         asg_name = "unhealthy_asg"
         create_asg_with_tags(asg_name, {"foo": "bar"})
@@ -221,8 +221,8 @@ class TestEC2(unittest.TestCase):
         with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs):
             self.assertRaises(TimeoutException, ec2.wait_for_in_service, [asg_name], 2)
 
-    @mock_autoscaling
-    @mock_ec2
+    @mock_autoscaling_deprecated
+    @mock_ec2_deprecated
     def test_wait_for_in_service_health_failure(self):
         asg_name = "unhealthy_asg"
         create_asg_with_tags(asg_name, {"foo": "bar"})
@@ -233,8 +233,8 @@ class TestEC2(unittest.TestCase):
         with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs):
             self.assertRaises(TimeoutException, ec2.wait_for_in_service, [asg_name], 2)
 
-    @mock_elb
-    @mock_ec2
+    @mock_elb_deprecated
+    @mock_ec2_deprecated
     def test_wait_for_healthy_elbs(self):
         first_elb_name = "healthy-lb-1"
         second_elb_name = "healthy-lb-2"
@@ -263,8 +263,8 @@ class TestEC2(unittest.TestCase):
             with mock.patch('tubular.ec2.WAIT_SLEEP_TIME', 1):
                 self.assertEqual(None, ec2.wait_for_healthy_elbs([first_elb_name, second_elb_name], 3))
 
-    @mock_elb
-    @mock_ec2
+    @mock_elb_deprecated
+    @mock_ec2_deprecated
     def test_wait_for_healthy_elbs_failure(self):
         elb_name = "unhealthy-lb"
         load_balancer = create_elb(elb_name)
@@ -275,9 +275,9 @@ class TestEC2(unittest.TestCase):
         with mock.patch(mock_function, return_value=instances):
             self.assertRaises(TimeoutException, ec2.wait_for_healthy_elbs, [elb_name], 2)
 
-    @mock_autoscaling
-    @mock_elb
-    @mock_ec2
+    @mock_autoscaling_deprecated
+    @mock_elb_deprecated
+    @mock_ec2_deprecated
     def _setup_test_asg_to_be_deleted(self):
         """
         Setup a test ASG that is tagged to be deleted.
@@ -306,9 +306,9 @@ class TestEC2(unittest.TestCase):
         ec2.tag_asg_for_deletion(self.test_asg_name, 0)
         self.test_asg = self.test_autoscale.get_all_groups([self.test_asg_name])[0]
 
-    @mock_autoscaling
-    @mock_elb
-    @mock_ec2
+    @mock_autoscaling_deprecated
+    @mock_elb_deprecated
+    @mock_ec2_deprecated
     def test_create_or_update_tags_on_asg(self):
         self._setup_test_asg_to_be_deleted()
 
@@ -323,9 +323,9 @@ class TestEC2(unittest.TestCase):
 
     # Moto does not currently implement delete_tags() - so this test can't complete successfully.
     # Once moto implements delete_tags(), uncomment this test.
-    # @mock_autoscaling
-    # @mock_elb
-    # @mock_ec2
+    # @mock_autoscaling_deprecated
+    # @mock_elb_deprecated
+    # @mock_ec2_deprecated
     # def test_delete_tags_on_asg(self):
     #     self._setup_test_asg_to_be_deleted()
 
@@ -339,9 +339,9 @@ class TestEC2(unittest.TestCase):
     #     delete_tags = [tag for tag in the_asg.tags if tag.key == ec2.ASG_DELETE_TAG_KEY]
     #     self.assertTrue(len(delete_tags) == 0)
 
-    @mock_autoscaling
-    @mock_ec2
-    @mock_elb
+    @mock_autoscaling_deprecated
+    @mock_ec2_deprecated
+    @mock_elb_deprecated
     def test_get_asgs_pending_delete(self):
         asg_name = "test-asg-deletion"
         deletion_dttm_str = datetime.datetime.utcnow().isoformat()
@@ -354,9 +354,9 @@ class TestEC2(unittest.TestCase):
         self.assertEqual(asg.tags[0].key, ec2.ASG_DELETE_TAG_KEY)
         self.assertEqual(asg.tags[0].value, deletion_dttm_str)
 
-    @mock_autoscaling
-    @mock_ec2
-    @mock_elb
+    @mock_autoscaling_deprecated
+    @mock_ec2_deprecated
+    @mock_elb_deprecated
     def test_get_asgs_pending_delete_incorrectly_formatted_timestamp(self):
         asg_name1 = "test-asg-deletion"
         asg_name2 = "test-asg-deletion-bad-timestamp"
@@ -409,29 +409,6 @@ class TestEC2(unittest.TestCase):
 
         # Undo the monkey patch
         ec2.datetime = built_in_datetime
-
-    @ddt.data(
-        (103, 103, None),
-        (103, 103, []),
-        (103, 1, ["elb_1"]),
-        (103, 3, ["elb_1", "elb_11", "elb_100"])
-
-    )
-    @ddt.unpack
-    @mock_elb
-    def test_get_all_load_balancers(self, elb_count, expected_result_count, name_filter):
-        """
-        While I have attempted to test for pagination the moto library does not seem to support this and returns
-        all of the ELBs created on the first get request and not 50 per request.
-        """
-        for i in range(elb_count):
-            create_elb("elb_{}".format(i))
-        elb = ec2.get_all_load_balancers(name_filter)
-
-        self.assertIsInstance(elb, list)
-        self.assertEqual(len(elb), expected_result_count)
-        if name_filter:
-            self.assertTrue(all(asg.name in name_filter for asg in elb))
 
     @ddt.data(
         (400,
@@ -531,7 +508,7 @@ class TestEC2(unittest.TestCase):
         ),
     )
     @ddt.unpack
-    @mock_ec2
+    @mock_ec2_deprecated
     def test_terminate_instances(self, instances, max_run_hours, skip_if_tag, tags, expected_count):
         conn = boto.connect_ec2('dummy_key', 'dummy_secret')
         for requested_instance in instances:
