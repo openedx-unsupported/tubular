@@ -97,7 +97,6 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
     default='merge_sha',
 )
 @click_log.simple_verbosity_option(default=u'INFO')
-@click_log.init()
 def octomerge(
         token, target_repo, source_repo, target_base_branch, source_base_branch,
         target_branch, source_branch, out_file, target_reference_repo,

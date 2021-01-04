@@ -61,7 +61,6 @@ LOG = logging.getLogger(__name__)
     help=u'Path to a public reference repo to use to speed up cloning.',
 )
 @click_log.simple_verbosity_option(default=u'INFO')
-@click_log.init()
 def push_public_to_private(private_org,
                            private_repo,
                            private_target_branch,
