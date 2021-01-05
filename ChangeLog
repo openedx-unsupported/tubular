@@ -1,11 +1,11 @@
 CHANGES
 =======
 
-* pycodestyle, remove unneeded pinning
-* Iterating..
-* Unpin httpretty
-* Use lowest supported python version for dockerfile so that upgrades applied here use the correct version.  Then do a make upgrade
-* Upgrade moto > 1.0.0, unpin testing dependencies for edx\_lint, remove unsupported pytest-pep8 library
+* Revert "Revert "Upgrade moto > 1.0.0, unpin testing dependencies for edx\_lint (#480)" (#484)" (#485)
+* Revert "Upgrade moto > 1.0.0, unpin testing dependencies for edx\_lint (#480)" (#484)
+* Remove calls to method that does not exist (#483)
+* fix click\_log: Attribute error
+* Upgrade moto > 1.0.0, unpin testing dependencies for edx\_lint (#480)
 * Revert "Updating pycodestyleversion (#472)"
 * Revert "Removing merge conflict (#473)"
 * Removing merge conflict (#473)
