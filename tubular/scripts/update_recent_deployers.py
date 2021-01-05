@@ -14,19 +14,7 @@ from tubular.gocd_api import GoCDAPI  # pylint: disable=wrong-import-position
 from tubular.opsgenie_api import OpsGenieAPI
 
 
-def _parse_pipeline_def(_ctx, _param, values):
-    """
-    Parse the --pipeline argument into pairs of (pipeline, stages)
-    """
-    parsed = []
-    for value in values:
-        match = re.match(r'(?P<pipeline>.*)\[(?P<stages>.*)\]', value)
-        if match is None:
-            raise ValueError("{!r} does not match format pipeline[stage, ...]")
 
-        pipeline, stages = match.group('pipeline', 'stages')
-        parsed.append((pipeline, [stage.strip() for stage in stages.split(',')]))
-    return parsed
 
 
 @click.command()
