@@ -10,7 +10,7 @@ import re
 import socket
 import backoff
 
-from github import Github
+from github import Github, GithubException
 from github.PullRequest import PullRequest
 from github.Commit import Commit
 from github.GitCommit import GitCommit
@@ -224,7 +224,12 @@ class GitHubAPI:
     @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def _set_up_repo_and_org(self):
-        self.github_repo = self.github_connection.get_repo('{org}/{repo}'.format(org=self.org, repo=self.repo))
+        try:
+            self.github_repo = self.github_connection.get_repo('{org}/{repo}'.format(org=self.org, repo=self.repo))
+        except GithubException:
+            LOG.error("Unable to retrieve repo {org}/{repo}".format(org=self.org, repo=self.repo))
+            raise
+
         self.github_org = self.github_connection.get_organization(self.org)
 
     def get_rate_limit(self):
@@ -239,7 +244,8 @@ class GitHubAPI:
         Logs the rate limit and remaining calls before the limit is hit
         Example: RateLimit(rate=Rate(remaining=4767, limit=5000))
         """
-        LOG.info("Github API Rate Limit: {}".format(self.get_rate_limit()))
+        limit_data = self.get_rate_limit().core
+        LOG.info("Github API RL Remaining {} of {}".format(limit_data.remaining, limit_data.limit))
         return self.github_connection.get_rate_limit()
 
     @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
