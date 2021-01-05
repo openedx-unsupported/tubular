@@ -244,7 +244,8 @@ class GitHubAPI:
         Logs the rate limit and remaining calls before the limit is hit
         Example: RateLimit(rate=Rate(remaining=4767, limit=5000))
         """
-        LOG.info("Github API Rate Limit: {}".format(self.get_rate_limit()))
+        limit_data = self.get_rate_limit().core
+        LOG.info("Github API RL Remaining {} of {}".format(limit_data.remaining, limit_data.limit))
         return self.github_connection.get_rate_limit()
 
     @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
