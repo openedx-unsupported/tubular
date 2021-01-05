@@ -22,10 +22,15 @@ from tubular.opsgenie_api import OpsGenieAPI
     required=True,
     help="Message in the body of Opsgenie Alert",
 )
-def alert_opsgenie(auth_token, message, description):
+@click.option(
+    '--team_id',
+    required=True,
+    help="Team id to notify for Opsgenei Alert",
+)
+def alert_opsgenie(auth_token, message, description, team_id):
     """
     Sends an alert to an opsgenie team
     """
     opsgenie = OpsGenieAPI(auth_token)
 
-    opsgenie.alert_opsgenie(message, description)
+    opsgenie.alert_opsgenie(message, description, team_id)
