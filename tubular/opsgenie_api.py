@@ -41,7 +41,7 @@ class OpsGenieAPI:
             data=json.dumps(alert_data)
         )
 
-        if response.status_code not in (200, 201, 204):
+        if response.status_code not in (200, 201, 202, 204):
             raise OpsgenieMessageSendFailure(
                 "Message {} failed: {}".format(message, response.text)
             )
