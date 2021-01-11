@@ -6,7 +6,7 @@ import os
 import unittest
 import itertools
 import boto
-import mock
+from unittest import mock
 import requests_mock
 
 from ddt import ddt, data, unpack
@@ -1703,7 +1703,7 @@ class TestAsgard(unittest.TestCase):
         self._mock_asgard_pending_delete(req_mock, [asg], 404)
         with self.assertRaises(ASGDoesNotExistException) as context_manager:
             asgard.get_asg_info(asg)
-        error_message = "Autoscale group {} does not exist".format(asg)
+        error_message = f"Autoscale group {asg} does not exist"
         self.assertEqual(str(context_manager.exception), error_message)
 
     def test_get_asg_info_500(self, req_mock):

@@ -38,7 +38,7 @@ def alert_opsgenie(auth_token, message, description):
         opsgenie.alert_opsgenie(message, description)
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho('{}'.format(err), fg='red')
+        click.secho(f'{err}', fg='red')
         sys.exit(1)
 
 if __name__ == "__main__":

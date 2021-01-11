@@ -75,7 +75,7 @@ def merge_pull_request(org,
         sys.exit(1)
 
     if input_file:
-        config = yaml.safe_load(io.open(input_file, 'r'))
+        config = yaml.safe_load(open(input_file, 'r'))
         if not config['pr_created']:
             # The input file indicates that no PR was created, so no PR tests to check here.
             LOG.info("No PR created - so no PR to merge.")

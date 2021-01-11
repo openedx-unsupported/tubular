@@ -3,7 +3,7 @@ Test the get_learners_to_retire.py script
 """
 
 import os
-from mock import patch, DEFAULT
+from unittest.mock import patch, DEFAULT
 
 from click.testing import CliRunner
 from slumber.exceptions import HttpClientError, HttpServerError

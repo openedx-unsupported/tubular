@@ -3,7 +3,7 @@ Tests for the Sailthru API functionality
 """
 import os
 import logging
-import mock
+from unittest import mock
 import pytest
 from six.moves import reload_module
 

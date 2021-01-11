@@ -3,9 +3,6 @@
 """
 Command-line script to create or update the release page for a specific release.
 """
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
 
 from os import path
 from datetime import datetime
@@ -34,73 +31,73 @@ EXPECTED_RELEASE_DATE = default_expected_release_date()
 @click.command("create_release_page")
 @click.option(
     '-c', '--compare', 'ami_pairs',
-    help=u"A pair of paths to AMI description yaml files.",
+    help="A pair of paths to AMI description yaml files.",
     type=(click.File(), click.File()),
     multiple=True
 )
 @click.option(
     '--confluence-url',
-    help=u"The base url of the confluence instance to publish the release page to.",
+    help="The base url of the confluence instance to publish the release page to.",
     default='https://openedx.atlassian.net/wiki',
 )
 @click.option(
     '--user',
-    help=u"The username of the confluence user to post as.",
+    help="The username of the confluence user to post as.",
     required=True,
 )
 @click.option(
     '--password',
-    help=u"The password for the confluence user.",
+    help="The password for the confluence user.",
     required=True,
 )
 @click.option(
     '--parent-title',
-    help=u"The title of the page to publish this page as a child of.",
+    help="The title of the page to publish this page as a child of.",
 )
 @click.option(
     '--space',
-    help=u"The space to publish this page in.",
+    help="The space to publish this page in.",
 )
 @click.option(
     '--title',
     help=(
-        u"The title of this page. May contain the formatting value {timestamp} "
-        u"to insert the time of publishing into the wiki title. May also include `/` "
-        u"characters, which will create hierarchy pages that just display children."
+        "The title of this page. May contain the formatting value {timestamp} "
+        "to insert the time of publishing into the wiki title. May also include `/` "
+        "characters, which will create hierarchy pages that just display children."
     ),
 )
 @click.option(
     '--github-token',
-    help=u"The token to use when accessing the github api.",
+    help="The token to use when accessing the github api.",
     required=True,
 )
 @click.option(
     '--jira-url',
-    help=u"The base url for the JIRA instance to link JIRA tickets to.",
+    help="The base url for the JIRA instance to link JIRA tickets to.",
     default='https://openedx.atlassian.net'
 )
 @click.option(
     '--gocd-url',
-    help=u"The url of the GoCD pipeline that build this release.",
+    help="The url of the GoCD pipeline that build this release.",
 )
 @click.option(
     '--status',
-    help=u"The current status of this deployment",
+    help="The current status of this deployment",
     required=True,
     type=click.Choice(ReleaseStatus.__members__.keys()),  # pylint: disable=no-member
 )
 @click.option(
     '--out-file',
-    help=u"File location to export metadata that can be used to update this page.",
+    help="File location to export metadata that can be used to update this page.",
     type=click.File(mode='w'),
     default=sys.stdout,
 )
 @click.option(
     '--in-file',
-    help=u"File location to import metadata from to specify a page to update.",
+    help="File location to import metadata from to specify a page to update.",
     type=click.File(),
 )
-@click_log.simple_verbosity_option(default=u'INFO')
+@click_log.simple_verbosity_option(default='INFO')
 def create_release_page(
         ami_pairs, confluence_url, user, password, parent_title,
         space, title, github_token, jira_url, gocd_url, status,
@@ -122,7 +119,7 @@ def create_release_page(
         title = in_data['title']
 
     if title is None:
-        title = "{:%Y-%m-%d} Release".format(EXPECTED_RELEASE_DATE)
+        title = f"{EXPECTED_RELEASE_DATE:%Y-%m-%d} Release"
 
     # This allows titles of the form "{timestamp:%Y-%m-%d} Release" and the like
     # to format in the current timestamp
@@ -174,7 +171,7 @@ def create_release_page(
             parent_id=parent_id
         )
         parent_title = None
-        parent_id = result[u'id']
+        parent_id = result['id']
 
     publish_page(
         confluence_url,

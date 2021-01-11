@@ -55,7 +55,7 @@ def get_learners_to_retire(config_file,
         click.echo('A config file is required.')
         sys.exit(-1)
 
-    with io.open(config_file, 'r') as config:
+    with open(config_file, 'r') as config:
         config_yaml = yaml.safe_load(config)
 
     user_count_error_threshold = int(user_count_error_threshold)

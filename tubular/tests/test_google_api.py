@@ -10,13 +10,11 @@ import unittest
 from io import BytesIO
 
 # Gives a version of zip which returns an iterable even under python 2.
-from builtins import zip  # pylint: disable=redefined-builtin
 
 from itertools import cycle
-from mock import patch
+from unittest.mock import patch
 from pytz import UTC
 import six
-from six.moves import range  # use the range function introduced in python 3
 
 from googleapiclient.http import HttpMockSequence
 from tubular.google_api import BatchRequestError, DriveApi, FOLDER_MIMETYPE, GOOGLE_API_MAX_BATCH_SIZE
@@ -32,8 +30,8 @@ class TestDriveApi(unittest.TestCase):
     maxDiff = None
 
     def setUp(self):
-        super(TestDriveApi, self).setUp()
-        with open(DISCOVERY_DRIVE_RESPONSE_FILE, 'r') as f:
+        super().setUp()
+        with open(DISCOVERY_DRIVE_RESPONSE_FILE) as f:
             self.mock_discovery_response_content = f.read()
 
     @classmethod
@@ -68,13 +66,13 @@ class TestDriveApi(unittest.TestCase):
             # First, a request is made to the discovery API to construct a client object for Drive.
             ({'status': '200'}, self.mock_discovery_response_content),
             # Then, a request is made to upload the file.
-            ({'status': '200'}, '{{"id": "{}"}}'.format(fake_file_id)),
+            ({'status': '200'}, f'{{"id": "{fake_file_id}"}}'),
         ])
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
         response = test_client.create_file_in_folder(
             'fake-folder-id',
             'Fake Filename',
-            BytesIO('fake file contents'.encode('ascii')),
+            BytesIO(b'fake file contents'),
             'text/plain',
         )
         assert response == fake_file_id
@@ -92,13 +90,13 @@ class TestDriveApi(unittest.TestCase):
             # Then, a request is made to upload the file while rate limiting was activated.  This should cause a retry.
             self._http_mock_sequence_retry(),
             # Finally, success.
-            ({'status': '200'}, '{{"id": "{}"}}'.format(fake_file_id)),
+            ({'status': '200'}, f'{{"id": "{fake_file_id}"}}'),
         ])
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
         response = test_client.create_file_in_folder(
             'fake-folder-id',
             'Fake Filename',
-            BytesIO('fake file contents'.encode('ascii')),
+            BytesIO(b'fake file contents'),
             'text/plain',
         )
         # There is no need to explicitly check if the call was retried because
@@ -215,7 +213,7 @@ ETag: "etag/sheep"\r\n\r\n
         five_days_ago = datetime.now(UTC) - timedelta(days=5)
         fake_newish_files = [
             {
-                'id': 'fake-text-file-id-{}'.format(idx),
+                'id': f'fake-text-file-id-{idx}',
                 'createdTime': five_days_ago + timedelta(days=1),
                 'mimeType': 'text/plain'
             }
@@ -223,7 +221,7 @@ ETag: "etag/sheep"\r\n\r\n
         ]
         fake_old_files = [
             {
-                'id': 'fake-text-file-id-{}'.format(idx),
+                'id': f'fake-text-file-id-{idx}',
                 'createdTime': five_days_ago - timedelta(days=14),
                 'mimeType': 'text/plain'
             }
@@ -246,7 +244,7 @@ ETag: "etag/sheep"\r\n\r\n
             test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
             test_client.delete_files_older_than('fake-folder-id', five_days_ago)
         # Verify that the correct files were requested to be deleted.
-        mock_delete_files.assert_called_once_with(['fake-text-file-id-{}'.format(idx) for idx in range(2, 10, 2)])
+        mock_delete_files.assert_called_once_with([f'fake-text-file-id-{idx}' for idx in range(2, 10, 2)])
 
     @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
     def test_walk_files_multi_page_all_types(self, mock_from_service_account_file):  # pylint: disable=unused-argument
@@ -262,16 +260,16 @@ ETag: "etag/sheep"\r\n\r\n
         ]
         fake_text_files = [
             {
-                'id': 'fake-text-file-id-{}'.format(idx),
-                'name': 'fake-text-file-name-{}'.format(idx),
+                'id': f'fake-text-file-id-{idx}',
+                'name': f'fake-text-file-name-{idx}',
                 'mimeType': 'text/plain'
             }
             for idx in range(10)
         ]
         fake_csv_files = [
             {
-                'id': 'fake-csv-file-id-{}'.format(idx),
-                'name': 'fake-csv-file-name-{}'.format(idx),
+                'id': f'fake-csv-file-id-{idx}',
+                'name': f'fake-csv-file-name-{idx}',
                 'mimeType': 'application/csv'
             }
             for idx in range(10)
@@ -311,7 +309,7 @@ ETag: "etag/sheep"\r\n\r\n
             del fake_file['mimeType']
         for fake_file in fake_csv_files:
             del fake_file['mimeType']
-        six.assertCountEqual(self, response, fake_folder + fake_text_files + fake_csv_files)
+        self.assertCountEqual(response, fake_folder + fake_text_files + fake_csv_files)
 
     @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
     def test_walk_files_multi_page_csv_only(self, mock_from_service_account_file):  # pylint: disable=unused-argument
@@ -327,8 +325,8 @@ ETag: "etag/sheep"\r\n\r\n
         ]
         fake_csv_files = [
             {
-                'id': 'fake-csv-file-id-{}'.format(idx),
-                'name': 'fake-csv-file-name-{}'.format(idx),
+                'id': f'fake-csv-file-id-{idx}',
+                'name': f'fake-csv-file-name-{idx}',
                 'mimeType': 'application/csv'
             }
             for idx in range(10)
@@ -365,7 +363,7 @@ ETag: "etag/sheep"\r\n\r\n
         # Remove all the mimeTypes for comparison purposes.
         for fake_file in fake_csv_files:
             del fake_file['mimeType']
-        six.assertCountEqual(self, response, fake_csv_files)
+        self.assertCountEqual(response, fake_csv_files)
 
     @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
     def test_walk_files_one_page(self, mock_from_service_account_file):  # pylint: disable=unused-argument
@@ -374,8 +372,8 @@ ETag: "etag/sheep"\r\n\r\n
         """
         fake_folders = [
             {
-                'id': 'fake-folder-id-{}'.format(idx),
-                'name': 'fake-folder-name-{}'.format(idx),
+                'id': f'fake-folder-id-{idx}',
+                'name': f'fake-folder-name-{idx}',
                 'mimeType': 'application/vnd.google-apps.folder'
             }
             for idx in range(10)
@@ -397,7 +395,7 @@ ETag: "etag/sheep"\r\n\r\n
         # Remove all the mimeTypes for comparison purposes.
         for fake_folder in fake_folders:
             del fake_folder['mimeType']
-        six.assertCountEqual(self, response, fake_folders)
+        self.assertCountEqual(response, fake_folders)
 
     @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
     def test_walk_files_two_page(self, mock_from_service_account_file):  # pylint: disable=unused-argument
@@ -406,8 +404,8 @@ ETag: "etag/sheep"\r\n\r\n
         """
         fake_folders = [
             {
-                'id': 'fake-folder-id-{}'.format(idx),
-                'name': 'fake-folder-name-{}'.format(idx),
+                'id': f'fake-folder-id-{idx}',
+                'name': f'fake-folder-name-{idx}',
                 'mimeType': 'application/vnd.google-apps.folder'
             }
             for idx in range(10)
@@ -438,7 +436,7 @@ ETag: "etag/sheep"\r\n\r\n
         # Remove all the mimeTypes for comparison purposes.
         for fake_folder in fake_folders:
             del fake_folder['mimeType']
-        six.assertCountEqual(self, response, fake_folders)
+        self.assertCountEqual(response, fake_folders)
 
     @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
     def test_walk_files_retry(self, mock_from_service_account_file):  # pylint: disable=unused-argument
@@ -447,8 +445,8 @@ ETag: "etag/sheep"\r\n\r\n
         """
         fake_folders = [
             {
-                'id': 'fake-folder-id-{}'.format(idx),
-                'name': 'fake-folder-name-{}'.format(idx),
+                'id': f'fake-folder-id-{idx}',
+                'name': f'fake-folder-name-{idx}',
                 'mimeType': 'application/vnd.google-apps.folder'
             }
             for idx in range(10)
@@ -471,7 +469,7 @@ ETag: "etag/sheep"\r\n\r\n
         # Remove all the mimeTypes for comparison purposes.
         for fake_folder in fake_folders:
             del fake_folder['mimeType']
-        six.assertCountEqual(self, response, fake_folders)
+        self.assertCountEqual(response, fake_folders)
 
     @patch('tubular.google_api.service_account.Credentials.from_service_account_file', return_value=None)
     def test_comment_files_success(self, mock_from_service_account_file):  # pylint: disable=unused-argument
@@ -503,8 +501,7 @@ ETag: "etag/sheep"\r\n\r\n{"id": "fake-comment-id1"}
         ])
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
         resp = test_client.create_comments_for_files(list(zip(fake_file_ids, cycle(['some comment message']))))
-        six.assertCountEqual(
-            self,
+        self.assertCountEqual(
             resp,
             {
                 'fake-file-id0': {'id': 'fake-comment-id0'},
@@ -519,7 +516,7 @@ ETag: "etag/sheep"\r\n\r\n{"id": "fake-comment-id1"}
         mechanism when a subset of responses are rate limited.
         """
         num_files = int(GOOGLE_API_MAX_BATCH_SIZE * 1.5)
-        fake_file_ids = ['fake-file-id{}'.format(n) for n in range(num_files)]
+        fake_file_ids = [f'fake-file-id{n}' for n in range(num_files)]
         batch_response_0 = '\n'.join(
             '''--batch_foobarbaz
 Content-Type: application/http
@@ -582,11 +579,10 @@ ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
         ])
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
         resp = test_client.create_comments_for_files(list(zip(fake_file_ids, cycle(['some comment message']))))
-        six.assertCountEqual(
-            self,
+        self.assertCountEqual(
             resp,
             {
-                'fake-file-id{}'.format(n): {'id': 'fake-comment-id{}'.format(n)}
+                f'fake-file-id{n}': {'id': f'fake-comment-id{n}'}
                 for n in range(num_files)
             },
         )
@@ -694,8 +690,7 @@ ETag: "etag/sheep"\r\n\r\n{"permissions": [{"emailAddress": "writer@example.com"
         ])
         test_client = DriveApi('non-existent-secrets.json', http=http_mock_sequence)
         resp = test_client.list_permissions_for_files(fake_file_ids)
-        six.assertCountEqual(
-            self,
+        self.assertCountEqual(
             resp,
             {
                 'fake-file-id0': [{'emailAddress': 'reader@example.com', 'role': 'reader'}],

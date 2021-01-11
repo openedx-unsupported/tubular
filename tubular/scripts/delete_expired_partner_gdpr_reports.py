@@ -44,7 +44,7 @@ def _config_or_exit(config_file, google_secrets_file):
     Returns the config values from the given file, allows overriding of passed in values.
     """
     try:
-        with io.open(config_file, 'r') as config:
+        with open(config_file, 'r') as config:
             config = yaml.safe_load(config)
 
         # Check required value
@@ -52,18 +52,18 @@ def _config_or_exit(config_file, google_secrets_file):
             FAIL(ERR_BAD_CONFIG, 'No drive_partners_folder in config, or it is empty!')
 
     except Exception as exc:  # pylint: disable=broad-except
-        FAIL_EXCEPTION(ERR_BAD_CONFIG, 'Failed to read config file {}'.format(config_file), exc)
+        FAIL_EXCEPTION(ERR_BAD_CONFIG, f'Failed to read config file {config_file}', exc)
 
     try:
         # Just load and parse the file to make sure it's legit JSON before doing
         # all of the work to delete old reports.
-        with open(google_secrets_file, 'r') as secrets_f:
+        with open(google_secrets_file) as secrets_f:
             json.load(secrets_f)
 
         config['google_secrets_file'] = google_secrets_file
         return config
     except Exception as exc:  # pylint: disable=broad-except
-        FAIL_EXCEPTION(ERR_BAD_SECRETS, 'Failed to read secrets file {}'.format(google_secrets_file), exc)
+        FAIL_EXCEPTION(ERR_BAD_SECRETS, f'Failed to read secrets file {google_secrets_file}', exc)
 
 
 @click.command("delete_expired_reports")

@@ -304,7 +304,7 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
             if notes:
                 return "{} {} {}".format(action, s_id, " ".join(notes))
 
-            return "{} {}".format(action, s_id)
+            return f"{action} {s_id}"
 
         print("== Summary ==", file=details_file)
         print("Active Version Branches: {}".format(len(branches)), file=details_file)
@@ -315,7 +315,7 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
         print("\n== Active Versions ==", file=details_file)
 
         for branch in branches:
-            print("{}".format(branch), file=details_file)
+            print(f"{branch}", file=details_file)
             for structure_id in structures_graph.traverse_ids(branch.structure_id, include_start=True):
                 print(text_for(structure_id), file=details_file)
             print("", file=details_file)
