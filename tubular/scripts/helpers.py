@@ -23,6 +23,7 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.edx_api import CredentialsApi, DemographicsApi, EcommerceApi, LicenseManagerApi, \
     LmsApi  # pylint: disable=wrong-import-position
+from tubular.braze_api import BrazeApi  # pylint: disable=wrong-import-position
 from tubular.segment_api import SegmentApi  # pylint: disable=wrong-import-position
 from tubular.sailthru_api import SailthruApi  # pylint: disable=wrong-import-position
 from tubular.salesforce_api import SalesforceApi  # pylint: disable=wrong-import-position
@@ -155,6 +156,8 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
         license_manager_base_url = config['base_urls'].get('license_manager', None)
         client_id = config['client_id']
         client_secret = config['client_secret']
+        braze_api_key = config.get('braze_api_key', None)
+        braze_instance = config.get('braze_instance', None)
         sailthru_key = config.get('sailthru_key', None)
         sailthru_secret = config.get('sailthru_secret', None)
         salesforce_user = config.get('salesforce_user', None)
@@ -171,6 +174,7 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
 
         for state in config['retirement_pipeline']:
             for service, service_url in (
+                    ('BRAZE', braze_api_key),
                     ('ECOMMERCE', ecommerce_base_url),
                     ('CREDENTIALS', credentials_base_url),
                     ('SEGMENT', segment_base_url),
@@ -182,6 +186,12 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
                     fail_func(fail_code, 'Service URL is not configured, but required for state {}'.format(state))
 
         config['LMS'] = LmsApi(lms_base_url, lms_base_url, client_id, client_secret)
+
+        if braze_api_key:
+            config['BRAZE'] = BrazeApi(
+                braze_api_key,
+                braze_instance,
+            )
 
         if sailthru_key:
             config['SAILTHRU'] = SailthruApi(sailthru_key, sailthru_secret)
