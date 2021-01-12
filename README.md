@@ -67,3 +67,4 @@ Some general guidelines for tubular scripts:
 
 * Prefer --my-argument to --my_argument
 * Install your scripts by adding them to the console_scripts list in setup.cfg
+
