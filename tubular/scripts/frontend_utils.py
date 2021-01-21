@@ -41,15 +41,15 @@ class FrontendBuilder:
     def _get_configs(self):
         """Loads configs from their paths"""
         try:
-            with io.open(self.common_config_file, 'r') as contents:
+            with open(self.common_config_file, 'r') as contents:
                 common_vars = yaml.safe_load(contents)
-        except IOError:
+        except OSError:
             self.FAIL(1, 'Common config file could not be opened.')
 
         try:
-            with io.open(self.env_config_file, 'r') as contents:
+            with open(self.env_config_file, 'r') as contents:
                 env_vars = yaml.safe_load(contents)
-        except IOError:
+        except OSError:
             self.FAIL(1, 'Environment config file could not be opened.')
 
         return (common_vars, env_vars)
@@ -59,7 +59,7 @@ class FrontendBuilder:
         proc = subprocess.Popen(['npm install'], cwd=self.app_name, shell=True)
         return_code = proc.wait()
         if return_code != 0:
-            self.FAIL('Could not run `npm install` for app {}.'.format(self.app_name))
+            self.FAIL(f'Could not run `npm install` for app {self.app_name}.')
 
         self.install_requirements_npm_aliases()
 
@@ -71,12 +71,12 @@ class FrontendBuilder:
             proc = subprocess.Popen(['npm install npm'], cwd=self.app_name, shell=True)
             return_code = proc.wait()
             if return_code != 0:
-                self.FAIL('Could not run `npm install npm` for app {}.'.format(self.app_name))
+                self.FAIL(f'Could not run `npm install npm` for app {self.app_name}.')
 
-            aliased_installs = ' '.join(['{}@{}'.format(k, v) for k, v in npm_aliases.items()])
+            aliased_installs = ' '.join([f'{k}@{v}' for k, v in npm_aliases.items()])
             # Use the locally installed npm at ./node_modules/.bin/npm
             install_aliases_proc = subprocess.Popen(
-                ['./node_modules/.bin/npm install {}'.format(aliased_installs)],
+                [f'./node_modules/.bin/npm install {aliased_installs}'],
                 cwd=self.app_name,
                 shell=True
             )
@@ -91,7 +91,7 @@ class FrontendBuilder:
         app_config = self.common_cfg.get('APP_CONFIG', {})
         app_config.update(self.env_cfg.get('APP_CONFIG', {}))
         if not app_config:
-            self.LOG('Config variables do not exist for app {}.'.format(self.app_name))
+            self.LOG(f'Config variables do not exist for app {self.app_name}.')
         return app_config
 
     def get_npm_aliases_config(self):
@@ -122,10 +122,10 @@ class FrontendBuilder:
             'created': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         }
         try:
-            with io.open(self.version_file, 'w') as output_file:
+            with open(self.version_file, 'w') as output_file:
                 json.dump(version, output_file)
-        except IOError:
-            self.FAIL(1, 'Could not write to version file for app {}.'.format(self.app_name))
+        except OSError:
+            self.FAIL(1, f'Could not write to version file for app {self.app_name}.')
 
 
 class FrontendDeployer:
@@ -143,23 +143,23 @@ class FrontendDeployer:
     def _get_config(self):
         """Loads config from it's path"""
         try:
-            with io.open(self.env_config_file, 'r') as contents:
+            with open(self.env_config_file, 'r') as contents:
                 env_vars = yaml.safe_load(contents)
-        except IOError:
-            self.FAIL(1, 'Environment config file {} could not be opened.'.format(self.env_config_file))
+        except OSError:
+            self.FAIL(1, f'Environment config file {self.env_config_file} could not be opened.')
         return env_vars
 
     def deploy_site(self, bucket_name, app_path):
         """Deploy files to bucket."""
-        bucket_uri = 's3://{}'.format(bucket_name)
+        bucket_uri = f's3://{bucket_name}'
         proc = subprocess.Popen(
             ' '.join(['aws s3 sync', app_path, bucket_uri, '--delete']),
             shell=True
         )
         return_code = proc.wait()
         if return_code != 0:
-            self.FAIL(1, 'Could not sync app {} with S3 bucket {}.'.format(self.app_name, bucket_uri))
-        self.LOG('Frontend application {} successfully deployed to {}.'.format(self.app_name, bucket_name))
+            self.FAIL(1, f'Could not sync app {self.app_name} with S3 bucket {bucket_uri}.')
+        self.LOG(f'Frontend application {self.app_name} successfully deployed to {bucket_name}.')
 
     @backoff.on_exception(backoff.expo,
                           (CloudFlare.exceptions.CloudFlareAPIError),
@@ -179,4 +179,4 @@ class FrontendDeployer:
         cloudflare_client = CloudFlare.CloudFlare()
         zone_id = cloudflare_client.zones.get(params={'name': zone_name})[0]['id']  # pylint: disable=no-member
         cloudflare_client.zones.purge_cache.post(zone_id, data=data)  # pylint: disable=no-member
-        self.LOG('Successfully purged Cloudflare cache for hostname {}.'.format(bucket_name))
+        self.LOG(f'Successfully purged Cloudflare cache for hostname {bucket_name}.')

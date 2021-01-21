@@ -2,7 +2,7 @@
 Test the retire_one_learner.py script
 """
 
-from mock import patch, DEFAULT
+from unittest.mock import patch, DEFAULT
 
 from click.testing import CliRunner
 from slumber.exceptions import HttpNotFoundError
@@ -354,7 +354,7 @@ def test_get_segment_id_not_found(*args, **kwargs):
     mock_get_retirement_state = kwargs['get_learner_retirement_state']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
-    mock_get_tracking_key.side_effect = HttpNotFoundError('{} not found'.format(username))
+    mock_get_tracking_key.side_effect = HttpNotFoundError(f'{username} not found')
 
     mock_get_retirement_state.return_value = get_fake_user_retirement(
         original_username=username,

@@ -4,7 +4,7 @@
 #
 #    make upgrade
 #
-atlassian-python-api==2.2.0  # via -r requirements/base.in
+atlassian-python-api==2.5.0  # via -r requirements/base.in
 authlib==0.15.2           # via simple-salesforce
 backoff==1.5.0            # via -r requirements/base.in
 boto==2.43.0              # via -r requirements/base.in
@@ -15,7 +15,7 @@ chardet==4.0.0            # via requests
 click-log==0.3.2          # via -r requirements/base.in
 click==7.1.2              # via -r requirements/base.in, click-log
 cloudflare==2.1.0         # via -r requirements/base.in
-cryptography==3.2.1       # via authlib
+cryptography==3.3.1       # via authlib
 decorator==4.4.2          # via validators
 deprecated==1.2.10        # via atlassian-python-api, pygithub
 easydict==1.9             # via yagocd
@@ -24,14 +24,14 @@ edx-rest-api-client==1.7.1  # via -r requirements/base.in
 freezegun==0.3.8          # via -r requirements/base.in
 future==0.16.0            # via -r requirements/base.in, cloudflare
 gitdb==4.0.5              # via gitpython
-gitpython==3.1.11         # via -r requirements/base.in
+gitpython==3.1.12         # via -r requirements/base.in
 google-api-python-client==1.7.3  # via -r requirements/base.in
 google-auth-httplib2==0.0.4  # via google-api-python-client
-google-auth==1.23.0       # via google-api-python-client, google-auth-httplib2
+google-auth==1.24.0       # via google-api-python-client, google-auth-httplib2
 httplib2==0.18.1          # via google-api-python-client, google-auth-httplib2
 idna==2.10                # via requests
 jenkinsapi==0.3.3         # via -r requirements/base.in
-jsonlines==1.2.0          # via cloudflare
+jsonlines==2.0.0          # via cloudflare
 lxml==4.6.2               # via -r requirements/base.in
 oauthlib==3.1.0           # via atlassian-python-api, requests-oauthlib
 pbr==5.5.1                # via stevedore
@@ -46,11 +46,11 @@ pytz==2016.10             # via -r requirements/base.in, jenkinsapi
 pyyaml==5.1               # via -r requirements/base.in, cloudflare
 requests-oauthlib==1.3.0  # via atlassian-python-api
 requests==2.25.1          # via -r requirements/base.in, atlassian-python-api, cloudflare, jenkinsapi, pygithub, requests-oauthlib, sailthru-client, simple-salesforce, slumber, yagocd
-rsa==4.6                  # via google-auth
+rsa==4.7                  # via google-auth
 sailthru-client==2.3.5    # via -r requirements/base.in
 simple-salesforce==1.10.1  # via -r requirements/base.in
 simplejson==3.17.2        # via sailthru-client
-six==1.15.0               # via -r requirements/base.in, atlassian-python-api, cryptography, edx-opaque-keys, freezegun, google-api-python-client, google-auth, google-auth-httplib2, jsonlines, python-dateutil, stevedore, validators, yagocd
+six==1.15.0               # via -r requirements/base.in, atlassian-python-api, cryptography, edx-opaque-keys, freezegun, google-api-python-client, google-auth, google-auth-httplib2, python-dateutil, stevedore, validators, yagocd
 slumber==0.7.1            # via edx-rest-api-client
 smmap==3.0.4              # via gitdb
 stevedore==1.32.0         # via edx-opaque-keys

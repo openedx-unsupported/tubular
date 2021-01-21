@@ -40,23 +40,23 @@ def export_learner_job_properties(learners, directory):
 
     for learner in learners:
         learner_name = learner['original_username'].lower()
-        filename = os.path.join(directory, 'learner_retire_{}'.format(learner_name))
+        filename = os.path.join(directory, f'learner_retire_{learner_name}')
         with open(filename, 'w') as learner_prop_file:
             learner_prop_file.write('RETIREMENT_USERNAME={}\n'.format(learner['original_username']))
 
 
 def _poll_giveup(data):
-    u""" Raise an error when the polling tries are exceeded."""
-    orig_args = data.get(u'args')
+    """ Raise an error when the polling tries are exceeded."""
+    orig_args = data.get('args')
     # The Build object was the only parameter to the original method call,
     # and so it's the first and only item in the args.
     build = orig_args[0]
-    msg = u'Timed out waiting for build {} to finish.'.format(build.name)
+    msg = f'Timed out waiting for build {build.name} to finish.'
     raise BackendError(msg)
 
 
 def _backoff_timeout(timeout, base=2, factor=1):
-    u"""
+    """
     Return a tuple of (wait_gen, max_tries) so that backoff will only try up to `timeout` seconds.
 
     |timeout (s)|max attempts|wait durations        |
@@ -87,7 +87,7 @@ def _backoff_timeout(timeout, base=2, factor=1):
     remainder = timeout - (factor * (base ** tries - 1)) / (base - 1)
 
     def expo():
-        u"""Compute an exponential backoff wait period, but capped to an expected max timeout"""
+        """Compute an exponential backoff wait period, but capped to an expected max timeout"""
         # pylint: disable=invalid-name
         n = 0
         while True:
@@ -109,7 +109,7 @@ def _backoff_timeout(timeout, base=2, factor=1):
 
 def trigger_build(base_url, user_name, user_token, job_name, job_token,
                   job_cause=None, job_params=None, timeout=60 * 30):
-    u"""
+    """
     Trigger a jenkins job/project (note that jenkins uses these terms interchangeably)
 
     Args:
@@ -142,7 +142,7 @@ def trigger_build(base_url, user_name, user_token, job_name, job_token,
         jitter=None,
     )
     def poll_build_for_result(build):
-        u"""
+        """
         Poll for the build running, with exponential backoff, capped to ``timeout`` seconds.
         The on_predicate decorator is used to retry when the return value
         of the target function is True.
@@ -171,22 +171,22 @@ def trigger_build(base_url, user_name, user_token, job_name, job_token,
         raise BackendError(str(err))
 
     if not jenkins.has_job(job_name):
-        msg = u'Job not found: {}.'.format(job_name)
-        msg += u' Verify that you have permissions for the job and double check the spelling of its name.'
+        msg = f'Job not found: {job_name}.'
+        msg += ' Verify that you have permissions for the job and double check the spelling of its name.'
         raise BackendError(msg)
 
     # This will start the job and will return a QueueItem object which can be used to get build results
     job = jenkins[job_name]
     queue_item = job.invoke(securitytoken=job_token, build_params=request_params, cause=job_cause)
-    LOG.info(u'Added item to jenkins. Server: {} Job: {} '.format(
+    LOG.info('Added item to jenkins. Server: {} Job: {} '.format(
         jenkins.base_server_url(), queue_item
     ))
 
     # Block this script until we are through the queue and the job has begun to build.
     queue_item.block_until_building()
     build = queue_item.get_build()
-    LOG.info(u'Created build {}'.format(build))
-    LOG.info(u'See {}'.format(build.baseurl))
+    LOG.info(f'Created build {build}')
+    LOG.info(f'See {build.baseurl}')
 
     # Now block until you get a result back from the build.
     poll_build_for_result(build)
@@ -195,5 +195,5 @@ def trigger_build(base_url, user_name, user_token, job_name, job_token,
     build.poll()
 
     status = build.get_status()
-    LOG.info(u'Build status: {status}'.format(status=status))
+    LOG.info(f'Build status: {status}')
     return status

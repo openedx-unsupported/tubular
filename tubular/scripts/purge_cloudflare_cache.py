@@ -42,9 +42,9 @@ def purge_cloudflare_cache(hostname):
     try:
         zone_id = cloudflare_client.zones.get(params={'name': zone_name})[0]['id']  # pylint: disable=no-member
         cloudflare_client.zones.purge_cache.post(zone_id, data=data)  # pylint: disable=no-member
-        LOG('Successfully purged Cloudflare cache for hostname {}.'.format(hostname))
+        LOG(f'Successfully purged Cloudflare cache for hostname {hostname}.')
     except (CloudFlare.exceptions.CloudFlareAPIError, IndexError, KeyError):
-        FAIL(1, 'Failed to purge the Cloudflare cache for hostname {}.'.format(hostname))
+        FAIL(1, f'Failed to purge the Cloudflare cache for hostname {hostname}.')
 
 
 if __name__ == "__main__":

@@ -50,7 +50,7 @@ class SailthruApi:
             if SAILTHRU_ERROR_NOT_FOUND in error.get_message():
                 LOG.info("No action taken because no user was found in Sailthru.")
             else:
-                error_msg = u"Error attempting to delete user from Sailthru - {}".format(
+                error_msg = "Error attempting to delete user from Sailthru - {}".format(
                     error.get_message()
                 ).encode('utf-8')
                 LOG.error(error_msg)

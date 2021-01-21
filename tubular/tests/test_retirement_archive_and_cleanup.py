@@ -3,7 +3,7 @@ Test the retirement_archive_and_cleanup.py script
 """
 
 
-from mock import patch, DEFAULT
+from unittest.mock import patch, DEFAULT
 
 from click.testing import CliRunner
 
@@ -47,11 +47,11 @@ def _fake_learner(ordinal):
     """
     return get_fake_user_retirement(
         user_id=ordinal,
-        original_username='test{}'.format(ordinal),
-        original_email='test{}@edx.invalid'.format(ordinal),
-        original_name='test {}'.format(ordinal),
-        retired_username='retired_{}'.format(ordinal),
-        retired_email='retired_test{}@edx.invalid'.format(ordinal),
+        original_username=f'test{ordinal}',
+        original_email=f'test{ordinal}@edx.invalid',
+        original_name=f'test {ordinal}',
+        retired_username=f'retired_{ordinal}',
+        retired_email=f'retired_test{ordinal}@edx.invalid',
         last_state_name='COMPLETE'
     )
 

@@ -70,23 +70,23 @@ def retrieve_latest_base_ami(environment, deployment, play, override, ubuntu_ver
             ami_id = override
         else:
             url = ""
-            click.secho('Ubuntu version requested: {}'.format(ubuntu_version), fg='green')
+            click.secho(f'Ubuntu version requested: {ubuntu_version}', fg='green')
             if ubuntu_version == "16.04":
                 url = "https://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
-                click.secho('Xenial.\n: {}'.format(url), fg='green')
+                click.secho(f'Xenial.\n: {url}', fg='green')
             elif ubuntu_version == "18.04":
                 url = "https://cloud-images.ubuntu.com/query/bionic/server/released.current.txt"
-                click.secho('Bionic.\n: {}'.format(url), fg='green')
+                click.secho(f'Bionic.\n: {url}', fg='green')
             elif ubuntu_version == "20.04":
                 url = "https://cloud-images.ubuntu.com/query/focal/server/released.current.txt"
-                click.secho('Focal.\n: {}'.format(url), fg='green')
+                click.secho(f'Focal.\n: {url}', fg='green')
             if url == "":
                 url = "https://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
-                click.secho('Using default xenial images.\n: {}'.format(url), fg='red')
+                click.secho(f'Using default xenial images.\n: {url}', fg='red')
             data = requests.get(url)
-            parse_ami = re.findall('ebs-ssd(.+?)amd64(.+?){}(.+?)hvm'.format(region), data.content.decode('utf-8'))
+            parse_ami = re.findall(f'ebs-ssd(.+?)amd64(.+?){region}(.+?)hvm', data.content.decode('utf-8'))
             ami_id = parse_ami[0][2].strip()
-            click.secho('AMI ID fetched from Ubuntu Cloud : {}'.format(ami_id), fg='red')
+            click.secho(f'AMI ID fetched from Ubuntu Cloud : {ami_id}', fg='red')
 
         ami_info = {
             # This is passed directly to an ansible script that expects a base_ami_id variable
@@ -101,14 +101,14 @@ def retrieve_latest_base_ami(environment, deployment, play, override, ubuntu_ver
         ))
 
         if out_file:
-            with io.open(out_file, 'w') as stream:
+            with open(out_file, 'w') as stream:
                 yaml.safe_dump(ami_info, stream, default_flow_style=False, explicit_start=True)
         else:
             print(yaml.safe_dump(ami_info, default_flow_style=False, explicit_start=True))
 
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho('Error finding base AMI ID.\nMessage: {}'.format(err), fg='red')
+        click.secho(f'Error finding base AMI ID.\nMessage: {err}', fg='red')
         sys.exit(1)
 
     sys.exit(0)

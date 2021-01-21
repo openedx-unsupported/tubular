@@ -3,7 +3,7 @@ Test the retirement_bulk_status_update.py script
 """
 
 
-from mock import patch, DEFAULT
+from unittest.mock import patch, DEFAULT
 
 from click.testing import CliRunner
 

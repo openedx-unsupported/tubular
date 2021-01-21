@@ -2,7 +2,7 @@
 Tests for the Segment API functionality
 """
 import json
-import mock
+from unittest import mock
 import pytest
 
 import requests
@@ -18,7 +18,7 @@ TEST_SEGMENT_CONFIG = {
     'fake_base_url': 'https://segment.invalid/',
     'fake_auth_token': FAKE_AUTH_TOKEN,
     'fake_workspace': 'FakeEdx',
-    'headers': {"Authorization": "Bearer {}".format(FAKE_AUTH_TOKEN), "Content-Type": "application/json"}
+    'headers': {"Authorization": f"Bearer {FAKE_AUTH_TOKEN}", "Content-Type": "application/json"}
 }
 
 
@@ -82,7 +82,7 @@ def test_bulk_delete_success(setup_regulation_api):  # pylint: disable=redefined
 
     expected_learner = get_fake_user_retirement()
     learners_vals = [
-        text_type(expected_learner['user']['id']),
+        str(expected_learner['user']['id']),
         expected_learner['original_username'],
         expected_learner['ecommerce_segment_id'],
     ]

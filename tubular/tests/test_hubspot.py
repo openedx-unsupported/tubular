@@ -28,7 +28,7 @@ class TestHubspot(unittest.TestCase):
     Class containing tests of all code interacting with Hubspot.
     """
     def setUp(self):
-        super(TestHubspot, self).setUp()
+        super().setUp()
         self.test_learner = {'original_email': 'foo@bar.com'}
         self.api_key = 'example_key'
         self.test_vid = 12345

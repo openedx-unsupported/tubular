@@ -9,21 +9,21 @@ import unittest
 
 import backoff
 import ddt
-from mock import Mock, mock_open, patch, call
+from unittest.mock import Mock, mock_open, patch, call
 import requests_mock
 
 from tubular.exception import BackendError
 import tubular.jenkins as jenkins
 
-BASE_URL = u'https://test-jenkins'
-USER_ID = u'foo'
-USER_TOKEN = u'12345678901234567890123456789012'
-JOB = u'test-job'
-TOKEN = u'asdf'
+BASE_URL = 'https://test-jenkins'
+USER_ID = 'foo'
+USER_TOKEN = '12345678901234567890123456789012'
+JOB = 'test-job'
+TOKEN = 'asdf'
 BUILD_NUM = 456
-JOBS_URL = u'{}/job/{}/'.format(BASE_URL, JOB)
-JOB_URL = u'{}{}'.format(JOBS_URL, BUILD_NUM)
-MOCK_BUILD = {u'number': BUILD_NUM, u'url': JOB_URL}
+JOBS_URL = f'{BASE_URL}/job/{JOB}/'
+JOB_URL = f'{JOBS_URL}{BUILD_NUM}'
+MOCK_BUILD = {'number': BUILD_NUM, 'url': JOB_URL}
 MOCK_JENKINS_DATA = {'jobs': [{'name': JOB, 'url': JOBS_URL, 'color': 'blue'}]}
 MOCK_BUILDS_DATA = {
     'actions': [
@@ -80,7 +80,7 @@ class TestProperties(unittest.TestCase):
 
 @ddt.ddt
 class TestBackoff(unittest.TestCase):
-    u"""
+    """
     Test of custom backoff code (wait time generator and max_tries)
     """
 
@@ -144,32 +144,32 @@ class TestJenkinsAPI(unittest.TestCase):
     @ddt.data(
         (None, ()),
         ('my cause', ()),
-        (None, ((u'FOO', u'bar'),)),
-        (None, ((u'FOO', u'bar'), (u'BAZ', u'biz'))),
-        ('my cause', ((u'FOO', u'bar'),)),
+        (None, (('FOO', 'bar'),)),
+        (None, (('FOO', 'bar'), ('BAZ', 'biz'))),
+        ('my cause', (('FOO', 'bar'),)),
     )
     @ddt.unpack
     @requests_mock.Mocker()
     def test_success(self, cause, param, mock):
-        u"""
+        """
         Test triggering a jenkins job
         """
 
         def text_callback(request, context):
-            u""" What to return from the mock. """
+            """ What to return from the mock. """
             # This is the initial call that jenkinsapi uses to
             # establish connectivity to Jenkins
             # https://test-jenkins/api/python?tree=jobs[name,color,url]
             context.status_code = 200
-            if request.url.startswith(u'https://test-jenkins/api/python'):
+            if request.url.startswith('https://test-jenkins/api/python'):
                 return json.dumps(MOCK_JENKINS_DATA)
-            elif request.url.startswith(u'https://test-jenkins/job/test-job/456'):
+            elif request.url.startswith('https://test-jenkins/job/test-job/456'):
                 return json.dumps(MOCK_BUILD_DATA)
-            elif request.url.startswith(u'https://test-jenkins/job/test-job'):
+            elif request.url.startswith('https://test-jenkins/job/test-job'):
                 return json.dumps(MOCK_BUILDS_DATA)
-            elif request.url.startswith(u'https://test-jenkins/queue/item/123/api/python'):
+            elif request.url.startswith('https://test-jenkins/queue/item/123/api/python'):
                 return json.dumps(MOCK_QUEUE_DATA)
-            elif request.url.startswith(u'https://test-jenkins/crumbIssuer/api/python'):
+            elif request.url.startswith('https://test-jenkins/crumbIssuer/api/python'):
                 return json.dumps(MOCK_CRUMB_DATA)
             else:
                 # We should never get here, unless the jenkinsapi implementation changes.
@@ -183,9 +183,9 @@ class TestJenkinsAPI(unittest.TestCase):
             text=text_callback
         )
         mock.post(
-            '{}/job/test-job/buildWithParameters'.format(BASE_URL),
+            f'{BASE_URL}/job/test-job/buildWithParameters',
             status_code=201,  # Jenkins responds with a 201 Created on success
-            headers={'location': '{}/queue/item/123'.format(BASE_URL)}
+            headers={'location': f'{BASE_URL}/queue/item/123'}
         )
 
         # Make the call to the Jenkins API

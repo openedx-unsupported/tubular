@@ -5,7 +5,7 @@ Tests of the code interacting with the Drupal API.
 import os
 import shutil
 import unittest
-from mock import Mock, patch
+from unittest.mock import Mock, patch
 from six.moves import reload_module
 import tubular.drupal as drupal
 from tubular.exception import BackendError
