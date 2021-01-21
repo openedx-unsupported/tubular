@@ -40,11 +40,11 @@ ASGARD_NEW_ASG_CREATION_TIMEOUT = int(os.environ.get("ASGARD_NEW_ASG_CREATION_TI
 ASGARD_ELB_HEALTH_TIMEOUT = int(os.environ.get("ASGARD_ELB_HEALTH_TIMEOUT", 900))
 REQUESTS_TIMEOUT = float(os.environ.get("REQUESTS_TIMEOUT", 10))
 
-CLUSTER_LIST_URL = f"{ASGARD_API_ENDPOINT}/cluster/list.json"
-ASG_ACTIVATE_URL = f"{ASGARD_API_ENDPOINT}/cluster/activate"
-ASG_DEACTIVATE_URL = f"{ASGARD_API_ENDPOINT}/cluster/deactivate"
-ASG_DELETE_URL = f"{ASGARD_API_ENDPOINT}/cluster/delete"
-NEW_ASG_URL = f"{ASGARD_API_ENDPOINT}/cluster/createNextGroup"
+CLUSTER_LIST_URL = "{}/cluster/list.json".format(ASGARD_API_ENDPOINT)
+ASG_ACTIVATE_URL = "{}/cluster/activate".format(ASGARD_API_ENDPOINT)
+ASG_DEACTIVATE_URL = "{}/cluster/deactivate".format(ASGARD_API_ENDPOINT)
+ASG_DELETE_URL = "{}/cluster/delete".format(ASGARD_API_ENDPOINT)
+NEW_ASG_URL = "{}/cluster/createNextGroup".format(ASGARD_API_ENDPOINT)
 ASG_INFO_URL = "{}/autoScaling/show/{}.json".format(ASGARD_API_ENDPOINT, "{}")
 CLUSTER_INFO_URL = "{}/cluster/show/{}.json".format(ASGARD_API_ENDPOINT, "{}")
 
@@ -123,14 +123,14 @@ def clusters_for_asgs(asgs):
 
     request = requests.Request('GET', CLUSTER_LIST_URL, params=ASGARD_API_TOKEN)
     url = request.prepare().url
-    LOG.debug(f"Getting Cluster List from: {url}")
+    LOG.debug("Getting Cluster List from: {}".format(url))
     response = requests.get(CLUSTER_LIST_URL, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
     cluster_json = _parse_asgard_json_response(url, response)
 
     relevant_clusters = {}
     for cluster in cluster_json:
         if "autoScalingGroups" not in cluster or "cluster" not in cluster:
-            msg = f"Expected 'cluster' and 'autoScalingGroups' keys in dict: {cluster}"
+            msg = "Expected 'cluster' and 'autoScalingGroups' keys in dict: {}".format(cluster)
             raise BackendDataError(msg)
 
         for asg in cluster['autoScalingGroups']:
@@ -165,7 +165,7 @@ def asgs_for_cluster(cluster):
     LOG.debug("URL: {}".format(CLUSTER_INFO_URL.format(cluster)))
     url = CLUSTER_INFO_URL.format(cluster)
     response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
-    LOG.debug(f"ASGs for Cluster: {response.text}")
+    LOG.debug("ASGs for Cluster: {}".format(response.text))
     asgs_json = _parse_asgard_json_response(url, response)
 
     if len(asgs_json) < 1:
@@ -197,7 +197,7 @@ def wait_for_task_completion(task_url, timeout):
     if not task_url.endswith('.json'):
         task_url += ".json"
 
-    LOG.debug(f"Task URL: {task_url}")
+    LOG.debug("Task URL: {}".format(task_url))
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
         response = requests.get(task_url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
@@ -207,7 +207,7 @@ def wait_for_task_completion(task_url, timeout):
 
         time.sleep(WAIT_SLEEP_TIME)
 
-    raise TimeoutException(f"Timed out while waiting for task {task_url}")
+    raise TimeoutException("Timed out while waiting for task {}".format(task_url))
 
 
 @backoff.on_exception(backoff.expo,
@@ -242,7 +242,7 @@ def new_asg(cluster, ami_id):
         NEW_ASG_URL,
         data=payload, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT
     )
-    LOG.debug(f"Sent request to create new ASG in Cluster({cluster}).")
+    LOG.debug("Sent request to create new ASG in Cluster({}).".format(cluster))
 
     if response.status_code == 404:
         msg = "Can't create more ASGs for cluster {}. Please either wait " \
@@ -294,17 +294,17 @@ def _get_asgard_resource_info(url):
         RateLimitedException: When we are being rate limited by AWS.
     """
 
-    LOG.debug(f"URL: {url}")
+    LOG.debug("URL: {}".format(url))
     response = requests.get(url, params=ASGARD_API_TOKEN, timeout=REQUESTS_TIMEOUT)
 
     if response.status_code == 404:
-        raise ResourceDoesNotExistException(f'Resource for url {url} does not exist')
+        raise ResourceDoesNotExistException('Resource for url {} does not exist'.format(url))
     if response.status_code >= 500:
-        raise BackendError(f'Asgard experienced an error: {response.text}')
+        raise BackendError('Asgard experienced an error: {}'.format(response.text))
     if response.status_code != 200:
-        raise BackendError('Call to asgard failed with status code: {}: {}'
+        raise BackendError('Call to asgard failed with status code: {0}: {1}'
                            .format(response.status_code, response.text))
-    LOG.debug(f"ASG info: {response.text}")
+    LOG.debug("ASG info: {}".format(response.text))
     resource_info_json = _parse_asgard_json_response(url, response)
     return resource_info_json
 
@@ -328,7 +328,7 @@ def get_asg_info(asg):
     try:
         info = _get_asgard_resource_info(url)
     except ResourceDoesNotExistException:
-        raise ASGDoesNotExistException(f'Autoscale group {asg} does not exist')
+        raise ASGDoesNotExistException('Autoscale group {} does not exist'.format(asg))
 
     return info
 
@@ -352,7 +352,7 @@ def get_cluster_info(cluster):
     try:
         info = _get_asgard_resource_info(url)
     except ResourceDoesNotExistException:
-        raise ClusterDoesNotExistException(f'Cluster {cluster} does not exist')
+        raise ClusterDoesNotExistException('Cluster {} does not exist'.format(cluster))
 
     return info
 
@@ -482,10 +482,10 @@ def disable_asg(asg):
     """
     try:
         if is_asg_pending_delete(asg):
-            LOG.info(f"Not disabling old ASG {asg} due to its pending deletion.")
+            LOG.info("Not disabling old ASG {} due to its pending deletion.".format(asg))
             return
     except ASGDoesNotExistException:
-        LOG.info(f"Not disabling ASG {asg}, it no longer exists.")
+        LOG.info("Not disabling ASG {}, it no longer exists.".format(asg))
         return
 
     if is_last_asg(asg):
@@ -527,15 +527,15 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True, wait_for_deletion=Tr
         RateLimitedException: When we are being rate limited by AWS.
     """
     if is_asg_pending_delete(asg):
-        LOG.info(f"Not deleting ASG {asg} due to its already pending deletion.")
+        LOG.info("Not deleting ASG {} due to its already pending deletion.".format(asg))
         return
     if fail_if_active and is_asg_enabled(asg):
-        msg = f"Not deleting ASG {asg} as it is currently active."
+        msg = "Not deleting ASG {} as it is currently active.".format(asg)
         LOG.warning(msg)
         try:
             ec2.remove_asg_deletion_tag(asg)
         except EC2ResponseError as tagging_error:
-            LOG.warning(f"Failed to remove deletion tag from asg {asg}. Ignoring: {tagging_error}")
+            LOG.warning("Failed to remove deletion tag from asg {}. Ignoring: {}".format(asg, tagging_error))
         raise CannotDeleteActiveASG(msg)
 
     if fail_if_last and is_last_asg(asg):
@@ -544,7 +544,7 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True, wait_for_deletion=Tr
         try:
             ec2.remove_asg_deletion_tag(asg)
         except EC2ResponseError as tagging_error:
-            LOG.warning(f"Failed to remove deletion tag from asg {asg}. Ignoring: {tagging_error}")
+            LOG.warning("Failed to remove deletion tag from asg {}. Ignoring: {}".format(asg, tagging_error))
         raise CannotDeleteLastASG(msg)
 
     payload = {"name": asg}
@@ -623,11 +623,11 @@ def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
                     ec2.remove_asg_deletion_tag(asg)
                 if is_asg_pending_delete(asg):
                     # Too late for rollback - this ASG is already pending delete.
-                    LOG.info(f"Rollback ASG '{asg}' is pending delete. Aborting rollback to ASGs.")
+                    LOG.info("Rollback ASG '{}' is pending delete. Aborting rollback to ASGs.".format(asg))
                     rollback_ready = False
                     break
             except ASGDoesNotExistException:
-                LOG.info(f"Rollback ASG '{asg}' has been removed. Aborting rollback to ASGs.")
+                LOG.info("Rollback ASG '{}' has been removed. Aborting rollback to ASGs.".format(asg))
                 rollback_ready = False
                 break
     disabled_ami_id = None
@@ -645,7 +645,7 @@ def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
         # Perform the rollback.
         success, enabled_asgs, disabled_asgs = _red_black_deploy(rollback_to_clustered_asgs, current_clustered_asgs)
         if not success:
-            LOG.info(f"Rollback failed for cluster(s) {current_clustered_asgs.keys()}.")
+            LOG.info("Rollback failed for cluster(s) {}.".format(current_clustered_asgs.keys()))
         else:
             LOG.info("Woot! Rollback Done!")
             return {
@@ -658,7 +658,7 @@ def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
 
     # Rollback failed -or- wasn't attempted. Attempt a deploy.
     if ami_id:
-        LOG.info(f"Attempting rollback via deploy of AMI {ami_id}.")
+        LOG.info("Attempting rollback via deploy of AMI {}.".format(ami_id))
         return deploy(ami_id)
     else:
         LOG.info("No AMI id specified - so no deploy occurred during rollback.")
@@ -691,7 +691,7 @@ def deploy(ami_id):
         BackendError: When the task to bring up the new instance fails.
         ASGDoesNotExistException: If the ASG being queried does not exist.
     """
-    LOG.info(f"Processing request to deploy {ami_id}.")
+    LOG.info("Processing request to deploy {}.".format(ami_id))
 
     # Pull the EDP from the AMI ID
     edp = ec2.edp_for_ami(ami_id)
@@ -709,7 +709,7 @@ def deploy(ami_id):
 
     # Find the clusters for all the existing ASGs.
     existing_clustered_asgs = clusters_for_asgs(existing_edp_asgs)
-    LOG.info(f"Deploying to cluster(s) {existing_clustered_asgs.keys()}")
+    LOG.info("Deploying to cluster(s) {}".format(existing_clustered_asgs.keys()))
 
     # Create a new ASG in each cluster.
     new_clustered_asgs = defaultdict(list)
@@ -724,11 +724,11 @@ def deploy(ami_id):
             raise
 
     new_asgs = [asgs[0] for asgs in new_clustered_asgs.values()]
-    LOG.info(f"New ASGs created: {new_asgs}")
+    LOG.info("New ASGs created: {}".format(new_asgs))
     ec2.wait_for_in_service(new_asgs, 300)
-    LOG.info(f"New ASGs healthy: {new_asgs}")
+    LOG.info("New ASGs healthy: {}".format(new_asgs))
 
-    LOG.info(f"Enabling traffic to new ASGs for the {existing_clustered_asgs.keys()} cluster(s).")
+    LOG.info("Enabling traffic to new ASGs for the {} cluster(s).".format(existing_clustered_asgs.keys()))
     success, enabled_asgs, disabled_asgs = _red_black_deploy(dict(new_clustered_asgs), existing_clustered_asgs)
     if not success:
         raise BackendError("Error performing red/black deploy - deploy was unsuccessful. "
@@ -812,7 +812,7 @@ def _red_black_deploy(  # pylint: disable=too-many-statements
         """
         Disable all the ASGs in the lists, keyed by cluster.
         """
-        for cluster, asgs in clustered_asgs.items():
+        for cluster, asgs in six.iteritems(clustered_asgs):
             for asg in asgs:
                 try:
                     _disable_cluster_asg(cluster, asg)
@@ -821,7 +821,7 @@ def _red_black_deploy(  # pylint: disable=too-many-statements
 
     elbs_to_monitor = []
     newly_enabled_asgs = defaultdict(list)
-    for cluster, asgs in new_cluster_asgs.items():
+    for cluster, asgs in six.iteritems(new_cluster_asgs):
         for asg in asgs:
             try:
                 _enable_cluster_asg(cluster, asg)
@@ -859,20 +859,20 @@ def _red_black_deploy(  # pylint: disable=too-many-statements
     time.sleep(secs_before_old_asgs_disabled)
 
     # Ensure the new ASGs are still healthy and not pending delete before disabling the old ASGs.
-    for cluster, asgs in newly_enabled_asgs.items():
+    for cluster, asgs in six.iteritems(newly_enabled_asgs):
         for asg in asgs:
             err_msg = None
             if is_asg_pending_delete(asg):
-                err_msg = f"New ASG '{asg}' is pending delete."
+                err_msg = "New ASG '{}' is pending delete.".format(asg)
             elif not is_asg_enabled(asg):
-                err_msg = f"New ASG '{asg}' is not enabled."
+                err_msg = "New ASG '{}' is not enabled.".format(asg)
             if err_msg:
-                LOG.error(f"{err_msg} Aborting disabling of old ASGs.")
+                LOG.error("{} Aborting disabling of old ASGs.".format(err_msg))
                 return (False, asgs_enabled, asgs_disabled)
 
     LOG.info("New ASGs have passed the healthchecks. Now disabling old ASGs.")
 
-    for cluster, asgs in baseline_cluster_asgs.items():
+    for cluster, asgs in six.iteritems(baseline_cluster_asgs):
         for asg in asgs:
             try:
                 if is_asg_enabled(asg):
@@ -894,6 +894,6 @@ def _red_black_deploy(  # pylint: disable=too-many-statements
             try:
                 ec2.tag_asg_for_deletion(asg)
             except ASGDoesNotExistException:
-                LOG.info(f"Unable to tag ASG '{asg}' as it no longer exists, skipping.")
+                LOG.info("Unable to tag ASG '{}' as it no longer exists, skipping.".format(asg))
 
     return (True, asgs_enabled, asgs_disabled)

@@ -32,7 +32,7 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
             value=v,
             resource_id=asg_name,
             propagate_at_launch=True
-        ) for k, v in tags.items()
+        ) for k, v in six.iteritems(tags)
     ]
 
     if elbs is None:
@@ -42,7 +42,7 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
     vpcconn = VPCConnection()
     conn = boto.ec2.autoscale.connect_to_region('us-east-1')
     config = LaunchConfiguration(
-        name=f'{asg_name}_lc',
+        name='{}_lc'.format(asg_name),
         image_id=ami_id,
         instance_type='t2.medium',
     )
@@ -63,7 +63,7 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         min_size=2,
         launch_config=config,
         placement_group="test_placement",
-        vpc_zone_identifier=f"{subnetb.id},{subnetc.id}",
+        vpc_zone_identifier="{subnetbid},{subnetcid}".format(subnetbid=subnetb.id, subnetcid=subnetc.id),
         termination_policies=["OldestInstance", "NewestInstance"],
         tags=tag_list,
     )

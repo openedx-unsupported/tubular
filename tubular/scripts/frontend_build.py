@@ -63,8 +63,8 @@ def frontend_build(common_config_file, env_config_file, app_name, version_file):
     builder = FrontendBuilder(common_config_file, env_config_file, app_name, version_file)
     builder.install_requirements()
     app_config = builder.get_app_config()
-    env_vars = [f'{k}={v}' for k, v in app_config.items()]
-    builder.build_app(env_vars, f'Could not run `npm run build` for app {app_name}.')
+    env_vars = ['{}={}'.format(k, v) for k, v in app_config.items()]
+    builder.build_app(env_vars, 'Could not run `npm run build` for app {}.'.format(app_name))
     builder.create_version_file()
     LOG(
         'Frontend app {} built successfully with config file {}.'.format(

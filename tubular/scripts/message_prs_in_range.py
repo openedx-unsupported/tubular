@@ -23,58 +23,58 @@ LOG = logging.getLogger(__name__)
 
 @click.command("message_pull_requests")
 @click.option(
-    '--org',
-    help='Org from the GitHub repository URL of https://github.com/<org>/<repo>',
-    default='edx'
+    u'--org',
+    help=u'Org from the GitHub repository URL of https://github.com/<org>/<repo>',
+    default=u'edx'
 )
 @click.option(
-    '--repo',
+    u'--repo',
     required=True,
-    help='Repo name from the GitHub repository URL of https://github.com/<org>/<repo>'
+    help=u'Repo name from the GitHub repository URL of https://github.com/<org>/<repo>'
 )
 @click.option(
-    '--token',
-    envvar='GIT_TOKEN',
+    u'--token',
+    envvar=u'GIT_TOKEN',
     required=True,
-    help='The github access token, see https://help.github.com/articles/creating-an-access-token-for-command-line-use/'
+    help=u'The github access token, see https://help.github.com/articles/creating-an-access-token-for-command-line-use/'
 )
 @click.option(
-    '--base_sha', '--base-sha',
-    help='The BASE SHA of the range',
+    u'--base_sha', u'--base-sha',
+    help=u'The BASE SHA of the range',
 )
 @click.option(
-    '--base_ami_tags', '--base-ami-tags',
-    help='A YAML file with tags for the base_ami should be used as the baseline for these messages',
+    u'--base_ami_tags', u'--base-ami-tags',
+    help=u'A YAML file with tags for the base_ami should be used as the baseline for these messages',
     type=click.File(),
 )
 @click.option(
-    '--ami_tag_app', '--base-ami-tag-app', 'base_ami_tag_app',
-    help='The name of the app to read the base_sha from',
+    u'--ami_tag_app', u'--base-ami-tag-app', 'base_ami_tag_app',
+    help=u'The name of the app to read the base_sha from',
 )
 @click.option(
-    '--head_sha', '--head-sha',
-    help='The HEAD SHA of the range',
+    u'--head_sha', u'--head-sha',
+    help=u'The HEAD SHA of the range',
 )
 @click.option(
-    '--head-ami-tags',
-    help='A YAML file with tags for the head_ami should be used as the headline for these messages',
+    u'--head-ami-tags',
+    help=u'A YAML file with tags for the head_ami should be used as the headline for these messages',
     type=click.File(),
 )
 @click.option(
-    '--head-ami-tag-app', 'head_ami_tag_app',
-    help='The name of the app to read the head_sha from',
+    u'--head-ami-tag-app', 'head_ami_tag_app',
+    help=u'The name of the app to read the head_sha from',
 )
 @click.option(
-    '--release', 'message_type', type=click.Choice(
+    u'--release', u'message_type', type=click.Choice(
         sorted([mt.name for mt in MessageType])
     ),
 )
 @click.option(
-    '--extra_text', 'extra_text', default=''
+    u'--extra_text', u'extra_text', default=''
 )
 @click.option(
-    '--no-op',
-    help='Disable posting messages for testing',
+    u'--no-op',
+    help=u'Disable posting messages for testing',
     is_flag=True
 )
 def message_pull_requests(org,
@@ -89,7 +89,7 @@ def message_pull_requests(org,
                           message_type,
                           extra_text,
                           no_op):
-    """
+    u"""
     Message a range of Pull requests between the BASE and HEAD SHA specified.
 
     Message can be one of several types enumerated in MessageType
@@ -114,25 +114,25 @@ def message_pull_requests(org,
 
     if base_sha is None and base_ami_tags and base_ami_tag_app:
         base_ami_tags = yaml.safe_load(base_ami_tags)
-        tag = f'version:{base_ami_tag_app}'
+        tag = u'version:{}'.format(base_ami_tag_app)
         version = base_ami_tags[tag]
-        _, _, base_sha = version.partition(' ')
+        _, _, base_sha = version.partition(u' ')
 
     if head_sha is None and head_ami_tags and head_ami_tag_app:
         head_ami_tags = yaml.safe_load(head_ami_tags)
-        tag = f'version:{head_ami_tag_app}'
+        tag = u'version:{}'.format(head_ami_tag_app)
         version = head_ami_tags[tag]
-        _, _, head_sha = version.partition(' ')
+        _, _, head_sha = version.partition(u' ')
 
     api = get_client(org, repo, token)
-    LOG.info(f"Github API Rate Limit: {api.get_rate_limit()}")
+    LOG.info("Github API Rate Limit: {}".format(api.get_rate_limit()))
     pull_requests = retrieve_pull_requests(api, base_sha, head_sha)
     for pull_request in pull_requests:
         message_pr(api, MessageType[message_type], pull_request, extra_text, no_op)
 
 
 def get_client(org, repo, token):
-    """
+    u"""
     Returns the github client, pointing at the repo specified
 
     Args:
@@ -148,7 +148,7 @@ def get_client(org, repo, token):
 
 
 def retrieve_pull_requests(api, base_sha, head_sha):
-    """
+    u"""
     Use the github API to retrieve pull requests between the BASE and HEAD SHA specified.
 
     Args:
@@ -159,18 +159,18 @@ def retrieve_pull_requests(api, base_sha, head_sha):
     Returns:
         An array of pull request objects
     """
-    LOG.info(f"Github API Rate Limit: {api.get_rate_limit()}")
+    LOG.info("Github API Rate Limit: {}".format(api.get_rate_limit()))
     try:
         pull_requests = api.get_pr_range(base_sha, head_sha)
     except UnknownObjectException as exc:
-        LOG.error("github UnknownObjectException in retrieve_pull_requests(api, base_sha={}, head_sha={})".format(
+        LOG.error(u"github UnknownObjectException in retrieve_pull_requests(api, base_sha={0}, head_sha={1})".format(
             base_sha, head_sha))
         raise exc
     return pull_requests
 
 
 def message_pr(api, message_type, pull_request, extra_text, no_op):
-    """
+    u"""
     Send a Message for a Pull request.
 
     Message can be one of several types enumerated in MessageType
@@ -184,19 +184,19 @@ def message_pr(api, message_type, pull_request, extra_text, no_op):
     Returns:
         None
     """
-    LOG.info(f"Github API Rate Limit: {api.get_rate_limit()}")
+    LOG.info("Github API Rate Limit: {}".format(api.get_rate_limit()))
     if no_op:
-        LOG.info("No-op mode: Whould have posted message type %r to %d.", message_type.name, pull_request.number)
+        LOG.info(u"No-op mode: Whould have posted message type %r to %d.", message_type.name, pull_request.number)
     else:
-        LOG.info("Posting message type %r to %d.", message_type.name, pull_request.number)
+        LOG.info(u"Posting message type %r to %d.", message_type.name, pull_request.number)
 
         try:
             api.message_pr_with_type(pr_number=pull_request, message_type=message_type, extra_text=extra_text)
         except UnknownObjectException as exc:
-            LOG.error("message_pr_with_type args were: pr_number={} message_type={} extra_text={}".format(
+            LOG.error(u"message_pr_with_type args were: pr_number={0} message_type={1} extra_text={2}".format(
                 pull_request, message_type, extra_text))
             raise exc
 
 
-if __name__ == "__main__":
+if __name__ == u"__main__":
     message_pull_requests()  # pylint: disable=no-value-for-parameter

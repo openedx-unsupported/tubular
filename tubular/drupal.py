@@ -214,7 +214,7 @@ def fetch_deployed_tag(app_id, env, client_id, secret, path_name):
         response = get_acquia_v2(FETCH_TAG_URL.format(environmentId=environmentId), token)
         response_json = parse_response(response, "Failed to fetch the deployed tag.")
         tag_name = response_json["vcs"]["path"]
-        with open(path_name.format(env=env), "w") as f:
+        with io.open(path_name.format(env=env), "w") as f:
             f.write(tag_name)
         return tag_name
 
@@ -245,7 +245,7 @@ def clear_varnish_cache(app_id, env, client_id, secret):
     if environmentId:
         for domain in domains:
             response = post_acquia_v2(CLEAR_CACHE_URL.format(environmentId=environmentId, domain=domain), token)
-            error_message = f"Failed to clear cache in {domain}."
+            error_message = "Failed to clear cache in {domain}.".format(domain=domain)
             try:
                 response_json = parse_response(response, error_message)
             except BackendError:

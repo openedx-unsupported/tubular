@@ -4,7 +4,7 @@ Tests for edX API calls.
 
 import unittest
 from ddt import ddt, data
-from unittest.mock import patch
+from mock import patch
 from slumber.exceptions import HttpServerError
 import requests
 

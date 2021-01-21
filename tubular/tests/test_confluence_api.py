@@ -4,7 +4,7 @@ Tests of tubular.confluence_api.
 
 import textwrap
 
-from unittest.mock import patch, Mock
+from mock import patch, Mock
 import pytest
 
 try:
@@ -16,54 +16,54 @@ else:
     from tubular.confluence_api import AMI, ReleasePage, ReleaseStatus
 
 
-@patch('tubular.confluence_api.GitHubAPI')
-@pytest.mark.skipif(AMI is None, reason="Tests require Confluence API")
+@patch(u'tubular.confluence_api.GitHubAPI')
+@pytest.mark.skipif(AMI is None, reason=u"Tests require Confluence API")
 def test_release_page(mock_github):
     mock_github().get_pr_range.return_value = [
         Mock(
-            merged_by=Mock(login='user_a', html_url='user_html_a'),
-            user=Mock(login='user_c', html_url='user_html_c'),
-            title='pr a',
+            merged_by=Mock(login=u'user_a', html_url=u'user_html_a'),
+            user=Mock(login=u'user_c', html_url=u'user_html_c'),
+            title=u'pr a',
             number=1,
-            html_url='pr_url_1',
-            body='lorem ipsum TE-1234 TE-4321',
+            html_url=u'pr_url_1',
+            body=u'lorem ipsum TE-1234 TE-4321',
         ),
         Mock(
-            merged_by=Mock(login='user_b', html_url='user_html_b'),
-            user=Mock(login='user_d', html_url='user_html_d'),
-            title='pr b',
+            merged_by=Mock(login=u'user_b', html_url=u'user_html_b'),
+            user=Mock(login=u'user_d', html_url=u'user_html_d'),
+            title=u'pr b',
             number=2,
-            html_url='pr_url_2',
-            body='lorem ipsum',
+            html_url=u'pr_url_2',
+            body=u'lorem ipsum',
         ),
     ]
 
     page = ReleasePage(
-        'github_token',
-        'jira_url',
+        u'github_token',
+        u'jira_url',
         ReleaseStatus.DEPLOYED,
         [
             (
                 AMI(
-                    'ami_id_1', 'env', 'depl', 'play',
+                    u'ami_id_1', u'env', u'depl', u'play',
                     **{
-                        'version:app_a': 'https://github.com/org/repo_a 12345',
-                        'version:app_b': 'https://github.com/org/repo_b 12345',
+                        u'version:app_a': u'https://github.com/org/repo_a 12345',
+                        u'version:app_b': u'https://github.com/org/repo_b 12345',
                     }
                 ),
                 AMI(
-                    'ami_id_2', 'env', 'depl', 'play',
+                    u'ami_id_2', u'env', u'depl', u'play',
                     **{
-                        'version:app_a': 'git@github.com:org/repo_a.git 54321',
-                        'version:app_b': 'git@github.com/org/repo_b.git 12345',
+                        u'version:app_a': u'git@github.com:org/repo_a.git 54321',
+                        u'version:app_b': u'git@github.com/org/repo_b.git 12345',
                     }
                 ),
             )
         ],
-        gocd_url='gocd_url',
+        gocd_url=u'gocd_url',
     )
 
-    assert page.format() == textwrap.dedent("""\
+    assert page.format() == textwrap.dedent(u"""\
         <section><h2>Current Status: Deployed to Production</h2></section>
 
         <section><h2>GoCD Release Pipeline</h2>

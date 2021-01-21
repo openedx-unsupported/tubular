@@ -134,7 +134,7 @@ def correct_exception(log_404_as_error=True):
     except HttpServerError as err:
         if err.response.status_code == 504:  # pylint: disable=no-member
             # Differentiate gateway errors so different backoff can be used.
-            raise EdxGatewayTimeoutError(str(err))
+            raise EdxGatewayTimeoutError(text_type(err))
         raise err
     except HttpClientError as err:
         status_code = err.response.status_code  # pylint: disable=no-member
@@ -143,10 +143,10 @@ def correct_exception(log_404_as_error=True):
             raise err
 
         if hasattr(err, 'content'):
-            LOG.error(f"API Error: {err.content} with status code: {status_code}")
+            LOG.error("API Error: {} with status code: {}".format(err.content, status_code))
         else:
             LOG.error("API Error: {} with status code: {} for response without content".format(
-                str(err),
+                text_type(err),
                 status_code,
             ))
         raise err

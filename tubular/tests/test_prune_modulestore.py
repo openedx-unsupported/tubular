@@ -64,7 +64,7 @@ class TestModuleStorePruning(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
+        super(TestModuleStorePruning, cls).setUpClass()
 
         # initialize the logger
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -74,7 +74,7 @@ class TestModuleStorePruning(unittest.TestCase):
         cls.module_store = modulestore.ModuleStore(LOG)
 
     def setUp(self):
-        super().setUp()
+        super(TestModuleStorePruning, self).setUp()
 
         # load the test data
         self.module_store.log("Loading test data")

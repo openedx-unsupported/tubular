@@ -26,7 +26,7 @@ def get_elastic_profile(host, token, profile_id):
 
     headers = {
         'Accept': 'application/vnd.go.cd.v2+json',
-        'Authorization': f"bearer {token}",
+        'Authorization': "bearer {token}".format(token=token),
     }
     r = requests.get(url, headers=headers)
     r.raise_for_status()
@@ -44,7 +44,7 @@ def put_elastic_profile(host, token, profile_id, etag, data):
 
     headers = {
         'Accept': 'application/vnd.go.cd.v2+json',
-        'Authorization': f"bearer {token}",
+        'Authorization': "bearer {token}".format(token=token),
         'Content-Type': 'application/json',
         'If-Match': etag,
     }
@@ -75,7 +75,7 @@ def update_image_in_elastic_profile(host, token, image, tag, profile_id):
 
     # Locate all the image:tag pairs that have the image specified
     # find the tags then replace them with the new tag
-    lines = re.findall(f"^.*image: {image}:.*$", pod_configuration_value, re.MULTILINE)
+    lines = re.findall("^.*image: {image}:.*$".format(image=image), pod_configuration_value, re.MULTILINE)
     for line in lines:
         old_tag = line.split(":", 2)[2]
         pod_configuration_value = pod_configuration_value.replace(old_tag, tag)
@@ -101,7 +101,7 @@ def deploy_gocd_legacy_agents(token, host, image, tag, profile_id):
         update_image_in_elastic_profile(host, token, image, tag, profile_id)
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho(f'{err}', fg='red')
+        click.secho('{}'.format(err), fg='red')
         sys.exit(1)
 
 if __name__ == "__main__":

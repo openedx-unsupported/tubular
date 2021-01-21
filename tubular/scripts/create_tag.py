@@ -102,13 +102,13 @@ def create_tag(org,
         sys.exit(1)
 
     if input_file:
-        input_vars = yaml.safe_load(open(input_file, 'r'))
+        input_vars = yaml.safe_load(io.open(input_file, 'r'))
         commit_sha = input_vars[commit_sha_variable]
     elif branch_name:
         commit_sha = github_api.get_head_commit_from_branch_name(branch_name)
 
     if deploy_artifact:
-        deploy_vars = yaml.safe_load(open(deploy_artifact))
+        deploy_vars = yaml.safe_load(open(deploy_artifact, 'r'))
         deploy_time = datetime.datetime.fromtimestamp(deploy_vars['deploy_time'], EST)
     else:
         # If no deploy artifact was given from which to extract a deploy time, use the current time.

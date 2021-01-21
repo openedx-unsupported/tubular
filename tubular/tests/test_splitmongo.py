@@ -34,7 +34,7 @@ def create_test_graph(*version_histories):
     all_structures = {}
     all_active_version_branches = []
 
-    active_id_pool = (f"A{i:023x}" for i in itertools.count(1))
+    active_id_pool = ("A{:023x}".format(i) for i in itertools.count(1))
     course_key_pool = (
         CourseLocator('edx', 'splitmongo', str(i)) for i in itertools.count(1)
     )
@@ -488,7 +488,7 @@ class TestSplitMongoBackend(unittest.TestCase):
 
 def str_id(int_id):
     """Return the string version of Object IDs that PyMongo will accept."""
-    return f"{int_id:024}"
+    return "{:024}".format(int_id)
 
 
 def obj_id(int_id):

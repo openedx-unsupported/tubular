@@ -61,7 +61,7 @@ def frontend_deploy(env_config_file, app_name, app_dist, purge_cache):
     deployer = FrontendDeployer(env_config_file, app_name)
     bucket_name = deployer.env_cfg.get('S3_BUCKET_NAME')
     if not bucket_name:
-        FAIL(1, f'No S3 bucket name configured for {app_name}.')
+        FAIL(1, 'No S3 bucket name configured for {}.'.format(app_name))
     deployer.deploy_site(bucket_name, app_dist)
     if purge_cache:
         deployer.purge_cache(bucket_name)

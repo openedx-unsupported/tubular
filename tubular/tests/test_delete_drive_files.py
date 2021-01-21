@@ -1,10 +1,11 @@
+# coding=utf-8
 """
 Test the delete_drive_files.py script
 """
 
 
 from click.testing import CliRunner
-from unittest.mock import patch
+from mock import patch
 
 from tubular.scripts.delete_drive_files import (
     ERR_NO_CONFIG,
@@ -98,7 +99,7 @@ def test_no_file_ids():
 
 
 def test_too_many_file_ids():
-    result = _call_script(expect_success=False, file_ids=[f'fake_file_id{i}' for i in range(150)])
+    result = _call_script(expect_success=False, file_ids=['fake_file_id{}'.format(i) for i in range(150)])
     print(result.output)
     assert result.exit_code == ERR_TOO_MANY_FILE_IDS
     assert 'Too many file IDs specfied' in result.output

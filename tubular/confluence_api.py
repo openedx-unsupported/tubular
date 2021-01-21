@@ -1,4 +1,4 @@
-"""
+u"""
 Functions for interacting with the Confluence API and for rendering
 Confluence pages.
 """
@@ -18,10 +18,10 @@ import lxml.html
 from tubular.github_api import GitHubAPI
 
 SECTION = element_maker.section  # pylint: disable=no-member
-VersionDelta = namedtuple('VersionDelta', ['app', 'base', 'new'])
+VersionDelta = namedtuple(u'VersionDelta', [u'app', u'base', u'new'])
 
 
-class Version(namedtuple('_Version', ['repo', 'sha'])):
+class Version(namedtuple(u'_Version', [u'repo', u'sha'])):
     """
     A value-object capturing a version of a repo.
     """
@@ -52,19 +52,19 @@ class Version(namedtuple('_Version', ['repo', 'sha'])):
             return super().__ge__(other)
 
 
-GITHUB_PREFIX = re.compile('https?://github.com/')
+GITHUB_PREFIX = re.compile(u'https?://github.com/')
 LOG = logging.getLogger(__name__)
 
 
 class ReleaseStatus(Enum):
-    """The set of valid release states."""
-    STAGED = "Deployed to Staging"
-    DEPLOYED = "Deployed to Production"
-    ROLLED_BACK = "Rolled back from Production"
+    u"""The set of valid release states."""
+    STAGED = u"Deployed to Staging"
+    DEPLOYED = u"Deployed to Production"
+    ROLLED_BACK = u"Rolled back from Production"
 
 
 class AMI:
-    """
+    u"""
     An object capturing details about an AMI.
     """
     def __init__(self, ami_id, environment, deployment, play, **versions):
@@ -75,11 +75,11 @@ class AMI:
 
         self.versions = {}
         for key, value in versions.items():
-            if not key.startswith('version:'):
+            if not key.startswith(u'version:'):
                 continue
 
-            _, _, app = key.partition(':')
-            repo, _, sha = value.partition(' ')
+            _, _, app = key.partition(u':')
+            repo, _, sha = value.partition(u' ')
             self.versions[app] = Version(convert_ssh_url(repo), sha)
 
     def __repr__(self):
@@ -90,21 +90,21 @@ class AMI:
             self.deployment,
             self.play,
             {
-                f'version:{app}': f"{version.repo} {version.sha}"
+                'version:{}'.format(app): "{} {}".format(version.repo, version.sha)
                 for app, version in self.versions.items()
             },
         )
 
 
 def convert_ssh_url(url):
-    """
+    u"""
     Convert a git-url for a repository to an https url.
     """
-    return url.replace('git@github.com:', 'https://github.com/').replace('.git', '')
+    return url.replace(u'git@github.com:', u'https://github.com/').replace(u'.git', u'')
 
 
 def version_deltas(base, new):
-    """
+    u"""
     Yields a list of VersionDelta objects for any changes between `base` and `new`.
 
     Arguments:
@@ -121,40 +121,40 @@ def format_commit_url(version):
     """
     Format the url that points to the supplied ``version``.
     """
-    return "{0.repo}/commit/{0.sha}".format(version)
+    return u"{0.repo}/commit/{0.sha}".format(version)
 
 
 def diff_link(delta):
-    """
+    u"""
     Return a nicely formatted link that links to a github commit/diff page
     comparing ``delta.base`` and ``delta.new``.
     """
     if delta.base is None:
-        summary = f"{delta.new.sha} (added)"
+        summary = u"{} (added)".format(delta.new.sha)
         href = format_commit_url(delta.new)
     elif delta.new is None:
-        summary = f"{delta.base.sha} (removed)"
+        summary = u"{} (removed)".format(delta.base.sha)
         href = format_commit_url(delta.base)
     elif delta.base.sha == delta.new.sha:
-        summary = f"{delta.base.sha} (no change)"
+        summary = u"{} (no change)".format(delta.base.sha)
         href = format_commit_url(delta.new)
     else:
-        summary = f"{delta.base.sha}...{delta.new.sha}"
-        href = "{}/compare/{}...{}".format(
+        summary = u"{}...{}".format(delta.base.sha, delta.new.sha)
+        href = u"{}/compare/{}...{}".format(
             delta.new.repo, delta.base.sha, delta.new.sha
         )
 
     return [
-        "{} ({}): ".format(
+        u"{} ({}): ".format(
             delta.app,
-            GITHUB_PREFIX.sub('', (delta.new or delta.base).repo),
+            GITHUB_PREFIX.sub(u'', (delta.new or delta.base).repo),
         ),
         E.A(summary, href=href),
     ]
 
 
 def diff(base, new):
-    """
+    u"""
     Return an Element that renders the version differences between the amis `base` and `new`.
 
     Arguments:
@@ -168,39 +168,39 @@ def diff(base, new):
     for delta in sorted_version_changes:
         diff_items.append(E.LI(*diff_link(delta)))
     return SECTION(
-        E.H3("Comparing {base.environment}-{base.deployment}-{base.play}: {base.ami_id} to {new.ami_id}".format(
+        E.H3(u"Comparing {base.environment}-{base.deployment}-{base.play}: {base.ami_id} to {new.ami_id}".format(
             base=base,
             new=new,
         )),
-        E.UL(*diff_items, style="list-style-type: square")
+        E.UL(*diff_items, style=u"list-style-type: square")
     )
 
 
 def format_jira_references(jira_url, text):
-    """
+    u"""
     Return an Element that renders links to all JIRA ticket ids found in `text`.
 
     Arguments:
         jira_url: The base url that the JIRA tickets should link to.
     """
     if text is None:
-        return ""
+        return u""
 
-    tickets = set(re.findall("\\b[A-Z]{2,}-\\d+\\b", text))
+    tickets = set(re.findall(u"\\b[A-Z]{2,}-\\d+\\b", text))
 
     if not tickets:
-        return ""
+        return u""
 
     return SECTION(
         *[
-            E.P(E.A(ticket, href=f"{jira_url}/browse/{ticket}"))
+            E.P(E.A(ticket, href=u"{}/browse/{}".format(jira_url, ticket)))
             for ticket in sorted(tickets)
         ]
     )
 
 
 def pr_table(token, jira_url, delta):
-    """
+    u"""
     Return an Element that renders all changes in `delta` as a table listing merged PRs.abs
 
     Arguments:
@@ -209,22 +209,22 @@ def pr_table(token, jira_url, delta):
         delta (VersionDelta): The AMIs to compare.
     """
     version = delta.new or delta.base
-    match = re.search("github.com/(?P<org>[^/]*)/(?P<repo>.*)", version.repo)
-    api = GitHubAPI(match.group('org'), match.group('repo'), token)
+    match = re.search(u"github.com/(?P<org>[^/]*)/(?P<repo>.*)", version.repo)
+    api = GitHubAPI(match.group(u'org'), match.group(u'repo'), token)
 
     try:
         prs = api.get_pr_range(delta.base.sha, delta.new.sha)
 
         change_details = E.TABLE(
-            E.CLASS("wrapped"),
+            E.CLASS(u"wrapped"),
             E.TBODY(
                 E.TR(
-                    E.TH("Merged By"),
-                    E.TH("Author"),
-                    E.TH("Title"),
-                    E.TH("PR"),
-                    E.TH("JIRA"),
-                    E.TH("Release Notes?"),
+                    E.TH(u"Merged By"),
+                    E.TH(u"Author"),
+                    E.TH(u"Title"),
+                    E.TH(u"PR"),
+                    E.TH(u"JIRA"),
+                    E.TH(u"Release Notes?"),
                 ),
                 *[
                     E.TR(
@@ -242,31 +242,31 @@ def pr_table(token, jira_url, delta):
                             href=pull_request.html_url,
                         )),
                         E.TD(format_jira_references(jira_url, pull_request.body)),
-                        E.TD(""),
+                        E.TD(u""),
                     )
                     for pull_request in sorted(prs, key=lambda pr: pr.merged_by.login)
                 ]
             )
         )
     except Exception:  # pylint: disable=broad-except
-        LOG.exception('Unable to get PRs for %r', delta)
+        LOG.exception(u'Unable to get PRs for %r', delta)
         change_details = E.P("Unable to list changes")
 
     return SECTION(
         E.H3(
-            f"Changes for {delta.app} (",
+            u"Changes for {} (".format(delta.app),
             E.A(
-                GITHUB_PREFIX.sub('', version.repo),
+                GITHUB_PREFIX.sub(u'', version.repo),
                 href=version.repo
             ),
             ")"
         ),
         E.P(
-            E.STRONG("Before: "),
+            E.STRONG(u"Before: "),
             E.A(delta.base.sha, href=format_commit_url(delta.base))
         ),
         E.P(
-            E.STRONG("After: "),
+            E.STRONG(u"After: "),
             E.A(delta.new.sha, href=format_commit_url(delta.new))
         ),
         change_details,
@@ -274,7 +274,7 @@ def pr_table(token, jira_url, delta):
 
 
 class ReleasePage:
-    """
+    u"""
     An object that captures and renders all of the information needed for a Release Page.
     """
     def __init__(
@@ -287,34 +287,34 @@ class ReleasePage:
         self.ami_pairs = ami_pairs
 
     def _format_diffs(self):
-        """
+        u"""
         Return an Element that contains formatted links to a diff between all AMI pairs.
         """
         return SECTION(
-            E.H2("Code Diffs"),
+            E.H2(u"Code Diffs"),
             *[
                 diff(old, new) for (old, new) in self.ami_pairs
             ]
         )
 
     def _format_amis(self):
-        """
+        u"""
         Return an Element that contains formatted description of the deployed AMIs.
         """
         return SECTION(
-            E.H2("Final AMIs"),
+            E.H2(u"Final AMIs"),
             E.UL(
                 *[
-                    E.LI("{ami.environment}-{ami.deployment}-{ami.play}: {ami.ami_id}".format(ami=ami))
+                    E.LI(u"{ami.environment}-{ami.deployment}-{ami.play}: {ami.ami_id}".format(ami=ami))
                     for _, ami in self.ami_pairs
                     if ami is not None
                 ],
-                style="list-style-type: square"
+                style=u"list-style-type: square"
             ),
         )
 
     def _format_changes(self):
-        """
+        u"""
         Return an Element that contains tables with all merged PRs for each repository that changed.
         """
         deltas = [version_deltas(old, new) for (old, new) in self.ami_pairs]
@@ -324,32 +324,32 @@ class ReleasePage:
             if delta.base and delta.new and delta.new.sha != delta.base.sha
         ]
         return SECTION(
-            E.H2("Detailed Changes"),
+            E.H2(u"Detailed Changes"),
             *tables
         )
 
     def _format_gocd(self):
-        """
+        u"""
         Return an Element that links to the GoCD build pipeline.
         """
         if self.gocd_url:
             return SECTION(
-                E.H2("GoCD Release Pipeline"),
+                E.H2(u"GoCD Release Pipeline"),
                 E.A(self.gocd_url, href=self.gocd_url)
             )
         else:
             return None
 
     def _format_status(self):
-        """
+        u"""
         Return an Element that renders the current release status.
         """
         return SECTION(
-            E.H2(f"Current Status: {self.status.value}")
+            E.H2(u"Current Status: {}".format(self.status.value))
         )
 
     def format(self):
-        """
+        u"""
         Return a formatted JIRA storage-format document representing this release.
         """
         content = [
@@ -360,15 +360,15 @@ class ReleasePage:
             self._format_changes(),
         ]
 
-        return "\n".join(
-            lxml.html.tostring(piece, pretty_print=True, encoding='unicode')
+        return u"\n".join(
+            lxml.html.tostring(piece, pretty_print=True, encoding=u'unicode')
             for piece in content
             if piece is not None
         )
 
 
 def publish_page(url, user, password, space, title, body, parent_title=None, parent_id=None):
-    """
+    u"""
     Publish a page to Confluence.
 
     Arguments:
@@ -387,8 +387,8 @@ def publish_page(url, user, password, space, title, body, parent_title=None, par
     if parent_id is None:
         try:
             parent_page = conf.get_page_by_title(space, parent_title)
-            parent_id = parent_page['id']
+            parent_id = parent_page[u'id']
         except:
-            LOG.error('Failed to publish, TITLE: %s BODY: %s', title, body)
-            raise ValueError(f"Unable to retrieve page {parent_title!r} in space {space!r}")
+            LOG.error(u'Failed to publish, TITLE: %s BODY: %s', title, body)
+            raise ValueError(u"Unable to retrieve page {!r} in space {!r}".format(parent_title, space))
     return conf.update_or_create(parent_id, title, body)

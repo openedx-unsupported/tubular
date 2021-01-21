@@ -58,11 +58,11 @@ def deploy(ami_id, config_file, out_file, dry_run):
         sys.exit(1)
 
     if config_file:
-        config = yaml.safe_load(open(config_file, 'r'))
+        config = yaml.safe_load(io.open(config_file, 'r'))
         if config and 'ami_id' in config:
             ami_id = config['ami_id']
         else:
-            LOG.error(f'No ami_id found in config file \'{config_file}\'.')
+            LOG.error('No ami_id found in config file \'{}\'.'.format(config_file))
             sys.exit(1)
 
     ami_id = ami_id.strip()
@@ -70,21 +70,21 @@ def deploy(ami_id, config_file, out_file, dry_run):
         if not dry_run:
             deploy_info = asgard.deploy(ami_id)
         else:
-            click.echo(f'DRY RUN: Would have triggered a deploy of AMI \'{ami_id}\'.')
+            click.echo('DRY RUN: Would have triggered a deploy of AMI \'{}\'.'.format(ami_id))
             deploy_info = {}
 
         # Record the time of deployment in epoch seconds.
         deploy_info['deploy_time'] = time.time()
 
         if out_file:
-            with open(out_file, 'w') as stream:
+            with io.open(out_file, 'w') as stream:
                 yaml.safe_dump(deploy_info, stream, default_flow_style=False, explicit_start=True)
         else:
             print(yaml.safe_dump(deploy_info, default_flow_style=False, explicit_start=True))
 
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        LOG.error(f'Error Deploying AMI: {ami_id}.\nMessage: {err}')
+        LOG.error('Error Deploying AMI: {0}.\nMessage: {1}'.format(ami_id, err))
         sys.exit(1)
 
     sys.exit(0)

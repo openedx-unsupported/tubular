@@ -72,15 +72,15 @@ class LifecycleManager:
         """
         if max_attempts < 1:
             raise RetryException(
-                f"Must specify a max_attempts number greater than or equal to 1. Value: {max_attempts}")
+                "Must specify a max_attempts number greater than or equal to 1. Value: {0}".format(max_attempts))
 
         if delay_seconds < 0:
             raise RetryException(
-                f"Must specify a delay_seconds number greater than or equal to 0. Value: {delay_seconds}")
+                "Must specify a delay_seconds number greater than or equal to 0. Value: {0}".format(delay_seconds))
 
         if max_time_seconds is not None and max_time_seconds > delay_seconds:
             LOG.warning(
-                "max_time_seconds {} is greater than delay_seconds {}. "
+                "max_time_seconds {0} is greater than delay_seconds {1}. "
                 "This will cause this method to only be attempted once".format(
                     max_time_seconds, delay_seconds
                 )
@@ -145,7 +145,7 @@ class LifecycleManager:
         while not self.done():
             try:
                 self._current_attempt_number += 1
-                LOG.debug("Attempting function: {} try number: {}".format(
+                LOG.debug("Attempting function: {0} try number: {1}".format(
                     func_to_retry.__name__,
                     self._current_attempt_number
                 ))
@@ -153,7 +153,7 @@ class LifecycleManager:
                 break
             except Exception as err:  # pylint: disable=broad-except
                 LOG.warning(
-                    "Error executing function {}, Exception type: {} Message: {}".format(
+                    "Error executing function {0}, Exception type: {1} Message: {2}".format(
                         func_to_retry.__name__, err.__class__, err
                     ))
                 result = err

@@ -61,7 +61,7 @@ def rollback(config_file, dry_run, out_file):
 
     The disabled_asgs will be enabled and the current_asgs will be disabled.
     """
-    config = yaml.safe_load(open(config_file, 'r'))
+    config = yaml.safe_load(io.open(config_file, 'r'))
     current_asgs = config['current_asgs']
     current_ami_id = config['current_ami_id']
     disabled_asgs = config['disabled_asgs']
@@ -76,14 +76,14 @@ def rollback(config_file, dry_run, out_file):
             rollback_info = {}
 
         if out_file:
-            with open(out_file, 'w') as stream:
+            with io.open(out_file, 'w') as stream:
                 yaml.safe_dump(rollback_info, stream, default_flow_style=False, explicit_start=True)
         else:
             print(yaml.safe_dump(rollback_info, default_flow_style=False, explicit_start=True))
 
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho(f'Error rolling back AMI: {current_ami_id}.\nMessage: {err}', fg='red')
+        click.secho('Error rolling back AMI: {0}.\nMessage: {1}'.format(current_ami_id, err), fg='red')
         sys.exit(1)
 
     sys.exit(0)

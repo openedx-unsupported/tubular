@@ -53,12 +53,12 @@ LOG = logging.getLogger(__name__)
 )
 @click.option(
     '--exclude-contexts',
-    help="Regex defining which validation contexts to exclude from this status check.",
+    help=u"Regex defining which validation contexts to exclude from this status check.",
     default="datreeio|Renovate|[Cc]odecov|Dependabot"
 )
 @click.option(
     '--include-contexts',
-    help="Regex defining which validation contexts to include from this status check.",
+    help=u"Regex defining which validation contexts to include from this status check.",
     default=None
 )
 def poll_tests(
@@ -90,19 +90,19 @@ def poll_tests(
         sys.exit(1)
 
     if input_file:
-        input_vars = yaml.safe_load(open(input_file, 'r'))
+        input_vars = yaml.safe_load(io.open(input_file, 'r'))
         if not input_vars['pr_created']:
             # The input file indicates that no PR was created, so no PR tests to check here.
             LOG.info("No PR created - so no PR tests require polling.")
             sys.exit(0)
         pr_number = input_vars['pr_number']
-        git_obj = f'PR #{pr_number}'
+        git_obj = 'PR #{}'.format(pr_number)
         status_success = gh_utils.poll_pull_request_test_status(pr_number)
     elif pr_number:
-        git_obj = f'PR #{pr_number}'
+        git_obj = 'PR #{}'.format(pr_number)
         status_success = gh_utils.poll_pull_request_test_status(pr_number)
     elif commit_hash:
-        git_obj = f'commit hash {commit_hash}'
+        git_obj = 'commit hash {}'.format(commit_hash)
         status_success = gh_utils.poll_for_commit_successful(commit_hash)
 
     LOG.info("{cmd}: Combined status of {obj} for org '{org}' & repo '{repo}' is {status}.".format(

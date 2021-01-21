@@ -60,7 +60,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 )
 @click.option(
     '--user_key',
-    help=f'The key in the user dict we should unsuppress. One of: {KNOWN_KEYS}'
+    help='The key in the user dict we should unsuppress. One of: {}'.format(KNOWN_KEYS)
 )
 @click.option(
     '--chunk_size',
@@ -78,7 +78,7 @@ def bulk_unsuppress_segment_users(dry_run, config_file, suppressed_users_csv, us
         FAIL(ERR_NO_CSV_FILE, 'No users CSV file passed in.')
 
     if not user_key or user_key not in KNOWN_KEYS:
-        FAIL(ERR_BAD_KEY, f'Invalid key passed in {user_key}. Must be one of {KNOWN_KEYS}')
+        FAIL(ERR_BAD_KEY, 'Invalid key passed in {}. Must be one of {}'.format(user_key, KNOWN_KEYS))
 
     LOG('Starting Segment user unsuppression using config file "{}" and users file "{}"'.format(
         config_file, suppressed_users_csv
@@ -93,7 +93,7 @@ def bulk_unsuppress_segment_users(dry_run, config_file, suppressed_users_csv, us
     segment_api = SegmentApi(segment_base_url, auth_token, workplace_slug)
 
     # Read the CSV file. Log the number of user rows read.
-    with open(suppressed_users_csv) as csv_file:
+    with open(suppressed_users_csv, 'r') as csv_file:
         users_reader = csv.reader(csv_file)
         users_rows = list(users_reader)
         LOG("Read {} user rows from CSV file '{}'.".format(len(users_rows), suppressed_users_csv))

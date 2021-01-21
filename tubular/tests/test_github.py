@@ -7,7 +7,7 @@ from hashlib import sha1
 
 from unittest import TestCase
 import ddt
-from unittest.mock import patch, Mock
+from mock import patch, Mock
 
 from github import GithubException, Github
 from github import UnknownObjectException
@@ -41,7 +41,7 @@ from tubular.github_api import (
 
 # SHA1 is hash function designed to be difficult to reverse.
 # This dictionary will help us map SHAs back to the hashed values.
-SHA_MAP = {sha1(str(i).encode('utf-8')).hexdigest(): i for i in range(37)}
+SHA_MAP = {sha1(six.text_type(i).encode('utf-8')).hexdigest(): i for i in range(37)}
 # These will be used as test data to feed test methods below which
 # require SHAs.
 SHAS = sorted(SHA_MAP.keys())
@@ -64,7 +64,7 @@ class GitHubApiTestCase(TestCase):
                 self.repo_mock = repo_mock.return_value = Mock(spec=Repository)
                 self.api = GitHubAPI('test-org', 'test-repo', token='abc123')
         self.api.log_rate_limit = Mock(return_value=None)
-        super().setUp()
+        super(GitHubApiTestCase, self).setUp()
 
     @patch('github.Github.get_user')
     def test_user(self, mock_user_method):
@@ -116,7 +116,7 @@ class GitHubApiTestCase(TestCase):
         def _check_url(org, repo, base_sha, head_sha):
             """ private method to do the comparison of the expected URL and the one we get back """
             url = self.api.get_diff_url(org, repo, base_sha, head_sha)
-            expected = f'https://github.com/{org}/{repo}/compare/{base_sha}...{head_sha}'
+            expected = 'https://github.com/{}/{}/compare/{}...{}'.format(org, repo, base_sha, head_sha)
             self.assertEqual(url, expected)
 
         _check_url('org', 'repo', 'base-sha', 'head-sha')
@@ -153,7 +153,7 @@ class GitHubApiTestCase(TestCase):
 
         self.api.create_branch(branch_name, sha)
 
-        create_git_ref_mock.assert_called_with(ref=f'refs/heads/{branch_name}', sha=sha)
+        create_git_ref_mock.assert_called_with(ref='refs/heads/{}'.format(branch_name), sha=sha)
 
     @ddt.data(
         ('blah-candidate', 'release', 'test', 'test_pr'),
@@ -194,7 +194,7 @@ class GitHubApiTestCase(TestCase):
             self.assertEqual(kwargs['type'], 'commit')
             self.assertEqual(kwargs['object'], test_sha)
             create_ref_mock.assert_called_with(
-                ref=f'refs/tags/{test_tag}',
+                ref='refs/tags/{}'.format(test_tag),
                 sha=test_sha
             )
 
@@ -294,7 +294,7 @@ class GitHubApiTestCase(TestCase):
                     'check_suites': [
                         {
                             'app': {
-                                'name': f'App {i}'
+                                'name': 'App {}'.format(i)
                             },
                             'conclusion': state,
                             'url': 'some.fake.repo'
@@ -333,7 +333,7 @@ class GitHubApiTestCase(TestCase):
             None,
             None,
             [
-                f'{state}-{valtype}'
+                '{}-{}'.format(state, valtype)
                 for state in ['passed', 'pending', None, 'failed']
                 for valtype in ['status', 'check']
             ]
@@ -364,7 +364,7 @@ class GitHubApiTestCase(TestCase):
 
         mock_combined_status = Mock(name='combined-status', spec=CommitCombinedStatus)
         mock_combined_status.statuses = [
-            Mock(name=f'{state}-status', spec=CommitStatus, context=f'{state}-status', state=state)
+            Mock(name='{}-status'.format(state), spec=CommitStatus, context='{}-status'.format(state), state=state)
             for state in filterable_states
         ]
         mock_combined_status.state = None
@@ -381,7 +381,7 @@ class GitHubApiTestCase(TestCase):
                 'check_suites': [
                     {
                         'app': {
-                            'name': f'{state}-check'
+                            'name': '{}-check'.format(state)
                         },
                         'conclusion': state,
                         'url': 'some.fake.repo'
