@@ -27,7 +27,7 @@ def submit_slack_message(auth_token, channels, message):
         channels (list(str)): List of channel names to which to post the message.
         message (str): Message to post to Slack channel.
     """
-    post_url = "{}{}".format(SLACK_API_URL, NOTIFICATION_POST)
+    post_url = f"{SLACK_API_URL}{NOTIFICATION_POST}"
     # to remove slack API warning
     headers = {
         'Content-type': CONTENT_TYPE
@@ -44,5 +44,5 @@ def submit_slack_message(auth_token, channels, message):
                                  )
         if response.status_code not in (200, 201, 204):
             raise SlackMessageSendFailure(
-                "Message send to channel '{}' failed: {}".format(channel, response.text)
+                f"Message send to channel '{channel}' failed: {response.text}"
             )

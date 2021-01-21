@@ -105,7 +105,7 @@ class HubspotAPI:
         Notify marketing with user's Hubspot `vid` upon successful deletion.
         """
         subject = "Alert: Hubspot Deletion"
-        body = "Learner with the VID \"{}\" has been deleted from Hubspot.".format(vid)
+        body = f"Learner with the VID \"{vid}\" has been deleted from Hubspot."
         send_email(
             self.aws_region,
             self.from_address,

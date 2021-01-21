@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO)
 )
 @click.option(
     '--go-agent-security-group-name',
-    default=u'prod-tools-goagent-sg',
+    default='prod-tools-goagent-sg',
     help='The security group name for the go-agent cluster.',
 )
 def add_ingress_rule(dry_run, go_agent_security_group, go_agent_security_group_owner, go_agent_security_group_name):
@@ -53,17 +53,17 @@ def add_ingress_rule(dry_run, go_agent_security_group, go_agent_security_group_o
 
     logging.debug('All ASGs:')
     for group in asg_conn.get_all_groups():
-        logging.debug('    {}'.format(group))
+        logging.debug(f'    {group}')
         asgs.append(group)
 
     logging.debug('All launch configurations:')
     for launch_config in asg_conn.get_all_launch_configurations():
-        logging.debug('    {}'.format(launch_config))
+        logging.debug(f'    {launch_config}')
         launch_configs[launch_config.name] = launch_config
 
     logging.debug('All security groups:')
     for sec_group in ec2_conn.get_all_security_groups():
-        logging.debug('    {}'.format(sec_group))
+        logging.debug(f'    {sec_group}')
         security_groups[sec_group.id] = sec_group
 
     # Validate that each ASG has a launch configuration.
@@ -101,8 +101,8 @@ def add_ingress_rule(dry_run, go_agent_security_group, go_agent_security_group_o
             # Find the security group.
             sec_group = security_groups[sg_name]
         except KeyError:
-            logging.error("Security group '{}' for ASG '{}' was not found!.".format(sg_name, group.name))
-        logging.info('BEFORE: Rules for security group {}:'.format(sec_group.name))
+            logging.error(f"Security group '{sg_name}' for ASG '{group.name}' was not found!.")
+        logging.info(f'BEFORE: Rules for security group {sec_group.name}:')
         logging.info(sec_group.rules)
         try:
             # Add the ingress rule to the security group.
@@ -123,10 +123,10 @@ def add_ingress_rule(dry_run, go_agent_security_group, go_agent_security_group_o
                     sg_name
                 ))
             elif exc.code == "InvalidPermission.Duplicate":
-                logging.info("Rule already exists for {}.".format(sg_name))
+                logging.info(f"Rule already exists for {sg_name}.")
             else:
                 raise
-        logging.info('AFTER: Rules for security group {}:'.format(sg_name))
+        logging.info(f'AFTER: Rules for security group {sg_name}:')
         logging.info(sec_group.rules)
 
 

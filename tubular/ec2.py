@@ -134,7 +134,7 @@ def active_ami_for_edp(env, dep, play):
         MultipleImagesFoundException: If multiple AMI IDs are found within the EDP's ELB.
         ImageNotFoundException: If no AMI IDs are found for the EDP.
     """
-    LOG.info("Looking up AMI for {}-{}-{}...".format(env, dep, play))
+    LOG.info(f"Looking up AMI for {env}-{dep}-{play}...")
     edp = EDP(env, dep, play)
     ec2_conn = boto.connect_ec2()
     asg_conn = boto.connect_autoscale()
@@ -162,13 +162,13 @@ def active_ami_for_edp(env, dep, play):
             asg_enabled = len(asg.suspended_processes) == 0
             if instance.state == 'running' and asg_enabled:
                 amis.add(instance.image_id)
-                LOG.info("AMI found in ASG {} for {}-{}-{}: {}".format(asg.name, env, dep, play, instance.image_id))
+                LOG.info(f"AMI found in ASG {asg.name} for {env}-{dep}-{play}: {instance.image_id}")
             else:
                 LOG.info("Instance {} state: {} - asg {} enabled: {}".format(
                     instance.id, instance.state, asg.name, asg_enabled))
 
     if not amis:
-        msg = "No AMIs found for {}-{}-{}.".format(env, dep, play)
+        msg = f"No AMIs found for {env}-{dep}-{play}."
         raise ImageNotFoundException(msg)
 
     return amis.pop()
@@ -191,13 +191,13 @@ def tags_for_ami(ami_id):
         ImageNotFoundException: No image found with this ami ID.
         MissingTagException: AMI is missing one or more of the expected tags.
     """
-    LOG.debug("Looking up edp for {}".format(ami_id))
+    LOG.debug(f"Looking up edp for {ami_id}")
     ec2 = boto.connect_ec2()
 
     try:
         ami = ec2.get_all_images(ami_id)[0]
     except IndexError:
-        raise ImageNotFoundException("ami: {} not found".format(ami_id))
+        raise ImageNotFoundException(f"ami: {ami_id} not found")
     except EC2ResponseError as error:
         raise ImageNotFoundException(str(error))
 
@@ -222,10 +222,10 @@ def edp_for_ami(ami_id):
         edp = EDP(tags['environment'], tags['deployment'], tags['play'])
     except KeyError as key_err:
         missing_key = key_err.args[0]
-        msg = "{} is missing the {} tag.".format(ami_id, missing_key)
+        msg = f"{ami_id} is missing the {missing_key} tag."
         raise MissingTagException(msg)
 
-    LOG.debug("Got EDP for {}: {}".format(ami_id, edp))
+    LOG.debug(f"Got EDP for {ami_id}: {edp}")
     return edp
 
 
@@ -246,7 +246,7 @@ def validate_edp(ami_id, environment, deployment, play):
                    edp.deployment == deployment and
                    edp.play == play)
     if not edp_matched:
-        LOG.info("AMI {0} EDP did not match specified: {1} != ({2}, {3}, {4})".format(
+        LOG.info("AMI {} EDP did not match specified: {} != ({}, {}, {})".format(
             ami_id, edp, environment, deployment, play
         ))
     return edp_matched
@@ -264,7 +264,7 @@ def is_stage_ami(ami_id):
     edp = edp_for_ami(ami_id)
     ami_for_stage = edp.environment == "stage"
     if not ami_for_stage:
-        LOG.info("AMI {0} is not intended for stage! - {1}".format(ami_id, edp))
+        LOG.info(f"AMI {ami_id} is not intended for stage! - {edp}")
     return ami_for_stage
 
 
@@ -295,11 +295,11 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
     LOG.info("Found {} ASGs".format(len(all_groups)))
 
     for group in all_groups:
-        LOG.debug("Checking group {}".format(group))
+        LOG.debug(f"Checking group {group}")
         tags = {tag.key: tag.value for tag in group.tags}
-        LOG.debug("Tags for asg {}: {}".format(group.name, tags))
+        LOG.debug(f"Tags for asg {group.name}: {tags}")
         if filter_asgs_pending_delete and ASG_DELETE_TAG_KEY in tags.keys():
-            LOG.info("filtering ASG: {0} because it is tagged for deletion on: {1}"
+            LOG.info("filtering ASG: {} because it is tagged for deletion on: {}"
                      .format(group.name, tags[ASG_DELETE_TAG_KEY]))
             continue
 
@@ -357,7 +357,7 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=600):
     tag = create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta)
     autoscale = boto.connect_autoscale()
     if len(get_all_autoscale_groups([asg_name])) < 1:
-        LOG.info("ASG {} no longer exists, will not tag".format(asg_name))
+        LOG.info(f"ASG {asg_name} no longer exists, will not tag")
     else:
         autoscale.create_or_update_tags([tag])
 
@@ -379,7 +379,7 @@ def remove_asg_deletion_tag(asg_name):
     """
     asgs = get_all_autoscale_groups([asg_name])
     if len(asgs) < 1:
-        LOG.info("ASG {} no longer exists, will not remove deletion tag.".format(asg_name))
+        LOG.info(f"ASG {asg_name} no longer exists, will not remove deletion tag.")
     else:
         for asg in asgs:
             for tag in asg.tags:
@@ -402,30 +402,30 @@ def get_asgs_pending_delete():
 
     asgs_pending_delete = []
     asgs = get_all_autoscale_groups()
-    LOG.debug("Found {0} autoscale groups".format(len(asgs)))
+    LOG.debug("Found {} autoscale groups".format(len(asgs)))
     for asg in asgs:
-        LOG.debug("Checking for {0} on asg: {1}".format(ASG_DELETE_TAG_KEY, asg.name))
+        LOG.debug(f"Checking for {ASG_DELETE_TAG_KEY} on asg: {asg.name}")
         for tag in asg.tags:
             try:
                 if tag.key == ASG_DELETE_TAG_KEY:
-                    LOG.debug("Found {0} tag, deletion time: {1}".format(ASG_DELETE_TAG_KEY, tag.value))
+                    LOG.debug(f"Found {ASG_DELETE_TAG_KEY} tag, deletion time: {tag.value}")
                     if datetime.strptime(tag.value, ISO_DATE_FORMAT) - current_datetime < timedelta(0, 0, 0):
-                        LOG.debug("Adding ASG: {0} to the list of ASGs to delete.".format(asg.name))
+                        LOG.debug(f"Adding ASG: {asg.name} to the list of ASGs to delete.")
                         asgs_pending_delete.append(asg)
                         break
             except ValueError:
                 LOG.warning(
-                    "ASG {0} has an improperly formatted datetime string for the key {1}. Value: {2} . "
-                    "Format must match {3}".format(
+                    "ASG {} has an improperly formatted datetime string for the key {}. Value: {} . "
+                    "Format must match {}".format(
                         asg.name, tag.key, tag.value, ISO_DATE_FORMAT
                     )
                 )
                 continue
             except Exception as err:  # pylint: disable=broad-except
-                LOG.warning("Error occured while building a list of ASGs to delete, continuing: {0}".format(err))
+                LOG.warning(f"Error occured while building a list of ASGs to delete, continuing: {err}")
                 continue
 
-    LOG.info("Number of ASGs pending delete: {0}".format(len(asgs_pending_delete)))
+    LOG.info("Number of ASGs pending delete: {}".format(len(asgs_pending_delete)))
     return asgs_pending_delete
 
 
@@ -476,7 +476,7 @@ def wait_for_in_service(all_asgs, timeout):
         return
 
     asgs_left_to_check = list(all_asgs)
-    LOG.info("Waiting for ASGs to be healthy: {}".format(asgs_left_to_check))
+    LOG.info(f"Waiting for ASGs to be healthy: {asgs_left_to_check}")
 
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
@@ -491,7 +491,7 @@ def wait_for_in_service(all_asgs, timeout):
 
             if all_healthy:
                 # Then all are healthy we can stop checking this.
-                LOG.debug("All instances healthy in ASG: {}".format(asg.name))
+                LOG.debug(f"All instances healthy in ASG: {asg.name}")
                 LOG.debug(asgs_left_to_check)
                 asgs_left_to_check.remove(asg.name)
 
@@ -500,7 +500,7 @@ def wait_for_in_service(all_asgs, timeout):
 
         time.sleep(1)
 
-    raise TimeoutException("Some instances in the following ASGs never became healthy: {}".format(asgs_left_to_check))
+    raise TimeoutException(f"Some instances in the following ASGs never became healthy: {asgs_left_to_check}")
 
 
 def wait_for_healthy_elbs(elbs_to_monitor, timeout):
@@ -546,7 +546,7 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     while end_time > datetime.utcnow():
         elbs = get_all_load_balancers(elbs_left)
         for elb in elbs:
-            LOG.info("Checking health for ELB: {}".format(elb.name))
+            LOG.info(f"Checking health for ELB: {elb.name}")
             all_healthy = True
             for instance in _get_elb_health(elb):
                 if instance.state != 'InService':
@@ -565,4 +565,4 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
             return
         time.sleep(WAIT_SLEEP_TIME)
 
-    raise TimeoutException("The following ELBs never became healthy: {}".format(elbs_left))
+    raise TimeoutException(f"The following ELBs never became healthy: {elbs_left}")

@@ -1,4 +1,3 @@
-# coding=utf-8
 """
 Test the retire_one_learner.py script
 """
@@ -11,7 +10,7 @@ from datetime import date
 import time
 
 from click.testing import CliRunner
-from mock import DEFAULT, patch
+from unittest.mock import DEFAULT, patch
 from six import PY2, itervalues
 
 from tubular.scripts.retirement_partner_report import (
@@ -120,7 +119,7 @@ def _call_script(expect_success=True, expected_num_rows=10, config_orgs=None, ex
                     REPORTING_FILENAME_PREFIX, TEST_PLATFORM_NAME, org, date.today().isoformat()
                 ))
 
-                with open(outfile, 'r') as csvfile:
+                with open(outfile) as csvfile:
                     reader = csv.DictReader(csvfile)
                     rows = []
                     for row in reader:
@@ -145,9 +144,9 @@ def _fake_retirement_report_user(seed_val, user_orgs=None, user_orgs_config=None
     """
     user_info = {
         'user_id': USER_ID,
-        LEARNER_ORIGINAL_USERNAME_KEY: 'username_{}'.format(seed_val),
-        'original_email': 'user_{}@foo.invalid'.format(seed_val),
-        'original_name': '{} {}'.format(UNICODE_NAME_CONSTANT, seed_val),
+        LEARNER_ORIGINAL_USERNAME_KEY: f'username_{seed_val}',
+        'original_email': f'user_{seed_val}@foo.invalid',
+        'original_name': f'{UNICODE_NAME_CONSTANT} {seed_val}',
         LEARNER_CREATED_KEY: DELETION_TIME,
     }
 
@@ -190,7 +189,7 @@ def test_successful_report(*args, **kwargs):
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
     mock_create_comments.return_value = None
-    fake_partners = list(itervalues(FAKE_ORGS))
+    fake_partners = list(FAKE_ORGS.values())
     # Generate the list_permissions return value.
     # The first few have POCs.
     mock_list_permissions.return_value = {
@@ -227,7 +226,7 @@ def test_successful_report(*args, **kwargs):
     assert mock_create_comments.call_count == 1
     # First [0] returns all positional args, second [0] gets the first positional arg.
     create_comments_file_ids, create_comments_messages = zip(*mock_create_comments.call_args[0][0])
-    assert set(create_comments_file_ids).issubset(set(['foo', 'bar', 'baz']))
+    assert set(create_comments_file_ids).issubset({'foo', 'bar', 'baz'})
     assert len(create_comments_file_ids) == 2  # only two comments created, the third didn't have a POC.
     assert all('+some.contact@example.com' in msg for msg in create_comments_messages)
     assert all('+another.contact@edx.org' not in msg for msg in create_comments_messages)
@@ -267,7 +266,7 @@ def test_successful_report_org_config(*args, **kwargs):
     fake_custom_orgs = {
         'orgCustom': 'firstBlah'
     }
-    fake_partners = list(itervalues(fake_custom_orgs))
+    fake_partners = list(fake_custom_orgs.values())
     mock_list_permissions.return_value = {
         'folder' + partner: [
             {'emailAddress': 'some.contact@example.com'},  # The POC.
@@ -647,17 +646,17 @@ def test_google_unicode_folder_names(*args, **kwargs):
             {'emailAddress': 'another.contact@edx.org'},
         ]
         for partner in [
-            unicodedata.normalize('NFKC', u'TéstX'),
-            unicodedata.normalize('NFKC', u'TéstX2'),
-            unicodedata.normalize('NFKC', u'TéstX3'),
+            unicodedata.normalize('NFKC', 'TéstX'),
+            unicodedata.normalize('NFKC', 'TéstX2'),
+            unicodedata.normalize('NFKC', 'TéstX3'),
         ]
     }
     mock_walk_files.return_value = [
         {'name': partner, 'id': 'folder' + partner}
         for partner in [
-            unicodedata.normalize('NFKC', u'TéstX'),
-            unicodedata.normalize('NFKC', u'TéstX2'),
-            unicodedata.normalize('NFKC', u'TéstX3'),
+            unicodedata.normalize('NFKC', 'TéstX'),
+            unicodedata.normalize('NFKC', 'TéstX2'),
+            unicodedata.normalize('NFKC', 'TéstX3'),
         ]
     ]
     mock_create_files.side_effect = ['foo', 'bar', 'baz']
@@ -665,9 +664,9 @@ def test_google_unicode_folder_names(*args, **kwargs):
     mock_retirement_report.return_value = _fake_retirement_report(user_orgs=list(FAKE_ORGS.keys()))
 
     config_orgs = {
-        'org1': unicodedata.normalize('NFKC', u'TéstX'),
-        'org2': unicodedata.normalize('NFD', u'TéstX2'),
-        'org3': unicodedata.normalize('NFKD', u'TéstX3'),
+        'org1': unicodedata.normalize('NFKC', 'TéstX'),
+        'org2': unicodedata.normalize('NFD', 'TéstX2'),
+        'org3': unicodedata.normalize('NFKD', 'TéstX3'),
     }
 
     result = _call_script(config_orgs=config_orgs)
@@ -685,7 +684,7 @@ def test_google_unicode_folder_names(*args, **kwargs):
     assert mock_create_comments.call_count == 1
     # First [0] returns all positional args, second [0] gets the first positional arg.
     create_comments_file_ids, create_comments_messages = zip(*mock_create_comments.call_args[0][0])
-    assert set(create_comments_file_ids) == set(['foo', 'bar', 'baz'])
+    assert set(create_comments_file_ids) == {'foo', 'bar', 'baz'}
     assert all('+some.contact@example.com' in msg for msg in create_comments_messages)
     assert all('+another.contact@edx.org' not in msg for msg in create_comments_messages)
 

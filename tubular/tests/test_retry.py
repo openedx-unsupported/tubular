@@ -6,7 +6,7 @@ import os
 import datetime
 import unittest
 
-import mock
+from unittest import mock
 from ddt import ddt, data, unpack
 from six.moves import reload_module
 from tubular.utils import retry

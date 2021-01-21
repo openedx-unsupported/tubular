@@ -77,32 +77,32 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
 )
 @click.option(
     '--out-file',
-    help=u"File location to export metadata about the branches merged to target-branch.",
+    help="File location to export metadata about the branches merged to target-branch.",
     type=click.File(mode='w', lazy=True),
     default=sys.stdout,
 )
 @click.option(
-    u'--target-reference-repo',
-    help=u"Path to a reference repository to speed up cloning of the target repository",
+    '--target-reference-repo',
+    help="Path to a reference repository to speed up cloning of the target repository",
 )
 @click.option(
-    u'--repo-variable',
-    help=u"The name of the variable to add to the results yaml file. This variable will "
-         u"contain the url of the repository which has the --sha-variable in it."
+    '--repo-variable',
+    help="The name of the variable to add to the results yaml file. This variable will "
+         "contain the url of the repository which has the --sha-variable in it."
 )
 @click.option(
-    u'--sha-variable',
-    help=u"The name of the variable to add to the results yaml file. This variable will "
-         u"contain the sha of the merge commit.",
+    '--sha-variable',
+    help="The name of the variable to add to the results yaml file. This variable will "
+         "contain the sha of the merge commit.",
     default='merge_sha',
 )
-@click_log.simple_verbosity_option(default=u'INFO')
+@click_log.simple_verbosity_option(default='INFO')
 def octomerge(
         token, target_repo, source_repo, target_base_branch, source_base_branch,
         target_branch, source_branch, out_file, target_reference_repo,
         repo_variable, sha_variable,
 ):
-    u"""
+    """
     Merge all approved security PRs into a release candidate.
 
     Any PR in ``privato-org/target-repo`` will be merged into ``target-branch``, as long
@@ -126,7 +126,7 @@ def octomerge(
         logging.info("Merging the following prs into {}:\n{}".format(
             target_branch,
             "\n".join(
-                "    {.html_url}".format(pr)
+                f"    {pr.html_url}"
                 for pr in approved_prs
             )
         ))

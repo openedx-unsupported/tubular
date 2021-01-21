@@ -1,11 +1,10 @@
-# coding=utf-8
 """
 Test the bulk_delete_segment_users.py script
 """
 
 
 from click.testing import CliRunner
-from mock import patch
+from unittest.mock import patch
 
 from tubular.scripts.bulk_delete_segment_users import (
     ERR_NO_CONFIG,

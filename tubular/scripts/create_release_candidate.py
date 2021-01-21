@@ -34,7 +34,7 @@ def valid_date(_, __, date_str):
     try:
         return datetime.datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
-        click.BadParameter("Not a valid date: '{0}'.".format(date_str))
+        click.BadParameter(f"Not a valid date: '{date_str}'.")
 
 
 EXPECTED_RELEASE_DATE = default_expected_release_date()
@@ -205,7 +205,7 @@ def create_release_candidate(org,
             title=pr_title
         )
 
-        with io.open(output_file, 'w') as stream:
+        with open(output_file, 'w') as stream:
             yaml.safe_dump(
                 {
                     'pr_id': pull_request.id,
