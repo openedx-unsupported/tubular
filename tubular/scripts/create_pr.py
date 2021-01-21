@@ -128,7 +128,7 @@ def create_pull_request(org,
             'pr_mergable_state': pull_request.mergeable_state,
         }
 
-    with open(output_file, 'w') as stream:
+    with io.open(output_file, 'w') as stream:
         yaml.safe_dump(
             output_yaml,
             stream,

@@ -5,7 +5,7 @@ Tests for tubular.git_repo.GitRepo
 from unittest import TestCase
 import ddt
 from git import GitCommandError, Repo
-from unittest.mock import patch, MagicMock
+from mock import patch, MagicMock
 
 from tubular.git_repo import LocalGitAPI, InvalidGitRepoURL, extract_repo_name
 
@@ -59,7 +59,7 @@ class GitRepoTestCase(TestCase):
         """
         mock_repo.configure_mock(
             autospec=True,
-            **{f'{failing_mock}.side_effect': GitCommandError('cmd', 1)}
+            **{'{}.side_effect'.format(failing_mock): GitCommandError('cmd', 1)}
         )
 
         with self.assertRaises(GitCommandError):

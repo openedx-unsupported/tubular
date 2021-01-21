@@ -83,7 +83,7 @@ def bulk_delete_segment_users(dry_run, config_file, retired_users_csv, chunk_siz
     segment_api = SegmentApi(segment_base_url, auth_token, workplace_slug)
 
     # Read the CSV file. Log the number of user rows read.
-    with open(retired_users_csv) as csv_file:
+    with open(retired_users_csv, 'r') as csv_file:
         users_reader = csv.reader(csv_file)
         users_rows = list(users_reader)
         LOG("Read {} user rows from CSV file '{}'.".format(len(users_rows), retired_users_csv))

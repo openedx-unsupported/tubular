@@ -57,10 +57,10 @@ def terminate_instances(region,
     try:
         terminated_instances = ec2.terminate_instances(region,
                                                        {'key-name': key_name_filter}, max_run_hours, skip_if_tag)
-        logging.info(f"terminated instances: {terminated_instances}")
+        logging.info("terminated instances: {}".format(terminated_instances))
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho(f'Error finding base AMI ID.\nMessage: {err}', fg='red')
+        click.secho('Error finding base AMI ID.\nMessage: {}'.format(err), fg='red')
         sys.exit(1)
 
 

@@ -100,10 +100,10 @@ class BaseApiClient:
         # corresponding response within a batch response.
         request_object_to_request_id = dict(zip(
             requests,
-            (str(n) for n in count()),
+            (text_type(n) for n in count()),
         ))
         # Create a flipped mapping for convenience.
-        request_id_to_request_object = {v: k for k, v in request_object_to_request_id.items()}
+        request_id_to_request_object = {v: k for k, v in iteritems(request_object_to_request_id)}
 
         def batch_callback(request_id, response, exception):  # pylint: disable=unused-argument,missing-docstring
             """
@@ -112,16 +112,16 @@ class BaseApiClient:
             request_object = request_id_to_request_object[request_id]
             if exception:
                 if _should_retry_google_api(exception):
-                    LOG.error(f'Request throttled, adding to the retry queue: {exception}'.encode('utf-8'))
+                    LOG.error(u'Request throttled, adding to the retry queue: {}'.format(exception).encode('utf-8'))
                     retry_requests.append(request_object)
                 else:
                     # In this case, probably nothing can be done, so we just give up on this particular request and
                     # do not include it in the responses dict.
-                    LOG.error(f'Error processing request {request_object}'.encode('utf-8'))
-                    LOG.error(str(exception).encode('utf-8'))
+                    LOG.error(u'Error processing request {}'.format(request_object).encode('utf-8'))
+                    LOG.error(text_type(exception).encode('utf-8'))
             else:
                 responses[request_object] = response
-                LOG.info(f'Successfully processed request {request_object}.'.encode('utf-8'))
+                LOG.info(u'Successfully processed request {}.'.format(request_object).encode('utf-8'))
 
         # Retry on API throttling at the HTTP request level.
         @backoff.on_exception(
@@ -242,7 +242,7 @@ class DriveApi(BaseApiClient):
             media_body=media,
             fields='id'
         ).execute()
-        LOG.info('File uploaded: ID="{}", name="{}"'.format(uploaded_file.get('id'), filename).encode('utf-8'))
+        LOG.info(u'File uploaded: ID="{}", name="{}"'.format(uploaded_file.get('id'), filename).encode('utf-8'))
         return uploaded_file.get('id')
 
     # NOTE: Do not decorate this function with backoff since it already calls retryable methods.
@@ -347,17 +347,17 @@ class DriveApi(BaseApiClient):
         mimetype_clause = ""
         if mimetype:
             # Return both folders and the specified mimetype.
-            mimetype_clause = f"( mimeType = '{FOLDER_MIMETYPE}' or mimeType = '{mimetype}') and "
+            mimetype_clause = "( mimeType = '{}' or mimeType = '{}') and ".format(FOLDER_MIMETYPE, mimetype)
 
         while folders_to_visit:
             current_folder = folders_to_visit.pop()
-            LOG.info(f"Current folder: {current_folder}")
+            LOG.info("Current folder: {}".format(current_folder))
             visited_folders.append(current_folder)
             extra_kwargs = {}
 
             while True:
                 resp = self._client.files().list(  # pylint: disable=no-member
-                    q=f"{mimetype_clause}'{current_folder}' in parents",
+                    q="{}'{}' in parents".format(mimetype_clause, current_folder),
                     fields='nextPageToken, files({})'.format(
                         file_fields + ', mimeType, parents'
                     ),
@@ -369,7 +369,7 @@ class DriveApi(BaseApiClient):
 
                 # Examine returned results to separate folders from non-folders.
                 for result in page_results:
-                    LOG.info(f"walk_files: Result: {result}".encode('utf-8'))
+                    LOG.info(u"walk_files: Result: {}".format(result).encode('utf-8'))
                     # Folders contain files - and get special treatment.
                     if result['mimeType'] == FOLDER_MIMETYPE:
                         if recurse and result['id'] not in visited_folders:
@@ -426,7 +426,7 @@ class DriveApi(BaseApiClient):
             for file_id, content in file_ids_and_content_batch:
                 request_object = self._client.comments().create(  # pylint: disable=no-member
                     fileId=file_id,
-                    body={'content': content},
+                    body={u'content': content},
                     fields=fields
                 )
                 request_objects_to_file_id[request_object] = file_id
@@ -478,7 +478,7 @@ class DriveApi(BaseApiClient):
             for file_id in file_ids_batch:
                 request_object = self._client.permissions().list(  # pylint: disable=no-member
                     fileId=file_id,
-                    fields=f'permissions({fields})'
+                    fields='permissions({})'.format(fields)
                 )
                 request_objects_to_file_id[request_object] = file_id
 

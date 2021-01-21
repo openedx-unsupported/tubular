@@ -6,6 +6,7 @@ Initialization code for the utils module.
 import os
 from collections import namedtuple
 
+from six.moves import range
 
 # Time in seconds to wait between polls of Asgard or AWS.
 WAIT_SLEEP_TIME = int(os.environ.get("WAIT_SLEEP_TIME", 5))

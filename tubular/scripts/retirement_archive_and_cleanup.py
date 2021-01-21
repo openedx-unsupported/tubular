@@ -56,7 +56,7 @@ def _fetch_learners_to_archive_or_exit(config, start_date, end_date, initial_sta
     """
     Makes the call to fetch learners to be cleaned up, returns the list of learners or exits.
     """
-    LOG(f'Fetching users in state {initial_state} created from {start_date} to {end_date}')
+    LOG('Fetching users in state {} created from {} to {}'.format(initial_state, start_date, end_date))
     try:
         return config['LMS'].get_learners_by_date_and_status(initial_state, start_date, end_date)
     except Exception as exc:  # pylint: disable=broad-except
@@ -102,7 +102,7 @@ def _upload_to_s3(config, filename):
         key = Key(bucket, datestr + filename)
         key.set_contents_from_filename(filename)
     except Exception as exc:
-        LOG(str(exc))
+        LOG(text_type(exc))
         raise
 
 
@@ -209,7 +209,7 @@ def archive_and_cleanup(config_file, cool_off_days):
     3- Deleting them from LMS (by username)
     """
     try:
-        LOG(f'Starting bulk update script: Config: {config_file}')
+        LOG('Starting bulk update script: Config: {}'.format(config_file))
 
         if not config_file:
             FAIL(ERR_NO_CONFIG, 'No config file passed in.')
@@ -221,7 +221,7 @@ def archive_and_cleanup(config_file, cool_off_days):
         start_date = datetime.datetime.strptime('2018-01-01', '%Y-%m-%d')
         end_date = datetime.datetime.utcnow().date() - datetime.timedelta(days=cool_off_days)
 
-        LOG(f'Fetching learners in COMPLETE status from {start_date} to {end_date}.')
+        LOG('Fetching learners in COMPLETE status from {} to {}.'.format(start_date, end_date))
         learners = _fetch_learners_to_archive_or_exit(config, start_date, end_date, 'COMPLETE')
 
         if learners:
@@ -231,7 +231,7 @@ def archive_and_cleanup(config_file, cool_off_days):
         else:
             LOG('No learners found!')
     except Exception as exc:
-        LOG(str(exc))
+        LOG(text_type(exc))
         raise
 
 

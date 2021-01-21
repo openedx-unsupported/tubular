@@ -54,18 +54,18 @@ LOG = logging.getLogger(__name__)
 )
 @click.option(
     '--out_file',
-    help="File location in which to write CI test status info.",
+    help=u"File location in which to write CI test status info.",
     type=click.File(mode='w', lazy=True),
     default=sys.stdout
 )
 @click.option(
     '--exclude-contexts',
-    help="Regex defining which validation contexts to exclude from this status check.",
+    help=u"Regex defining which validation contexts to exclude from this status check.",
     default="datreeio|Renovate|[Cc]odecov|Dependabot"
 )
 @click.option(
     '--include-contexts',
-    help="Regex defining which validation contexts to include from this status check.",
+    help=u"Regex defining which validation contexts to include from this status check.",
     default=None
 )
 def check_tests(
@@ -98,16 +98,16 @@ def check_tests(
 
     status_success = False
     if input_file:
-        input_vars = yaml.safe_load(open(input_file, 'r'))
+        input_vars = yaml.safe_load(io.open(input_file, 'r'))
         pr_number = input_vars['pr_number']
         combined_status_success, test_statuses = gh_utils.check_combined_status_pull_request(pr_number)
-        git_obj = f'PR #{pr_number}'
+        git_obj = 'PR #{}'.format(pr_number)
     elif pr_number:
         combined_status_success, test_statuses = gh_utils.check_combined_status_pull_request(pr_number)
-        git_obj = f'PR #{pr_number}'
+        git_obj = 'PR #{}'.format(pr_number)
     elif commit_hash:
         combined_status_success, test_statuses = gh_utils.check_combined_status_commit(commit_hash)
-        git_obj = f'commit hash {commit_hash}'
+        git_obj = 'commit hash {}'.format(commit_hash)
 
     LOG.info("{}: Combined status of {} is {}.".format(
         sys.argv[0], git_obj, "success" if combined_status_success else "failed"

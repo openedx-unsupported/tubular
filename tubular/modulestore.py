@@ -142,7 +142,7 @@ class ModuleStore:
         file_exists = os.path.isfile(dataset_file)
 
         if not file_exists:
-            raise OSError("The specified file doesn't exist:"
+            raise IOError("The specified file doesn't exist:"
                           " {dataset_file}".format(dataset_file=dataset_file))
 
         # load the file

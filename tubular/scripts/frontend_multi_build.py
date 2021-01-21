@@ -77,16 +77,16 @@ def frontend_build(common_config_file, env_config_file, app_name, version_file):
     for site_obj in multisite_sites:
         hostname = site_obj.get('HOSTNAME')
         if not hostname:
-            FAIL(1, f'HOSTNAME is not set for a site in in app {app_name}.')
+            FAIL(1, 'HOSTNAME is not set for a site in in app {}.'.format(app_name))
 
         site_app_config = {}
         site_app_config.update(app_config)
         site_app_config.update(site_obj.get('APP_CONFIG', {}))
         site_app_config.update({'HOSTNAME': hostname})
-        env_vars = [f'{k}={v}' for k, v in site_app_config.items()]
+        env_vars = ['{}={}'.format(k, v) for k, v in site_app_config.items()]
         builder.build_app(
             env_vars,
-            f'Could not run `npm run build` for for site {hostname} in app {app_name}.'
+            'Could not run `npm run build` for for site {} in app {}.'.format(hostname, app_name)
         )
 
         # Move built app from ./dist to a folder named after the site in the temporary

@@ -78,9 +78,9 @@ class LocalGitAPI:
         Push a branch up to the remote server, optionally with a different name.
         """
         if remote_branch:
-            push_ref = f'refs/heads/{branch}:refs/heads/{remote_branch}'
+            push_ref = 'refs/heads/{}:refs/heads/{}'.format(branch, remote_branch)
         else:
-            push_ref = f'refs/heads/{branch}'
+            push_ref = 'refs/heads/{}'.format(branch)
         self.repo.remotes[remote].push(push_ref, force=force)
 
     def checkout_branch(self, branch):

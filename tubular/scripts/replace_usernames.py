@@ -73,10 +73,10 @@ def replace_usernames(config_file, username_replacement_csv):
         click.echo('A username replacement CSV file is required')
         sys.exit(-1)
 
-    with open(config_file, 'r') as config:
+    with io.open(config_file, 'r') as config:
         config_yaml = yaml.safe_load(config)
 
-    with open(username_replacement_csv, 'r') as replacement_file:
+    with io.open(username_replacement_csv, 'r') as replacement_file:
         csv_reader = csv.reader(replacement_file)
         lms_username_mappings = [
             {current_username: desired_username}

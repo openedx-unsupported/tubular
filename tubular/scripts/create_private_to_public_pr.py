@@ -27,31 +27,31 @@ LOG = logging.getLogger(__name__)
 
 @click.command("create_private_to_public_pr")
 @click.option(
-    '--private_org',
-    help='Org from the private GitHub repository URL of https://github.com/<org>/<repo>',
-    default='edx'
+    u'--private_org',
+    help=u'Org from the private GitHub repository URL of https://github.com/<org>/<repo>',
+    default=u'edx'
 )
 @click.option(
-    '--private_repo',
-    help='Repo name from the private GitHub repository URL of https://github.com/<org>/<repo>'
+    u'--private_repo',
+    help=u'Repo name from the private GitHub repository URL of https://github.com/<org>/<repo>'
 )
 @click.option(
-    '--private_source_branch',
-    help='Source branch from the private repo to be merged into the target branch of the public repo in the PR.',
+    u'--private_source_branch',
+    help=u'Source branch from the private repo to be merged into the target branch of the public repo in the PR.',
     required=True
 )
 @click.option(
-    '--public_org',
-    help='Org from the public GitHub repository URL of https://github.com/<org>/<repo>',
-    default='edx'
+    u'--public_org',
+    help=u'Org from the public GitHub repository URL of https://github.com/<org>/<repo>',
+    default=u'edx'
 )
 @click.option(
-    '--public_repo',
-    help='Repo name from the public GitHub repository URL of https://github.com/<org>/<repo>'
+    u'--public_repo',
+    help=u'Repo name from the public GitHub repository URL of https://github.com/<org>/<repo>'
 )
 @click.option(
-    '--public_target_branch',
-    help='Target base branch from the public repo into which the private source branch will be merged in the PR.',
+    u'--public_target_branch',
+    help=u'Target base branch from the public repo into which the private source branch will be merged in the PR.',
     required=True
 )
 @click.option(
@@ -60,14 +60,14 @@ LOG = logging.getLogger(__name__)
     help='The github access token, see https://help.github.com/articles/creating-an-access-token-for-command-line-use/'
 )
 @click.option(
-    '--output_file',
-    help='File in which to write the script\'s YAML output',
+    u'--output_file',
+    help=u'File in which to write the script\'s YAML output',
 )
 @click.option(
-    '--reference_repo',
-    help='Path to a reference private repo to use to speed up repo cloning.',
+    u'--reference_repo',
+    help=u'Path to a reference private repo to use to speed up repo cloning.',
 )
-@click_log.simple_verbosity_option(default='INFO')
+@click_log.simple_verbosity_option(default=u'INFO')
 def create_private_to_public_pr(private_org,
                                 private_repo,
                                 private_source_branch,
@@ -77,17 +77,17 @@ def create_private_to_public_pr(private_org,
                                 token,
                                 output_file,
                                 reference_repo):
-    """
+    u"""
     Creates a PR to merge the private source branch into the public target branch.
     Clones the repo in order to perform the proper git commands locally.
     """
-    public_github_url = f'git@github.com:{public_org}/{public_repo}.git'
-    private_github_url = f'git@github.com:{private_org}/{private_repo}.git'
+    public_github_url = u'git@github.com:{}/{}.git'.format(public_org, public_repo)
+    private_github_url = u'git@github.com:{}/{}.git'.format(private_org, private_repo)
     output_yaml = {
-        'private_github_url': private_github_url,
-        'private_source_branch_name': private_source_branch,
-        'public_github_url': public_github_url,
-        'public_target_branch_name': public_target_branch
+        u'private_github_url': private_github_url,
+        u'private_source_branch_name': private_source_branch,
+        u'public_github_url': public_github_url,
+        u'public_target_branch_name': public_target_branch
     }
 
     LOG.info('Cloning private repo %s with branch %s.', private_github_url, private_source_branch)
@@ -143,7 +143,7 @@ def create_private_to_public_pr(private_org,
             })
 
     if output_file:
-        with open(output_file, 'w') as stream:
+        with io.open(output_file, u'w') as stream:
             yaml.safe_dump(
                 output_yaml,
                 stream,
@@ -157,5 +157,5 @@ def create_private_to_public_pr(private_org,
         )
 
 
-if __name__ == "__main__":
+if __name__ == u"__main__":
     create_private_to_public_pr()  # pylint: disable=no-value-for-parameter

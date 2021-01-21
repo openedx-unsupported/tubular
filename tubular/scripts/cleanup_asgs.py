@@ -31,16 +31,16 @@ def delete_asg():
         asgs = get_asgs_pending_delete()
         click.echo("Got ASGs to delete")
         for asg in asgs:
-            click.echo(f"Attempting to delete ASG {asg.name}")
+            click.echo("Attempting to delete ASG {0}".format(asg.name))
             try:
                 asgard.delete_asg(asg.name, wait_for_deletion=False)
-                click.secho(f"Successfully deleted ASG {asg.name}", fg='green')
+                click.secho("Successfully deleted ASG {0}".format(asg.name), fg='green')
             except Exception as e:  # pylint: disable=broad-except
-                click.secho(f"Unable to delete ASG: {asg} - {e}", fg='red')
+                click.secho("Unable to delete ASG: {0} - {1}".format(asg, e), fg='red')
                 error = True
     except Exception as e:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho(f"An error occured while cleaning up ASGs: {e}", fg='red')
+        click.secho("An error occured while cleaning up ASGs: {0}".format(e), fg='red')
         error = True
 
     if error:

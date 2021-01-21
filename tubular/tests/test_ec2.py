@@ -6,7 +6,7 @@ import unittest
 import datetime
 
 import ddt
-from unittest import mock
+import mock
 from moto import mock_ec2_deprecated, mock_autoscaling_deprecated, mock_elb_deprecated
 from moto.ec2.utils import random_ami_id
 import boto
@@ -170,7 +170,7 @@ class TestEC2(unittest.TestCase):
 
         edp = EDP("foo", "bar", "baz")
 
-        for name, tags in asgs.items():
+        for name, tags in six.viewitems(asgs):
             create_asg_with_tags(name, tags)
 
         asgs = ec2.asgs_for_edp(edp)
@@ -195,7 +195,7 @@ class TestEC2(unittest.TestCase):
         all of the ASGs created on the first get request and not 50 per request.
         """
         for i in range(asg_count):
-            create_asg_with_tags(f"asg_{i}", {"environment": "foo", "deployment": "bar", "play": "baz"})
+            create_asg_with_tags("asg_{}".format(i), {"environment": "foo", "deployment": "bar", "play": "baz"})
         asgs = ec2.get_all_autoscale_groups(name_filter)
 
         self.assertIsInstance(asgs, list)
@@ -318,7 +318,7 @@ class TestEC2(unittest.TestCase):
 
         # Ensure tag value is a parseable datetime.
         delete_tag = delete_tags.pop()
-        self.assertIsInstance(delete_tag.value, (str,))
+        self.assertIsInstance(delete_tag.value, six.string_types)
         datetime.datetime.strptime(delete_tag.value, ec2.ISO_DATE_FORMAT)
 
     # Moto does not currently implement delete_tags() - so this test can't complete successfully.

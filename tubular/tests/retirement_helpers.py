@@ -1,3 +1,5 @@
+# coding=utf-8
+
 """
 Common functionality for retirement related tests
 """
@@ -19,7 +21,7 @@ TEST_RETIREMENT_QUEUE_STATES = ['PENDING'] + TEST_RETIREMENT_END_STATES
 
 FAKE_ORGS = {
     # Make sure unicode names, as they should come in from the yaml config, work
-    'org1': unicodedata.normalize('NFKC', 'TéstX'),
+    'org1': unicodedata.normalize('NFKC', u'TéstX'),
     'org2': 'Org2X',
     'org3': 'Org3X',
 }

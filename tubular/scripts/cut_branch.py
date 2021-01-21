@@ -128,7 +128,7 @@ def create_release_candidate(org,
         github_api.delete_branch(target_branch)
     except Exception:  # pylint: disable=broad-except
         LOG.error(
-            f"Unable to delete branch {target_branch}. "
+            "Unable to delete branch {branch_name}. ".format(branch_name=target_branch)
         )
 
     try:
@@ -138,7 +138,7 @@ def create_release_candidate(org,
                   .format(branch_name=target_branch))
         raise
 
-    with open(output_file, 'w') as stream:
+    with io.open(output_file, 'w') as stream:
         yaml.safe_dump(
             {
                 'repo_name': repo,

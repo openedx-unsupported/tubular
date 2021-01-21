@@ -134,7 +134,7 @@ def rc_branch_name_for_date(date):
     """
     Returns the standard release candidate branch name
     """
-    return f'rc/{date.isoformat()}'
+    return 'rc/{date}'.format(date=date.isoformat())
 
 
 def _backoff_logger(details):
@@ -225,9 +225,9 @@ class GitHubAPI:
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def _set_up_repo_and_org(self):
         try:
-            self.github_repo = self.github_connection.get_repo(f'{self.org}/{self.repo}')
+            self.github_repo = self.github_connection.get_repo('{org}/{repo}'.format(org=self.org, repo=self.repo))
         except GithubException:
-            LOG.error(f"Unable to retrieve repo {self.org}/{self.repo}")
+            LOG.error("Unable to retrieve repo {org}/{repo}".format(org=self.org, repo=self.repo))
             raise
 
         self.github_org = self.github_connection.get_organization(self.org)
@@ -245,7 +245,7 @@ class GitHubAPI:
         Example: RateLimit(rate=Rate(remaining=4767, limit=5000))
         """
         limit_data = self.get_rate_limit().core
-        LOG.info(f"Github API RL Remaining {limit_data.remaining} of {limit_data.limit}")
+        LOG.info("Github API RL Remaining {} of {}".format(limit_data.remaining, limit_data.limit))
         return self.github_connection.get_rate_limit()
 
     @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
@@ -366,7 +366,7 @@ class GitHubAPI:
             RequestFailed: If the response fails validation.
         """
         self.log_rate_limit()
-        if isinstance(commit, str):
+        if isinstance(commit, six.string_types):
             commit = self.github_repo.get_commit(commit)
         elif isinstance(commit, GitCommit):
             commit = self.github_repo.get_commit(commit.sha)
@@ -392,7 +392,7 @@ class GitHubAPI:
             Json representing the check suites
         """
         self.log_rate_limit()
-        if isinstance(commit, str):
+        if isinstance(commit, six.string_types):
             commit = self.github_repo.get_commit(commit)
         elif isinstance(commit, GitCommit):
             commit = self.github_repo.get_commit(commit.sha)
@@ -492,7 +492,7 @@ class GitHubAPI:
 
         return (
             aggregate_validation == 'success',
-            {context: f"{url} {state}" for (context, (state, url)) in all_validations.items()},
+            {context: "{} {}".format(url, state) for (context, (state, url)) in all_validations.items()},
             aggregate_validation,
         )
 
@@ -618,7 +618,7 @@ class GitHubAPI:
             github.GithubException.UnknownObjectException: If the branch does not exist
         """
         pull_request = self.get_pull_request(pr_number)
-        repo_branch_name = f'{self.org}:{branch_name}'
+        repo_branch_name = '{}:{}'.format(self.org, branch_name)
         return pull_request.base.label == repo_branch_name
 
     @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
@@ -656,7 +656,7 @@ class GitHubAPI:
         """
         self.log_rate_limit()
         ref = self.github_repo.get_git_ref(
-            ref=f'heads/{branch_name}'
+            ref='heads/{ref}'.format(ref=branch_name)
         )
         ref.delete()
 
@@ -679,7 +679,7 @@ class GitHubAPI:
         """
         self.log_rate_limit()
         return self.github_repo.create_git_ref(
-            ref=f'refs/heads/{branch_name}',
+            ref='refs/heads/{}'.format(branch_name),
             sha=sha
         )
 
@@ -782,13 +782,13 @@ class GitHubAPI:
         try:
             query_str = [query]
             if github_type:
-                query_str.append(f"type:{github_type}")
+                query_str.append("type:{}".format(github_type))
             if base:
-                query_str.append(f"base:{base}")
+                query_str.append("base:{}".format(base))
             if user:
-                query_str.append(f"user:{user}")
+                query_str.append("user:{}".format(user))
             if repo:
-                query_str.append(f"repo:{repo}")
+                query_str.append("repo:{}".format(repo))
             LOG.info(' '.join(query_str))
             return self.github_connection.search_issues(' '.join(query_str))
         except GithubException as exc:
@@ -841,7 +841,7 @@ class GitHubAPI:
 
         try:
             # We need to create a reference based on the tag
-            self.github_repo.create_git_ref(ref=f'refs/tags/{tag_name}', sha=sha)
+            self.github_repo.create_git_ref(ref='refs/tags/{}'.format(tag_name), sha=sha)
         except GithubException as exc:
             # Upon trying to create a tag with a tag name that already exists,
             # an "Unprocessable Entity" error with a status code of 422 is returned
@@ -850,7 +850,7 @@ class GitHubAPI:
             if exc.status != 422:
                 raise
             # Tag is already created. Verify it's on the correct hash.
-            existing_tag = self.github_repo.get_git_ref(f'tags/{tag_name}')
+            existing_tag = self.github_repo.get_git_ref('tags/{}'.format(tag_name))
             if existing_tag.object.sha != sha:
                 # The tag is already created and pointed to a different SHA than requested.
                 raise GitTagMismatchError(
@@ -880,8 +880,8 @@ class GitHubAPI:
         """
         self.log_rate_limit()
         return self.github_repo.compare(
-            base=f'refs/heads/{base_branch}',
-            head=f'refs/heads/{compare_branch}'
+            base='refs/heads/{}'.format(base_branch),
+            head='refs/heads/{}'.format(compare_branch)
         ).status == 'diverged'
 
     def most_recent_good_commit(self, branch):
@@ -1015,7 +1015,7 @@ class GitHubAPI:
             try:
                 pull_request = self.github_repo.get_pull(pull_request)
             except UnknownObjectException:
-                raise InvalidPullRequestError(f'PR #{pull_request} does not exist')
+                raise InvalidPullRequestError('PR #{} does not exist'.format(pull_request))
 
         if force_message or _not_duplicate(pull_request.get_issue_comments(), message_filter):
             return pull_request.create_issue_comment(message)

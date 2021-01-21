@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+# coding=utf-8
 
 """
 Command-line script to drive the partner reporting part of the retirement process
@@ -100,7 +101,7 @@ def _check_all_learner_orgs_or_exit(config, learners):
     if mismatched_orgs:
         FAIL(
             ERR_UNKNOWN_ORG,
-            'Partners for organizations {} do not exist in configuration.'.format(str(mismatched_orgs))
+            'Partners for organizations {} do not exist in configuration.'.format(text_type(mismatched_orgs))
         )
 
 
@@ -183,9 +184,9 @@ def _generate_report_files_or_exit(config, report_data, output_dir):
             outfile = _generate_report_file_or_exit(config, output_dir, partner_name, partner_headings,
                                                     partner_learners)
             partner_filenames[partner_name] = outfile
-            LOG(f'Report complete for partner {partner_name}')
+            LOG('Report complete for partner {}'.format(partner_name))
         except Exception as exc:  # pylint: disable=broad-except
-            FAIL_EXCEPTION(ERR_REPORTING, f'Error reporting retirement for partner {partner_name}', exc)
+            FAIL_EXCEPTION(ERR_REPORTING, 'Error reporting retirement for partner {}'.format(partner_name), exc)
 
     return partner_filenames
 
@@ -243,7 +244,7 @@ def _config_drive_folder_map_or_exit(config):
     # match. Otherwise the name we get back from Google won't match what's in the YAML config.
     config['partner_folder_mapping'] = OrderedDict()
     for folder in folders:
-        folder['name'] = unicodedata.normalize('NFKC', str(folder['name']))
+        folder['name'] = unicodedata.normalize('NFKC', text_type(folder['name']))
         config['partner_folder_mapping'][folder['name']] = folder['id']
 
 
@@ -261,7 +262,7 @@ def _push_files_to_google(config, partner_filenames):
             failed_partners.append(partner)
 
     if failed_partners:
-        FAIL(ERR_BAD_CONFIG, f'These partners have retiring learners, but no Drive folder: {failed_partners}')
+        FAIL(ERR_BAD_CONFIG, 'These partners have retiring learners, but no Drive folder: {}'.format(failed_partners))
 
     file_ids = {}
     drive = DriveApi(config['google_secrets_file'])
@@ -272,10 +273,10 @@ def _push_files_to_google(config, partner_filenames):
         with open(partner_filenames[partner], 'rb') as f:
             try:
                 drive_filename = os.path.basename(partner_filenames[partner])
-                LOG(f'Attempting to upload {drive_filename} to {partner} Drive folder.')
+                LOG('Attempting to upload {} to {} Drive folder.'.format(drive_filename, partner))
                 file_id = drive.create_file_in_folder(folder_id, drive_filename, f, "text/csv")
             except Exception as exc:  # pylint: disable=broad-except
-                FAIL_EXCEPTION(ERR_DRIVE_UPLOAD, f'Drive upload failed for: {drive_filename}', exc)
+                FAIL_EXCEPTION(ERR_DRIVE_UPLOAD, 'Drive upload failed for: {}'.format(drive_filename), exc)
         file_ids[partner] = file_id
     return file_ids
 
@@ -331,7 +332,7 @@ def _add_comments_to_files(config, file_ids):
         drive.create_comments_for_files(file_ids_and_comments)
     except Exception as exc:  # pylint: disable=broad-except
         # do not fail the script here, since comment errors are non-critical
-        LOG(f'WARNING: there was an error adding Google Drive comments to the csv files: {exc}')
+        LOG('WARNING: there was an error adding Google Drive comments to the csv files: {}'.format(exc))
 
 
 @click.command("generate_report")
@@ -362,7 +363,7 @@ def generate_report(config_file, google_secrets_file, output_dir, comments):
     - Pushes the reports to Google Drive
     - On success tells LMS to remove the users who succeeded from the reporting queue
     """
-    LOG(f'Starting partner report using config file {config_file} and Google config {google_secrets_file}')
+    LOG('Starting partner report using config file {} and Google config {}'.format(config_file, google_secrets_file))
 
     try:
         if not config_file:

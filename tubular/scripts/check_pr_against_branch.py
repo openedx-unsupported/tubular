@@ -16,34 +16,34 @@ from tubular.github_api import GitHubAPI  # pylint: disable=wrong-import-positio
 
 @click.command()
 @click.option(
-    '--org',
-    help='Org from the GitHub repository URL of https://github.com/<org>/<repo>',
-    default='edx'
+    u'--org',
+    help=u'Org from the GitHub repository URL of https://github.com/<org>/<repo>',
+    default=u'edx'
 )
 @click.option(
-    '--repo',
-    help='Repo name from the GitHub repository URL of https://github.com/<org>/<repo>',
+    u'--repo',
+    help=u'Repo name from the GitHub repository URL of https://github.com/<org>/<repo>',
     required=True
 )
 @click.option(
-    '--token',
-    envvar='GIT_TOKEN',
-    help='The github access token, see https://help.github.com/articles/creating-an-access-token-for-command-line-use/'
+    u'--token',
+    envvar=u'GIT_TOKEN',
+    help=u'The github access token, see https://help.github.com/articles/creating-an-access-token-for-command-line-use/'
 )
 @click.option(
-    '--pr_number',
+    u'--pr_number',
     default=None,
-    help='Pull request number to check.',
+    help=u'Pull request number to check.',
     type=int,
     required=True
 )
 @click.option(
-    '--branch_name',
-    help='Branch to check if the base of the PR.',
+    u'--branch_name',
+    help=u'Branch to check if the base of the PR.',
     required=True
 )
 def cli(org, repo, token, pr_number, branch_name):
-    """
+    u"""
     Check if the PR is against the specified branch,
     i.e. if the base of the PR is the specified branch.
     """
@@ -53,13 +53,13 @@ def cli(org, repo, token, pr_number, branch_name):
     is_base = False
     if pr_number and branch_name:
         is_base = gh_utils.is_branch_base_of_pull_request(pr_number, branch_name)
-        print("{}: Is branch '{}' the base of PR #{} ? {}!".format(
-            sys.argv[0], branch_name, pr_number, "Yes" if is_base else "No"
+        print(u"{}: Is branch '{}' the base of PR #{} ? {}!".format(
+            sys.argv[0], branch_name, pr_number, u"Yes" if is_base else u"No"
         ))
 
     # An exit code of 0 means success and non-zero means failure.
     sys.exit(not is_base)
 
 
-if __name__ == '__main__':
+if __name__ == u'__main__':
     cli()  # pylint: disable=no-value-for-parameter

@@ -67,12 +67,12 @@ def check_health():
     for service in SERVICES:
         if not service.enabled:
             pass
-        url = f'http://{service.host}:{service.port}/{service.path}'
+        url = 'http://{netloc}:{port}/{path}'.format(netloc=service.host, port=service.port, path=service.path)
         try:
             code = get_service_response_code(url)
             if code != 200:
                 failed_services.append((
-                    service, f'Service running but returns non 200 health response code. Code {code}'
+                    service, 'Service running but returns non 200 health response code. Code {}'.format(code)
                 ))
         except URLError:
             failed_services.append((service, 'Connection Refused! Is the service running and the port correct?'))

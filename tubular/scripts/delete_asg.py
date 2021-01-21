@@ -31,7 +31,7 @@ def delete_asg(asg_name):
         asgard.delete_asg(asg_name, True)
     except Exception as e:  # pylint: disable=broad-except
         traceback.print_exc()
-        click.secho(f"Error Deleting ASG: {asg_name}.\nMessage: {e}", fg='red')
+        click.secho("Error Deleting ASG: {0}.\nMessage: {1}".format(asg_name, e), fg='red')
         sys.exit(1)
 
     sys.exit(0)

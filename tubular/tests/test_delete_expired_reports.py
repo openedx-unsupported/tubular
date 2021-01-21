@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 Test the retire_one_learner.py script
 """
@@ -6,7 +7,7 @@ Test the retire_one_learner.py script
 import os
 
 from click.testing import CliRunner
-from unittest.mock import patch
+from mock import patch
 
 from tubular.scripts.delete_expired_partner_gdpr_reports import (
     ERR_NO_CONFIG,
@@ -66,12 +67,12 @@ def test_successful_report_deletion(*args):
     mock_driveapi = args[2]
 
     test_created_date = '2018-07-13T22:21:45.600275+00:00'
-    file_prefix = f'{REPORTING_FILENAME_PREFIX}_{TEST_PLATFORM_NAME}'
+    file_prefix = '{}_{}'.format(REPORTING_FILENAME_PREFIX, TEST_PLATFORM_NAME)
 
     mock_walk_files.return_value = [
-        {'id': 'folder1', 'name': f'{file_prefix}.csv', 'createdTime': test_created_date},
-        {'id': 'folder2', 'name': f'{file_prefix}_foo.csv', 'createdTime': test_created_date},
-        {'id': 'folder3', 'name': f'{file_prefix}___bar.csv', 'createdTime': test_created_date},
+        {'id': 'folder1', 'name': '{}.csv'.format(file_prefix), 'createdTime': test_created_date},
+        {'id': 'folder2', 'name': '{}_foo.csv'.format(file_prefix), 'createdTime': test_created_date},
+        {'id': 'folder3', 'name': '{}___bar.csv'.format(file_prefix), 'createdTime': test_created_date},
     ]
     mock_delete_files.return_value = None
     mock_driveapi.return_value = None
