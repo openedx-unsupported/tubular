@@ -211,7 +211,7 @@ def wait_for_task_completion(task_url, timeout):
 
 
 @backoff.on_exception(backoff.expo,
-                      JavaSocketException,
+                      (JavaSocketException, ASGCountZeroException),
                       max_tries=MAX_ATTEMPTS)
 def new_asg(cluster, ami_id):
     """
@@ -263,16 +263,51 @@ def new_asg(cluster, ami_id):
 
     # Potential Race condition if multiple people are making ASGs for the same cluster
     # Return the name of the newest asg
-    newest_asg = asgs_for_cluster(cluster)[-1]
+    asgs = asgs_for_cluster(cluster)
+    newest_asg = asgs[-1]
     LOG.debug("New ASG({}) created in cluster({}).".format(newest_asg['autoScalingGroupName'], cluster))
 
-    if newest_asg['desiredCapacity'] <= 0 or newest_asg['minSize'] <= 0:
+    if _asg_is_empty(newest_asg):
+        # ISRE-618 - Cleanup empty ASGs, throw error to backoff, and start again.
+        _iterate_and_delete_empty_asgs(asgs)
         raise ASGCountZeroException(
-            "New ASG {asg_name} created with 0 instances, aborting. Please check Asgard for more information"
+            "New ASG {asg_name} was created with 0 instances, cleaning up empty ASGs and raising error."
                 .format(asg_name=newest_asg['autoScalingGroupName'])
         )
 
     return newest_asg['autoScalingGroupName']
+
+
+def _iterate_and_delete_empty_asgs(asgs):
+    """
+    Delete empty ASGs, based on ASGs provided in a list. Modifies list in place.
+
+    Deletes until either we find a non-empty ASG, or only 1 ASG left.
+
+    Arguments:
+       asgs(list): List of dicts containing ASG information from Asgard API
+
+    Returns:
+       None
+    """
+    while len(asgs) > 1 and _asg_is_empty(asgs[-1]):
+        delete_asg(asgs[-1]['autoScalingGroupName'], fail_if_active=False)
+        del asgs[-1]  # Trim down our list
+
+
+def _asg_is_empty(asg):
+    """
+    Determine if ASG is considered empty.
+
+    Arguments:
+       asg(dict): Contains ASG information from Asgard API
+
+    Returns:
+       bool: True if empty; False otherwise
+    """
+    if asg['desiredCapacity'] <= 0 or asg['minSize'] <= 0:
+        return True
+    return False
 
 
 @backoff.on_exception(backoff.expo,
@@ -733,7 +768,8 @@ def deploy(ami_id):
     if not success:
         raise BackendError("Error performing red/black deploy - deploy was unsuccessful. "
                            "enabled_asgs: {} - disabled_asgs: {}".format(enabled_asgs, disabled_asgs))
-
+    LOG.info("Enabled the following ASGs: {}".format(enabled_asgs))
+    LOG.info("Disabled the following ASGs: {}".format(disabled_asgs))
     LOG.info("Woot! Deploy Done!")
     return {
         'ami_id': ami_id,
@@ -874,6 +910,11 @@ def _red_black_deploy(  # pylint: disable=too-many-statements
 
     for cluster, asgs in six.iteritems(baseline_cluster_asgs):
         for asg in asgs:
+            # Dont disable an ASG if it was just enabled. You can get an ASG name in both "baseline" and "newly_enabled" asgs
+            # if an ASG was empty and we deleted earlier in the deploy logic.
+            if asg in newly_enabled_asgs[cluster]:
+                LOG.info("Found that asg {} was just enabled, skipping disable step for it.".format(asg))
+                continue
             try:
                 if is_asg_enabled(asg):
                     try:

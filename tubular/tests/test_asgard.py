@@ -1720,3 +1720,135 @@ class TestAsgard(unittest.TestCase):
             asgard.get_asg_info(asg)
         error_message = "Call to asgard failed with status code: {}".format(403)
         self.assertTrue(str(context_manager.exception).startswith(error_message))
+
+    def test__iterate_and_delete_empty_asgs_empties(self, req_mock):
+        """ Function should only delete if latest ASG is empty """
+        asgs = [
+            {
+                'desiredCapacity': 8,
+                'minSize': 2,
+                'maxSize': 20,
+                'autoScalingGroupName': 'loadtest-edx-edxapp-v1337'
+            },
+            {
+                'desiredCapacity': 0,
+                'minSize': 0,
+                'maxSize': 0,
+                'autoScalingGroupName': 'loadtest-edx-edxapp-v1338'
+            },
+            {
+                'desiredCapacity': 0,
+                'minSize': 0,
+                'maxSize': 0,
+                'autoScalingGroupName': 'loadtest-edx-edxapp-v1339'
+            },
+        ]
+
+        assert len(asgs) == 3
+        assert asgs[0]['autoScalingGroupName'] == 'loadtest-edx-edxapp-v1337'
+
+        with mock.patch('tubular.asgard.delete_asg') as mock_delete_asg:
+            asgard._iterate_and_delete_empty_asgs(asgs)
+            mock_delete_asg.call_count == 2
+            mock_delete_asg.call_args == ('loadtest-edx-edxapp-v1338', 'loadtest-edx-edxapp-v1339')
+
+        assert len(asgs) == 1
+        assert asgs[0]['autoScalingGroupName'] == 'loadtest-edx-edxapp-v1337'
+
+    def test__iterate_and_delete_empty_asgs_one_full_asg_present(self, req_mock):
+        """ Function should always leave 1 ASG remaining"""
+        asgs = [
+            {
+                'desiredCapacity': 8,
+                'minSize': 2,
+                'maxSize': 20,
+                'autoScalingGroupName': 'loadtest-edx-edxapp-v1337'
+            },
+        ]
+
+        assert len(asgs) == 1
+        assert asgs[0]['autoScalingGroupName'] == 'loadtest-edx-edxapp-v1337'
+
+        with mock.patch('tubular.asgard.delete_asg') as mock_delete_asg:
+            asgard._iterate_and_delete_empty_asgs(asgs)
+            mock_delete_asg.assert_not_called()
+
+        assert len(asgs) == 1
+        assert asgs[0]['autoScalingGroupName'] == 'loadtest-edx-edxapp-v1337'
+
+    def test__iterate_and_delete_empty_asgs_one_empty_asg_present(self, req_mock):
+        """ Function should always leave 1 ASG remaining even if empty"""
+        asgs = [
+            {
+                'desiredCapacity': 0,
+                'minSize': 0,
+                'maxSize': 0,
+                'autoScalingGroupName': 'loadtest-edx-edxapp-v1337'
+            },
+        ]
+
+        assert len(asgs) == 1
+        assert asgs[0]['autoScalingGroupName'] == 'loadtest-edx-edxapp-v1337'
+
+        with mock.patch('tubular.asgard.delete_asg') as mock_delete_asg:
+            asgard._iterate_and_delete_empty_asgs(asgs)
+            mock_delete_asg.assert_not_called()
+
+        assert len(asgs) == 1
+        assert asgs[0]['autoScalingGroupName'] == 'loadtest-edx-edxapp-v1337'
+
+    def test__iterate_and_delete_empty_asgs_empty_in_the_middle(self, req_mock):
+        """ Function should only delete if latest ASG is empty """
+        asgs = [
+            {
+                'desiredCapacity': 8,
+                'minSize': 2,
+                'maxSize': 20,
+                'autoScalingGroupName': 'loadtest-edx-edxapp-v1337'
+            },
+            {
+                'desiredCapacity': 0,
+                'minSize': 0,
+                'maxSize': 0,
+                'autoScalingGroupName': 'loadtest-edx-edxapp-v1338'
+            },
+            {
+                'desiredCapacity': 8,
+                'minSize': 2,
+                'maxSize': 20,
+                'autoScalingGroupName': 'loadtest-edx-edxapp-v1339'
+            },
+        ]
+
+        assert len(asgs) == 3
+        assert asgs[0]['autoScalingGroupName'] == 'loadtest-edx-edxapp-v1337'
+
+        with mock.patch('tubular.asgard.delete_asg') as mock_delete_asg:
+            asgard._iterate_and_delete_empty_asgs(asgs)
+            mock_delete_asg.assert_not_called()
+
+        assert len(asgs) == 3
+        assert asgs[0]['autoScalingGroupName'] == 'loadtest-edx-edxapp-v1337'
+        assert asgs[2]['autoScalingGroupName'] == 'loadtest-edx-edxapp-v1339'
+
+    @data(
+        (0, 0),
+        (0, 2),
+        (2, 0),
+    )
+    @unpack
+    def test__asg_is_empty_true(self, desired_capacity, min_size, req_mock):
+        """ Function should return True if condition met """
+        asg = {
+            'desiredCapacity': desired_capacity,
+            'minSize': min_size,
+        }
+        assert asgard._asg_is_empty(asg) is True
+
+    def test__asg_is_empty(self, req_mock):
+        """ Function should return False if conditions are not met"""
+        asg = {
+            'desiredCapacity': 8,
+            'minSize': 2,
+        }
+        assert asgard._asg_is_empty(asg) is False
