@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* escape salesforce api queries
 * Revert "Revert "Upgrade moto > 1.0.0, unpin testing dependencies for edx\_lint (#480)" (#484)" (#485)
 * Revert "Upgrade moto > 1.0.0, unpin testing dependencies for edx\_lint (#480)" (#484)
 * Remove calls to method that does not exist (#483)
