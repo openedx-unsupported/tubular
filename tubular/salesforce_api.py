@@ -5,7 +5,7 @@ import os
 import logging
 import backoff
 from requests.exceptions import ConnectionError as RequestsConnectionError
-from simple_salesforce import Salesforce
+from simple_salesforce import Salesforce, format_soql
 
 LOG = logging.getLogger(__name__)
 
@@ -61,8 +61,7 @@ class SalesforceApi:
         Given an id, query for a Lead with that email
         Returns a list of ids tht have that email or None if none are found
         """
-        query_string = "SELECT Id FROM Lead WHERE Email='{email}'"
-        id_query = self._sf.query(query_string.format(email=email))
+        id_query = self._sf.query(format_soql("SELECT Id FROM Lead WHERE Email = {email}", email=email))
         total_size = int(id_query['totalSize'])
         if total_size == 0:
             return None
@@ -83,8 +82,7 @@ class SalesforceApi:
         or None if no user is found
         Used to get a the user id of the user we will assign the retirement task to
         """
-        query_string = "SELECT Id FROM User WHERE Username='{username}'"
-        id_query = self._sf.query(query_string.format(username=username))
+        id_query = self._sf.query(format_soql("SELECT Id FROM User WHERE Username = {username}", username=username))
         total_size = int(id_query['totalSize'])
         if total_size == 0:
             return None

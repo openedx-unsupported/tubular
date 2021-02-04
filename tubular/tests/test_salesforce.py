@@ -58,6 +58,27 @@ def test_retire_get_id_error(test_learner):  # pylint: disable=redefined-outer-n
             with pytest.raises(SalesforceError):
                 api.retire_learner(test_learner)
 
+# pylint: disable=protected-access
+def test_escape_email():
+    with mock.patch('tubular.salesforce_api.Salesforce'):
+        api = make_api()
+        mock_response = {'totalSize': 0, 'records': []}
+        api._sf.query.return_value = mock_response
+        api.get_lead_ids_by_email("Robert'); DROP TABLE students;--")
+        api._sf.query.assert_called_with(
+            "SELECT Id FROM Lead WHERE Email = 'Robert\\'); DROP TABLE students;--'"
+        )
+
+# pylint: disable=protected-access
+def test_escape_username():
+    with mock.patch('tubular.salesforce_api.Salesforce'):
+        api = make_api()
+        mock_response = {'totalSize': 0, 'records': []}
+        api._sf.query.return_value = mock_response
+        api.get_user_id("Robert'); DROP TABLE students;--")
+        api._sf.query.assert_called_with(
+            "SELECT Id FROM User WHERE Username = 'Robert\\'); DROP TABLE students;--'"
+        )
 
 def test_retire_learner_not_found(test_learner, caplog):  # pylint: disable=redefined-outer-name
     caplog.set_level(logging.INFO)
