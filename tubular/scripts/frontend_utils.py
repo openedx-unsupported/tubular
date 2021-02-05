@@ -69,10 +69,10 @@ class FrontendBuilder:
         if npm_aliases:
             # Install and pin NPM to latest npm@6 version
             # TODO: investigate failing builds using npm@7
-            proc = subprocess.Popen(['npm install -g npm@6'], cwd=self.app_name, shell=True)
+            proc = subprocess.Popen(['npm install npm@6'], cwd=self.app_name, shell=True)
             return_code = proc.wait()
             if return_code != 0:
-                self.FAIL('Could not run `npm install npm` for app {}.'.format(self.app_name))
+                self.FAIL('Could not run `npm install npm@6` for app {}.'.format(self.app_name))
 
             aliased_installs = ' '.join(['{}@{}'.format(k, v) for k, v in npm_aliases.items()])
             # Use the locally installed npm at ./node_modules/.bin/npm
