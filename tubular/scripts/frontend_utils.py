@@ -67,8 +67,9 @@ class FrontendBuilder:
         """ Install npm alias requirements for app to build """
         npm_aliases = self.get_npm_aliases_config()
         if npm_aliases:
-            # Install the latest version of npm that supports aliases (>= 6.9.0)
-            proc = subprocess.Popen(['npm install npm'], cwd=self.app_name, shell=True)
+            # Install and pin NPM to latest npm@6 version
+            # TODO: investigate failing builds using npm@7
+            proc = subprocess.Popen(['npm install -g npm@6'], cwd=self.app_name, shell=True)
             return_code = proc.wait()
             if return_code != 0:
                 self.FAIL('Could not run `npm install npm` for app {}.'.format(self.app_name))
