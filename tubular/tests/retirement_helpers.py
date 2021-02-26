@@ -21,9 +21,9 @@ TEST_RETIREMENT_QUEUE_STATES = ['PENDING'] + TEST_RETIREMENT_END_STATES
 
 FAKE_ORGS = {
     # Make sure unicode names, as they should come in from the yaml config, work
-    'org1': unicodedata.normalize('NFKC', u'TéstX'),
-    'org2': 'Org2X',
-    'org3': 'Org3X',
+    'org1': [unicodedata.normalize('NFKC', u'TéstX')],
+    'org2': ['Org2X'],
+    'org3': ['Org3X', 'Org4X'],
 }
 
 TEST_PLATFORM_NAME = 'fakename'
@@ -32,6 +32,13 @@ TEST_DENIED_NOTIFICATION_DOMAINS = {
     '@edx.org',
     '@partner-reporting-automation.iam.gserviceaccount.com',
 }
+
+def flatten_partner_list(partner_list):
+    """
+    Flattens a list of lists into a list.
+    [["Org1X"], ["Org2X"], ["Org3X", "Org4X"]] => ["Org1X", "Org2X", "Org3X", "Org4X"]
+    """
+    return [partner for sublist in partner_list for partner in sublist]
 
 
 def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):

@@ -35,11 +35,13 @@ from tubular.scripts.retirement_partner_report import (
     ORGS_CONFIG_ORG_KEY,
     ORGS_KEY,
     REPORTING_FILENAME_PREFIX,
+    SETUP_LMS_OR_EXIT,
     generate_report,
-    _generate_report_files_or_exit  # pylint: disable=protected-access
+    _generate_report_files_or_exit,  # pylint: disable=protected-access
+    _get_orgs_and_learners_or_exit,  # pylint: disable=protected-access
 )
-from tubular.tests.retirement_helpers import fake_config_file, fake_google_secrets_file, FAKE_ORGS, TEST_PLATFORM_NAME
 
+from tubular.tests.retirement_helpers import fake_config_file, fake_google_secrets_file, flatten_partner_list, FAKE_ORGS, TEST_PLATFORM_NAME
 
 TEST_CONFIG_YML_NAME = 'test_config.yml'
 TEST_GOOGLE_SECRETS_FILENAME = 'test_google_secrets.json'
@@ -105,9 +107,9 @@ def _call_script(expect_success=True, expected_num_rows=10, config_orgs=None, ex
 
             if config_orgs is None:
                 # These are the orgs
-                config_org_vals = FAKE_ORGS.values()
+                config_org_vals = flatten_partner_list(FAKE_ORGS.values())
             else:
-                config_org_vals = config_orgs.values()
+                config_org_vals = flatten_partner_list(config_orgs.values())
 
             # Normalize the unicode as the script does
             if PY2:
@@ -167,6 +169,46 @@ def _fake_retirement_report(num_users=10, user_orgs=None, user_orgs_config=None)
     return [_fake_retirement_report_user(i, user_orgs, user_orgs_config) for i in range(num_users)]
 
 
+@patch('tubular.edx_api.LmsApi.retirement_partner_report')
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+def test_report_generation_multiple_partners(*args, **kwargs):
+    mock_get_access_token = args[0]
+    mock_retirement_report = args[1]
+
+    org_1_users = [_fake_retirement_report_user(i,  user_orgs=['org1']) for i in range(1,3)]
+    org_2_users = [_fake_retirement_report_user(i,  user_orgs=['org2']) for i in range(3,5)]
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_retirement_report.return_value = org_1_users + org_2_users
+
+    config = {
+        'client_id': 'bogus id',
+        'client_secret': 'supersecret',
+        'base_urls': {
+            'lms': 'https://stage-edx-edxapp.edx.invalid/',
+        },
+        'org_partner_mapping': {
+            'org1': ['Org1X'],
+            'org2': ['Org2X', 'Org2Xb'],
+        }
+    }
+    SETUP_LMS_OR_EXIT(config)
+    orgs, usernames = _get_orgs_and_learners_or_exit(config)
+
+    assert usernames == [{'original_username': 'username_{}'.format(username)} for username in range(1,5)]
+
+    def _get_learner_usernames(org_data):
+        return [learner['original_username'] for learner in org_data['learners']]
+
+    assert _get_learner_usernames(orgs['Org1X']) == ['username_1', 'username_2']
+
+    # Org2X and Org2Xb should have the same learners in their report data
+    assert _get_learner_usernames(orgs['Org2X']) == _get_learner_usernames(orgs['Org2Xb']) == ['username_3', 'username_4']
+
+    # Org2X and Org2Xb report data should match
+    assert orgs['Org2X'] == orgs['Org2Xb']
+
+
 @patch('tubular.google_api.DriveApi.__init__')
 @patch('tubular.google_api.DriveApi.create_file_in_folder')
 @patch('tubular.google_api.DriveApi.walk_files')
@@ -198,17 +240,17 @@ def test_successful_report(*args, **kwargs):
             {'emailAddress': 'some.contact@example.com'},  # The POC.
             {'emailAddress': 'another.contact@edx.org'},
         ]
-        for partner in fake_partners[:2]
+        for partner in flatten_partner_list(fake_partners[:2])
     }
     # The last one does not have any POCs.
     mock_list_permissions.return_value.update({
         'folder' + partner: [
             {'emailAddress': 'another.contact@edx.org'},
         ]
-        for partner in [fake_partners[2]]
+        for partner in fake_partners[2]
     })
-    mock_walk_files.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in FAKE_ORGS.values()]
-    mock_create_files.side_effect = ['foo', 'bar', 'baz']
+    mock_walk_files.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in flatten_partner_list(FAKE_ORGS.values())]
+    mock_create_files.side_effect = ['foo', 'bar', 'baz', 'qux']
     mock_driveapi.return_value = None
     mock_retirement_report.return_value = _fake_retirement_report(user_orgs=list(FAKE_ORGS.keys()))
 
@@ -221,13 +263,13 @@ def test_successful_report(*args, **kwargs):
     mock_retirement_report.assert_called_once()
 
     # Make sure we tried to upload the files
-    assert mock_create_files.call_count == 3
+    assert mock_create_files.call_count == 4
 
     # Make sure we tried to add comments to the files
     assert mock_create_comments.call_count == 1
     # First [0] returns all positional args, second [0] gets the first positional arg.
     create_comments_file_ids, create_comments_messages = zip(*mock_create_comments.call_args[0][0])
-    assert set(create_comments_file_ids).issubset(set(['foo', 'bar', 'baz']))
+    assert set(create_comments_file_ids).issubset(set(['foo', 'bar', 'baz', 'qux']))
     assert len(create_comments_file_ids) == 2  # only two comments created, the third didn't have a POC.
     assert all('+some.contact@example.com' in msg for msg in create_comments_messages)
     assert all('+another.contact@edx.org' not in msg for msg in create_comments_messages)
@@ -265,7 +307,7 @@ def test_successful_report_org_config(*args, **kwargs):
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
     mock_create_comments.return_value = None
     fake_custom_orgs = {
-        'orgCustom': 'firstBlah'
+        'orgCustom': ['firstBlah']
     }
     fake_partners = list(itervalues(fake_custom_orgs))
     mock_list_permissions.return_value = {
@@ -273,10 +315,10 @@ def test_successful_report_org_config(*args, **kwargs):
             {'emailAddress': 'some.contact@example.com'},  # The POC.
             {'emailAddress': 'another.contact@edx.org'},
         ]
-        for partner in fake_partners[:2]
+        for partner in flatten_partner_list(fake_partners[:2])
     }
     mock_walk_files.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in
-                                    fake_custom_orgs.values()]
+                                    flatten_partner_list(fake_custom_orgs.values())]
     mock_create_files.side_effect = ['foo', 'bar', 'baz']
     mock_driveapi.return_value = None
     expected_num_users = 1
@@ -604,7 +646,7 @@ def test_cleanup_error(*args, **kwargs):
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
     mock_create_files.return_value = True
     mock_driveapi.return_value = None
-    mock_walk_files.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in FAKE_ORGS.values()]
+    mock_walk_files.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in flatten_partner_list(FAKE_ORGS.values())]
 
     mock_retirement_report.return_value = _fake_retirement_report(user_orgs=list(FAKE_ORGS.keys()))
     mock_retirement_cleanup.side_effect = Exception('Mock cleanup exception')
@@ -665,9 +707,9 @@ def test_google_unicode_folder_names(*args, **kwargs):
     mock_retirement_report.return_value = _fake_retirement_report(user_orgs=list(FAKE_ORGS.keys()))
 
     config_orgs = {
-        'org1': unicodedata.normalize('NFKC', u'TéstX'),
-        'org2': unicodedata.normalize('NFD', u'TéstX2'),
-        'org3': unicodedata.normalize('NFKD', u'TéstX3'),
+        'org1': [unicodedata.normalize('NFKC', u'TéstX')],
+        'org2': [unicodedata.normalize('NFD', u'TéstX2')],
+        'org3': [unicodedata.normalize('NFKD', u'TéstX3')],
     }
 
     result = _call_script(config_orgs=config_orgs)

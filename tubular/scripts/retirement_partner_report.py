@@ -134,37 +134,38 @@ def _get_orgs_and_learners_or_exit(config):
             # Create a list of orgs who should be notified about this user
             if ORGS_KEY in learner:
                 for org_name in learner[ORGS_KEY]:
-                    reporting_org_name = config['org_partner_mapping'][org_name]
-                    _add_reporting_org(orgs, reporting_org_name, DEFAULT_FIELD_HEADINGS, learner)
+                    reporting_org_names = config['org_partner_mapping'][org_name]
+                    _add_reporting_org(orgs, reporting_org_names, DEFAULT_FIELD_HEADINGS, learner)
 
             # Check for orgs with custom fields
             if ORGS_CONFIG_KEY in learner:
                 for org_config in learner[ORGS_CONFIG_KEY]:
                     org_name = org_config[ORGS_CONFIG_ORG_KEY]
                     org_headings = org_config[ORGS_CONFIG_FIELD_HEADINGS_KEY]
-                    reporting_org_name = config['org_partner_mapping'][org_name]
-                    _add_reporting_org(orgs, reporting_org_name, org_headings, learner)
+                    reporting_org_names = config['org_partner_mapping'][org_name]
+                    _add_reporting_org(orgs, reporting_org_names, org_headings, learner)
 
         return orgs, usernames
     except Exception as exc:  # pylint: disable=broad-except
         FAIL_EXCEPTION(ERR_FETCHING_LEARNERS, 'Unexpected exception occurred!', exc)
 
 
-def _add_reporting_org(orgs, org_name, org_headings, learner):
+def _add_reporting_org(orgs, org_names, org_headings, learner):
     """
     Add the learner to the org
     """
-    # Create the org, if necessary
-    orgs[org_name] = orgs.get(
-        org_name,
-        {
-            ORGS_CONFIG_FIELD_HEADINGS_KEY: org_headings,
-            ORGS_CONFIG_LEARNERS_KEY: []
-        }
-    )
+    for org_name in org_names:
+        # Create the org, if necessary
+        orgs[org_name] = orgs.get(
+            org_name,
+            {
+                ORGS_CONFIG_FIELD_HEADINGS_KEY: org_headings,
+                ORGS_CONFIG_LEARNERS_KEY: []
+            }
+        )
 
-    # Add the learner to the list of learners in the org
-    orgs[org_name][ORGS_CONFIG_LEARNERS_KEY].append(learner)
+        # Add the learner to the list of learners in the org
+        orgs[org_name][ORGS_CONFIG_LEARNERS_KEY].append(learner)
 
 
 def _generate_report_files_or_exit(config, report_data, output_dir):
