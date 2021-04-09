@@ -1011,13 +1011,16 @@ class GitHubAPI:
                     result = False
             return result
 
+        query = "state:closed"
+        closed_pr = self.search_issues(query, 'pr')
+
         if not isinstance(pull_request, PullRequest):
             try:
                 pull_request = self.github_repo.get_pull(pull_request)
             except UnknownObjectException:
                 raise InvalidPullRequestError('PR #{} does not exist'.format(pull_request))
 
-        if force_message or _not_duplicate(pull_request.get_issue_comments(), message_filter):
+        if force_message or _not_duplicate(pull_request.get_issue_comments(), message_filter) and not closed_pr:
             return pull_request.create_issue_comment(message)
         else:
             return None
