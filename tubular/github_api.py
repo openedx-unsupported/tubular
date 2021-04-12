@@ -1012,7 +1012,7 @@ class GitHubAPI:
             return result
 
         query = "state:closed"
-        closed_pr = self.search_issues(query, 'pr')
+        closed_pr = self.search_issues(query, 'pr', '', '', '')
 
         if not isinstance(pull_request, PullRequest):
             try:
