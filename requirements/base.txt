@@ -10,8 +10,14 @@ authlib==0.15.3
     # via simple-salesforce
 backoff==1.5.0
     # via -r requirements/base.in
+boto3==1.17.53
+    # via -r requirements/base.in
 boto==2.43.0
     # via -r requirements/base.in
+botocore==1.20.53
+    # via
+    #   boto3
+    #   s3transfer
 cachetools==4.2.1
     # via google-auth
 certifi==2020.12.5
@@ -71,6 +77,10 @@ idna==2.10
     # via requests
 jenkinsapi==0.3.3
     # via -r requirements/base.in
+jmespath==0.10.0
+    # via
+    #   boto3
+    #   botocore
 jsonlines==2.0.0
     # via cloudflare
 kubernetes==12.0.1
@@ -105,6 +115,7 @@ pyparsing==2.4.7
     # via httplib2
 python-dateutil==2.8.1
     # via
+    #   botocore
     #   freezegun
     #   kubernetes
 pytz==2016.10
@@ -135,6 +146,8 @@ requests==2.25.1
     #   yagocd
 rsa==4.7.2
     # via google-auth
+s3transfer==0.3.7
+    # via boto3
 sailthru-client==2.3.5
     # via -r requirements/base.in
 simple-salesforce==1.11.1
@@ -168,6 +181,7 @@ uritemplate==3.0.1
     # via google-api-python-client
 urllib3==1.26.4
     # via
+    #   botocore
     #   kubernetes
     #   requests
 validators==0.18.2

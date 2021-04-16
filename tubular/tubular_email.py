@@ -4,7 +4,7 @@ Convenience functions using boto and AWS SES to send email.
 
 import logging
 import backoff
-from boto import ses
+import boto3
 from tubular.exception import BackendError
 from tubular.utils import envvar_get_int
 
@@ -39,10 +39,22 @@ def _send_email_with_retry(ses_conn,
     Send email, retrying upon exception.
     """
     ses_conn.send_email(
-        source=from_address,
-        subject=subject,
-        body=body,
-        to_addresses=to_addresses
+        Source=from_address,
+        Message={
+            "Body": {
+                "Text": {
+                    "Charset": "UTF-8",
+                    "Data": body,
+                },
+            },
+            "Subject": {
+                "Charset": "UTF-8",
+                "Data": subject,
+            },
+        },
+        Destination={
+            "ToAddresses": to_addresses,
+        },
     )
 
 
@@ -61,7 +73,7 @@ def send_email(aws_region,
         subject (str): Subject to use in the email.
         body (str): Body to use in the email - text format.
     """
-    ses_conn = ses.connect_to_region(aws_region)
+    ses_conn = boto3.client("ses", region_name=aws_region)
     _send_email_with_retry(
         ses_conn,
         from_address,
