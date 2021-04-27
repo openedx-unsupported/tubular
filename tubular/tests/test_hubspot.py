@@ -15,8 +15,8 @@ from tubular import hubspot_api
 # This HubspotAPI class will be used without being re-loaded.
 from tubular.hubspot_api import HubspotAPI
 
-# Change the number of retries for Sailthru API's delete_user call to 1.
-# Then reload sailthru_api so only a single retry is performed.
+# Change the number of retries for Hubspot API's delete_user call to 1.
+# Then reload hubspot_api so only a single retry is performed.
 os.environ['RETRY_HUBSPOT_MAX_ATTEMPTS'] = "1"
 reload_module(hubspot_api)  # pylint: disable=too-many-function-args
 

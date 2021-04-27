@@ -25,7 +25,6 @@ from tubular.edx_api import CredentialsApi, DemographicsApi, EcommerceApi, Licen
     LmsApi  # pylint: disable=wrong-import-position
 from tubular.braze_api import BrazeApi  # pylint: disable=wrong-import-position
 from tubular.segment_api import SegmentApi  # pylint: disable=wrong-import-position
-from tubular.sailthru_api import SailthruApi  # pylint: disable=wrong-import-position
 from tubular.salesforce_api import SalesforceApi  # pylint: disable=wrong-import-position
 from tubular.hubspot_api import HubspotAPI  # pylint: disable=wrong-import-position
 
@@ -158,8 +157,6 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
         client_secret = config['client_secret']
         braze_api_key = config.get('braze_api_key', None)
         braze_instance = config.get('braze_instance', None)
-        sailthru_key = config.get('sailthru_key', None)
-        sailthru_secret = config.get('sailthru_secret', None)
         salesforce_user = config.get('salesforce_user', None)
         salesforce_password = config.get('salesforce_password', None)
         salesforce_token = config.get('salesforce_token', None)
@@ -178,7 +175,6 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
                     ('ECOMMERCE', ecommerce_base_url),
                     ('CREDENTIALS', credentials_base_url),
                     ('SEGMENT', segment_base_url),
-                    ('SAILTHRU', sailthru_key),
                     ('HUBSPOT', hubspot_api_key),
                     ('DEMOGRAPHICS', demographics_base_url)
             ):
@@ -192,9 +188,6 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
                 braze_api_key,
                 braze_instance,
             )
-
-        if sailthru_key:
-            config['SAILTHRU'] = SailthruApi(sailthru_key, sailthru_secret)
 
         if salesforce_user and salesforce_password and salesforce_token:
             config['SALESFORCE'] = SalesforceApi(
