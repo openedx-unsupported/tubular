@@ -10,48 +10,18 @@ import traceback
 import re
 import click
 import requests
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tubular.confluence_api import ReleasePage, publish_page, AMI, ReleaseStatus  # pylint: disable=wrong-import-position
+from tubular.gocd_api import (  # pylint: disable=wrong-import-position
+    get_elastic_profile,
+    put_elastic_profile,
+)
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
-
-
-def get_elastic_profile(host, token, profile_id):
-    """
-    GoCD get elastic profile
-    https://api.gocd.org/current/#elastic-agent-profiles
-    """
-    url = "https://{host}/go/api/elastic/profiles/{profile_id}".format(
-        host=host,
-        profile_id=profile_id)
-
-    headers = {
-        'Accept': 'application/vnd.go.cd.v2+json',
-        'Authorization': "bearer {token}".format(token=token),
-    }
-    r = requests.get(url, headers=headers)
-    r.raise_for_status()
-    return r
-
-
-def put_elastic_profile(host, token, profile_id, etag, data):
-    """
-    GoCD put elastic profile
-    https://api.gocd.org/current/#elastic-agent-profiles
-    """
-    url = "https://{host}/go/api/elastic/profiles/{profile_id}".format(
-        host=host,
-        profile_id=profile_id)
-
-    headers = {
-        'Accept': 'application/vnd.go.cd.v2+json',
-        'Authorization': "bearer {token}".format(token=token),
-        'Content-Type': 'application/json',
-        'If-Match': etag,
-    }
-    r = requests.put(url, json=data, headers=headers)
-    r.raise_for_status()
-    return r
-
 
 def is_pod_configuration(ep_property):
     """
