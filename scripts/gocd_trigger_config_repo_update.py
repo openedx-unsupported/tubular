@@ -1,0 +1,1 @@
+../tubular/scripts/gocd_trigger_config_repo_update.py
