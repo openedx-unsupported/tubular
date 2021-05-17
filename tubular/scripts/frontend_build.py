@@ -63,7 +63,10 @@ def frontend_build(common_config_file, env_config_file, app_name, version_file):
     builder = FrontendBuilder(common_config_file, env_config_file, app_name, version_file)
     builder.install_requirements()
     app_config = builder.get_app_config()
-    env_vars = ['{}={}'.format(k, v) for k, v in app_config.items()]
+    env_vars = [
+        "{}={}".format(k, ensure_wrapped_in_quotes(v))
+        for k, v in app_config.items()
+    ]
     builder.build_app(env_vars, 'Could not run `npm run build` for app {}.'.format(app_name))
     builder.create_version_file()
     LOG(
@@ -74,5 +77,31 @@ def frontend_build(common_config_file, env_config_file, app_name, version_file):
     )
 
 
+def ensure_wrapped_in_quotes(value: str) -> str:
+    """
+    Given a string, return it wrapped in single quotes, unless it
+    is already wrapped in quotes, in which case return it as-is.
+
+    This ensures that strings passed as arguments to npm bash scripts are treated
+    as single values, even if they contain spaces. Otherwise, bash would split them
+    on the spaces and treat them as a series of individual strings.
+
+    Some frontend configurations already wrap some or all of their values in quotes,
+    so for backwards compatibility, we need to avoid wrapping values that are already
+    wrapped in single- or double-quotes.
+
+    Examples:
+        tomato paste -> 'tomato paste'
+        "alfredo sauce" -> "alfredo sauce"
+        'aglio e olio' -> 'aglio e olio'
+    """
+    if value.startswith("'") and value.endswith("'"):
+        return value
+    elif value.startswith('"') and value.endswith('"'):
+        return value
+    else:
+        return "'{}'".format(value)
+
+    
 if __name__ == "__main__":
     frontend_build()  # pylint: disable=no-value-for-parameter
