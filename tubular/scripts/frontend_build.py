@@ -7,7 +7,6 @@ Command-line script to build a frontend application.
 import os
 import sys
 from functools import partial
-from typing import Union
 
 import click
 
@@ -73,7 +72,7 @@ def frontend_build(common_config_file, env_config_file, app_name, version_file):
     LOG(f'Frontend app {app_name} built successfully with config file {env_config_file}.')
 
 
-def ensure_wrapped_in_quotes(value: Union[bool, int, float, str, None]) -> str:
+def ensure_wrapped_in_quotes(value) -> str:
     """
     Given a simple value from YAML, return it wrapped in single quotes, unless it
     is already wrapped in quotes, in which case return it as-is.
@@ -91,6 +90,14 @@ def ensure_wrapped_in_quotes(value: Union[bool, int, float, str, None]) -> str:
         "alfredo sauce" -> "alfredo sauce"
         'aglio e olio' -> 'aglio e olio'
     """
+    valid_types = str, int, float, bool, type(None)
+    if not isinstance(value, valid_types):
+        valid_types_string = "|".join(typ.__name__ for typ in valid_types)
+        FAIL(
+            1,
+            f"Expected config value to be of type ({valid_types_string}); "
+            f"instead got value {value!r}, which is of type {type(value).__name__}"
+        )
     string_value = str(value)
     if string_value.startswith("'") and string_value.endswith("'"):
         return string_value
