@@ -7,6 +7,7 @@ Command-line script to build a frontend application.
 import os
 import sys
 from functools import partial
+from typing import Union
 
 import click
 
@@ -72,9 +73,9 @@ def frontend_build(common_config_file, env_config_file, app_name, version_file):
     LOG(f'Frontend app {app_name} built successfully with config file {env_config_file}.')
 
 
-def ensure_wrapped_in_quotes(value: str) -> str:
+def ensure_wrapped_in_quotes(value: Union[bool, int, float, str, None]) -> str:
     """
-    Given a string, return it wrapped in single quotes, unless it
+    Given a simple value from YAML, return it wrapped in single quotes, unless it
     is already wrapped in quotes, in which case return it as-is.
 
     This ensures that strings passed as arguments to npm bash scripts are treated
@@ -90,12 +91,13 @@ def ensure_wrapped_in_quotes(value: str) -> str:
         "alfredo sauce" -> "alfredo sauce"
         'aglio e olio' -> 'aglio e olio'
     """
-    if value.startswith("'") and value.endswith("'"):
-        return value
-    elif value.startswith('"') and value.endswith('"'):
-        return value
+    string_value = str(value)
+    if string_value.startswith("'") and string_value.endswith("'"):
+        return string_value
+    elif string_value.startswith('"') and string_value.endswith('"'):
+        return string_value
     else:
-        return f"'{value}'"
+        return f"'{string_value}'"
 
     
 if __name__ == "__main__":
