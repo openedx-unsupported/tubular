@@ -1,0 +1,7 @@
+APP_CONFIG:
+
+  # Make sure common values trickle down to app's effective config.
+  COMMON_VAR: common_value
+
+  # Make sure common values can be overriden by app config.
+  COMMON_OVERRIDE_ME: initial_value

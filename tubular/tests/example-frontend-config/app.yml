@@ -1,0 +1,35 @@
+S3_BUCKET_NAME: "coolfrontend.openedx.example.org"
+
+APP_CONFIG:
+
+  # Make sure we can override vars from common config.
+  COMMON_OVERRIDE_ME: overriden_value
+
+  # Check strings with spaces and special chars. Should all yield `key='The // value!'`.
+  VAR_WITH_SINGLE_QUOTES: 'The // value!'
+  VAR_WITH_DOUBLE_QUOTES: "The // value!"
+  VAR_WITH_SINGLE_THEN_DOUBLE_QUOTES: "'The // value!'"
+  # Except this one, which should yield `key="The // value!"`.
+  VAR_WITH_DOUBLE_THEN_SINGLE_QUOTES: '"The // value!"'
+
+  # Check ints. Should all yield `key='-100'`.
+  INT: -100
+  INT_WITH_QUOTES: '-100'
+
+  # Check floats. Should all yield `key='3.14'`.
+  FLOAT: 3.14
+  FLOAT_WITH_QUOTES: '3.14'
+
+  # Check True bools. Should all yield `key='True'`.
+  BOOL_TRUE: true
+  BOOL_TRUE_ANOTHER_WAY: yes  # YAML is funny - this is the same as `true`.
+  BOOL_TRUE_WITH_QUOTES: 'True'  # Uppercase because Python loads this file.
+
+  # Check False bools. Should all yield `key='False'`.
+  BOOL_FALSE: false
+  BOOL_FALSE_ANOTHER_WAY: no  # YAML is funny - this is the same as `false`.
+  BOOL_FALSE_WITH_QUOTES: 'False'  # Uppercase because Python loads this file.
+
+  # Check None. Should all yield `key='None'`.
+  NONE: !!null
+  NONE_WITH_QUOTES: 'None'  # `None` instead of `null` because Python loads this file.
