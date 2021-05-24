@@ -90,23 +90,26 @@ def update_pipeline_group_config(host, token, etag, name, data):
     r.raise_for_status()
     return r
 
-def trigger_update_config_repository(host, token):
+
+def trigger_update_config_repository(host, token, config_repo):
     """
     Trigger update of config repository
     https://api.gocd.org/current/#trigger-update-of-config-repository
     """
-    url = f'https://{host}/go/api/admin/config_repos/config_repo_id/trigger_update'
+    url = f'https://{host}/go/api/admin/config_repos/{config_repo}/trigger_update'
 
     headers = {
-        'Accept': 'application/vnd.go.cd.v1+json',
-        'Authorization': "bearer {token}".format(token=token),
+        'Accept': 'application/vnd.go.cd.v4+json',
+        'Authorization': "Bearer {token}".format(token=token),
         'X-GoCD-Confirm': 'true',
     }
-    r = requests.post(url, json=data, headers=headers)
+
+    r = requests.post(url, headers=headers)
     # Ignore 409 as it means it is already scheduled.
     if r.status_code not in [409]:
         r.raise_for_status()
     return r
+
 
 def check_if_config_repo_update_completed(host, token, config_repo_id):
     """

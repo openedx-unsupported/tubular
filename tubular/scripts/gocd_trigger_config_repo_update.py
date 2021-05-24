@@ -35,7 +35,7 @@ def is_done_with_update(host, token, config_repo):
 @click.option('--token', help='gocd auth token', required=True)
 @click.option('--config_repo', help='config repo name to update', required=True)
 @click.option('--timeout', help='Time to wait for config repo to sync', default=60)
-def update_config_repo(token, host, config_repo):
+def update_config_repo(token, host, config_repo, timeout):
     """
     Trigger a config update 
     """
