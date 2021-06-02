@@ -21,7 +21,7 @@ class OpsGenieAPI:
         self.session.headers['Authorization'] = "GenieKey {}".format(auth_token)
         self.session.headers['Content-Type'] = 'application/json'
 
-    def alert_opsgenie(self, message, description):
+    def alert_opsgenie(self, message, description, responders=None):
         """
         Alert team of an issue - such as GoCD pipeline failure
 
@@ -30,10 +30,12 @@ class OpsGenieAPI:
             description: a more detailed description
         """
         post_url = 'https://api.opsgenie.com/v2/alerts'
-
+        if responders is not None:
+            responders = [{"name": responders, "type":"team"}]
         alert_data = {
             'message': message,
             'description': description,
+            'responders': responders,
         }
 
         response = self.session.post(
