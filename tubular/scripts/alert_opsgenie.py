@@ -28,14 +28,19 @@ LOG = logging.getLogger(__name__)
     required=True,
     help="Message in the body of Opsgenie Alert",
 )
-def alert_opsgenie(auth_token, message, description):
+@click.option(
+    '--responders',
+    default=None,
+    help="Who will be paged for this alert",
+)
+def alert_opsgenie(auth_token, message, description, responders):
     """
     Sends an alert to an opsgenie team
     """
     try:
         logging.info("Creating alert on Opsgenie")
         opsgenie = OpsGenieAPI(auth_token)
-        opsgenie.alert_opsgenie(message, description)
+        opsgenie.alert_opsgenie(message, description, responders)
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
         click.secho('{}'.format(err), fg='red')
