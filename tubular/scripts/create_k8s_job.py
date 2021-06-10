@@ -38,8 +38,15 @@ def create_k8s_job(deployment_name, namespace, command, command_args, cpu_limit,
     """
     Create the k8s job in given namespace.
     """
+    # To remove
+    command = "./manage.py showmigrations"
+    # end
     new_relic_args = ["source /vault-api-secrets/secrets/secret.env", "newrelic-admin"]
     configuration = client.Configuration()
+
+    configuration.host = "127.0.0.1:8888"
+
+    
     deployment_specs = get_deployment(configuration, namespace, deployment_name)
     deployment_specs_container = deployment_specs.containers[0]
     cpu_request = deployment_specs_container.resources.requests["cpu"]
