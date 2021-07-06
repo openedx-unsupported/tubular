@@ -9,6 +9,13 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
+def get_token(cluster_name):
+    args = ("aws-iam-authenticator", "token", "-i", cluster_name, "--token-only")
+    popen = subprocess.Popen(args, stdout=subprocess.PIPE)
+    popen.wait()
+    return popen.stdout.read().rstrip()
+
+
 def create_job_object(name, command, args_command, deployment_specs_container, deployment_specs,
                       cpu_request, memory_request, cpu_limit, memory_limit):
     try:
