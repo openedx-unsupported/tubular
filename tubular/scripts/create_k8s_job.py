@@ -5,6 +5,16 @@ from tubular.kubernetes import *
 
 @click.command()
 @click.option(
+    '--cluster_name',
+    required=True,
+    help="k8s cluster name.",
+)
+@click.option(
+    '--cluster_arn',
+    required=True,
+    help="k8s cluster ARN.",
+)
+@click.option(
     '--deployment_name',
     required=True,
     help="Deployment name use to create job.",
@@ -34,12 +44,23 @@ from tubular.kubernetes import *
     required=False,
     help="Maximum amount of memory resources allowed.",
 )
-def create_k8s_job(deployment_name, namespace, command, command_args, cpu_limit, memory_limit):
+def create_k8s_job(cluster_name, cluster_arn, deployment_name, namespace, command, command_args, cpu_limit, memory_limit):
     """
     Create the k8s job in given namespace.
     """
     new_relic_args = ["source /vault-api-secrets/secrets/secret.env", "newrelic-admin"]
+    # Setting Configuration
+    api_token = get_token(cluster_name)
+    api_token = api_token.decode("utf-8")
     configuration = client.Configuration()
+    configuration.host = cluster_arn
+    configuration.verify_ssl = False
+    configuration.debug = True
+    configuration.api_key['authorization'] = "Bearer " + api_token
+    configuration.assert_hostname = True
+    configuration.verify_ssl = False
+    client.Configuration.set_default(configuration)
+
     deployment_specs = get_deployment(configuration, namespace, deployment_name)
     deployment_specs_container = deployment_specs.containers[0]
     cpu_request = deployment_specs_container.resources.requests["cpu"]
