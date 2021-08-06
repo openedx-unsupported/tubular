@@ -73,7 +73,11 @@ class LocalGitAPI:
         )
         return cls(repo)
 
-    def push_branch(self, branch, remote='origin', remote_branch=None, force=False):
+    def _is_pushed(self, push_info) -> bool:
+        valid_flags = {push_info.FAST_FORWARD, push_info.NEW_HEAD, push_info.UP_TO_DATE}
+        return push_info.flags in valid_flags  # This check can require the use of & instead.
+
+    def push_branch(self, branch, remote='origin', remote_branch=None, force=False, log_info=False):
         """
         Push a branch up to the remote server, optionally with a different name.
         """
@@ -81,7 +85,12 @@ class LocalGitAPI:
             push_ref = 'refs/heads/{}:refs/heads/{}'.format(branch, remote_branch)
         else:
             push_ref = 'refs/heads/{}'.format(branch)
-        self.repo.remotes[remote].push(push_ref, force=force)
+        push_info = self.repo.remotes[remote].push(push_ref, force=force)[0]
+        if log_info:
+            LOG.info("push_info: flags: %d, %s", push_info.flags, push_info.summary)
+            LOG.info("push_info: local_ref: %s, remote_ref %s", push_info.local_ref, push_info.remote_ref)
+            LOG.info("push_info: %s", self.repo.remotes[remote].refs)
+        return self._is_pushed(push_info)
 
     def checkout_branch(self, branch):
         """
