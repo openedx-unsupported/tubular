@@ -87,7 +87,7 @@ class LocalGitAPI:
             push_ref = 'refs/heads/{}'.format(branch)
         push_info = self.repo.remotes[remote].push(push_ref, force=force)[0]
         if log_info:
-            LOG.info("push_info: flags: %d, %s", push_info.flag, push_info.summary)
+            LOG.info("push_info: flags: %d, %s", push_info.flags, push_info.summary)
             LOG.info("push_info: local_ref: %s, remote_ref %s", push_info.local_ref, push_info.remote_ref)
             LOG.info("push_info: %s", self.repo.remotes[remote].refs)
         return self._is_pushed(push_info)
