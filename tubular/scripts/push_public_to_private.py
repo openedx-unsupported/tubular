@@ -89,8 +89,13 @@ def push_public_to_private(private_org,
         local_repo.add_remote('private', private_github_url)
         try:
             # Push the public branch back to the private branch - without forcing.
-            local_repo.push_branch(public_source_branch, 'private', private_target_branch, force=False)
-            output_yaml.update({u'branch_pushed': True})
+            is_pushed = local_repo.push_branch(public_source_branch, 'private', private_target_branch, force=False)
+            if is_pushed:
+                output_yaml.update({u'branch_pushed': is_pushed})
+                LOG.info('public branch successfully pushed to repo.')
+            else:
+                LOG.warning("Failed to push public branch %s to private branch %s", public_source_branch, private_target_branch)
+                output_yaml.update({u'branch_pushed': False})
         except Exception as exc:  # pylint: disable=broad-except
             # On any failure besides auth, simply log and ignore.
             # The problem will work itself out in the next private->public cycle.
