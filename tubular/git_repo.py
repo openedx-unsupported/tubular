@@ -74,7 +74,7 @@ class LocalGitAPI:
         return cls(repo)
 
     def _is_pushed(self, push_info) -> bool:
-        valid_flags = {push_info.FAST_FORWARD, push_info.NEW_HEAD, push_info.UP_TO_DATE}  # UP_TO_DATE flag is intentionally skipped.
+        valid_flags = {push_info.FAST_FORWARD, push_info.NEW_HEAD, push_info.UP_TO_DATE}
         return push_info.flags in valid_flags  # This check can require the use of & instead.
 
     def push_branch(self, branch, remote='origin', remote_branch=None, force=False, log_info=False):

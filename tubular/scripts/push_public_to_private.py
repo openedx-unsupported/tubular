@@ -89,7 +89,7 @@ def push_public_to_private(private_org,
         local_repo.add_remote('private', private_github_url)
         try:
             # Push the public branch back to the private branch - without forcing.
-            is_pushed = local_repo.push_branch(public_source_branch, 'private', private_target_branch, force=False)
+            is_pushed = local_repo.push_branch(public_source_branch, 'private', private_target_branch, force=False, log_info=True)
             if is_pushed:
                 output_yaml.update({u'branch_pushed': is_pushed})
                 LOG.info('public branch successfully pushed to repo.')
