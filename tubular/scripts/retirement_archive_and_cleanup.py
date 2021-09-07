@@ -41,6 +41,7 @@ ERR_FETCHING = -3
 ERR_ARCHIVING = -4
 ERR_DELETING = -5
 ERR_SETUP_FAILED = -5
+ERR_BAD_CLI_PARAM = -6
 
 LOG = partial(_log, SCRIPT_SHORTNAME)
 FAIL = partial(_fail, SCRIPT_SHORTNAME)
@@ -63,6 +64,27 @@ def _fetch_learners_to_archive_or_exit(config, start_date, end_date, initial_sta
         FAIL_EXCEPTION(ERR_FETCHING, 'Unexpected error occurred fetching users to update!', exc)
 
 
+def _batch_learners(learners=None, batch_size=None):
+    """
+    To avoid potentially overwheling the LMS with a large number of user retirements to
+    delete, create a list of smaller batches of users to iterate over. This has the
+    added benefit of reducing the amount of user retirement archive requests that can
+    get into a bad state should this script experience an error.
+
+    Args:
+        learners (list): List of learners to portion into smaller batches (lists)
+        batch_size (int): The number of learners to portion into each batch. If this
+            parameter is not supplied, this function will return one batch containing
+            all of the learners supplied to it.
+    """
+    if batch_size:
+        return [
+            learners[i:i+batch_size] for i, _ in list(enumerate(learners))[::batch_size]
+        ]
+    else:
+        return [learners]
+
+
 def _on_s3_backoff(details):
     """
     Callback that is called when backoff... backs off
@@ -79,7 +101,7 @@ def _on_s3_backoff(details):
     on_backoff=lambda details: _on_s3_backoff(details),  # pylint: disable=unnecessary-lambda,
     max_time=120,  # 2 minutes
 )
-def _upload_to_s3(config, filename):
+def _upload_to_s3(config, filename, dry_run=False):
     """
     Upload the archive file to S3
     """
@@ -99,8 +121,14 @@ def _upload_to_s3(config, filename):
         datestr = datetime.datetime.now().strftime('%Y/%m/')
 
         bucket = s3_connection.get_bucket(config['s3_archive']['bucket_name'])
+        # Dry runs of this script should only generate the retirement archive file, not push it to s3.
         key = Key(bucket, datestr + filename)
-        key.set_contents_from_filename(filename)
+        if dry_run:
+            LOG('Dry run. Skipping the step to upload data to {}'.format(key))
+            return
+        else:
+            key.set_contents_from_filename(filename)
+            LOG('Successfully uploaded retirement data to {}'.format(key))
     except Exception as exc:
         LOG(text_type(exc))
         raise
@@ -113,7 +141,7 @@ def _format_datetime_for_athena(timestamp):
     return timestamp.replace('T', ' ').rstrip('Z')
 
 
-def _archive_retirements_or_exit(config, learners):
+def _archive_retirements_or_exit(config, learners, dry_run=False):
     """
     Creates an archive file with all of the retirements and uploads it to S3
 
@@ -153,8 +181,9 @@ def _archive_retirements_or_exit(config, learners):
     """
     LOG('Archiving retirements for {} learners to {}'.format(len(learners), config['s3_archive']['bucket_name']))
     try:
-        now = datetime.datetime.utcnow()
+        now = _get_utc_now()
         filename = 'retirement_archive_{}.json.gz'.format(now.strftime('%Y_%d_%m_%H_%M_%S'))
+        LOG('Creating retirement archive file {}'.format(filename))
 
         # The file format is one JSON object per line with the newline as a separator. This allows for
         # easy queries via AWS Athena if we need to confirm learner deletion.
@@ -172,8 +201,12 @@ def _archive_retirements_or_exit(config, learners):
                 }
                 json.dump(user, out)
                 out.write("\n")
-
-        _upload_to_s3(config, filename)
+        if dry_run:
+            LOG('Dry run. Logging the contents of {} for debugging'.format(filename))
+            with gzip.open(filename, 'r') as archive_file:
+                for line in archive_file.readlines():
+                    LOG(line)
+        _upload_to_s3(config, filename, dry_run)
     except Exception as exc:  # pylint: disable=broad-except
         FAIL_EXCEPTION(ERR_ARCHIVING, 'Unexpected error occurred archiving retirements!', exc)
 
@@ -189,6 +222,12 @@ def _cleanup_retirements_or_exit(config, learners):
     except Exception as exc:  # pylint: disable=broad-except
         FAIL_EXCEPTION(ERR_DELETING, 'Unexpected error occurred deleting retirements!', exc)
 
+def _get_utc_now():
+    """
+    Helper function only used to make unit test mocking/patching easier.
+    """
+    return datetime.datetime.utcnow()
+
 
 @click.command("archive_and_cleanup")
 @click.option(
@@ -201,10 +240,44 @@ def _cleanup_retirements_or_exit(config, learners):
     type=int,
     default=37  # 7 days before retirement, 30 after
 )
-def archive_and_cleanup(config_file, cool_off_days):
+@click.option(
+    '--dry_run',
+    help='''
+        Should this script be run in a dry-run mode, in which generated retirement
+        archive files are not pushed to s3 and retirements are not cleaned up in the LMS
+    ''',
+    type=bool,
+    default=False
+)
+@click.option(
+    '--start_date',
+    help='''
+        Start of window used to select user retirements for archival. Only user retirements
+        added to the retirement queue after this date will be processed.
+    ''',
+    type=click.DateTime(formats=['%Y-%m-%d'])
+)
+@click.option(
+    '--end_date',
+    help='''
+        End of window used to select user retirments for archival. Only user retirments
+        added to the retirement queue before this date will be processed. In the case that
+        this date is more recent than the value specified in the `cool_off_days` parameter,
+        an error will be thrown. If this parameter is not used, the script will default to
+        using an end_date based upon the `cool_off_days` parameter.
+    ''',
+    type=click.DateTime(formats=['%Y-%m-%d'])
+)
+@click.option(
+    '--batch_size',
+    help='Number of user retirements to process',
+    type=int
+)
+def archive_and_cleanup(config_file, cool_off_days, dry_run, start_date, end_date, batch_size):
     """
     Cleans up UserRetirementStatus rows in LMS by:
-    1- Getting all rows currently in COMPLETE that were created --cool_off_days ago or more
+    1- Getting all rows currently in COMPLETE that were created --cool_off_days ago or more,
+        unless a specific timeframe is specified
     2- Archiving them to S3 in an Athena-queryable format
     3- Deleting them from LMS (by username)
     """
@@ -217,17 +290,47 @@ def archive_and_cleanup(config_file, cool_off_days):
         config = CONFIG_OR_EXIT(config_file)
         SETUP_LMS_OR_EXIT(config)
 
-        # This date is just a bogus "earliest possible value" since the call requires one
-        start_date = datetime.datetime.strptime('2018-01-01', '%Y-%m-%d')
-        end_date = datetime.datetime.utcnow().date() - datetime.timedelta(days=cool_off_days)
+        if not start_date:
+            # This date is just a bogus "earliest possible value" since the call requires one
+            start_date = datetime.datetime.strptime('2018-01-01', '%Y-%m-%d')
+        if end_date:
+            if end_date > _get_utc_now() - datetime.timedelta(days=cool_off_days):
+                FAIL(ERR_BAD_CLI_PARAM, 'End date cannot occur within the cool_off_days period')
+        else:
+            # Set an end_date of `cool_off_days` days before the time that this script is run
+            end_date = _get_utc_now() - datetime.timedelta(days=cool_off_days)
 
-        LOG('Fetching learners in COMPLETE status from {} to {}.'.format(start_date, end_date))
-        learners = _fetch_learners_to_archive_or_exit(config, start_date, end_date, 'COMPLETE')
+        if start_date >= end_date:
+            FAIL(ERR_BAD_CLI_PARAM, 'Conflicting start and end dates passed on CLI')
 
-        if learners:
-            _archive_retirements_or_exit(config, learners)
-            _cleanup_retirements_or_exit(config, learners)
-            LOG('Archive and cleanup complete')
+
+        LOG(
+            'Fetching retirements for learners that have a COMPLETE status and were created '
+            'between {} and {}.'.format(
+                start_date, end_date
+            )
+        )
+        learners = _fetch_learners_to_archive_or_exit(
+            config, start_date, end_date, 'COMPLETE'
+        )
+
+        learners_to_process = _batch_learners(learners, batch_size)
+        num_batches = len(learners_to_process)
+
+        if learners_to_process:
+            for index, batch in enumerate(learners_to_process):
+                LOG(
+                    'Processing batch {} out of {} of user retirement requests'.format(
+                        str(index), str(num_batches)
+                    )
+                )
+                _archive_retirements_or_exit(config, batch, dry_run)
+
+                if dry_run:
+                    LOG('This is a dry-run. Exiting before any retirements are cleaned up')
+                else:
+                    _cleanup_retirements_or_exit(config, batch)
+                    LOG('Archive and cleanup complete for batch #{}'.format(str(index + 1)))
         else:
             LOG('No learners found!')
     except Exception as exc:
