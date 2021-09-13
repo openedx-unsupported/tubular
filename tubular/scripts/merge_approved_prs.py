@@ -13,8 +13,6 @@ import click
 import click_log
 import yaml
 
-from github import GithubException
-
 from tubular import github_api  # pylint: disable=wrong-import-position
 
 
@@ -127,7 +125,7 @@ def octomerge(
         local_repo.force_branch_to(target_branch, source_branch, remote='source')
         target_head_sha = local_repo.get_head_sha(branch=target_branch)
         if sha is not None and target_head_sha != sha:
-            raise GithubException(f"The head sha of target branch does not match inputed sha, head sha: {target_head_sha}, sha: {sha}")
+            raise AssertionError(f"The head sha of target branch does not match inputed sha, head sha: {target_head_sha}, sha: {sha}")
 
         approved_prs = list(find_approved_prs(
             target_github_repo, source_github_repo, target_base_branch, source_base_branch
