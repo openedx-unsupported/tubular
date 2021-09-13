@@ -16,7 +16,7 @@ google-api-python-client==1.7.3
 jenkinsapi==0.3.3
 kubernetes==12.0.1
 lxml
-PyGithub==1.43.8
+PyGithub==1.44.1
 pymongo==3.5.1
 pytz==2016.10
 pyyaml==5.4
