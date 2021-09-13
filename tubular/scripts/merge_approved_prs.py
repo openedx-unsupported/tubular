@@ -13,6 +13,8 @@ import click
 import click_log
 import yaml
 
+from github import GithubException
+
 from tubular import github_api  # pylint: disable=wrong-import-position
 
 
@@ -96,11 +98,16 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
          u"contain the sha of the merge commit.",
     default='merge_sha',
 )
+@click.option(
+    u'--sha',
+    help=u"The sha of head commit of source-repo. if this does not match the current version of source-repo, this script will exit with error",
+    default=None,
+)
 @click_log.simple_verbosity_option(default=u'INFO')
 def octomerge(
         token, target_repo, source_repo, target_base_branch, source_base_branch,
         target_branch, source_branch, out_file, target_reference_repo,
-        repo_variable, sha_variable,
+        repo_variable, sha_variable, sha
 ):
     u"""
     Merge all approved security PRs into a release candidate.
@@ -115,10 +122,12 @@ def octomerge(
     """
     target_github_repo = github_api.GitHubAPI(*target_repo, token=token)
     source_github_repo = github_api.GitHubAPI(*source_repo, token=token)
-
     with target_github_repo.clone(target_branch, target_reference_repo).cleanup() as local_repo:
         local_repo.add_remote('source', source_github_repo.github_repo.ssh_url)
         local_repo.force_branch_to(target_branch, source_branch, remote='source')
+        target_head_sha = local_repo.get_head_sha(branch=target_branch)
+        if sha is not None and target_head_sha != sha:
+            raise GithubException(f"The head sha of target branch does not match inputed sha, head sha: {target_head_sha}, sha: {sha}")
 
         approved_prs = list(find_approved_prs(
             target_github_repo, source_github_repo, target_base_branch, source_base_branch
