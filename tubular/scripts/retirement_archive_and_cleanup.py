@@ -59,7 +59,9 @@ def _fetch_learners_to_archive_or_exit(config, start_date, end_date, initial_sta
     """
     LOG('Fetching users in state {} created from {} to {}'.format(initial_state, start_date, end_date))
     try:
-        return config['LMS'].get_learners_by_date_and_status(initial_state, start_date, end_date)
+        learners = config['LMS'].get_learners_by_date_and_status(initial_state, start_date, end_date)
+        LOG('Successfully fetched {} learners'.format(str(len(learners))))
+        return learners
     except Exception as exc:  # pylint: disable=broad-except
         FAIL_EXCEPTION(ERR_FETCHING, 'Unexpected error occurred fetching users to update!', exc)
 
@@ -321,7 +323,7 @@ def archive_and_cleanup(config_file, cool_off_days, dry_run, start_date, end_dat
             for index, batch in enumerate(learners_to_process):
                 LOG(
                     'Processing batch {} out of {} of user retirement requests'.format(
-                        str(index), str(num_batches)
+                        str(index + 1), str(num_batches)
                     )
                 )
                 _archive_retirements_or_exit(config, batch, dry_run)
