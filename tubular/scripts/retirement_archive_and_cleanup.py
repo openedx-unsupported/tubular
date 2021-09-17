@@ -114,7 +114,7 @@ def _upload_to_s3(config, filename, dry_run=False):
 
         bucket = s3_connection.get_bucket(config['s3_archive']['bucket_name'])
         # Dry runs of this script should only generate the retirement archive file, not push it to s3.
-        key = Key(bucket, datestr + filename)
+        key = Key(bucket, 'raw/' + datestr + filename)
         if dry_run:
             LOG('Dry run. Skipping the step to upload data to {}'.format(key))
             return
