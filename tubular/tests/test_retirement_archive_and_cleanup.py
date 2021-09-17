@@ -98,7 +98,7 @@ def test_successful(*args, **kwargs):
     assert mock_get_access_token.call_count == 1
     mock_get_learners.assert_called_once()
     mock_bulk_cleanup_retirements.assert_called_once_with(['test1', 'test2', 'test3'])
-    mock_s3connection_class.assert_called_once_with(host='s3.fake_region.amazonaws.com')
+    mock_s3connection_class.assert_called_once_with()
 
     assert result.exit_code == 0
     assert 'Archive and cleanup complete' in result.output
@@ -127,7 +127,6 @@ def test_successful_with_batching(*args, **kwargs):
     mock_get_learners.assert_called_once()
     get_learner_calls = [call(['test1', 'test2']), call(['test3'])]
     mock_bulk_cleanup_retirements.assert_has_calls(get_learner_calls)
-    s3connection_calls = [call(host='s3.fake_region.amazonaws.com'), call(host='s3.fake_region.amazonaws.com')]
     assert mock_s3connection_class.call_count == 2
 
     assert result.exit_code == 0
