@@ -11,6 +11,7 @@ import gzip
 import json
 import logging
 import sys
+import time
 
 import backoff
 import click
@@ -48,6 +49,8 @@ FAIL = partial(_fail, SCRIPT_SHORTNAME)
 FAIL_EXCEPTION = partial(_fail_exception, SCRIPT_SHORTNAME)
 CONFIG_OR_EXIT = partial(_config_or_exit, FAIL_EXCEPTION, ERR_BAD_CONFIG)
 SETUP_LMS_OR_EXIT = partial(_setup_lms_api_or_exit, FAIL, ERR_SETUP_FAILED)
+
+DELAY = 10
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -324,6 +327,7 @@ def archive_and_cleanup(config_file, cool_off_days, dry_run, start_date, end_dat
                 else:
                     _cleanup_retirements_or_exit(config, batch)
                     LOG('Archive and cleanup complete for batch #{}'.format(str(index + 1)))
+                    time.sleep(DELAY)
         else:
             LOG('No learners found!')
     except Exception as exc:
