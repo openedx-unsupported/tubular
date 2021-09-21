@@ -51,6 +51,7 @@ SETUP_LMS_OR_EXIT = partial(_setup_lms_api_or_exit, FAIL, ERR_SETUP_FAILED)
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logging.getLogger('boto').setLevel(logging.INFO)
 
 
 def _fetch_learners_to_archive_or_exit(config, start_date, end_date, initial_state):
