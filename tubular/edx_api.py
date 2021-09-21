@@ -5,6 +5,7 @@ import logging
 from contextlib import contextmanager
 
 import backoff
+from requests.exceptions import ConnectionError
 from six import text_type
 from slumber.exceptions import HttpClientError, HttpServerError, HttpNotFoundError
 
@@ -83,11 +84,11 @@ def _wait_one_minute():
     return backoff.constant(interval=60)
 
 
-def _exception_not_internal_svr_error(exc):
+def _giveup_on_unexpected_exception(exc):
     """
-    Giveup method that gives up backoff upon any non-5xx and 504 server errors.
+    Giveup method that gives up backoff upon any unexpected exception.
     """
-    return not (500 <= exc.response.status_code < 600 and exc.response.status_code != 504)
+    return not ( (500 <= exc.response.status_code < 600 and exc.response.status_code != 504) or exc.response.status_code == 104)
 
 
 def _retry_lms_api():
@@ -97,9 +98,9 @@ def _retry_lms_api():
     def inner(func):  # pylint: disable=missing-docstring
         func_with_backoff = backoff.on_exception(
             backoff.expo,
-            HttpServerError,
+            (HttpServerError, ConnectionError),
             max_time=600,  # 10 minutes
-            giveup=_exception_not_internal_svr_error,
+            giveup=_giveup_on_unexpected_exception,
             # Wrap the actual _backoff_handler so that we can patch the real one in unit tests.  Otherwise, the func
             # will get decorated on import, embedding this handler as a python object reference, precluding our ability
             # to patch it in tests.
