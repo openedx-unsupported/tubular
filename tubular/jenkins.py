@@ -6,6 +6,7 @@ import logging
 import math
 import os.path
 import shutil
+import sys
 
 import backoff
 from jenkinsapi.jenkins import Jenkins
@@ -15,6 +16,7 @@ from requests.exceptions import HTTPError
 
 from tubular.exception import BackendError
 
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
