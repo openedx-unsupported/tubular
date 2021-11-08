@@ -1,7 +1,59 @@
 CHANGES
 =======
 
-* escape salesforce api queries
+* fix: Make logging actually work
+* build: use the organization commitlint check
+* chore: edX API client: Added retry on ConnectionError(104)
+* fix: add sleep to calls to batches of users in user retirement archiver
+* fix: disable debug s3 logging in retirement archiver
+* fix: add raw prefix to s3 path for user retirements
+* Change retirement archive to use the Jenkins AWS assumed role
+* fix: improve logging in retirement archiver script
+* feat: script errors and exits if wrong version (#533)
+* fix: update PyGitHub to a version that doesn't use use\_2to3
+* feat: add cli params to retirement\_archive\_and\_cleanup script for testing and debugging
+* Update python requirements
+* fix: remove unnecessary logs (#527)
+* feat: adding loging to git pushes (#526)
+* Update k8s script
+* Updated opsgenie script to accept responders as param
+* Updated gocd script
+* Adding script to update and check config repo
+* feat!: explicitly limit types of frontend config values
+* test: add some cursory tests for frontend building
+* fix: make frontend\_build handle numeric/bool config values again
+* style: use f-strings in frontend\_build.py
+* fix: wrap frontend config override values in quotes
+* feat!: Remove WIP Modulestore pruning code
+* Bump pyyaml from 5.1 to 5.4 in /requirements
+* Fixing symlinks (#518)
+* Adding automation for pipeline\_group\_acls (#517)
+* chore: Remove the Sailthru retirement stage
+* Enable release tagging
+* fix: re-add python 3.6 support (for GoCD)
+* chore: update CI to test python 3.7, 3.8, remove 3.5
+* fix: switch send\_email to use boto3
+* fix: remove --no-index from pip-compile call, and run make upgrade
+* Revert "Merge pull request #509 from edx/aali/PSRE-594\_no\_comments\_on\_closed\_prs" (#511)
+* do not add comments on closed PRs
+* do not add comments on closed PRs
+* Added script to create k8s job
+* Added support for specifying multiple partners
+* Jkantor/escape salesforce query (#500)
+* fix: remove global flag on npm install
+* fix: pin npm@6
+* ISRE-618 | Delete 0 Instance ASGs during deploy step  if they are created (#496)
+* Revert "Python Code Cleanup (#493)" (#497)
+* Python Code Cleanup (#493)
+* AA-595: Add script to delete Braze user information
+* Added HTTP code
+* Update permission and add logging
+* Link opsgenie script
+* Link opsgenie script
+* Reduce rate limit confusion/red herrings
+* Log failed repo when github throws 404 exception
+* Throw an exception upon error that is caught in backoff decorator
+* Removing update recent deployers related code (#487)
 * Revert "Revert "Upgrade moto > 1.0.0, unpin testing dependencies for edx\_lint (#480)" (#484)" (#485)
 * Revert "Upgrade moto > 1.0.0, unpin testing dependencies for edx\_lint (#480)" (#484)
 * Remove calls to method that does not exist (#483)
