@@ -154,9 +154,10 @@ class LocalGitAPI:
     def octopus_merge(self, base_branch, commitishes):
         """
         Merge all ``commitishes`` into ``base_branch`` in this repo.
+        ``base_branch`` will be checked out.
         """
         self.checkout_branch(base_branch)
-        if commitishes:
+        if len(commitishes):
             self.repo.git.merge(*commitishes)
         return self.get_head_sha()
 

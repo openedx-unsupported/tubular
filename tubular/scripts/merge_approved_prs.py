@@ -141,7 +141,7 @@ def octomerge(
                     for pr in approved_prs
                 )
             ))
-            local_repo.octopus_merge(target_branch, (pr.head.sha for pr in approved_prs))
+            local_repo.octopus_merge(target_branch, [pr.head.sha for pr in approved_prs])
         else:
             logging.info("No PRs to merge")
 
