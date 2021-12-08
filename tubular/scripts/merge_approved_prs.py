@@ -121,11 +121,13 @@ def octomerge(
     target_github_repo = github_api.GitHubAPI(*target_repo, token=token)
     source_github_repo = github_api.GitHubAPI(*source_repo, token=token)
     with target_github_repo.clone(target_branch, target_reference_repo).cleanup() as local_repo:
+        logging.info(f"Initial target branch at commit {local_repo.get_head_sha(branch=target_branch)}")
         local_repo.add_remote('source', source_github_repo.github_repo.ssh_url)
         local_repo.force_branch_to(target_branch, source_branch, remote='source')
         target_head_sha = local_repo.get_head_sha(branch=target_branch)
         if sha is not None and target_head_sha != sha:
             raise AssertionError(f"The head sha of target branch does not match inputed sha, head sha: {target_head_sha}, sha: {sha}")
+        logging.info(f"Target branch has been locally forced to {target_head_sha}")
 
         approved_prs = list(find_approved_prs(
             target_github_repo, source_github_repo, target_base_branch, source_base_branch
@@ -141,11 +143,14 @@ def octomerge(
         merge_sha = local_repo.octopus_merge(target_branch, (pr.head.sha for pr in approved_prs))
         # The tag encodes the time to ensure that it is a distinct tag.
         release_name = 'release-{date}'.format(date=datetime.now().strftime("%Y%m%d%H%M%S"))
+        logging.info(f"Octopus merge commit is {merge_sha} and will be tagged as {release_name}")
+        logging.info(f"Target branch now locally at commit {local_repo.get_head_sha(branch=target_branch)}")
         local_repo.repo.create_tag(
             release_name,
             ref=merge_sha,
         )
-        local_repo.push_branch(target_branch, force=True)
+        local_repo.push_branch(target_branch, force=True, log_info=True)
+        logging.info(f"Target branch, after push, is at commit {local_repo.get_head_sha(branch=target_branch)}")
         local_repo.push_tags()
 
         results = {
