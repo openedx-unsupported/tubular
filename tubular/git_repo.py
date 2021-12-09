@@ -157,6 +157,9 @@ class LocalGitAPI:
         ``base_branch`` will be checked out.
         """
         self.checkout_branch(base_branch)
+        # Specifically use len here so that generators cause an
+        # exception (`if commitishes` with a generator would always
+        # return True)
         if len(commitishes):
             self.repo.git.merge(*commitishes)
         return self.get_head_sha()
