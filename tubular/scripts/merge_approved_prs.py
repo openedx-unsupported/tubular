@@ -132,30 +132,35 @@ def octomerge(
         approved_prs = list(find_approved_prs(
             target_github_repo, source_github_repo, target_base_branch, source_base_branch
         ))
-        logging.info("Merging the following prs into {}:\n{}".format(
-            target_branch,
-            "\n".join(
-                "    {.html_url}".format(pr)
-                for pr in approved_prs
-            )
-        ))
 
-        merge_sha = local_repo.octopus_merge(target_branch, (pr.head.sha for pr in approved_prs))
+        if approved_prs:
+            logging.info("Merging the following prs into {}:\n{}".format(
+                target_branch,
+                "\n".join(
+                    "    {.html_url}".format(pr)
+                    for pr in approved_prs
+                )
+            ))
+            local_repo.octopus_merge(target_branch, [pr.head.sha for pr in approved_prs])
+        else:
+            logging.info("No PRs to merge")
+
         # The tag encodes the time to ensure that it is a distinct tag.
         release_name = 'release-{date}'.format(date=datetime.now().strftime("%Y%m%d%H%M%S"))
-        logging.info(f"Octopus merge commit is {merge_sha} and will be tagged as {release_name}")
-        logging.info(f"Target branch now locally at commit {local_repo.get_head_sha(branch=target_branch)}")
+        deploy_sha = local_repo.get_head_sha(branch=target_branch)
+        logging.info(f"Pushing commit {deploy_sha} to {target_branch} branch and tagging as {release_name}")
         local_repo.repo.create_tag(
             release_name,
-            ref=merge_sha,
+            ref=deploy_sha,
         )
+        # `log_info=True` may help us detect a race condition where concurrent builds
+        # both push the target branch, although the tags really matter much more.
         local_repo.push_branch(target_branch, force=True, log_info=True)
-        logging.info(f"Target branch, after push, is at commit {local_repo.get_head_sha(branch=target_branch)}")
         local_repo.push_tags()
 
         results = {
             'target_branch': target_branch,
-            sha_variable: merge_sha,
+            sha_variable: deploy_sha,
             'merged_prs': [
                 {'html_url': pr.html_url}
                 for pr in approved_prs
