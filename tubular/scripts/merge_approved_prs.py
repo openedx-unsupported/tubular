@@ -153,7 +153,7 @@ def octomerge(
             release_name,
             ref=deploy_sha,
         )
-        # Logging the push info may help us detect a race condition where concurrent builds
+        # `log_info=True` may help us detect a race condition where concurrent builds
         # both push the target branch, although the tags really matter much more.
         local_repo.push_branch(target_branch, force=True, log_info=True)
         local_repo.push_tags()
