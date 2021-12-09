@@ -6,15 +6,17 @@
 #
 atlassian-python-api==3.14.1
     # via -r requirements/base.in
+attrs==21.2.0
+    # via jsonlines
 authlib==0.15.5
     # via simple-salesforce
 backoff==1.5.0
     # via -r requirements/base.in
 boto==2.43.0
     # via -r requirements/base.in
-boto3==1.20.16
+boto3==1.20.22
     # via -r requirements/base.in
-botocore==1.23.16
+botocore==1.23.22
     # via
     #   boto3
     #   s3transfer
@@ -26,7 +28,7 @@ certifi==2021.10.8
     #   requests
 cffi==1.15.0
     # via cryptography
-charset-normalizer==2.0.8
+charset-normalizer==2.0.9
     # via requests
 click==8.0.3
     # via
@@ -58,7 +60,7 @@ future==0.16.0
     #   cloudflare
 gitdb==4.0.9
     # via gitpython
-gitpython==3.1.24
+gitpython==3.1.18
     # via -r requirements/base.in
 google-api-python-client==1.7.3
     # via -r requirements/base.in
@@ -81,7 +83,7 @@ jmespath==0.10.0
     # via
     #   boto3
     #   botocore
-jsonlines==2.0.0
+jsonlines==3.0.0
     # via cloudflare
 kubernetes==12.0.1
     # via -r requirements/base.in
@@ -175,8 +177,6 @@ smmap==5.0.0
     # via gitdb
 stevedore==1.32.0
     # via edx-opaque-keys
-typing-extensions==4.0.0
-    # via gitpython
 unicodecsv==0.14.1
     # via -r requirements/base.in
 uritemplate==3.0.1
@@ -188,7 +188,7 @@ urllib3==1.26.7
     #   requests
 validators==0.18.2
     # via -r requirements/base.in
-websocket-client==1.2.1
+websocket-client==1.2.3
     # via kubernetes
 wrapt==1.11.2
     # via
