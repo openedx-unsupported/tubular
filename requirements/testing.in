@@ -1,0 +1,15 @@
+astroid
+ddt
+edx_lint
+httpretty
+moto==2.2.11
+mock
+pylint
+pytest
+pycodestyle
+pytest-pycodestyle
+pytest-xdist
+pytest-pylint
+responses
+requests_mock
+wrapt==1.11.*

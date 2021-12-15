@@ -20,3 +20,4 @@ upgrade:
 	pip install -qr requirements/pip-tools.txt
 	$(PIP_COMPILE) -o requirements/pip-tools.txt requirements/pip-tools.in
 	$(PIP_COMPILE) -o requirements/base.txt requirements/base.in
+	$(PIP_COMPILE) -o requirements/testing.txt requirements/testing.in
