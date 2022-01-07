@@ -72,8 +72,16 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
 )
 @click.option(
     '--source-branch',
-    help='The branch to merge the approved PRs on top of (from the source repository).',
-    required=True,
+    help=(
+        'DEPRECATED: The branch to merge the approved PRs on top of (from the source repository).  '
+        'Use --source-deploy-commit instead.'
+    ),
+    required=False,  # TODO make --source-deploy-commit required=True once this option is gone
+)
+@click.option(
+    '--source-deploy-commit',
+    help='The commit ID in the source repo to merge the approved PRs on top of.',
+    required=False,
 )
 @click.option(
     '--out-file',
@@ -96,16 +104,11 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
          u"contain the sha of the merge commit.",
     default='merge_sha',
 )
-@click.option(
-    u'--sha',
-    help=u"The sha of head commit of source-repo. if this does not match the current version of source-repo, this script will exit with error",
-    default=None,
-)
 @click_log.simple_verbosity_option(default=u'INFO')
 def octomerge(
         token, target_repo, source_repo, target_base_branch, source_base_branch,
-        target_branch, source_branch, out_file, target_reference_repo,
-        repo_variable, sha_variable, sha
+        target_branch, source_branch, source_deploy_commit, out_file, target_reference_repo,
+        repo_variable, sha_variable
 ):
     u"""
     Merge all approved security PRs into a release candidate.
@@ -118,15 +121,22 @@ def octomerge(
         * The PR has not been merged to ``source-repo-path:source-base-branch``.
         * The PR is targeted at ``target-org/target-repo:target-base-branch``.
     """
+    # Temporarily accept either, but we want to switch to only
+    # accepting the commit option (the branch option creates a race
+    # condition).
+    if (source_deploy_commit is None) == (source_branch is None):
+        raise AssertionError("Must specify exactly one of --source-deploy-commit/--source-branch")
+
     target_github_repo = github_api.GitHubAPI(*target_repo, token=token)
     source_github_repo = github_api.GitHubAPI(*source_repo, token=token)
     with target_github_repo.clone(target_branch, target_reference_repo).cleanup() as local_repo:
         logging.info(f"Initial target branch at commit {local_repo.get_head_sha(branch=target_branch)}")
         local_repo.add_remote('source', source_github_repo.github_repo.ssh_url)
-        local_repo.force_branch_to(target_branch, source_branch, remote='source')
+        if source_deploy_commit:
+            local_repo.force_branch_to(target_branch, source_deploy_commit)
+        else:
+            local_repo.force_branch_to(target_branch, source_branch, remote='source')
         target_head_sha = local_repo.get_head_sha(branch=target_branch)
-        if sha is not None and target_head_sha != sha:
-            raise AssertionError(f"The head sha of target branch does not match inputed sha, head sha: {target_head_sha}, sha: {sha}")
         logging.info(f"Target branch has been locally forced to {target_head_sha}")
 
         approved_prs = list(find_approved_prs(
