@@ -71,17 +71,9 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
     required=True,
 )
 @click.option(
-    '--source-branch',
-    help=(
-        'DEPRECATED: The branch to merge the approved PRs on top of (from the source repository).  '
-        'Use --source-deploy-commit instead.'
-    ),
-    required=False,  # TODO make --source-deploy-commit required=True once this option is gone
-)
-@click.option(
     '--source-deploy-commit',
     help='The commit ID in the source repo to merge the approved PRs on top of.',
-    required=False,
+    required=True,
 )
 @click.option(
     '--out-file',
@@ -107,7 +99,7 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
 @click_log.simple_verbosity_option(default=u'INFO')
 def octomerge(
         token, target_repo, source_repo, target_base_branch, source_base_branch,
-        target_branch, source_branch, source_deploy_commit, out_file, target_reference_repo,
+        target_branch, source_deploy_commit, out_file, target_reference_repo,
         repo_variable, sha_variable
 ):
     u"""
@@ -121,21 +113,12 @@ def octomerge(
         * The PR has not been merged to ``source-repo-path:source-base-branch``.
         * The PR is targeted at ``target-org/target-repo:target-base-branch``.
     """
-    # Temporarily accept either, but we want to switch to only
-    # accepting the commit option (the branch option creates a race
-    # condition).
-    if (source_deploy_commit is None) == (source_branch is None):
-        raise AssertionError("Must specify exactly one of --source-deploy-commit/--source-branch")
-
     target_github_repo = github_api.GitHubAPI(*target_repo, token=token)
     source_github_repo = github_api.GitHubAPI(*source_repo, token=token)
     with target_github_repo.clone(target_branch, target_reference_repo).cleanup() as local_repo:
         logging.info(f"Initial target branch at commit {local_repo.get_head_sha(branch=target_branch)}")
         local_repo.add_remote('source', source_github_repo.github_repo.ssh_url)
-        if source_deploy_commit:
-            local_repo.force_branch_to(target_branch, source_deploy_commit)
-        else:
-            local_repo.force_branch_to(target_branch, source_branch, remote='source')
+        local_repo.force_branch_to(target_branch, source_deploy_commit)
         target_head_sha = local_repo.get_head_sha(branch=target_branch)
         logging.info(f"Target branch has been locally forced to {target_head_sha}")
 
