@@ -173,12 +173,13 @@ class LocalGitAPI:
 
     def force_branch_to(self, branch, commitish, remote=None):
         """
-        Reset branch to commitish.
+        Reset branch to commitish, which must be a commit ID if remote is None,
+        or a remote branch name if a remote is named.
 
         Arguments:
             branch: the branch to reset
             commitish: The commit to reset the branch to.
-            remote: The remote containing ``commitish``.
+            remote: The remote containing branch named by ``commitish``.
         """
         if remote:
             commitish = self.repo.remotes[remote].refs[commitish]
