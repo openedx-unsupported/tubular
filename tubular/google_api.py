@@ -31,7 +31,7 @@ LOG = logging.getLogger(__name__)
 
 # The maximum number of requests per batch is 100, according to the google API docs.
 # However, cap our number lower than that maximum to avoid throttling errors and backoff.
-GOOGLE_API_MAX_BATCH_SIZE = 20
+GOOGLE_API_MAX_BATCH_SIZE = 10
 
 # Mimetype used for Google Drive folders.
 FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
