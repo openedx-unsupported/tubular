@@ -32,9 +32,9 @@ from time import time
 import click
 
 # Add top-level module path to sys.path before importing tubular code.
-sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-
 from tubular.exception import HttpDoesNotExistException
+
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 # pylint: disable=wrong-import-position
 from tubular.scripts.helpers import (_config_or_exit, _fail, _fail_exception,
