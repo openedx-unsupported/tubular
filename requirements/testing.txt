@@ -139,7 +139,7 @@ requests==2.26.0
     #   responses
 requests-mock==1.9.3
     # via -r requirements/testing.in
-responses==0.20.0
+responses==0.16.0
     # via
     #   -r requirements/testing.in
     #   moto
