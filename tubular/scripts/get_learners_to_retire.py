@@ -93,3 +93,4 @@ if __name__ == "__main__":
     # pylint: disable=unexpected-keyword-arg, no-value-for-parameter
     # If using env vars to provide params, prefix them with "RETIREMENT_", e.g. RETIREMENT_CLIENT_ID
     get_learners_to_retire(auto_envvar_prefix='RETIREMENT')
+
