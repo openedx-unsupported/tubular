@@ -1,58 +1,18 @@
 """
 Tests for edX API calls.
 """
-
 import unittest
-from ddt import ddt, data
-from mock import patch
-from slumber.exceptions import HttpServerError
+
 import requests
-from requests.exceptions import ConnectionError
+import responses
+from ddt import data, ddt
+from mock import patch
+from requests.exceptions import ConnectionError, HTTPError
+from responses import matchers
 
 import tubular.edx_api as edx_api
+from tubular.tests.mixins import OAuth2Mixin
 from tubular.tests.retirement_helpers import TEST_RETIREMENT_QUEUE_STATES
-
-
-class TestBaseApiClient(unittest.TestCase):
-    """
-    Test the edX base API client.
-    """
-
-    def test_get_access_token(self):
-        """
-        Test the get_access_token method.
-        """
-        with patch('tubular.edx_api.EdxRestApiClient.get_oauth_access_token') as mock:
-            edx_api.BaseApiClient.get_access_token(
-                'http://localhost',
-                'the_client_id',
-                'the_client_secret'
-            )
-            mock.assert_called_once_with(
-                'http://localhost/oauth2/access_token',
-                'the_client_id',
-                'the_client_secret',
-                token_type='jwt'
-            )
-
-    def test_base_api_client_client(self):
-        """
-        Test that the EdxRestApiClient is constructed properly.
-        """
-        with patch('tubular.edx_api.BaseApiClient.get_access_token') as mock:
-            mock.return_value = ('THIS_IS_A_JWT', None)
-            with patch('tubular.edx_api.EdxRestApiClient') as mock_client:
-                edx_api.BaseApiClient(
-                    'http://localhost:18000',
-                    'http://localhost',
-                    'the_client_id',
-                    'the_client_secret'
-                )
-                mock_client.assert_called_once_with(
-                    'http://localhost',
-                    jwt='THIS_IS_A_JWT',
-                    append_slash=True
-                )
 
 
 class BackoffTriedException(Exception):
@@ -62,66 +22,89 @@ class BackoffTriedException(Exception):
 
 
 @ddt
-class TestLmsApi(unittest.TestCase):
+class TestLmsApi(OAuth2Mixin, unittest.TestCase):
     """
     Test the edX LMS API client.
     """
 
-    def test_retrieve_learner_queue(self):
-        with patch('tubular.edx_api.BaseApiClient.get_access_token') as mock:
-            mock.return_value = ('THIS_IS_A_JWT', None)
-            with patch('tubular.edx_api.EdxRestApiClient'):
-                lms_api = edx_api.LmsApi(
-                    'http://localhost:18000',
-                    'http://localhost',
-                    'the_client_id',
-                    'the_client_secret'
-                )
-                lms_api.learners_to_retire(TEST_RETIREMENT_QUEUE_STATES, cool_off_days=365)
-                # pylint: disable=protected-access
-                lms_api._client.api.user.v1.accounts.retirement_queue.get.assert_called_once_with(
-                    cool_off_days=365,
-                    states=TEST_RETIREMENT_QUEUE_STATES
-                )
+    @responses.activate
+    @patch.object(edx_api.LmsApi, 'learners_to_retire')
+    def test_retrieve_learner_queue(self, mock_learners_to_retire):
+        self.mock_access_token_response()
+        params = {
+            'states': TEST_RETIREMENT_QUEUE_STATES,
+            'cool_off_days': 365,
+        }
+        lms_api = edx_api.LmsApi(
+            'http://localhost:18000',
+            'http://localhost:18000',
+            'the_client_id',
+            'the_client_secret'
+        )
+        responses.add(
+            responses.GET,
+            'http://localhost:18000/api/user/v1/accounts/retirement_queue/',
+            status=200,
+            match=[matchers.query_param_matcher(params)],
+        )
+        lms_api.learners_to_retire(TEST_RETIREMENT_QUEUE_STATES, cool_off_days=365)
+        mock_learners_to_retire.assert_called_once_with(TEST_RETIREMENT_QUEUE_STATES, cool_off_days=365)
 
+    @responses.activate
     @data(504, 500)
     @patch('tubular.edx_api._backoff_handler')
-    def test_retrieve_learner_queue_backoff(self, svr_status_code, mock_backoff_handler):
+    @patch.object(edx_api.LmsApi, 'learners_to_retire')
+    def test_retrieve_learner_queue_backoff(
+            self,
+            svr_status_code,
+            mock_backoff_handler,
+            mock_learners_to_retire
+    ):
         mock_backoff_handler.side_effect = BackoffTriedException
-        with patch('tubular.edx_api.BaseApiClient.get_access_token') as mock_get_access_token:
-            mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
-            with patch('tubular.edx_api.EdxRestApiClient'):
-                lms_api = edx_api.LmsApi(
-                    'http://localhost:18000',
-                    'http://localhost',
-                    'the_client_id',
-                    'the_client_secret'
-                )
-                response = requests.Response()
-                response.status_code = svr_status_code
-                # pylint: disable=protected-access
-                lms_api._client.api.user.v1.accounts.retirement_queue.get.side_effect = \
-                    HttpServerError(response=response)
-                with self.assertRaises(BackoffTriedException):
-                    lms_api.learners_to_retire(TEST_RETIREMENT_QUEUE_STATES, cool_off_days=365)
+        self.mock_access_token_response()
+        params = {
+            'states': TEST_RETIREMENT_QUEUE_STATES,
+            'cool_off_days': 365,
+        }
+        lms_api = edx_api.LmsApi(
+            'http://localhost:18000',
+            'http://localhost:18000',
+            'the_client_id',
+            'the_client_secret'
+        )
+        response = requests.Response()
+        response.status_code = svr_status_code
+        responses.add(
+            responses.GET,
+            'http://localhost:18000/api/user/v1/accounts/retirement_queue/',
+            status=200,
+            match=[matchers.query_param_matcher(params)],
+        )
+
+        mock_learners_to_retire.side_effect = HTTPError(response=response)
+        with self.assertRaises(BackoffTriedException):
+            lms_api.learners_to_retire(TEST_RETIREMENT_QUEUE_STATES, cool_off_days=365)
 
     @data(104)
+    @responses.activate
     @patch('tubular.edx_api._backoff_handler')
-    def test_retirement_partner_cleanup_backoff_on_connection_error(self, svr_status_code, mock_backoff_handler):
+    @patch.object(edx_api.LmsApi, 'retirement_partner_cleanup')
+    def test_retirement_partner_cleanup_backoff_on_connection_error(
+            self,
+            svr_status_code,
+            mock_backoff_handler,
+            mock_retirement_partner_cleanup
+    ):
         mock_backoff_handler.side_effect = BackoffTriedException
-        with patch('tubular.edx_api.BaseApiClient.get_access_token') as mock_get_access_token:
-            mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
-            with patch('tubular.edx_api.EdxRestApiClient'):
-                lms_api = edx_api.LmsApi(
-                    'http://localhost:18000',
-                    'http://localhost',
-                    'the_client_id',
-                    'the_client_secret'
-                )
-                response = requests.Response()
-                response.status_code = svr_status_code
-                # pylint: disable=protected-access
-                lms_api._client.api.user.v1.accounts.retirement_partner_report_cleanup.post.side_effect = \
-                    ConnectionError(response=response)
-                with self.assertRaises(BackoffTriedException):
-                    lms_api.retirement_partner_cleanup([{'original_username': 'test'}])
+        self.mock_access_token_response()
+        lms_api = edx_api.LmsApi(
+            'http://localhost:18000',
+            'http://localhost:18000',
+            'the_client_id',
+            'the_client_secret'
+        )
+        response = requests.Response()
+        response.status_code = svr_status_code
+        mock_retirement_partner_cleanup.retirement_partner_cleanup.side_effect = ConnectionError(response=response)
+        with self.assertRaises(BackoffTriedException):
+            lms_api.retirement_partner_cleanup([{'original_username': 'test'}])

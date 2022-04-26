@@ -4,6 +4,7 @@ Command-line script to drive the user retirement workflow for a single user
 
 To run this script you will need a username to run against and a YAML config file in the format:
 
+
 client_id: <client id from LMS DOT>
 client_secret: <client secret from LMS DOT>
 base_urls:
@@ -22,29 +23,23 @@ retirement_pipeline:
     - ['RETIRING_LMS', 'LMS_COMPLETE', 'LMS', 'retirement_lms_retire']
 """
 
-
+import logging
+import sys
 from functools import partial
 from os import path
 from time import time
-import logging
-import sys
 
 import click
-from six import text_type
-from slumber.exceptions import HttpNotFoundError
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
+from tubular.exception import HttpDoesNotExistException
+
 # pylint: disable=wrong-import-position
-from tubular.scripts.helpers import (
-    _config_or_exit,
-    _fail,
-    _fail_exception,
-    _get_error_str_from_exception,
-    _log,
-    _setup_all_apis_or_exit
-)
+from tubular.scripts.helpers import (_config_or_exit, _fail, _fail_exception,
+                                     _get_error_str_from_exception, _log,
+                                     _setup_all_apis_or_exit)
 
 # Return codes for various fail cases
 ERR_SETUP_FAILED = -1
@@ -61,7 +56,6 @@ FAIL = partial(_fail, SCRIPT_SHORTNAME)
 FAIL_EXCEPTION = partial(_fail_exception, SCRIPT_SHORTNAME)
 CONFIG_OR_EXIT = partial(_config_or_exit, FAIL_EXCEPTION, ERR_BAD_CONFIG)
 SETUP_ALL_APIS_OR_EXIT = partial(_setup_all_apis_or_exit, FAIL_EXCEPTION, ERR_SETUP_FAILED)
-
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
@@ -125,12 +119,12 @@ def _get_learner_and_state_index_or_exit(config, username):
         learner = config['LMS'].get_learner_retirement_state(username)
         learner_state_index = _get_learner_state_index_or_exit(learner, config)
         return learner, learner_state_index
-    except HttpNotFoundError:
+    except HttpDoesNotExistException:
         FAIL(ERR_BAD_LEARNER, 'Learner {} not found. Please check that the learner is present in '
                               'UserRetirementStatus, is not already retired, '
                               'and is in an appropriate state to be acted upon.'.format(username))
     except Exception as exc:  # pylint: disable=broad-except
-        FAIL_EXCEPTION(ERR_SETUP_FAILED, 'Unexpected error fetching user state!', text_type(exc))
+        FAIL_EXCEPTION(ERR_SETUP_FAILED, 'Unexpected error fetching user state!', str(exc))
 
 
 def _get_ecom_segment_id(config, learner):
@@ -141,11 +135,11 @@ def _get_ecom_segment_id(config, learner):
     """
     try:
         return config['ECOMMERCE'].get_tracking_key(learner)
-    except HttpNotFoundError:
+    except HttpDoesNotExistException:
         LOG('Learner {} not found in Ecommerce. Setting Ecommerce Segment ID to None'.format(learner))
         return None
     except Exception as exc:  # pylint: disable=broad-except
-        FAIL_EXCEPTION(ERR_SETUP_FAILED, 'Unexpected error fetching Ecommerce tracking id!', text_type(exc))
+        FAIL_EXCEPTION(ERR_SETUP_FAILED, 'Unexpected error fetching Ecommerce tracking id!', str(exc))
 
 
 @click.command("retire_learner")

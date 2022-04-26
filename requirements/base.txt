@@ -50,7 +50,7 @@ easydict==1.9
     # via yagocd
 edx-opaque-keys==0.4.0
     # via -r requirements/base.in
-edx-rest-api-client==1.7.1
+edx-rest-api-client==5.5.0
     # via -r requirements/base.in
 freezegun==0.3.8
     # via -r requirements/base.in

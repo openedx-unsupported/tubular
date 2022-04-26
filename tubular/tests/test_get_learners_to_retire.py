@@ -6,7 +6,7 @@ import os
 from mock import patch, DEFAULT
 
 from click.testing import CliRunner
-from slumber.exceptions import HttpClientError, HttpServerError
+from requests.exceptions import RequestException, HTTPError
 
 from tubular.scripts.get_learners_to_retire import (
     get_learners_to_retire
@@ -78,7 +78,7 @@ def test_lms_down(*args, **kwargs):
     mock_get_learners_to_retire = kwargs['learners_to_retire']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
-    mock_get_learners_to_retire.side_effect = HttpServerError
+    mock_get_learners_to_retire.side_effect = HTTPError
 
     result = _call_script(0)
 
@@ -99,7 +99,7 @@ def test_misconfigured(*args, **kwargs):
     mock_get_learners_to_retire = kwargs['learners_to_retire']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
-    mock_get_learners_to_retire.side_effect = HttpClientError
+    mock_get_learners_to_retire.side_effect = RequestException
 
     result = _call_script(0)
 
