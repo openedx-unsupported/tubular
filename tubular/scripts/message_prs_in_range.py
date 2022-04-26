@@ -198,6 +198,5 @@ def message_pr(api, message_type, pull_request, extra_text, no_op):
             raise exc
 
 
-if __name__ == "__main__":
+if __name__ == u"__main__":
     message_pull_requests()  # pylint: disable=no-value-for-parameter
-

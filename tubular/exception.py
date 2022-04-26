@@ -1,6 +1,7 @@
 """
 Exceptions used by various utilities.
 """
+# pylint: disable=missing-docstring
 
 
 class TimeoutException(Exception):
@@ -64,11 +65,4 @@ class InvalidUrlException(Exception):
 
 
 class RateLimitedException(Exception):
-    pass
-
-
-class HttpDoesNotExistException(Exception):
-    """
-    Called when the server sends a 404 error.
-    """
     pass
