@@ -70,9 +70,21 @@ def test_successful_report_deletion(*args):
     file_prefix = '{}_{}'.format(REPORTING_FILENAME_PREFIX, TEST_PLATFORM_NAME)
 
     mock_walk_files.return_value = [
-        {'id': 'folder1', 'name': '{}.csv'.format(file_prefix), 'createdTime': test_created_date},
-        {'id': 'folder2', 'name': '{}_foo.csv'.format(file_prefix), 'createdTime': test_created_date},
-        {'id': 'folder3', 'name': '{}___bar.csv'.format(file_prefix), 'createdTime': test_created_date},
+        {
+            'id': 'folder1',
+            'name': '{}.csv'.format(file_prefix),
+            'createdTime': test_created_date,
+        },
+        {
+            'id': 'folder2',
+            'name': '{}_foo.csv'.format(file_prefix),
+            'createdTime': test_created_date,
+        },
+        {
+            'id': 'folder3',
+            'name': '{}___bar.csv'.format(file_prefix),
+            'createdTime': test_created_date,
+        },
     ]
     mock_delete_files.return_value = None
     mock_driveapi.return_value = None
@@ -98,9 +110,21 @@ def test_deletion_report_no_matching_files(*args):
 
     test_created_date = '2018-07-13T22:21:45.600275+00:00'
     mock_walk_files.return_value = [
-        {'id': 'folder1', 'name': 'not_this.csv', 'createdTime': test_created_date},
-        {'id': 'folder2', 'name': 'or_this.csv', 'createdTime': test_created_date},
-        {'id': 'folder3', 'name': 'foo.csv', 'createdTime': test_created_date},
+        {
+            'id': 'folder1',
+            'name': 'not_this.csv',
+            'createdTime': test_created_date,
+        },
+        {
+            'id': 'folder2',
+            'name': 'or_this.csv',
+            'createdTime': test_created_date,
+        },
+        {
+            'id': 'folder3',
+            'name': 'foo.csv',
+            'createdTime': test_created_date,
+        },
     ]
     mock_delete_files.return_value = None
     mock_driveapi.return_value = None
