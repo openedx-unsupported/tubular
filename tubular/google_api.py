@@ -11,12 +11,14 @@ DriveApi is for managing files in google drive.
 
 from itertools import count
 
+import json
 import logging
 from six import iteritems, text_type
 import backoff
 
 from dateutil.parser import parse
 from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseUpload
@@ -35,6 +37,12 @@ GOOGLE_API_MAX_BATCH_SIZE = 10
 
 # Mimetype used for Google Drive folders.
 FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
+
+# Fields to be extracted from OAuth2 JSON token files
+OAUTH2_TOKEN_FIELDS = [
+    'client_id', 'client_secret', 'refresh_token',
+    'token_uri', 'id_token', 'scopes', 'access_token'
+]
 
 
 class BatchRequestError(Exception):
@@ -70,8 +78,27 @@ class BaseApiClient:
         """
         Build the google API client, specific to a single google service.
         """
-        credentials = service_account.Credentials.from_service_account_file(
-            client_secrets_file_path, scopes=self._api_scopes)
+        # as_user_account is an indicator that the authentication
+        # is using a user account.
+        # If not true, assume a service account. Otherwise, read in the JSON
+        # file, set the scope, and use the info to instantiate Credentials.
+        # For more information about user account authentication, go to
+        # https://google-auth.readthedocs.io/en/master/user-guide.html#user-credentials
+        as_user_account = kwargs.pop('as_user_account', False)
+        if not as_user_account:
+            credentials = service_account.Credentials.from_service_account_file(
+                client_secrets_file_path, scopes=self._api_scopes
+            )
+        else:
+            with open(client_secrets_file_path) as fh:
+                token_info = json.load(fh)
+                token_info = {k: token_info.get(k) for k in OAUTH2_TOKEN_FIELDS}
+                # Take the access_token field and change it to token
+                token = token_info.pop('access_token', None)
+                token_info['token'] = token
+                # Set the scopes
+                token_info['scopes'] = self._api_scopes
+                credentials = Credentials(**token_info)
         self._client = build(self._api_name, self._api_version, credentials=credentials, **kwargs)
         LOG.info("Client built.")
 
@@ -203,7 +230,9 @@ class DriveApi(BaseApiClient):
     _api_version = 'v3'
     _api_scopes = [
         # basic file read-write functionality.
-        'https://www.googleapis.com/auth/drive.file',
+        # 'https://www.googleapis.com/auth/drive.file',
+        # Full read write functionality
+        'https://www.googleapis.com/auth/drive',
         # additional scope for being able to see folders not owned by this account.
         'https://www.googleapis.com/auth/drive.metadata',
     ]
@@ -294,7 +323,9 @@ class DriveApi(BaseApiClient):
             prefix (str): Filename prefix - only files started with this prefix will be deleted.
         """
         LOG.info("Walking files...")
-        all_files = self.walk_files(top_level, 'id, name, createdTime', mimetype)
+        all_files = self.walk_files(
+            top_level, 'id, name, createdTime', mimetype
+        )
         LOG.info("Files walked. {} files found before filtering.".format(len(all_files)))
         file_ids_to_delete = []
         for file in all_files:

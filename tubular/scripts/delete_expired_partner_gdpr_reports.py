@@ -80,7 +80,19 @@ def _config_or_exit(config_file, google_secrets_file):
     type=int,
     help='Days ago from the current time - before which all GDPR partner reports will be deleted.'
 )
-def delete_expired_reports(config_file, google_secrets_file, age_in_days):
+@click.option(
+    '--as_user_account',
+    is_flag=True,
+    help=(
+        'Whether or not the given secrets file is an OAuth2 JSON token, '
+        'which means that the authentication is done using a '
+        'user account, and NOT a service account.'
+    ),
+    show_default=True,
+)
+def delete_expired_reports(
+    config_file, google_secrets_file, age_in_days, as_user_account
+):
     """
     Performs the partner report deletion as needed.
     """
@@ -101,7 +113,9 @@ def delete_expired_reports(config_file, google_secrets_file, age_in_days):
 
     try:
         delete_before_dt = datetime.now(UTC) - timedelta(days=age_in_days)
-        drive = DriveApi(config['google_secrets_file'])
+        drive = DriveApi(
+            config['google_secrets_file'], as_user_account=as_user_account
+        )
         LOG('DriveApi configured')
         drive.delete_files_older_than(
             config['drive_partners_folder'],
