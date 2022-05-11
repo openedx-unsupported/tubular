@@ -41,7 +41,7 @@ EXPECTED_RELEASE_DATE = default_expected_release_date()
 @click.option(
     '--confluence-url',
     help=u"The base url of the confluence instance to publish the release page to.",
-    default='https://openedx.atlassian.net/wiki',
+    default='https://2u-internal.atlassian.net/wiki',
 )
 @click.option(
     '--user',
@@ -77,7 +77,7 @@ EXPECTED_RELEASE_DATE = default_expected_release_date()
 @click.option(
     '--jira-url',
     help=u"The base url for the JIRA instance to link JIRA tickets to.",
-    default='https://openedx.atlassian.net'
+    default='https://2u-internal.atlassian.net'
 )
 @click.option(
     '--gocd-url',
