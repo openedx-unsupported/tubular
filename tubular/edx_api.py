@@ -88,8 +88,18 @@ def _giveup_on_unexpected_exception(exc):
     """
     Giveup method that gives up backoff upon any unexpected exception.
     """
-    return not ( (500 <= exc.response.status_code < 600 and exc.response.status_code != 504) or exc.response.status_code == 104)
-
+    keep_retrying = (
+        # Treat a ConnectionError as retryable.
+        isinstance(exc, ConnectionError)
+        # All 5xx status codes are retryable except for 504 Gateway Timeout.
+        or (
+            500 <= exc.response.status_code < 600
+            and exc.response.status_code != 504 # Gateway Timeout
+        )
+        # Status code 104 is unreserved, but we must have added this because we observed retryable 104 responses.
+        or exc.response.status_code == 104
+    )
+    return not keep_retrying
 
 def _retry_lms_api():
     """
