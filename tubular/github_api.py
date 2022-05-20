@@ -66,7 +66,7 @@ class MessageType(enum.Enum):
     loadtest_rollback = 'This PR has been rolled back from the loadtest environment.'
     broke_vagrant = 'This PR may have broken Vagrant Devstack CI.'
     e2e_failed = "This PR may have caused e2e tests to fail on Stage. " \
-                 "If you're a member of the edX org, please visit #e2e-troubleshooting on Slack to " \
+                 "If you're a member of the edX org, please visit #warroom on Slack to " \
                  "help diagnose the cause of these failures. Otherwise, it is the reviewer's responsibility."
     jenkins = 'The job triggered by this PR has completed successfully'
     jenkins_failed = 'The job triggered by this PR has failed'
