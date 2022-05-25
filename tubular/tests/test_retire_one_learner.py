@@ -2,11 +2,10 @@
 Test the retire_one_learner.py script
 """
 
-from mock import patch, DEFAULT
-
 from click.testing import CliRunner
-from slumber.exceptions import HttpNotFoundError
+from mock import DEFAULT, patch
 
+from tubular.exception import HttpDoesNotExistException
 from tubular.scripts.retire_one_learner import (
     END_STATES,
     ERR_BAD_CONFIG,
@@ -17,7 +16,10 @@ from tubular.scripts.retire_one_learner import (
     ERR_USER_IN_WORKING_STATE,
     retire_learner
 )
-from tubular.tests.retirement_helpers import fake_config_file, get_fake_user_retirement
+from tubular.tests.retirement_helpers import (
+    fake_config_file,
+    get_fake_user_retirement
+)
 
 
 def _call_script(username, fetch_ecom_segment_id=False):
@@ -130,7 +132,7 @@ def test_bad_learner(*args, **kwargs):
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
 
     # Broken API call, no state returned
-    mock_get_retirement_state.side_effect = HttpNotFoundError
+    mock_get_retirement_state.side_effect = HttpDoesNotExistException
     result = _call_script(username)
 
     assert mock_get_access_token.call_count == 3
@@ -354,7 +356,7 @@ def test_get_segment_id_not_found(*args, **kwargs):
     mock_get_retirement_state = kwargs['get_learner_retirement_state']
 
     mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
-    mock_get_tracking_key.side_effect = HttpNotFoundError('{} not found'.format(username))
+    mock_get_tracking_key.side_effect = HttpDoesNotExistException('{} not found'.format(username))
 
     mock_get_retirement_state.return_value = get_fake_user_retirement(
         original_username=username,
