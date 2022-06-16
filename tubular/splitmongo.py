@@ -244,7 +244,7 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
         # isn't an original.
         for branch in branches:
             rewrite_candidates = takewhile(
-                lambda s: s in structure_ids_to_save and not structures[s].is_original(),
+                lambda s: s in structure_ids_to_save and s in structures and not structures[s].is_original(),
                 structures_graph.traverse_ids(branch.structure_id, include_start=True)
             )
             # `last_seen` will have the last structure_id from the
