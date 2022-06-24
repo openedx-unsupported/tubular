@@ -2,15 +2,18 @@
 edX API classes which call edX service REST API endpoints using the edx-rest-api-client module.
 """
 import logging
-from contextlib import contextmanager
+from urllib.parse import urljoin
 
 import backoff
-from requests.exceptions import ConnectionError
-from six import text_type
-from slumber.exceptions import HttpClientError, HttpServerError, HttpNotFoundError
+import requests
+from edx_rest_api_client.auth import SuppliedJwtAuth
+from edx_rest_api_client.client import (
+    REQUEST_CONNECT_TIMEOUT,
+    REQUEST_READ_TIMEOUT
+)
+from requests.exceptions import ConnectionError, HTTPError, Timeout
 
-from edx_rest_api_client.client import EdxRestApiClient
-
+from tubular.exception import HttpDoesNotExistException
 
 LOG = logging.getLogger(__name__)
 
@@ -29,44 +32,95 @@ class BaseApiClient:
     API client base class used to submit API requests to a particular web service.
     """
     append_slash = True
-    _client = None
+    _access_token = None
 
     def __init__(self, lms_base_url, api_base_url, client_id, client_secret):
         """
         Retrieves OAuth access token from the LMS and creates REST API client instance.
         """
         self.api_base_url = api_base_url
-        access_token, __ = self.get_access_token(lms_base_url, client_id, client_secret)
-        self.create_client(access_token)
+        self._access_token = self.get_access_token(lms_base_url, client_id, client_secret)
 
-    def create_client(self, access_token):
+    def get_api_url(self, path):
         """
-        Creates and stores the EdxRestApiClient that we use to actually make requests.
+        Construct the full API URL using the api_base_url and path.
+
+        Args:
+            path (str): API endpoint path.
         """
-        self._client = EdxRestApiClient(
-            self.api_base_url,
-            jwt=access_token,
-            append_slash=self.append_slash
-        )
+        path = path.strip('/')
+        if self.append_slash:
+            path += '/'
+
+        return urljoin(f'{self.api_base_url}/', path)
+
+    def _request(self, method, url, log_404_as_error=True, **kwargs):
+        if 'headers' not in kwargs:
+            kwargs['headers'] = {'Content-type': 'application/json'}
+
+        try:
+            response = requests.request(method, url, auth=SuppliedJwtAuth(self._access_token), **kwargs)
+            response.raise_for_status()
+
+            if response.status_code != 204:
+                return response.json()
+        except HTTPError as exc:
+            status_code = exc.response.status_code
+
+            if status_code == 404 and not log_404_as_error:
+                # Immediately raise the error so that a 404 isn't logged as an API error in this case.
+                raise HttpDoesNotExistException(str(exc))
+
+            LOG.error(f'API Error: {str(exc)} with status code: {status_code}')
+
+            if status_code == 504:
+                # Differentiate gateway errors so different backoff can be used.
+                raise EdxGatewayTimeoutError(str(exc))
+
+            if status_code == 404:
+                raise HttpDoesNotExistException(str(exc))
+            raise
+
+        except Timeout:
+            LOG.error("The request is timed out.")
+            raise
+
+        return response
 
     @staticmethod
     def get_access_token(oauth_base_url, client_id, client_secret):
         """
-        Returns an access token and expiration date from the OAuth provider.
+        Returns an access token for this site's service user.
 
         Returns:
-            (str, datetime)
+            str: JWT access token
         """
+        oauth_access_token_url = urljoin(f'{oauth_base_url}/', OAUTH_ACCESS_TOKEN_URL)
+        data = {
+            'grant_type': 'client_credentials',
+            'client_id': client_id,
+            'client_secret': client_secret,
+            'token_type': 'jwt',
+        }
         try:
-            return EdxRestApiClient.get_oauth_access_token(
-                oauth_base_url + OAUTH_ACCESS_TOKEN_URL, client_id, client_secret, token_type='jwt'
+            response = requests.post(
+                oauth_access_token_url,
+                data=data,
+                headers={
+                    'User-Agent': 'tubular',
+                },
+                timeout=(REQUEST_CONNECT_TIMEOUT, REQUEST_READ_TIMEOUT)
             )
-        except HttpClientError as err:
-            LOG.error("API Error: {} with status code: {} fetching access token for client: {}".format(
-                err.content,
-                err.response.status_code,  # pylint: disable=no-member
-                client_id,
-            ))
+            response.raise_for_status()
+            return response.json()['access_token']
+        except KeyError as exc:
+            LOG.error(f'Failed to get token. {str(exc)} does not exist.')
+            raise
+
+        except HTTPError as exc:
+            LOG.error(
+                f'API Error: {str(exc)} with status code: {exc.response.status_code} fetching access token: {client_id}'
+            )
             raise
 
 
@@ -101,6 +155,7 @@ def _giveup_on_unexpected_exception(exc):
     )
     return not keep_retrying
 
+
 def _retry_lms_api():
     """
     Decorator which enables retries with sane backoff defaults for LMS APIs.
@@ -108,7 +163,7 @@ def _retry_lms_api():
     def inner(func):  # pylint: disable=missing-docstring
         func_with_backoff = backoff.on_exception(
             backoff.expo,
-            (HttpServerError, ConnectionError),
+            (HTTPError, ConnectionError),
             max_time=600,  # 10 minutes
             giveup=_giveup_on_unexpected_exception,
             # Wrap the actual _backoff_handler so that we can patch the real one in unit tests.  Otherwise, the func
@@ -126,41 +181,8 @@ def _retry_lms_api():
             on_backoff=lambda details: _backoff_handler(details)  # pylint: disable=unnecessary-lambda
         )
         return func_with_backoff(func_with_timeout_backoff(func))
+
     return inner
-
-
-@contextmanager
-def correct_exception(log_404_as_error=True):
-    """
-    Context manager that differentiates 504 gateway timeouts from other 5xx server errors.
-    Re-raises any unhandled exceptions.
-
-    Params:
-        log_404_as_error (bool): Whether or not to log a response code of 404 as an error. Pass False for
-            services like license-manager where 404 is a valid response that represents there was no data for that
-            user.
-    """
-    try:
-        yield
-    except HttpServerError as err:
-        if err.response.status_code == 504:  # pylint: disable=no-member
-            # Differentiate gateway errors so different backoff can be used.
-            raise EdxGatewayTimeoutError(text_type(err))
-        raise err
-    except HttpClientError as err:
-        status_code = err.response.status_code  # pylint: disable=no-member
-        if status_code == 404 and not log_404_as_error:
-            # Immediately raise the error so that a 404 isn't logged as an API error in this case.
-            raise err
-
-        if hasattr(err, 'content'):
-            LOG.error("API Error: {} with status code: {}".format(err.content, status_code))
-        else:
-            LOG.error("API Error: {} with status code: {} for response without content".format(
-                text_type(err),
-                status_code,
-            ))
-        raise err
 
 
 class LmsApi(BaseApiClient):
@@ -176,8 +198,8 @@ class LmsApi(BaseApiClient):
             'cool_off_days': cool_off_days,
             'states': states_to_request
         }
-        with correct_exception():
-            return self._client.api.user.v1.accounts.retirement_queue.get(**params)
+        api_url = self.get_api_url('api/user/v1/accounts/retirement_queue')
+        return self._request('GET', api_url, params=params)
 
     @_retry_lms_api()
     def get_learners_by_date_and_status(self, state_to_request, start_date, end_date):
@@ -195,16 +217,16 @@ class LmsApi(BaseApiClient):
             'end_date': end_date.strftime('%Y-%m-%d'),
             'state': state_to_request
         }
-        with correct_exception():
-            return self._client.api.user.v1.accounts.retirements_by_status_and_date.get(**params)
+        api_url = self.get_api_url('api/user/v1/accounts/retirements_by_status_and_date')
+        return self._request('GET', api_url, params=params)
 
     @_retry_lms_api()
     def get_learner_retirement_state(self, username):
         """
         Retrieves the given learner's retirement state.
         """
-        with correct_exception():
-            return self._client.api.user.v1.accounts(username).retirement_status.get()
+        api_url = self.get_api_url(f'api/user/v1/accounts/{username}/retirement_status')
+        return self._request('GET', api_url)
 
     @_retry_lms_api()
     def update_learner_retirement_state(self, username, new_state_name, message, force=False):
@@ -212,28 +234,26 @@ class LmsApi(BaseApiClient):
         Updates the given learner's retirement state to the retirement state name new_string
         with the additional string information in message (for logging purposes).
         """
-        params = {
-            'data': {
-                'username': username,
-                'new_state': new_state_name,
-                'response': message
-            }
+        data = {
+            'username': username,
+            'new_state': new_state_name,
+            'response': message
         }
 
         if force:
-            params['data']['force'] = True
+            data['force'] = True
 
-        with correct_exception():
-            return self._client.api.user.v1.accounts.update_retirement_status.patch(**params)
+        api_url = self.get_api_url('api/user/v1/accounts/update_retirement_status')
+        return self._request('PATCH', api_url, json=data)
 
     @_retry_lms_api()
     def retirement_deactivate_logout(self, learner):
         """
         Performs the user deactivation and forced logout step of learner retirement
         """
-        params = {'data': {'username': learner['original_username']}}
-        with correct_exception():
-            return self._client.api.user.v1.accounts.deactivate_logout.post(**params)
+        data = {'username': learner['original_username']}
+        api_url = self.get_api_url('api/user/v1/accounts/deactivate_logout')
+        return self._request('POST', api_url, json=data)
 
     @_retry_lms_api()
     def retirement_retire_forum(self, learner):
@@ -241,11 +261,12 @@ class LmsApi(BaseApiClient):
         Performs the forum retirement step of learner retirement
         """
         # api/discussion/
-        params = {'data': {'username': learner['original_username']}}
+        data = {'username': learner['original_username']}
         try:
-            with correct_exception():
-                return self._client.api.discussion.v1.accounts.retire_forum.post(**params)
-        except HttpNotFoundError:
+            api_url = self.get_api_url('api/discussion/v1/accounts/retire_forum')
+            return self._request('POST', api_url, json=data)
+        except HttpDoesNotExistException:
+            LOG.info("No information about learner retirement")
             return True
 
     @_retry_lms_api()
@@ -253,18 +274,18 @@ class LmsApi(BaseApiClient):
         """
         Performs the email list retirement step of learner retirement
         """
-        params = {'data': {'username': learner['original_username']}}
-        with correct_exception():
-            return self._client.api.user.v1.accounts.retire_mailings.post(**params)
+        data = {'username': learner['original_username']}
+        api_url = self.get_api_url('api/user/v1/accounts/retire_mailings')
+        return self._request('POST', api_url, json=data)
 
     @_retry_lms_api()
     def retirement_unenroll(self, learner):
         """
         Unenrolls the user from all courses
         """
-        params = {'data': {'username': learner['original_username']}}
-        with correct_exception():
-            return self._client.api.enrollment.v1.unenroll.post(**params)
+        data = {'username': learner['original_username']}
+        api_url = self.get_api_url('api/enrollment/v1/unenroll')
+        return self._request('POST', api_url, json=data)
 
     # This endpoint additionally returns 500 when the EdxNotes backend service is unavailable.
     @_retry_lms_api()
@@ -272,9 +293,9 @@ class LmsApi(BaseApiClient):
         """
         Deletes all the user's notes (aka. annotations)
         """
-        params = {'data': {'username': learner['original_username']}}
-        with correct_exception():
-            return self._client.api.edxnotes.v1.retire_user.post(**params)
+        data = {'username': learner['original_username']}
+        api_url = self.get_api_url('api/edxnotes/v1/retire_user')
+        return self._request('POST', api_url, json=data)
 
     @_retry_lms_api()
     def retirement_lms_retire_misc(self, learner):
@@ -282,27 +303,27 @@ class LmsApi(BaseApiClient):
         Deletes, blanks, or one-way hashes personal information in LMS as
         defined in EDUCATOR-2802 and sub-tasks.
         """
-        params = {'data': {'username': learner['original_username']}}
-        with correct_exception():
-            return self._client.api.user.v1.accounts.retire_misc.post(**params)
+        data = {'username': learner['original_username']}
+        api_url = self.get_api_url('api/user/v1/accounts/retire_misc')
+        return self._request('POST', api_url, json=data)
 
     @_retry_lms_api()
     def retirement_lms_retire(self, learner):
         """
         Deletes, blanks, or one-way hashes all remaining personal information in LMS
         """
-        params = {'data': {'username': learner['original_username']}}
-        with correct_exception():
-            return self._client.api.user.v1.accounts.retire.post(**params)
+        data = {'username': learner['original_username']}
+        api_url = self.get_api_url('api/user/v1/accounts/retire')
+        return self._request('POST', api_url, json=data)
 
     @_retry_lms_api()
     def retirement_partner_queue(self, learner):
         """
         Calls LMS to add the given user to the retirement reporting queue
         """
-        params = {'data': {'username': learner['original_username']}}
-        with correct_exception():
-            return self._client.api.user.v1.accounts.retirement_partner_report.put(**params)
+        data = {'username': learner['original_username']}
+        api_url = self.get_api_url('api/user/v1/accounts/retirement_partner_report')
+        return self._request('PUT', api_url, json=data)
 
     @_retry_lms_api()
     def retirement_partner_report(self):
@@ -310,64 +331,66 @@ class LmsApi(BaseApiClient):
         Retrieves the list of users to create partner reports for and set their status to
         processing
         """
-        with correct_exception():
-            return self._client.api.user.v1.accounts.retirement_partner_report.post()
+        api_url = self.get_api_url('api/user/v1/accounts/retirement_partner_report')
+        return self._request('POST', api_url)
 
     @_retry_lms_api()
     def retirement_partner_cleanup(self, usernames):
         """
         Removes the given users from the partner reporting queue
         """
-        params = {'data': usernames}
-        with correct_exception():
-            return self._client.api.user.v1.accounts.retirement_partner_report_cleanup.post(**params)
+        data = {'usernames': usernames}
+        api_url = self.get_api_url('api/user/v1/accounts/retirement_partner_report_cleanup')
+        return self._request('POST', api_url, json=data)
 
     @_retry_lms_api()
     def retirement_retire_proctoring_data(self, learner):
         """
         Deletes or hashes learner data from edx-proctoring
         """
-        with correct_exception():
-            return self._client.api.edx_proctoring.v1.retire_user(learner['user']['id']).post()
+        api_url = self.get_api_url(f"api/edx_proctoring/v1/retire_user/{learner['user']['id']}")
+        return self._request('POST', api_url)
 
     @_retry_lms_api()
     def retirement_retire_proctoring_backend_data(self, learner):
         """
         Removes the given learner from 3rd party proctoring backends
         """
-        with correct_exception():
-            return self._client.api.edx_proctoring.v1.retire_backend_user(learner['user']['id']).post()
+        api_url = self.get_api_url(f"api/edx_proctoring/v1/retire_backend_user/{learner['user']['id']}")
+        return self._request('POST', api_url)
 
     @_retry_lms_api()
     def bulk_cleanup_retirements(self, usernames):
         """
         Deletes the retirements for all given usernames
         """
-        params = {'data': {'usernames': usernames}}
-        with correct_exception():
-            return self._client.api.user.v1.accounts.retirement_cleanup.post(**params)
+        data = {'usernames': usernames}
+        api_url = self.get_api_url('api/user/v1/accounts/retirement_cleanup')
+        return self._request('POST', api_url, json=data)
 
     def replace_lms_usernames(self, username_mappings):
         """
         Calls LMS API to replace usernames.
+
         Param:
             username_mappings: list of dicts where key is current username and value is new desired username
             [{current_un_1: desired_un_1}, {current_un_2: desired_un_2}]
         """
-        request_data = {"username_mappings": username_mappings}
-        with correct_exception():
-            return self._client.api.user.v1.accounts.replace_usernames.post(data=request_data)
+        data = {"username_mappings": username_mappings}
+        api_url = self.get_api_url('api/user/v1/accounts/replace_usernames')
+        return self._request('POST', api_url, json=data)
 
     def replace_forums_usernames(self, username_mappings):
         """
         Calls the discussion forums API inside of LMS to replace usernames.
+
         Param:
             username_mappings: list of dicts where key is current username and value is new unique username
             [{current_un_1: new_un_1}, {current_un_2: new_un_2}]
         """
-        request_data = {"username_mappings": username_mappings}
-        with correct_exception():
-            return self._client.api.discussion.v1.accounts.replace_usernames.post(data=request_data)
+        data = {"username_mappings": username_mappings}
+        api_url = self.get_api_url('api/discussion/v1/accounts/replace_usernames')
+        return self._request('POST', api_url, json=data)
 
 
 class EcommerceApi(BaseApiClient):
@@ -379,9 +402,9 @@ class EcommerceApi(BaseApiClient):
         """
         Performs the learner retirement step for Ecommerce
         """
-        params = {'data': {'username': learner['original_username']}}
-        with correct_exception():
-            return self._client.api.v2.user.retire.post(**params)
+        data = {'username': learner['original_username']}
+        api_url = self.get_api_url('api/v2/user/retire')
+        return self._request('POST', api_url, json=data)
 
     @_retry_lms_api()
     def get_tracking_key(self, learner):
@@ -389,20 +412,20 @@ class EcommerceApi(BaseApiClient):
         Fetches the ecommerce tracking id used for Segment tracking when
         ecommerce doesn't have access to the LMS user id.
         """
-        with correct_exception():
-            result = self._client.api.v2.retirement.tracking_id(learner['original_username']).get()
-            return result['ecommerce_tracking_id']
+        api_url = self.get_api_url(f"api/v2/retirement/tracking_id/{learner['original_username']}")
+        return self._request('GET', api_url)['ecommerce_tracking_id']
 
     def replace_usernames(self, username_mappings):
         """
         Calls the ecommerce API to replace usernames.
+
         Param:
             username_mappings: list of dicts where key is current username and value is new unique username
             [{current_un_1: new_un_1}, {current_un_2: new_un_2}]
         """
-        request_data = {"username_mappings": username_mappings}
-        with correct_exception():
-            return self._client.api.v2.user_management.replace_usernames.post(data=request_data)
+        data = {"username_mappings": username_mappings}
+        api_url = self.get_api_url('api/v2/user_management/replace_usernames')
+        return self._request('POST', api_url, json=data)
 
 
 class CredentialsApi(BaseApiClient):
@@ -414,36 +437,39 @@ class CredentialsApi(BaseApiClient):
         """
         Performs the learner retirement step for Credentials
         """
-        params = {'data': {'username': learner['original_username']}}
-        with correct_exception():
-            return self._client.user.retire.post(**params)
+        data = {'username': learner['original_username']}
+        api_url = self.get_api_url('user/retire')
+        return self._request('POST', api_url, json=data)
 
     def replace_usernames(self, username_mappings):
         """
         Calls the credentials API to replace usernames.
+
         Param:
             username_mappings: list of dicts where key is current username and value is new unique username
             [{current_un_1: new_un_1}, {current_un_2: new_un_2}]
         """
-        request_data = {"username_mappings": username_mappings}
-        with correct_exception():
-            return self._client.api.v2.replace_usernames.post(data=request_data)
+        data = {"username_mappings": username_mappings}
+        api_url = self.get_api_url('api/v2/replace_usernames')
+        return self._request('POST', api_url, json=data)
 
 
 class DiscoveryApi(BaseApiClient):
     """
     Discovery API client with convenience methods for making API calls.
     """
+
     def replace_usernames(self, username_mappings):
         """
         Calls the discovery API to replace usernames.
+
         Param:
             username_mappings: list of dicts where key is current username and value is new unique username
             [{current_un_1: new_un_1}, {current_un_2: new_un_2}]
         """
-        request_data = {"username_mappings": username_mappings}
-        with correct_exception():
-            return self._client.api.v1.replace_usernames.post(data=request_data)
+        data = {"username_mappings": username_mappings}
+        api_url = self.get_api_url('api/v1/replace_usernames')
+        return self._request('POST', api_url, json=data)
 
 
 class DemographicsApi(BaseApiClient):
@@ -455,14 +481,14 @@ class DemographicsApi(BaseApiClient):
         """
         Performs the learner retirement step for Demographics. Passes the learner's LMS User Id instead of username.
         """
-        params = {'data': {'lms_user_id': learner['user']['id']}}
+        data = {'lms_user_id': learner['user']['id']}
         # If the user we are retiring has no data in the Demographics DB the request will return a 404. We
-        # catch the HttpNotFoundError and return True in order to prevent this error getting raised and
+        # catch the HTTPError and return True in order to prevent this error getting raised and
         # incorrectly causing the learner to enter an ERROR state during retirement.
         try:
-            with correct_exception(log_404_as_error=False):
-                return self._client.demographics.api.v1.retire_demographics.post(**params)
-        except HttpNotFoundError:
+            api_url = self.get_api_url('demographics/api/v1/retire_demographics')
+            return self._request('POST', api_url, log_404_as_error=False, json=data)
+        except HttpDoesNotExistException:
             LOG.info("No demographics data found for user")
             return True
 
@@ -477,18 +503,16 @@ class LicenseManagerApi(BaseApiClient):
         Performs the learner retirement step for License manager. Passes the learner's LMS User Id in addition to
         username.
         """
-        params = {
-            'data': {
-                'lms_user_id': learner['user']['id'],
-                'original_username': learner['original_username'],
-            },
+        data = {
+            'lms_user_id': learner['user']['id'],
+            'original_username': learner['original_username'],
         }
         # If the user we are retiring has no data in the License Manager DB the request will return a 404. We
-        # catch the HttpNotFoundError and return True in order to prevent this error getting raised and
+        # catch the HTTPError and return True in order to prevent this error getting raised and
         # incorrectly causing the learner to enter an ERROR state during retirement.
         try:
-            with correct_exception(log_404_as_error=False):
-                return self._client.api.v1.retire_user.post(**params)
-        except HttpNotFoundError:
+            api_url = self.get_api_url('api/v1/retire_user')
+            return self._request('POST', api_url, log_404_as_error=False, json=data)
+        except HttpDoesNotExistException:
             LOG.info("No license manager data found for user")
             return True

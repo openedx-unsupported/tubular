@@ -5,6 +5,7 @@ Common functionality for retirement related tests
 """
 import json
 import unicodedata
+from datetime import datetime
 
 import yaml
 
@@ -18,6 +19,17 @@ TEST_RETIREMENT_PIPELINE = [
 
 TEST_RETIREMENT_END_STATES = [state[1] for state in TEST_RETIREMENT_PIPELINE]
 TEST_RETIREMENT_QUEUE_STATES = ['PENDING'] + TEST_RETIREMENT_END_STATES
+TEST_RETIREMENT_STATE = 'PENDING'
+
+FAKE_DATETIME_OBJECT = datetime(2022, 1, 1)
+FAKE_DATETIME_STR = '2022-01-01'
+FAKE_ORIGINAL_USERNAME = 'foo_username'
+FAKE_USERNAMES = [FAKE_ORIGINAL_USERNAME, FAKE_ORIGINAL_USERNAME]
+FAKE_RESPONSE_MESSAGE = 'fake response message'
+FAKE_USERNAME_MAPPING = [
+    {"fake_current_username_1": "fake_desired_username_1"},
+    {"fake_current_username_2": "fake_desired_username_2"}
+]
 
 FAKE_ORGS = {
     # Make sure unicode names, as they should come in from the yaml config, work
@@ -32,6 +44,7 @@ TEST_DENIED_NOTIFICATION_DOMAINS = {
     '@edx.org',
     '@partner-reporting-automation.iam.gserviceaccount.com',
 }
+
 
 def flatten_partner_list(partner_list):
     """
