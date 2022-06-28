@@ -4,21 +4,21 @@
 #
 #    make upgrade
 #
-astroid==2.11.5
+astroid==2.11.6
     # via
     #   -r requirements/testing.in
     #   pylint
     #   pylint-celery
 attrs==21.4.0
     # via pytest
-boto3==1.24.6
+boto3==1.24.18
     # via moto
-botocore==1.27.6
+botocore==1.27.18
     # via
     #   boto3
     #   moto
     #   s3transfer
-certifi==2022.5.18.1
+certifi==2022.6.15
     # via requests
 cffi==1.15.0
     # via cryptography
@@ -55,7 +55,7 @@ jinja2==3.1.2
     # via
     #   code-annotations
     #   moto
-jmespath==1.0.0
+jmespath==1.0.1
     # via
     #   boto3
     #   botocore
@@ -91,7 +91,7 @@ pycodestyle==2.8.0
     #   pytest-pycodestyle
 pycparser==2.21
     # via cffi
-pylint==2.14.1
+pylint==2.14.3
     # via
     #   -r requirements/testing.in
     #   edx-lint
