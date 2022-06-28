@@ -210,9 +210,7 @@ class TestLmsApi(OAuth2Mixin, unittest.TestCase):
 
     @patch.object(edx_api.LmsApi, 'retirement_partner_cleanup')
     def test_retirement_partner_cleanup(self, mock_method):
-        json_data = {
-            'usernames': FAKE_USERNAMES,
-        }
+        json_data = FAKE_USERNAMES
         responses.add(
             POST,
             urljoin(self.lms_base_url, 'api/user/v1/accounts/retirement_partner_report_cleanup/'),

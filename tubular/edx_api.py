@@ -339,9 +339,8 @@ class LmsApi(BaseApiClient):
         """
         Removes the given users from the partner reporting queue
         """
-        data = {'usernames': usernames}
         api_url = self.get_api_url('api/user/v1/accounts/retirement_partner_report_cleanup')
-        return self._request('POST', api_url, json=data)
+        return self._request('POST', api_url, json=usernames)
 
     @_retry_lms_api()
     def retirement_retire_proctoring_data(self, learner):
