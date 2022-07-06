@@ -229,9 +229,15 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
             # must be preserved. This is what's being served by Studio and LMS.
             active_structure_id = branch.structure_id
             structure_ids_to_save.add(active_structure_id)
+            if active_structure_id not in structures:
+                print(f"Missing active structure ID: {active_structure_id}")
+            print(f"DEBUG: active_structure_id: {active_structure_id}")
 
             # All originals will be saved.
             structure_ids_to_save.add(structures[active_structure_id].original_id)
+            print(f"DEBUG: original_id: {structures[active_structure_id].original_id}")
+            if structures[active_structure_id].original_id not in structures:
+                print(f"Missing originial structure ID: {active_structure_id}")
 
             # Save up to `num_intermediate_structures` intermediate nodes
             int_structure_ids_to_save = structures_graph.traverse_ids(
@@ -239,6 +245,22 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
             )
             for int_structure_id in int_structure_ids_to_save:
                 structure_ids_to_save.add(int_structure_id)
+                print(f"DEBUG: int_structure_id: {int_structure_id}")
+                if int_structure_id not in structures:
+                    print(f"Missing intermediate structure ID: {int_structure_id}")
+
+        print("structure_ids_to_save")
+        #print(structure_ids_to_save)
+        for id in structure_ids_to_save:
+            print(id)
+        print("structures")
+        #print(structures)
+        for id, structure in structures.items():
+            print(structure)
+
+        for struct_id in structure_ids_to_save:
+            if struct_id not in structures:
+                print(f"Missing structure ID: {struct_id}")
 
         # Figure out what links to rewrite -- the oldest structure to save that
         # isn't an original.
