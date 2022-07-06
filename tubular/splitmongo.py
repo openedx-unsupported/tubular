@@ -219,6 +219,7 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
 
         """
         structure_ids_to_save = set()
+        missing_structure_ids = set()
         set_parent_to_original = set()
 
         branches, structures = structures_graph
@@ -239,6 +240,32 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
             )
             for int_structure_id in int_structure_ids_to_save:
                 structure_ids_to_save.add(int_structure_id)
+
+        for structure_id in structure_ids_to_save:
+            if structure_id not in structures:
+                missing_structure_ids.add(structure_id)
+
+        for missing_structure_id in missing_structure_ids:
+            LOG.error(f"Missing structure ID: {missing_structure_id}")
+            original_id = None
+            # family_ids is a list of ids with the same original_id
+            family_ids = []
+            for sid, structure in structures.items():
+                if structure.previous_id == missing_structure_id:
+                    LOG.info(f"structure id: {structure.id}, original_id: {structure.original_id}, previous_id: {structure.previous_id}")
+                    original_id = structure.original_id
+
+            for sid, structure in structures.items():
+                if structure.original_id == original_id:
+                    family_ids.append(sid)
+
+            family_ids.sort()
+
+            for sid in family_ids:
+                LOG.debug(f"Traversing {sid}")
+                for tid in structures_graph.traverse_ids(sid):
+                    if tid in structures:
+                        LOG.debug(f"traversed structure id: {tid}, original_id: {structures[tid].original_id}, previous_id: {structures[tid].previous_id}")
 
         # Figure out what links to rewrite -- the oldest structure to save that
         # isn't an original.
