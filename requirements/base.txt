@@ -4,18 +4,20 @@
 #
 #    make upgrade
 #
+asgiref==3.5.2
+    # via django
 atlassian-python-api==3.14.1
-    # via -r requirements/base.in
+    # via -r base.in
 attrs==21.2.0
     # via jsonlines
 authlib==0.15.5
     # via simple-salesforce
 backoff==1.5.0
-    # via -r requirements/base.in
+    # via -r base.in
 boto==2.43.0
-    # via -r requirements/base.in
+    # via -r base.in
 boto3==1.20.22
-    # via -r requirements/base.in
+    # via -r base.in
 botocore==1.23.22
     # via
     #   boto3
@@ -27,17 +29,20 @@ certifi==2021.10.8
     #   kubernetes
     #   requests
 cffi==1.15.0
-    # via cryptography
+    # via
+    #   cryptography
+    #   pynacl
 charset-normalizer==2.0.9
     # via requests
 click==8.0.3
     # via
-    #   -r requirements/base.in
+    #   -r base.in
     #   click-log
+    #   edx-django-utils
 click-log==0.3.2
-    # via -r requirements/base.in
+    # via -r base.in
 cloudflare==2.1.0
-    # via -r requirements/base.in
+    # via -r base.in
 cryptography==36.0.0
     # via authlib
 decorator==5.1.0
@@ -46,24 +51,34 @@ deprecated==1.2.13
     # via
     #   atlassian-python-api
     #   pygithub
+django==4.0.6
+    # via
+    #   django-crum
+    #   edx-django-utils
+django-crum==0.7.9
+    # via edx-django-utils
+django-waffle==2.5.0
+    # via edx-django-utils
 easydict==1.9
     # via yagocd
+edx-django-utils==5.0.0
+    # via edx-rest-api-client
 edx-opaque-keys==0.4.0
-    # via -r requirements/base.in
+    # via -r base.in
 edx-rest-api-client==5.5.0
-    # via -r requirements/base.in
+    # via -r base.in
 freezegun==0.3.8
-    # via -r requirements/base.in
+    # via -r base.in
 future==0.16.0
     # via
-    #   -r requirements/base.in
+    #   -r base.in
     #   cloudflare
 gitdb==4.0.9
     # via gitpython
 gitpython==3.1.18
-    # via -r requirements/base.in
+    # via -r base.in
 google-api-python-client==1.7.3
-    # via -r requirements/base.in
+    # via -r base.in
 google-auth==2.3.3
     # via
     #   google-api-python-client
@@ -78,7 +93,7 @@ httplib2==0.20.2
 idna==3.3
     # via requests
 jenkinsapi==0.3.3
-    # via -r requirements/base.in
+    # via -r base.in
 jmespath==0.10.0
     # via
     #   boto3
@@ -86,15 +101,19 @@ jmespath==0.10.0
 jsonlines==3.0.0
     # via cloudflare
 kubernetes==12.0.1
-    # via -r requirements/base.in
-lxml==4.6.4
-    # via -r requirements/base.in
+    # via -r base.in
+lxml==4.9.1
+    # via -r base.in
+newrelic==7.14.0.177
+    # via edx-django-utils
 oauthlib==3.1.1
     # via
     #   atlassian-python-api
     #   requests-oauthlib
 pbr==5.8.0
     # via stevedore
+psutil==5.9.1
+    # via edx-django-utils
 pyasn1==0.4.8
     # via
     #   pyasn1-modules
@@ -104,15 +123,17 @@ pyasn1-modules==0.2.8
 pycparser==2.21
     # via cffi
 pygithub==1.44.1
-    # via -r requirements/base.in
+    # via -r base.in
 pyjwt==1.7.1
     # via
     #   edx-rest-api-client
     #   pygithub
 pymongo==3.5.1
     # via
-    #   -r requirements/base.in
+    #   -r base.in
     #   edx-opaque-keys
+pynacl==1.5.0
+    # via edx-django-utils
 pyparsing==3.0.6
     # via httplib2
 python-dateutil==2.8.2
@@ -122,18 +143,19 @@ python-dateutil==2.8.2
     #   kubernetes
 pytz==2016.10
     # via
-    #   -r requirements/base.in
+    #   -r base.in
     #   jenkinsapi
 pyyaml==5.4
     # via
-    #   -r requirements/base.in
+    #   -r base.in
     #   cloudflare
     #   kubernetes
 requests==2.26.0
     # via
-    #   -r requirements/base.in
+    #   -r base.in
     #   atlassian-python-api
     #   cloudflare
+    #   edx-rest-api-client
     #   jenkinsapi
     #   kubernetes
     #   pygithub
@@ -151,14 +173,14 @@ rsa==4.8
 s3transfer==0.5.0
     # via boto3
 sailthru-client==2.3.5
-    # via -r requirements/base.in
+    # via -r base.in
 simple-salesforce==1.11.4
-    # via -r requirements/base.in
+    # via -r base.in
 simplejson==3.17.6
     # via sailthru-client
 six==1.16.0
     # via
-    #   -r requirements/base.in
+    #   -r base.in
     #   atlassian-python-api
     #   edx-opaque-keys
     #   freezegun
@@ -175,10 +197,14 @@ slumber==0.7.1
     # via edx-rest-api-client
 smmap==5.0.0
     # via gitdb
+sqlparse==0.4.2
+    # via django
 stevedore==1.32.0
-    # via edx-opaque-keys
+    # via
+    #   edx-django-utils
+    #   edx-opaque-keys
 unicodecsv==0.14.1
-    # via -r requirements/base.in
+    # via -r base.in
 uritemplate==3.0.1
     # via google-api-python-client
 urllib3==1.26.7
@@ -187,15 +213,15 @@ urllib3==1.26.7
     #   kubernetes
     #   requests
 validators==0.18.2
-    # via -r requirements/base.in
+    # via -r base.in
 websocket-client==1.2.3
     # via kubernetes
 wrapt==1.11.2
     # via
-    #   -r requirements/base.in
+    #   -r base.in
     #   deprecated
 yagocd==0.4.4
-    # via -r requirements/base.in
+    # via -r base.in
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
