@@ -331,7 +331,7 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
                 notes.append("(active)")
             if s_id in set_parent_to_original:
                 notes.append("(re-link to original)")
-            if structures[s_id].is_original():
+            if s_id in structures and structures[s_id].is_original():
                 notes.append("(original)")
 
             if notes:
