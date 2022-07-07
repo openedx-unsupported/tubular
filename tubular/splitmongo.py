@@ -179,7 +179,7 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
         )
 
     @classmethod
-    def create(cls, structures_graph, num_intermediate_structures, details_file=None):
+    def create(cls, structures_graph, num_intermediate_structures, force, details_file=None):
         """
         Given a StructuresGraph and a target number for intermediate Structures
         to preserve, return a ChangePlan that represents the changes needed to
@@ -270,10 +270,16 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
         # Figure out what links to rewrite -- the oldest structure to save that
         # isn't an original.
         for branch in branches:
-            rewrite_candidates = takewhile(
-                lambda s: s in structure_ids_to_save and s in structures and not structures[s].is_original(),
-                structures_graph.traverse_ids(branch.structure_id, include_start=True)
-            )
+            if force:
+                rewrite_candidates = takewhile(
+                    lambda s: s in structure_ids_to_save and s in structures and not structures[s].is_original(),
+                    structures_graph.traverse_ids(branch.structure_id, include_start=True)
+                )
+            else:
+                rewrite_candidates = takewhile(
+                    lambda s: s in structure_ids_to_save and not structures[s].is_original(),
+                    structures_graph.traverse_ids(branch.structure_id, include_start=True)
+                )
             # `last_seen` will have the last structure_id from the
             # `rewrite_candidates` iterable.
             last_seen = deque(rewrite_candidates, 1)

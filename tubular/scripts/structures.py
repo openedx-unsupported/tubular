@@ -97,8 +97,13 @@ def cli(ctx, connection, database_name):
     type=click.IntRange(1, None),
     help="How many Structures do we fetch at a time?"
 )
+@click.option(
+    '--force/--no-force',
+    default=False,
+    help="Force plan creation, even if missing structures are found"
+)
 @click.pass_context
-def make_plan(ctx, plan_file, details, retain, delay, batch_size):
+def make_plan(ctx, plan_file, details, retain, delay, batch_size, force):
     """
     Create a Change Plan JSON file describing the operations needed to prune the
     database. This command is read-only and does not alter the database.
@@ -124,7 +129,7 @@ def make_plan(ctx, plan_file, details, retain, delay, batch_size):
     structures_graph = ctx.obj['BACKEND'].structures_graph(delay / 1000.0, batch_size)
 
     # This will create the details file as a side-effect, if specified.
-    change_plan = ChangePlan.create(structures_graph, retain, details)
+    change_plan = ChangePlan.create(structures_graph, retain, force, details)
     change_plan.dump(plan_file)
 
 
