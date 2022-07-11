@@ -259,11 +259,22 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
 
             family_ids.sort()
 
+            active_structure_ids = {branch.structure_id for branch in branches}
+
             for sid in family_ids:
                 LOG.debug(f"Traversing {sid}")
                 for tid in structures_graph.traverse_ids(sid):
+                    save = False
+                    relink = False
+                    active = False
+                    if tid in set_parent_to_original:
+                        relink = True
+                    if tid in structure_ids_to_save:
+                        save = True
+                    if tid in active_structure_ids:
+                        active = True
                     if tid in structures:
-                        LOG.debug(f"traversed structure id: {tid}, original_id: {structures[tid].original_id}, previous_id: {structures[tid].previous_id}")
+                        LOG.debug(f"traversed structure id: {tid}, original_id: {structures[tid].original_id}, previous_id: {structures[tid].previous_id}, save: {save}, relink: {relink}, active: {active}")
 
         # Figure out what links to rewrite -- the oldest structure to save that
         # isn't an original.
