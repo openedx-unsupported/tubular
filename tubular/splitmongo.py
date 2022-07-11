@@ -241,16 +241,14 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
             for int_structure_id in int_structure_ids_to_save:
                 structure_ids_to_save.add(int_structure_id)
 
-        for structure_id in structure_ids_to_save:
-            if structure_id not in structures:
-                missing_structure_ids.add(structure_id)
+        missing_structure_ids = structure_ids_to_save - structures.keys()
 
         for missing_structure_id in missing_structure_ids:
             LOG.error(f"Missing structure ID: {missing_structure_id}")
             original_id = None
             # family_ids is a list of ids with the same original_id
             family_ids = []
-            for sid, structure in structures.items():
+            for structure in structures.values():
                 if structure.previous_id == missing_structure_id:
                     LOG.info(f"structure id: {structure.id}, original_id: {structure.original_id}, previous_id: {structure.previous_id}")
                     original_id = structure.original_id
