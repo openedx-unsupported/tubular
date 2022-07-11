@@ -254,10 +254,7 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
                     LOG.info(f"structure id: {structure.id}, original_id: {structure.original_id}, previous_id: {structure.previous_id}")
                     original_id = structure.original_id
 
-            for sid, structure in structures.items():
-                if structure.original_id == original_id:
-                    family_ids.append(sid)
-
+            family_ids = [sid for sid, structure in structures.items() if structure.original_id == original_id]
             family_ids.sort()
 
             active_structure_ids = {branch.structure_id for branch in branches}
