@@ -44,6 +44,7 @@ from itertools import count, takewhile
 import json
 import logging
 import os
+import sys
 import time
 
 from bson.objectid import ObjectId
@@ -276,19 +277,20 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
                     if tid in structures:
                         LOG.debug(f"traversed structure id: {tid}, original_id: {structures[tid].original_id}, previous_id: {structures[tid].previous_id}, save: {save}, relink: {relink}, active: {active}")
 
+        if len(missing_structure_ids) > 0:
+            LOG.error("Missing structures detected")
+            # Can't save missing structures.
+            structure_ids_to_save -= missing_structure_ids
+            if not force:
+                sys.exit(1)
+
         # Figure out what links to rewrite -- the oldest structure to save that
         # isn't an original.
         for branch in branches:
-            if force:
-                rewrite_candidates = takewhile(
-                    lambda s: s in structure_ids_to_save and s in structures and not structures[s].is_original(),
-                    structures_graph.traverse_ids(branch.structure_id, include_start=True)
-                )
-            else:
-                rewrite_candidates = takewhile(
-                    lambda s: s in structure_ids_to_save and not structures[s].is_original(),
-                    structures_graph.traverse_ids(branch.structure_id, include_start=True)
-                )
+            rewrite_candidates = takewhile(
+                lambda s: s in structure_ids_to_save and not structures[s].is_original(),
+                structures_graph.traverse_ids(branch.structure_id, include_start=True)
+            )
             # `last_seen` will have the last structure_id from the
             # `rewrite_candidates` iterable.
             last_seen = deque(rewrite_candidates, 1)
