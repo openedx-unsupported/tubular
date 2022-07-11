@@ -281,34 +281,31 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
             )
 
         for missing_structure_id in missing_structure_ids:
+            active_structure_ids = {branch.structure_id for branch in branches}
+
             LOG.error(f"Missing structure ID: {missing_structure_id}")
             original_id = None
             # family_ids is a list of ids with the same original_id
             family_ids = []
             for structure in structures.values():
                 if structure.previous_id == missing_structure_id:
-                    LOG.info(f"structure id: {structure.id}, original_id: {structure.original_id}, previous_id: {structure.previous_id}")
+                    save = structure.id in structure_ids_to_save
+                    active = structure.id in active_structure_ids
+                    relink = structure.id in set_parent_to_original
+                    LOG.info(f"structure id: {structure.id}, original_id: {structure.original_id}, previous_id: {structure.previous_id}, save: {save}, active: {active}, rewrite_previous_to_original: {relink}")
                     original_id = structure.original_id
 
             family_ids = [sid for sid, structure in structures.items() if structure.original_id == original_id]
             family_ids.sort()
 
-            active_structure_ids = {branch.structure_id for branch in branches}
-
             for sid in family_ids:
                 LOG.debug(f"Traversing {sid}")
                 for tid in structures_graph.traverse_ids(sid):
-                    save = False
-                    relink = False
-                    active = False
-                    if tid in set_parent_to_original:
-                        relink = True
-                    if tid in structure_ids_to_save:
-                        save = True
-                    if tid in active_structure_ids:
-                        active = True
                     if tid in structures:
-                        LOG.debug(f"traversed structure id: {tid}, original_id: {structures[tid].original_id}, previous_id: {structures[tid].previous_id}, save: {save}, relink: {relink}, active: {active}")
+                        save = tid in structure_ids_to_save
+                        active = tid in active_structure_ids
+                        relink = tid in set_parent_to_original
+                        LOG.debug(f"traversed structure id: {tid}, original_id: {structures[tid].original_id}, previous_id: {structures[tid].previous_id}, save: {save}, active: {active}, rewrite_previous_to_original: {relink}")
 
         if len(missing_structure_ids) > 0:
             LOG.error("Missing structures detected")
