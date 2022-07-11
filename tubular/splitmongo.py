@@ -244,42 +244,8 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
 
         missing_structure_ids = structure_ids_to_save - structures.keys()
 
-        for missing_structure_id in missing_structure_ids:
-            LOG.error(f"Missing structure ID: {missing_structure_id}")
-            original_id = None
-            # family_ids is a list of ids with the same original_id
-            family_ids = []
-            for structure in structures.values():
-                if structure.previous_id == missing_structure_id:
-                    LOG.info(f"structure id: {structure.id}, original_id: {structure.original_id}, previous_id: {structure.previous_id}")
-                    original_id = structure.original_id
-
-            family_ids = [sid for sid, structure in structures.items() if structure.original_id == original_id]
-            family_ids.sort()
-
-            active_structure_ids = {branch.structure_id for branch in branches}
-
-            for sid in family_ids:
-                LOG.debug(f"Traversing {sid}")
-                for tid in structures_graph.traverse_ids(sid):
-                    save = False
-                    relink = False
-                    active = False
-                    if tid in set_parent_to_original:
-                        relink = True
-                    if tid in structure_ids_to_save:
-                        save = True
-                    if tid in active_structure_ids:
-                        active = True
-                    if tid in structures:
-                        LOG.debug(f"traversed structure id: {tid}, original_id: {structures[tid].original_id}, previous_id: {structures[tid].previous_id}, save: {save}, relink: {relink}, active: {active}")
-
-        if len(missing_structure_ids) > 0:
-            LOG.error("Missing structures detected")
-            # Can't save missing structures.
-            structure_ids_to_save -= missing_structure_ids
-            if not force:
-                sys.exit(1)
+        # Remove missing structures since we can't save them
+        structure_ids_to_save -= missing_structure_ids
 
         # Figure out what links to rewrite -- the oldest structure to save that
         # isn't an original.
@@ -313,6 +279,41 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
             change_plan.write_details(
                 details_file, structures_graph, structure_ids_to_save, set_parent_to_original
             )
+
+        for missing_structure_id in missing_structure_ids:
+            LOG.error(f"Missing structure ID: {missing_structure_id}")
+            original_id = None
+            # family_ids is a list of ids with the same original_id
+            family_ids = []
+            for structure in structures.values():
+                if structure.previous_id == missing_structure_id:
+                    LOG.info(f"structure id: {structure.id}, original_id: {structure.original_id}, previous_id: {structure.previous_id}")
+                    original_id = structure.original_id
+
+            family_ids = [sid for sid, structure in structures.items() if structure.original_id == original_id]
+            family_ids.sort()
+
+            active_structure_ids = {branch.structure_id for branch in branches}
+
+            for sid in family_ids:
+                LOG.debug(f"Traversing {sid}")
+                for tid in structures_graph.traverse_ids(sid):
+                    save = False
+                    relink = False
+                    active = False
+                    if tid in set_parent_to_original:
+                        relink = True
+                    if tid in structure_ids_to_save:
+                        save = True
+                    if tid in active_structure_ids:
+                        active = True
+                    if tid in structures:
+                        LOG.debug(f"traversed structure id: {tid}, original_id: {structures[tid].original_id}, previous_id: {structures[tid].previous_id}, save: {save}, relink: {relink}, active: {active}")
+
+        if len(missing_structure_ids) > 0:
+            LOG.error("Missing structures detected")
+            if not force:
+                sys.exit(1)
 
         return change_plan
 
