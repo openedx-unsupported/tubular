@@ -180,7 +180,7 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
         )
 
     @classmethod
-    def create(cls, structures_graph, num_intermediate_structures, force, details_file=None):
+    def create(cls, structures_graph, num_intermediate_structures, ignore_missing, details_file=None):
         """
         Given a StructuresGraph and a target number for intermediate Structures
         to preserve, return a ChangePlan that represents the changes needed to
@@ -325,7 +325,7 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
 
         if len(missing_structure_ids) > 0:
             LOG.error("Missing structures detected")
-            if not force:
+            if not ignore_missing:
                 sys.exit(1)
 
         return change_plan
