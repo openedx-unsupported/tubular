@@ -220,7 +220,6 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
 
         """
         structure_ids_to_save = set()
-        missing_structure_ids = set()
         set_parent_to_original = set()
 
         branches, structures = structures_graph
@@ -284,28 +283,45 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
             active_structure_ids = {branch.structure_id for branch in branches}
 
             LOG.error(f"Missing structure ID: {missing_structure_id}")
-            original_id = None
-            # family_ids is a list of ids with the same original_id
-            family_ids = []
+            original_ids = set()
             for structure in structures.values():
                 if structure.previous_id == missing_structure_id:
                     save = structure.id in structure_ids_to_save
                     active = structure.id in active_structure_ids
                     relink = structure.id in set_parent_to_original
-                    LOG.info(f"structure id: {structure.id}, original_id: {structure.original_id}, previous_id: {structure.previous_id}, save: {save}, active: {active}, rewrite_previous_to_original: {relink}")
-                    original_id = structure.original_id
+                    prev_misssing = structure.previous_id is not None and structure.previous_id not in structures
+                    LOG.info(f"Structure {structure.id} points to missing structure with ID: {structure.previous_id}")
+                    original_ids.add(structure.original_id)
 
-            family_ids = [sid for sid, structure in structures.items() if structure.original_id == original_id]
-            family_ids.sort()
+            active_structure_ids = {branch.structure_id for branch in branches}
 
-            for sid in family_ids:
-                LOG.debug(f"Traversing {sid}")
-                for tid in structures_graph.traverse_ids(sid):
-                    if tid in structures:
-                        save = tid in structure_ids_to_save
-                        active = tid in active_structure_ids
-                        relink = tid in set_parent_to_original
-                        LOG.debug(f"traversed structure id: {tid}, original_id: {structures[tid].original_id}, previous_id: {structures[tid].previous_id}, save: {save}, active: {active}, rewrite_previous_to_original: {relink}")
+            branches_to_log = []
+
+            LOG.info(f"Looking for branches that lead to missing ID {missing_structure_id}")
+            for branch in branches:
+                structure = structures[branch.structure_id]
+                if structure.original_id in original_ids:
+                    for sid in structures_graph.traverse_ids(branch.structure_id):
+                        if sid not in structures:
+                            branches_to_log.append(branch)
+
+            for branch in branches_to_log:
+                structure = structures[branch.structure_id]
+
+                LOG.info(f"Branch: {branch}")
+
+                save = branch.structure_id in structure_ids_to_save
+                active = branch.structure_id in active_structure_ids
+                relink = branch.structure_id in set_parent_to_original
+                prev_misssing = structure.previous_id is not None and structure.previous_id not in structures
+
+                for sid in structures_graph.traverse_ids(branch.structure_id, include_start=True):
+                    if sid in structures:
+                        save = sid in structure_ids_to_save
+                        active = sid in active_structure_ids
+                        relink = sid in set_parent_to_original
+                        prev_misssing = structures[sid].previous_id is not None and structures[sid].previous_id not in structures
+                        LOG.info(f"id: {sid}, original_id: {structures[sid].original_id}, previous_id: {structures[sid].previous_id}, save: {save}, active: {active}, prev_missing: {prev_misssing}, rewrite_previous_to_original: {relink}")
 
         if len(missing_structure_ids) > 0:
             LOG.error("Missing structures detected")
