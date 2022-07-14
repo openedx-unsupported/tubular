@@ -180,7 +180,7 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
         )
 
     @classmethod
-    def create(cls, structures_graph, num_intermediate_structures, ignore_missing, details_file=None):
+    def create(cls, structures_graph, num_intermediate_structures, ignore_missing, dump_structures, details_file=None):
         """
         Given a StructuresGraph and a target number for intermediate Structures
         to preserve, return a ChangePlan that represents the changes needed to
@@ -278,6 +278,16 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
             change_plan.write_details(
                 details_file, structures_graph, structure_ids_to_save, set_parent_to_original
             )
+
+        if dump_structures:
+            active_structure_ids = {branch.structure_id for branch in branches}
+            for sid in structures:
+                save = sid in structure_ids_to_save
+                active = sid in active_structure_ids
+                relink = sid in set_parent_to_original
+                prev_misssing = structures[sid].previous_id is not None and structures[sid].previous_id not in structures
+                LOG.info(f"DUMP id: {sid}, original_id: {structures[sid].original_id}, previous_id: {structures[sid].previous_id}, save: {save}, active: {active}, prev_missing: {prev_misssing}, rewrite_previous_to_original: {relink}")
+
 
         for missing_structure_id in missing_structure_ids:
             active_structure_ids = {branch.structure_id for branch in branches}
