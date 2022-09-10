@@ -83,7 +83,7 @@ class GitRepoTestCase(TestCase):
         self.assertEqual(sha, mock_repo.head.commit.hexsha)
 
     @ddt.data(
-        ('https://github.com/edx/edx-platform.git', 'edx-platform'),
+        ('https://github.com/openedx/edx-platform.git', 'edx-platform'),
         ('https://github.com/edx-ops/secret_repo.git', 'secret_repo'),
         ('git@github.com:edx/tubular.git', 'tubular'),
         ('no_url_here', None),
