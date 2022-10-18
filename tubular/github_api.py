@@ -1020,6 +1020,7 @@ class GitHubAPI:
         if force_message or _not_duplicate(pull_request.get_issue_comments(), message_filter):
             return pull_request.create_issue_comment(message)
         else:
+            LOG.info(f"Not posting duplicate PR message {message} on PR# {pull_request}")
             return None
 
     def message_pr_with_type(self, pr_number, message_type, deploy_date=None, force_message=False, extra_text=''):
