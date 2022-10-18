@@ -29,7 +29,6 @@ LOG.setLevel(logging.INFO)
 
 PR_PREFIX = '**EdX Release Notice**: '
 PR_MESSAGE_FORMAT = '{prefix} {message} {extra_text}'
-PR_MESSAGE_FILTER = '{prefix} {message}'
 
 PR_ON_STAGE = 'in preparation for a release to production.'
 PR_ON_STAGE_DATE_EXTRA = 'in preparation for a release to production on {date:%A, %B %d, %Y}. {extra_text}'
@@ -1044,13 +1043,15 @@ class GitHubAPI:
             else:
                 extra_text = PR_ON_STAGE_DATE_EXTRA.format(date=deploy_date, extra_text=extra_text)
 
-        return self.message_pull_request(
-            pr_number,
-            PR_MESSAGE_FORMAT.format(
+        message = PR_MESSAGE_FORMAT.format(
                 prefix=PR_PREFIX,
                 message=message_type.value,
-                extra_text=extra_text),
-            PR_MESSAGE_FILTER.format(prefix=PR_PREFIX, message=message_type.value),
+                extra_text=extra_text)
+
+        return self.message_pull_request(
+            pr_number,
+            message,
+            message,
             force_message,
         )
 

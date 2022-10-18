@@ -514,9 +514,13 @@ class GitHubApiTestCase(TestCase):
                         extra_text=''
                     )
                 ),
-                github_api.PR_MESSAGE_FILTER.format(
+                github_api.PR_MESSAGE_FORMAT.format(
                     prefix=github_api.PR_PREFIX,
-                    message=github_api.MessageType.stage.value
+                    message=github_api.MessageType.stage.value,
+                    extra_text=github_api.PR_ON_STAGE_DATE_EXTRA.format(
+                        date=deploy_date,
+                        extra_text=''
+                    )
                 ),
                 False
             )
@@ -539,9 +543,10 @@ class GitHubApiTestCase(TestCase):
                         message=github_api.MessageType.stage.value,
                         extra_text=github_api.PR_ON_STAGE_DATE_EXTRA.format(date=deploy_date, extra_text='')
                     ),
-                    github_api.PR_MESSAGE_FILTER.format(
+                    github_api.PR_MESSAGE_FORMAT.format(
                         prefix=github_api.PR_PREFIX,
-                        message=github_api.MessageType.stage.value
+                        message=github_api.MessageType.stage.value,
+                        extra_text=github_api.PR_ON_STAGE_DATE_EXTRA.format(date=deploy_date, extra_text='')
                     ),
                     False
                 )
@@ -563,9 +568,10 @@ class GitHubApiTestCase(TestCase):
                     message=message_type.value,
                     extra_text=extra_text
                 ),
-                github_api.PR_MESSAGE_FILTER.format(
+                github_api.PR_MESSAGE_FORMAT.format(
                     prefix=github_api.PR_PREFIX,
-                    message=message_type.value
+                    message=message_type.value,
+                    extra_text=extra_text
                 ),
                 force_message
             )
