@@ -73,6 +73,11 @@ LOG = logging.getLogger(__name__)
     u'--extra_text', u'extra_text', default=''
 )
 @click.option(
+    u'--force',
+    help=u'Disable duplicate checking',
+    is_flag=True
+)
+@click.option(
     u'--no-op',
     help=u'Disable posting messages for testing',
     is_flag=True
@@ -88,6 +93,7 @@ def message_pull_requests(org,
                           head_ami_tag_app,
                           message_type,
                           extra_text,
+                          force,
                           no_op):
     u"""
     Message a range of Pull requests between the BASE and HEAD SHA specified.
@@ -128,7 +134,7 @@ def message_pull_requests(org,
     LOG.info("Github API Rate Limit: {}".format(api.get_rate_limit()))
     pull_requests = retrieve_pull_requests(api, base_sha, head_sha)
     for pull_request in pull_requests:
-        message_pr(api, MessageType[message_type], pull_request, extra_text, no_op)
+        message_pr(api, MessageType[message_type], pull_request, extra_text, force, no_op)
 
 
 def get_client(org, repo, token):
@@ -169,7 +175,7 @@ def retrieve_pull_requests(api, base_sha, head_sha):
     return pull_requests
 
 
-def message_pr(api, message_type, pull_request, extra_text, no_op):
+def message_pr(api, message_type, pull_request, extra_text, force_message, no_op):
     u"""
     Send a Message for a Pull request.
 
@@ -191,10 +197,10 @@ def message_pr(api, message_type, pull_request, extra_text, no_op):
         LOG.info(u"Posting message type %r to %d.", message_type.name, pull_request.number)
 
         try:
-            api.message_pr_with_type(pr_number=pull_request, message_type=message_type, extra_text=extra_text)
+            api.message_pr_with_type(pr_number=pull_request, message_type=message_type, force_message=force_message, extra_text=extra_text)
         except UnknownObjectException as exc:
-            LOG.error(u"message_pr_with_type args were: pr_number={0} message_type={1} extra_text={2}".format(
-                pull_request, message_type, extra_text))
+            LOG.error(u"message_pr_with_type args were: pr_number={0} message_type={1} force_message={2}, extra_text={3}".format(
+                pull_request, message_type, force_message, extra_text))
             raise exc
 
 
