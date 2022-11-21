@@ -46,8 +46,11 @@ def submit_slack_message(auth_token, channels, message):
             raise SlackMessageSendFailure(
                 f"Message send to channel '{channel}' failed: {response.text}"
             )
-        reponse_json = response.json()
+        response_json = response.json()
         if not response_json.ok:
+            # note that this should be a failure but slack messages
+            # aren't that big a deal so we don't want an error code
+            # here.
             LOG.warning(
                 f"Message send to channel '{channel}' failed: {response.text}"
             )
