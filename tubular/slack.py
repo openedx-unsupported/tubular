@@ -44,5 +44,10 @@ def submit_slack_message(auth_token, channels, message):
                                  )
         if response.status_code not in (200, 201, 204):
             raise SlackMessageSendFailure(
-                "Message send to channel '{}' failed: {}".format(channel, response.text)
+                f"Message send to channel '{channel}' failed: {response.text}"
+            )
+        reponse_json = response.json()
+        if not response_json.ok:
+            LOG.warning(
+                f"Message send to channel '{channel}' failed: {response.text}"
             )
