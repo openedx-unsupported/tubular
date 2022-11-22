@@ -5,7 +5,6 @@ import requests
 
 SLACK_API_URL = "https://slack.com"
 NOTIFICATION_POST = "/api/chat.postMessage"
-CONTENT_TYPE = "application/json"
 AUTH_HEADER_FIELD = "Authorization"
 
 LOG = logging.getLogger(__name__)
@@ -30,19 +29,23 @@ def submit_slack_message(auth_token, channels, message):
     post_url = "{}{}".format(SLACK_API_URL, NOTIFICATION_POST)
     # to remove slack API warning
     headers = {
-        'Content-type': CONTENT_TYPE
+        AUTH_HEADER_FIELD: 'Bearer ' + auth_token
     }
     for channel in channels:
-        params = {
-            "token": auth_token,
+        arguments = {
             "channel": channel,
             "text": message
         }
         response = requests.post(post_url,
-                                 params=params,
+                                 data=arguments,
                                  headers=headers
                                  )
         if response.status_code not in (200, 201, 204):
             raise SlackMessageSendFailure(
-                "Message send to channel '{}' failed: {}".format(channel, response.text)
+                f"Message send to channel '{channel}' failed: {response.text}"
+            )
+        response_json = response.json()
+        if not response_json['ok']:
+            raise SlackMessageSendFailure(
+                f"Message send to channel '{channel}' failed: {response.text}"
             )
