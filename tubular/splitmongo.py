@@ -243,8 +243,13 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
 
         missing_structure_ids = structure_ids_to_save - structures.keys()
 
-        # Remove missing structures since we can't save them
-        structure_ids_to_save -= missing_structure_ids
+        if ignore_missing:
+            # Remove missing structures since we can't save them
+            structure_ids_to_save -= missing_structure_ids
+        elif len(missing_structure_ids) > 0:
+            LOG.error("Missing structures detected")
+            sys.exit(1)
+
 
         # Figure out what links to rewrite -- the oldest structure to save that
         # isn't an original.
@@ -332,11 +337,6 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
                         relink = sid in set_parent_to_original
                         prev_misssing = structures[sid].previous_id is not None and structures[sid].previous_id not in structures
                         LOG.info(f"id: {sid}, original_id: {structures[sid].original_id}, previous_id: {structures[sid].previous_id}, save: {save}, active: {active}, prev_missing: {prev_misssing}, rewrite_previous_to_original: {relink}")
-
-        if len(missing_structure_ids) > 0:
-            LOG.error("Missing structures detected")
-            if not ignore_missing:
-                sys.exit(1)
 
         return change_plan
 
