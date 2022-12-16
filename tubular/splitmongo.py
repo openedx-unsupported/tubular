@@ -44,6 +44,7 @@ from itertools import count, takewhile
 import json
 import logging
 import os
+import sys
 import time
 
 from bson.objectid import ObjectId
@@ -179,7 +180,7 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
         )
 
     @classmethod
-    def create(cls, structures_graph, num_intermediate_structures, details_file=None):
+    def create(cls, structures_graph, num_intermediate_structures, ignore_missing, dump_structures, details_file=None):
         """
         Given a StructuresGraph and a target number for intermediate Structures
         to preserve, return a ChangePlan that represents the changes needed to
@@ -240,6 +241,16 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
             for int_structure_id in int_structure_ids_to_save:
                 structure_ids_to_save.add(int_structure_id)
 
+        missing_structure_ids = structure_ids_to_save - structures.keys()
+
+        if ignore_missing:
+            # Remove missing structures since we can't save them
+            structure_ids_to_save -= missing_structure_ids
+        elif len(missing_structure_ids) > 0:
+            LOG.error("Missing structures detected")
+            sys.exit(1)
+
+
         # Figure out what links to rewrite -- the oldest structure to save that
         # isn't an original.
         for branch in branches:
@@ -273,6 +284,60 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
                 details_file, structures_graph, structure_ids_to_save, set_parent_to_original
             )
 
+        if dump_structures:
+            active_structure_ids = {branch.structure_id for branch in branches}
+            for sid in structures:
+                save = sid in structure_ids_to_save
+                active = sid in active_structure_ids
+                relink = sid in set_parent_to_original
+                prev_misssing = structures[sid].previous_id is not None and structures[sid].previous_id not in structures
+                LOG.info(f"DUMP id: {sid}, original_id: {structures[sid].original_id}, previous_id: {structures[sid].previous_id}, save: {save}, active: {active}, prev_missing: {prev_misssing}, rewrite_previous_to_original: {relink}")
+
+
+        for missing_structure_id in missing_structure_ids:
+            active_structure_ids = {branch.structure_id for branch in branches}
+
+            LOG.error(f"Missing structure ID: {missing_structure_id}")
+            original_ids = set()
+            for structure in structures.values():
+                if structure.previous_id == missing_structure_id:
+                    save = structure.id in structure_ids_to_save
+                    active = structure.id in active_structure_ids
+                    relink = structure.id in set_parent_to_original
+                    prev_misssing = structure.previous_id is not None and structure.previous_id not in structures
+                    LOG.info(f"Structure {structure.id} points to missing structure with ID: {structure.previous_id}")
+                    original_ids.add(structure.original_id)
+
+            active_structure_ids = {branch.structure_id for branch in branches}
+
+            branches_to_log = []
+
+            LOG.info(f"Looking for branches that lead to missing ID {missing_structure_id}")
+            for branch in branches:
+                structure = structures[branch.structure_id]
+                if structure.original_id in original_ids:
+                    for sid in structures_graph.traverse_ids(branch.structure_id):
+                        if sid not in structures:
+                            branches_to_log.append(branch)
+
+            for branch in branches_to_log:
+                structure = structures[branch.structure_id]
+
+                LOG.info(f"Branch: {branch}")
+
+                save = branch.structure_id in structure_ids_to_save
+                active = branch.structure_id in active_structure_ids
+                relink = branch.structure_id in set_parent_to_original
+                prev_misssing = structure.previous_id is not None and structure.previous_id not in structures
+
+                for sid in structures_graph.traverse_ids(branch.structure_id, include_start=True):
+                    if sid in structures:
+                        save = sid in structure_ids_to_save
+                        active = sid in active_structure_ids
+                        relink = sid in set_parent_to_original
+                        prev_misssing = structures[sid].previous_id is not None and structures[sid].previous_id not in structures
+                        LOG.info(f"id: {sid}, original_id: {structures[sid].original_id}, previous_id: {structures[sid].previous_id}, save: {save}, active: {active}, prev_missing: {prev_misssing}, rewrite_previous_to_original: {relink}")
+
         return change_plan
 
     @staticmethod
@@ -298,7 +363,7 @@ class ChangePlan(namedtuple('ChangePlan', 'delete update_parents')):
                 notes.append("(active)")
             if s_id in set_parent_to_original:
                 notes.append("(re-link to original)")
-            if structures[s_id].is_original():
+            if s_id in structures and structures[s_id].is_original():
                 notes.append("(original)")
 
             if notes:
