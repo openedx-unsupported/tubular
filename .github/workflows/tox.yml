@@ -16,5 +16,5 @@ jobs:
         architecture: x64
     - run: rm -f /etc/boto.cfg
     - run: pip3 install --upgrade pip setuptools
-    - run: pip3 install tox
+    - run: pip3 install 'tox<4.0'
     - run: tox -- -n0
