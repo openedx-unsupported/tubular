@@ -85,17 +85,17 @@ class TestCourseChangePlan(unittest.TestCase):
         graph = create_test_graph(["1", "2", "3", "4"])
 
         # Preserve no intermediate structures -- prune the middle structures.
-        plan_no_intermediate = ChangePlan.create(graph, 0)
+        plan_no_intermediate = ChangePlan.create(graph, 0, False, False)
         self.assertEqual(plan_no_intermediate.delete, ["2", "3"])
         self.assertEqual(plan_no_intermediate.update_parents, [("4", "1")])
 
         # Preserve one intermediate structure
-        plan_1_intermediate = ChangePlan.create(graph, 1)
+        plan_1_intermediate = ChangePlan.create(graph, 1, False, False)
         self.assertEqual(plan_1_intermediate.delete, ["2"])
         self.assertEqual(plan_1_intermediate.update_parents, [("3", "1")])
 
         # Preserve two intermediate structures -- Do nothing
-        plan_2_intermediate = ChangePlan.create(graph, 2)
+        plan_2_intermediate = ChangePlan.create(graph, 2, False, False)
         self.assertEqual(plan_2_intermediate.delete, [])
         self.assertEqual(plan_2_intermediate.update_parents, [])
 
@@ -105,8 +105,8 @@ class TestCourseChangePlan(unittest.TestCase):
     )
     def test_no_changes(self, graph):
         """These scenarios should result in no Changes."""
-        plan_1 = ChangePlan.create(graph, 0)
-        plan_2 = ChangePlan.create(graph, 2)
+        plan_1 = ChangePlan.create(graph, 0, False, False)
+        plan_2 = ChangePlan.create(graph, 2, False, False)
         self.assertEqual(plan_1, plan_2)
         self.assertEqual(plan_1.delete, [])
         self.assertEqual(plan_1.update_parents, [])
@@ -119,7 +119,7 @@ class TestCourseChangePlan(unittest.TestCase):
             ["1", "2", "3", "6"],
             ["1", "2", "7", "8", "9", "10"],
         )
-        plan = ChangePlan.create(graph, 1)
+        plan = ChangePlan.create(graph, 1, False, False)
 
         # We specified only one intermediate structure in each branch should be
         # preserved. So why do we only delete "7" and "8" here?
@@ -145,7 +145,7 @@ class TestCourseChangePlan(unittest.TestCase):
             ["1", "2", "3"],
             ["1", "2", "3", "4", "5", "6"],
         )
-        plan = ChangePlan.create(graph, 0)
+        plan = ChangePlan.create(graph, 0, False, False)
         self.assertEqual(plan.delete, ["2", "4", "5"])
         self.assertEqual(plan.update_parents, [("3", "1"), ("6", "1")])
 
@@ -153,7 +153,7 @@ class TestCourseChangePlan(unittest.TestCase):
             ["1", "2", "3", "4"],
             ["1", "2", "3", "4", "5", "6", "7"],
         )
-        plan_save_1 = ChangePlan.create(graph_save_1, 1)
+        plan_save_1 = ChangePlan.create(graph_save_1, 1, False, False)
         self.assertEqual(plan_save_1.delete, ["2", "5"])
         self.assertEqual(plan_save_1.update_parents, [("3", "1"), ("6", "1")])
 
@@ -166,7 +166,7 @@ class TestCourseChangePlan(unittest.TestCase):
         )
         buff = StringIO()
         buff.name = "test_file.txt"
-        plan = ChangePlan.create(graph, 0, buff)
+        plan = ChangePlan.create(graph, 0, False, False, buff)
         details_txt = buff.getvalue()
 
         # pylint: disable=line-too-long
@@ -479,7 +479,7 @@ class TestSplitMongoBackend(unittest.TestCase):
             self.assertEqual(len(graph.structures), 10)
             self.assertEqual(len(graph.branches), 4)
 
-            plan = ChangePlan.create(graph, 0)
+            plan = ChangePlan.create(graph, 0, False, False)
             self.assertNotIn(str_id(5), plan.delete)  # Active updated to this for our course.
             self.assertNotIn(str_id(7), plan.delete)  # Active for our new Library
             self.assertIn(str_id(4), plan.delete)  # Was our Active before
