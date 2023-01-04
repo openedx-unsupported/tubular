@@ -370,7 +370,9 @@ class GitHubAPI:
         elif isinstance(commit, GitCommit):
             commit = self.github_repo.get_commit(commit.sha)
         elif not isinstance(commit, Commit):
-            raise UnknownObjectException(500, 'commit is neither a valid sha nor github.Commit.Commit object.')
+            raise UnknownObjectException(
+                500, 'commit is neither a valid sha nor github.Commit.Commit object.', headers={}
+            )
 
         return commit.get_combined_status()
 
