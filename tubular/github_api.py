@@ -408,6 +408,39 @@ class GitHubAPI:
         )
         return data
 
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                          jitter=backoff.random_jitter, on_backoff=_backoff_logger)
+    def get_commit_check_runs(self, commit):
+        """
+        Calls GitHub's `<commit>/check-runs` endpoint for a given commit. See
+        https://pygithub.readthedocs.io/en/latest/github_objects/Commit.html#github.Commit.Commit.get_check_runs
+
+        Arguments:
+            commit: One of:
+                - string (interprets as git SHA and fetches commit)
+                - GitCommit (uses the accompanying git SHA and fetches commit)
+                - Commit (directly gets the combined status)
+
+        Returns:
+            Json representing the check suites
+        """
+        self.log_rate_limit()
+        if isinstance(commit, six.string_types):
+            commit = self.github_repo.get_commit(commit)
+        elif isinstance(commit, GitCommit):
+            commit = self.github_repo.get_commit(commit.sha)
+        elif not isinstance(commit, Commit):
+            raise UnknownObjectException(
+                500, "commit is neither a valid sha nor github.Commit.Commit object."
+            )
+        _, data = commit._requester.requestJsonAndCheck(  # pylint: disable=protected-access
+            "GET",
+            commit.url + "/check-runs",
+            headers={"Accept": "application/vnd.github.antiope-preview+json"}
+        )
+
+        return data
+
     def get_validation_results(self, commit):
         """
         Return a list of validations (statuses and check runs), their results (success/failure/pending),
@@ -435,6 +468,17 @@ class GitHubAPI:
                 suite['url']
             )
             for suite in check_suites['check_suites']
+        })
+
+        # get more results from commit check runs
+        check_runs = self.get_commit_check_runs(commit)
+
+        results.update({
+            suite['name']: (
+                suite.get('conclusion').lower() if suite.get('conclusion') is not None else 'pending',
+                suite['url']
+            )
+            for suite in check_runs['check_runs']
         })
 
         return results

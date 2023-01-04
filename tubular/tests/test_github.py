@@ -255,11 +255,11 @@ class GitHubApiTestCase(TestCase):
         ('123', list(range(10)), 10, 'pending', False, True),
         ('123', list(range(10)), 10, 'failure', False, True),
         ('123', [], 0, None, False, True),
-        ('123', list(range(10)), 10, 'SuCcEsS', True, False),
-        ('123', list(range(10)), 10, 'success', True, False),
-        ('123', list(range(10)), 10, 'SUCCESS', True, False),
-        ('123', list(range(10)), 10, 'pending', False, False),
-        ('123', list(range(10)), 10, 'failure', False, False),
+        ('123', list(range(10)), 11, 'SuCcEsS', True, False),
+        ('123', list(range(10)), 11, 'success', True, False),
+        ('123', list(range(10)), 11, 'SUCCESS', True, False),
+        ('123', list(range(10)), 11, 'pending', False, False),
+        ('123', list(range(10)), 11, 'failure', False, False),
         ('123', [], 0, None, False, False)
     )
     @ddt.unpack
@@ -277,7 +277,7 @@ class GitHubApiTestCase(TestCase):
             commit_mock._requester = Mock()  # pylint: disable=protected-access
             # pylint: disable=protected-access
             commit_mock._requester.requestJsonAndCheck.return_value = (
-                {}, {'check_suites': []})
+                {}, {'check_suites': [], 'check_runs': []})
         else:
             mock_combined_status = Mock(spec=CommitCombinedStatus)
             mock_combined_status.statuses = []
@@ -300,8 +300,18 @@ class GitHubApiTestCase(TestCase):
                             'conclusion': state,
                             'url': 'some.fake.repo'
                         } for i in statuses
+                    ],
+                    'check_runs': [
+                        {
+                            'name': 'python',
+                            'app': {
+                                'name': 'App {}'.format(i)
+                            },
+                            'conclusion': state,
+                            'url': 'some.fake.repo'
+                        } for i in statuses
                     ]
-                }
+                },
             )
 
         successful, statuses = self.api.check_combined_status_commit(sha)
@@ -337,11 +347,11 @@ class GitHubApiTestCase(TestCase):
                 '{}-{}'.format(state, valtype)
                 for state in ['passed', 'pending', None, 'failed']
                 for valtype in ['status', 'check']
-            ]
+            ] + ['python-unit-tests']
         ),
-        ('status', None, ['passed-check', 'pending-check', 'None-check', 'failed-check']),
-        ('check', None, ['passed-status', 'pending-status', 'None-status', 'failed-status']),
-        ('check', 'passed', ['passed-status', 'passed-check', 'pending-status', 'None-status', 'failed-status']),
+        ('status', None, ['passed-check', 'pending-check', 'None-check', 'failed-check', 'python-unit-tests']),
+        ('check', None, ['passed-status', 'pending-status', 'None-status', 'failed-status', 'python-unit-tests']),
+        ('check', 'passed', ['passed-status', 'passed-check', 'pending-status', 'None-status', 'failed-status', 'python-unit-tests']),
         ('.*', 'passed', ['passed-status', 'passed-check']),
     )
     @ddt.unpack
@@ -381,6 +391,16 @@ class GitHubApiTestCase(TestCase):
             {
                 'check_suites': [
                     {
+                        'app': {
+                            'name': '{}-check'.format(state)
+                        },
+                        'conclusion': state,
+                        'url': 'some.fake.repo'
+                    } for state in filterable_states
+                ],
+                'check_runs': [
+                    {
+                        'name': 'python-unit-tests',
                         'app': {
                             'name': '{}-check'.format(state)
                         },
