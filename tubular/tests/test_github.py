@@ -129,7 +129,8 @@ class GitHubApiTestCase(TestCase):
             {
                 'documentation_url': 'https://developer.github.com/v3/repos/#get-branch',
                 'message': 'Branch not found'
-            }
+            },
+            headers={}
         )
         self.assertRaises(GithubException, self.api.get_commits_by_branch, 'blah')
 
@@ -497,7 +498,7 @@ class GitHubApiTestCase(TestCase):
             self.assertEqual(result, expected_result)
 
     def test_message_pr_does_not_exist(self):
-        with patch.object(self.repo_mock, 'get_pull', side_effect=UnknownObjectException(404, '')):
+        with patch.object(self.repo_mock, 'get_pull', side_effect=UnknownObjectException(404, '', {})):
             self.assertRaises(InvalidPullRequestError, self.api.message_pull_request, 3, 'test', 'test')
 
     def test_message_pr_deployed_stage(self):
