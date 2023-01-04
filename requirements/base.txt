@@ -134,7 +134,7 @@ pyasn1-modules==0.2.8
     # via google-auth
 pycparser==2.21
     # via cffi
-pygithub==1.44.1
+pygithub==1.57
     # via -r requirements/base.in
 pyjwt==2.6.0
     # via
@@ -145,7 +145,9 @@ pymongo==3.5.1
     #   -r requirements/base.in
     #   edx-opaque-keys
 pynacl==1.5.0
-    # via edx-django-utils
+    # via
+    #   edx-django-utils
+    #   pygithub
 pyparsing==3.0.9
     # via httplib2
 python-dateutil==2.8.2
@@ -210,7 +212,6 @@ six==1.16.0
     #   google-auth-httplib2
     #   isodate
     #   kubernetes
-    #   pygithub
     #   python-dateutil
     #   requests-file
     #   stevedore
