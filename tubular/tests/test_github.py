@@ -207,7 +207,7 @@ class GitHubApiTestCase(TestCase):
         mock_user.name = 'test_name'
         self.repo_mock.create_git_tag = Mock()
         self.repo_mock.create_git_ref = Mock(
-            side_effect=GithubException(status_code, {'message': msg})
+            side_effect=GithubException(status_code, {'message': msg}, {})
         )
         self.repo_mock.get_git_ref = get_tag_mock = Mock()
         get_tag_mock.return_value = Mock(object=Mock(sha=return_sha))
