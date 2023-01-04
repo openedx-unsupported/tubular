@@ -4,50 +4,71 @@
 #
 #    make upgrade
 #
-atlassian-python-api==3.14.1
+asgiref==3.6.0
+    # via django
+atlassian-python-api==3.32.2
     # via -r requirements/base.in
-attrs==21.2.0
-    # via jsonlines
-authlib==0.15.5
+attrs==22.2.0
+    # via
+    #   jsonlines
+    #   zeep
+authlib==1.2.0
     # via simple-salesforce
 backoff==1.5.0
     # via -r requirements/base.in
 boto==2.43.0
     # via -r requirements/base.in
 boto3==1.20.22
-    # via -r requirements/base.in
+    # via
+    #   -c requirements/constraints.txt
+    #   -r requirements/base.in
 botocore==1.23.22
     # via
+    #   -c requirements/constraints.txt
     #   boto3
     #   s3transfer
-cachetools==4.2.4
+cachetools==5.2.0
     # via google-auth
-certifi==2021.10.8
+certifi==2022.12.7
     # via
     #   kubernetes
     #   requests
-cffi==1.15.0
-    # via cryptography
-charset-normalizer==2.0.9
+cffi==1.15.1
+    # via
+    #   cryptography
+    #   pynacl
+charset-normalizer==2.1.1
     # via requests
-click==8.0.3
+click==8.1.3
     # via
     #   -r requirements/base.in
     #   click-log
-click-log==0.3.2
+    #   edx-django-utils
+click-log==0.4.0
     # via -r requirements/base.in
 cloudflare==2.1.0
     # via -r requirements/base.in
-cryptography==36.0.0
+cryptography==39.0.0
     # via authlib
-decorator==5.1.0
+decorator==5.1.1
     # via validators
 deprecated==1.2.13
     # via
     #   atlassian-python-api
     #   pygithub
-easydict==1.9
+django==3.2.16
+    # via
+    #   -c requirements/constraints.txt
+    #   django-crum
+    #   edx-django-utils
+django-crum==0.7.9
+    # via edx-django-utils
+django-waffle==3.0.0
+    # via edx-django-utils
+easydict==1.10
     # via yagocd
+edx-django-utils==5.2.0
+    # via edx-rest-api-client
 edx-opaque-keys==0.4.0
     # via -r requirements/base.in
 edx-rest-api-client==5.5.0
@@ -58,43 +79,53 @@ future==0.16.0
     # via
     #   -r requirements/base.in
     #   cloudflare
-gitdb==4.0.9
+gitdb==4.0.10
     # via gitpython
 gitpython==3.1.18
     # via -r requirements/base.in
 google-api-python-client==1.7.3
     # via -r requirements/base.in
-google-auth==2.3.3
+google-auth==2.15.0
     # via
     #   google-api-python-client
     #   google-auth-httplib2
     #   kubernetes
 google-auth-httplib2==0.1.0
     # via google-api-python-client
-httplib2==0.20.2
+httplib2==0.21.0
     # via
     #   google-api-python-client
     #   google-auth-httplib2
-idna==3.3
+idna==3.4
     # via requests
+isodate==0.6.1
+    # via zeep
 jenkinsapi==0.3.3
     # via -r requirements/base.in
 jmespath==0.10.0
     # via
     #   boto3
     #   botocore
-jsonlines==3.0.0
+jsonlines==3.1.0
     # via cloudflare
 kubernetes==12.0.1
     # via -r requirements/base.in
-lxml==4.6.4
-    # via -r requirements/base.in
-oauthlib==3.1.1
+lxml==4.9.2
+    # via
+    #   -r requirements/base.in
+    #   zeep
+newrelic==8.5.0
+    # via edx-django-utils
+oauthlib==3.2.2
     # via
     #   atlassian-python-api
     #   requests-oauthlib
-pbr==5.8.0
+pbr==5.11.0
     # via stevedore
+platformdirs==2.6.2
+    # via zeep
+psutil==5.9.4
+    # via edx-django-utils
 pyasn1==0.4.8
     # via
     #   pyasn1-modules
@@ -105,7 +136,7 @@ pycparser==2.21
     # via cffi
 pygithub==1.44.1
     # via -r requirements/base.in
-pyjwt==1.7.1
+pyjwt==2.6.0
     # via
     #   edx-rest-api-client
     #   pygithub
@@ -113,7 +144,9 @@ pymongo==3.5.1
     # via
     #   -r requirements/base.in
     #   edx-opaque-keys
-pyparsing==3.0.6
+pynacl==1.5.0
+    # via edx-django-utils
+pyparsing==3.0.9
     # via httplib2
 python-dateutil==2.8.2
     # via
@@ -123,38 +156,48 @@ python-dateutil==2.8.2
 pytz==2016.10
     # via
     #   -r requirements/base.in
+    #   django
     #   jenkinsapi
+    #   zeep
 pyyaml==5.4
     # via
     #   -r requirements/base.in
     #   cloudflare
     #   kubernetes
-requests==2.26.0
+requests==2.28.1
     # via
     #   -r requirements/base.in
     #   atlassian-python-api
     #   cloudflare
+    #   edx-rest-api-client
     #   jenkinsapi
     #   kubernetes
     #   pygithub
+    #   requests-file
     #   requests-oauthlib
+    #   requests-toolbelt
     #   sailthru-client
     #   simple-salesforce
     #   slumber
     #   yagocd
-requests-oauthlib==1.3.0
+    #   zeep
+requests-file==1.5.1
+    # via zeep
+requests-oauthlib==1.3.1
     # via
     #   atlassian-python-api
     #   kubernetes
-rsa==4.8
+requests-toolbelt==0.10.1
+    # via zeep
+rsa==4.9
     # via google-auth
-s3transfer==0.5.0
+s3transfer==0.5.2
     # via boto3
 sailthru-client==2.3.5
     # via -r requirements/base.in
-simple-salesforce==1.11.4
+simple-salesforce==1.12.2
     # via -r requirements/base.in
-simplejson==3.17.6
+simplejson==3.18.1
     # via sailthru-client
 six==1.16.0
     # via
@@ -165,30 +208,35 @@ six==1.16.0
     #   google-api-python-client
     #   google-auth
     #   google-auth-httplib2
+    #   isodate
     #   kubernetes
     #   pygithub
     #   python-dateutil
+    #   requests-file
     #   stevedore
-    #   validators
     #   yagocd
 slumber==0.7.1
     # via edx-rest-api-client
 smmap==5.0.0
     # via gitdb
+sqlparse==0.4.3
+    # via django
 stevedore==1.32.0
-    # via edx-opaque-keys
+    # via
+    #   edx-django-utils
+    #   edx-opaque-keys
 unicodecsv==0.14.1
     # via -r requirements/base.in
 uritemplate==3.0.1
     # via google-api-python-client
-urllib3==1.26.7
+urllib3==1.26.13
     # via
     #   botocore
     #   kubernetes
     #   requests
-validators==0.18.2
+validators==0.20.0
     # via -r requirements/base.in
-websocket-client==1.2.3
+websocket-client==1.4.2
     # via kubernetes
 wrapt==1.11.2
     # via
@@ -196,6 +244,8 @@ wrapt==1.11.2
     #   deprecated
 yagocd==0.4.4
     # via -r requirements/base.in
+zeep==4.2.1
+    # via simple-salesforce
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
