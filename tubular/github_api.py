@@ -471,6 +471,9 @@ class GitHubAPI:
         })
 
         # get more results from commit check runs
+        ignore_check_runs = [
+            'gh-hosted-python-${{ matrix.python-version }},django-${{ matrix.django-version }},${{ matrix.shard_name }}'
+        ]
         check_runs = self.get_commit_check_runs(commit)
 
         results.update({
@@ -479,6 +482,7 @@ class GitHubAPI:
                 suite['url']
             )
             for suite in check_runs['check_runs']
+            if suite['name'] not in ignore_check_runs
         })
 
         return results
