@@ -11,7 +11,7 @@ edx-opaque-keys==0.4.0
 edx-rest-api-client==5.5.0
 freezegun==0.3.8
 future==0.16.0
-GitPython==3.1.18
+GitPython==3.1.30
 google-api-python-client==1.7.3
 jenkinsapi==0.3.3
 kubernetes==12.0.1
