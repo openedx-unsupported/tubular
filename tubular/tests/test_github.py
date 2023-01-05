@@ -129,7 +129,8 @@ class GitHubApiTestCase(TestCase):
             {
                 'documentation_url': 'https://developer.github.com/v3/repos/#get-branch',
                 'message': 'Branch not found'
-            }
+            },
+            headers={}
         )
         self.assertRaises(GithubException, self.api.get_commits_by_branch, 'blah')
 
@@ -206,7 +207,7 @@ class GitHubApiTestCase(TestCase):
         mock_user.name = 'test_name'
         self.repo_mock.create_git_tag = Mock()
         self.repo_mock.create_git_ref = Mock(
-            side_effect=GithubException(status_code, {'message': msg})
+            side_effect=GithubException(status_code, {'message': msg}, {})
         )
         self.repo_mock.get_git_ref = get_tag_mock = Mock()
         get_tag_mock.return_value = Mock(object=Mock(sha=return_sha))
@@ -497,7 +498,7 @@ class GitHubApiTestCase(TestCase):
             self.assertEqual(result, expected_result)
 
     def test_message_pr_does_not_exist(self):
-        with patch.object(self.repo_mock, 'get_pull', side_effect=UnknownObjectException(404, '')):
+        with patch.object(self.repo_mock, 'get_pull', side_effect=UnknownObjectException(404, '', {})):
             self.assertRaises(InvalidPullRequestError, self.api.message_pull_request, 3, 'test', 'test')
 
     def test_message_pr_deployed_stage(self):
