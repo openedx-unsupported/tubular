@@ -63,7 +63,7 @@ AUTH_HEADER = {}
 # following format variables need to be provided:
 #   tags: space delimited list of google user tags, e.g. "+user1@gmail.com +user2@gmail.com"
 NOTIFICATION_MESSAGE_TEMPLATE = """
-Hello from edX. Dear {tags}, a new report listing the learners enrolled in your institution’s courses on edx.org that have requested deletion of their edX account and associated personal data within the last week has been published to Google Drive. Please access your folder to see the latest report. If you have any questions, please contact your edX Project Coordinator.
+Hello from edX. Dear {tags}, a new report listing the learners enrolled in your institution’s courses on edx.org that have requested deletion of their edX account and associated personal data within the last week has been published to Google Drive. Please access your folder to see the latest report.
 """.strip()
 
 LEARNER_CREATED_KEY = 'created'  # This key is currently required to exist in the learner
