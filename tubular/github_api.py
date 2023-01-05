@@ -461,6 +461,12 @@ class GitHubAPI:
             for status in combined_status.statuses
         })
 
+        ignore_check_runs = [
+            'collect-and-verify',
+            'edx-platform-ci-openedx',
+            'gh-hosted-python-${{ matrix.python-version }},django-${{ matrix.django-version }},${{ matrix.shard_name }}'
+        ]
+
         check_suites = self.get_commit_check_suites(commit)
         results.update({
             suite['app']['name']: (
@@ -468,14 +474,11 @@ class GitHubAPI:
                 suite['url']
             )
             for suite in check_suites['check_suites']
+            if suite['app']['name'] not in ignore_check_runs
         })
 
         # get more results from commit check runs
-        ignore_check_runs = [
-            'gh-hosted-python-${{ matrix.python-version }},django-${{ matrix.django-version }},${{ matrix.shard_name }}'
-        ]
         check_runs = self.get_commit_check_runs(commit)
-
         results.update({
             suite['name']: (
                 suite.get('conclusion').lower() if suite.get('conclusion') is not None else 'pending',
