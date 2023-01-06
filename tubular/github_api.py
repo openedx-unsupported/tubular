@@ -433,9 +433,13 @@ class GitHubAPI:
             raise UnknownObjectException(
                 500, "commit is neither a valid sha nor github.Commit.Commit object."
             )
+
+        # in platform we have 39 checks.
+        parameters = {'per_page': 100}
         _, data = commit._requester.requestJsonAndCheck(  # pylint: disable=protected-access
             "GET",
             commit.url + "/check-runs",
+            parameters = parameters,
             headers={"Accept": "application/vnd.github.antiope-preview+json"}
         )
 
@@ -529,7 +533,7 @@ class GitHubAPI:
         """
         if any(state in ('pending', None) for (state, url) in results.values()):
             return 'pending'
-        if all(state in ('success', 'neutral') for (state, url) in results.values()):
+        if all(state in ('success', 'neutral', 'skipped') for (state, url) in results.values()):
             return 'success'
         return 'failure'
 

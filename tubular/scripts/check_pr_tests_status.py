@@ -119,7 +119,7 @@ def check_tests(
 
     for test_name, details in test_statuses.items():
         _url, test_status_string = details.split(" ", 1)
-        test_status_success = bool(test_status_string == "success")
+        test_status_success = bool(test_status_string in ["success", "skipped"])
         if not test_status_success:
             if test_name in ignore_list:
                 LOG.info("Ignoring failure of \"{test_name}\" because it is in the ignore list".format(
