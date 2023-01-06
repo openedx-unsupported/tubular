@@ -276,7 +276,6 @@ class GitHubApiTestCase(TestCase):
             commit_mock.get_combined_status.return_value = mock_combined_status
             self.repo_mock.get_commit.return_value = commit_mock
 
-            # self.repo_mock.get_branch._rawData.return_value = {'protection': {'required_status_checks': ['abc']}}
             commit_mock._requester = Mock()  # pylint: disable=protected-access
             # pylint: disable=protected-access
             commit_mock._requester.requestJsonAndCheck.return_value = (
