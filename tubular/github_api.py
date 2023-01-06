@@ -450,7 +450,7 @@ class GitHubAPI:
             dict mapping context names to (result, url) tuples
         """
         self.log_rate_limit()
-        required_checks = self.get_branch_protection_rules('master')
+        required_checks = self.get_branch_protection_rules()
 
         results = {}
         combined_status = self.get_commit_combined_statuses(commit)
@@ -487,17 +487,15 @@ class GitHubAPI:
 
     @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
-    def get_branch_protection_rules(self, branch):
+    def get_branch_protection_rules(self):
         """
         reference can be found here https://docs.github.com/en/rest/reference/repos#branches
-        Arguments:
-            branch: branch name.
         Returns:
-            lists on required checks.
+            lists of required checks.
         """
         required_status_checks = []
         try:
-            branch = self.github_repo.get_branch(branch)
+            branch = self.github_repo.get_branch(self.github_repo.default_branch)
             if branch:
                 required_status_checks = branch._rawData['protection']['required_status_checks']['contexts']
         except Exception as err:  # pylint: disable=broad-except
