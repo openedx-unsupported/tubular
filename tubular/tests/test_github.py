@@ -64,6 +64,7 @@ class GitHubApiTestCase(TestCase):
                 self.repo_mock = repo_mock.return_value = Mock(spec=Repository)
                 self.api = GitHubAPI('test-org', 'test-repo', token='abc123')
         self.api.log_rate_limit = Mock(return_value=None)
+        self.api.get_branch_protection_rules = Mock(return_value=[])
         super(GitHubApiTestCase, self).setUp()
 
     @patch('github.Github.get_user')
@@ -255,11 +256,11 @@ class GitHubApiTestCase(TestCase):
         ('123', list(range(10)), 10, 'pending', False, True),
         ('123', list(range(10)), 10, 'failure', False, True),
         ('123', [], 0, None, False, True),
-        ('123', list(range(10)), 11, 'SuCcEsS', True, False),
-        ('123', list(range(10)), 11, 'success', True, False),
-        ('123', list(range(10)), 11, 'SUCCESS', True, False),
-        ('123', list(range(10)), 11, 'pending', False, False),
-        ('123', list(range(10)), 11, 'failure', False, False),
+        ('123', list(range(10)), 10, 'SuCcEsS', True, False),
+        ('123', list(range(10)), 10, 'success', True, False),
+        ('123', list(range(10)), 10, 'SUCCESS', True, False),
+        ('123', list(range(10)), 10, 'pending', False, False),
+        ('123', list(range(10)), 10, 'failure', False, False),
         ('123', [], 0, None, False, False)
     )
     @ddt.unpack
@@ -274,6 +275,8 @@ class GitHubApiTestCase(TestCase):
             commit_mock = Mock(spec=Commit, url="some.fake.repo/")
             commit_mock.get_combined_status.return_value = mock_combined_status
             self.repo_mock.get_commit.return_value = commit_mock
+
+            # self.repo_mock.get_branch._rawData.return_value = {'protection': {'required_status_checks': ['abc']}}
             commit_mock._requester = Mock()  # pylint: disable=protected-access
             # pylint: disable=protected-access
             commit_mock._requester.requestJsonAndCheck.return_value = (
@@ -287,6 +290,9 @@ class GitHubApiTestCase(TestCase):
             commit_mock = Mock(spec=Commit, url="some.fake.repo/")
             commit_mock.get_combined_status.return_value = mock_combined_status
             self.repo_mock.get_commit.return_value = commit_mock
+
+            self.api.get_branch_protection_rules = Mock(return_value=['App {}'.format(i) for i in statuses])
+
             commit_mock._requester = Mock()  # pylint: disable=protected-access
             # pylint: disable=protected-access
             commit_mock._requester.requestJsonAndCheck.return_value = (
@@ -303,7 +309,7 @@ class GitHubApiTestCase(TestCase):
                     ],
                     'check_runs': [
                         {
-                            'name': 'python',
+                            'name': 'App {}'.format(i),
                             'app': {
                                 'name': 'App {}'.format(i)
                             },
@@ -372,6 +378,11 @@ class GitHubApiTestCase(TestCase):
                     include_contexts=include_contexts
                 )
         api.log_rate_limit = Mock(return_value=None)
+        api.get_branch_protection_rules = Mock(
+            return_value=[
+                'passed-check', 'pending-check', 'python-unit-tests',
+                'None-check', 'python-unit-tests', 'failed-check']
+        )
 
         mock_combined_status = Mock(name='combined-status', spec=CommitCombinedStatus)
         mock_combined_status.statuses = [
