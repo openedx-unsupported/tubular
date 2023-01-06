@@ -450,8 +450,9 @@ class GitHubAPI:
             dict mapping context names to (result, url) tuples
         """
         self.log_rate_limit()
-        results = {}
+        required_checks = self.get_branch_protection_rules('master')
 
+        results = {}
         combined_status = self.get_commit_combined_statuses(commit)
         results.update({
             status.context: (
@@ -461,12 +462,6 @@ class GitHubAPI:
             for status in combined_status.statuses
         })
 
-        ignore_check_runs = [
-            'collect-and-verify',
-            'edx-platform-ci-openedx',
-            'gh-hosted-python-${{ matrix.python-version }},django-${{ matrix.django-version }},${{ matrix.shard_name }}'
-        ]
-
         check_suites = self.get_commit_check_suites(commit)
         results.update({
             suite['app']['name']: (
@@ -474,7 +469,7 @@ class GitHubAPI:
                 suite['url']
             )
             for suite in check_suites['check_suites']
-            if suite['app']['name'] not in ignore_check_runs
+            if suite['app']['name'] in required_checks
         })
 
         # get more results from commit check runs
@@ -485,10 +480,30 @@ class GitHubAPI:
                 suite['url']
             )
             for suite in check_runs['check_runs']
-            if suite['name'] not in ignore_check_runs
+            if suite['name'] in required_checks
         })
 
         return results
+
+    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
+                          jitter=backoff.random_jitter, on_backoff=_backoff_logger)
+    def get_branch_protection_rules(self, branch):
+        """
+        reference can be found here https://docs.github.com/en/rest/reference/repos#branches
+        Arguments:
+            branch: branch name.
+        Returns:
+            lists on required checks.
+        """
+        required_status_checks = []
+        try:
+            branch = self.github_repo.get_branch(branch)
+            if branch:
+                required_status_checks = branch._rawData['protection']['required_status_checks']['contexts']
+        except Exception as err:  # pylint: disable=broad-except
+            LOG.warning("Error occurred white getting branch protection rules: {0}".format(err))
+
+        return required_status_checks
 
     def filter_validation_results(self, results):
         """
