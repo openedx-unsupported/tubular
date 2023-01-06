@@ -59,6 +59,12 @@ LOG = logging.getLogger(__name__)
     default=sys.stdout
 )
 @click.option(
+    '--all-checks',
+    help="Check all validation contexts, whehther it is required or not",
+    is_flag=True,
+    default=False
+)
+@click.option(
     '--exclude-contexts',
     help=u"Regex defining which validation contexts to exclude from this status check.",
     default="datreeio|Renovate|[Cc]odecov|Dependabot"
@@ -70,7 +76,7 @@ LOG = logging.getLogger(__name__)
 )
 def check_tests(
         org, repo, token, input_file, pr_number, commit_hash,
-        out_file, exclude_contexts, include_contexts,
+        out_file, all_checks, exclude_contexts, include_contexts,
 ):
     """
     Check the current combined status of a GitHub PR/commit in a repo once.
@@ -94,7 +100,8 @@ def check_tests(
         LOG.error(err_msg)
         sys.exit(1)
 
-    gh_utils = GitHubAPI(org, repo, token, exclude_contexts=exclude_contexts, include_contexts=include_contexts)
+    gh_utils = GitHubAPI(org, repo, token, exclude_contexts=exclude_contexts,
+                         include_contexts=include_contexts, all_checks=all_checks)
 
     status_success = False
     if input_file:

@@ -250,22 +250,24 @@ class GitHubApiTestCase(TestCase):
         self.assertEqual(self.api.have_branches_diverged('base', 'head'), expected)
 
     @ddt.data(
-        ('123', list(range(10)), 10, 'SuCcEsS', True, True),
-        ('123', list(range(10)), 10, 'success', True, True),
-        ('123', list(range(10)), 10, 'SUCCESS', True, True),
-        ('123', list(range(10)), 10, 'pending', False, True),
-        ('123', list(range(10)), 10, 'failure', False, True),
-        ('123', [], 0, None, False, True),
-        ('123', list(range(10)), 10, 'SuCcEsS', True, False),
-        ('123', list(range(10)), 10, 'success', True, False),
-        ('123', list(range(10)), 10, 'SUCCESS', True, False),
-        ('123', list(range(10)), 10, 'pending', False, False),
-        ('123', list(range(10)), 10, 'failure', False, False),
-        ('123', [], 0, None, False, False)
+        ('123', list(range(10)), 10, 'SuCcEsS', True, True, False),
+        ('123', list(range(10)), 10, 'success', True, True, False),
+        ('123', list(range(10)), 10, 'SUCCESS', True, True, False),
+        ('123', list(range(10)), 10, 'pending', False, True, False),
+        ('123', list(range(10)), 10, 'failure', False, True, False),
+        ('123', [], 0, None, False, True, False),
+        ('123', list(range(10)), 8, 'SuCcEsS', True, False, False),
+        ('123', list(range(10)), 8, 'success', True, False, False),
+        ('123', list(range(10)), 10, 'success', True, False, True),
+        ('123', list(range(10)), 8, 'SUCCESS', True, False, False),
+        ('123', list(range(10)), 8, 'pending', False, False, False),
+        ('123', list(range(10)), 10, 'pending', False, False, True),
+        ('123', list(range(10)), 8, 'failure', False, False, False),
+        ('123', [], 0, None, False, False, False)
     )
     @ddt.unpack
     def test_check_combined_status_commit(
-            self, sha, statuses, statuses_returned, state, success_expected, use_statuses
+            self, sha, statuses, statuses_returned, state, success_expected, use_statuses, all_checks
     ):
         if use_statuses:
             mock_combined_status = Mock(spec=CommitCombinedStatus)
@@ -290,7 +292,7 @@ class GitHubApiTestCase(TestCase):
             commit_mock.get_combined_status.return_value = mock_combined_status
             self.repo_mock.get_commit.return_value = commit_mock
 
-            self.api.get_branch_protection_rules = Mock(return_value=['App {}'.format(i) for i in statuses])
+            self.api.get_branch_protection_rules = Mock(return_value=['App {}'.format(i) for i in statuses][:8])
 
             commit_mock._requester = Mock()  # pylint: disable=protected-access
             # pylint: disable=protected-access
@@ -319,6 +321,7 @@ class GitHubApiTestCase(TestCase):
                 },
             )
 
+        self.api.all_checks = all_checks
         successful, statuses = self.api.check_combined_status_commit(sha)
 
         assert successful == success_expected
