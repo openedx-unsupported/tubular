@@ -422,7 +422,7 @@ class GitHubAPI:
                 - Commit (directly gets the combined status)
 
         Returns:
-            Json representing the check suites
+            Json representing the check runs
         """
         self.log_rate_limit()
         if isinstance(commit, six.string_types):
@@ -501,7 +501,8 @@ class GitHubAPI:
         try:
             branch = self.github_repo.get_branch(self.github_repo.default_branch)
             if branch:
-                required_status_checks = branch._rawData['protection']['required_status_checks']['contexts']
+
+                required_status_checks = branch.raw_data['protection']['required_status_checks']['contexts']
         except Exception as err:  # pylint: disable=broad-except
             LOG.warning("Error occurred white getting branch protection rules: {0}".format(err))
 
