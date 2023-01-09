@@ -27,7 +27,7 @@ botocore==1.23.22
     #   -c requirements/constraints.txt
     #   boto3
     #   s3transfer
-cachetools==5.2.0
+cachetools==5.2.1
     # via google-auth
 certifi==2022.12.7
     # via

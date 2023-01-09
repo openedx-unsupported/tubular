@@ -4,7 +4,7 @@
 #
 #    make upgrade
 #
-astroid==2.12.13
+astroid==2.13.2
     # via
     #   -r requirements/testing.in
     #   pylint
@@ -52,7 +52,7 @@ httpretty==1.1.4
     # via -r requirements/testing.in
 idna==3.4
     # via requests
-iniconfig==1.1.1
+iniconfig==2.0.0
     # via pytest
 isort==5.11.4
     # via pylint
@@ -79,7 +79,7 @@ more-itertools==9.0.0
     # via moto
 moto==2.2.11
     # via -r requirements/testing.in
-packaging==22.0
+packaging==23.0
     # via pytest
 pbr==5.11.0
     # via stevedore
