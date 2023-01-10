@@ -64,6 +64,7 @@ class GitHubApiTestCase(TestCase):
                 self.repo_mock = repo_mock.return_value = Mock(spec=Repository)
                 self.api = GitHubAPI('test-org', 'test-repo', token='abc123')
         self.api.log_rate_limit = Mock(return_value=None)
+        self.api.get_branch_protection_rules = Mock(return_value=[])
         super(GitHubApiTestCase, self).setUp()
 
     @patch('github.Github.get_user')
@@ -274,10 +275,11 @@ class GitHubApiTestCase(TestCase):
             commit_mock = Mock(spec=Commit, url="some.fake.repo/")
             commit_mock.get_combined_status.return_value = mock_combined_status
             self.repo_mock.get_commit.return_value = commit_mock
+
             commit_mock._requester = Mock()  # pylint: disable=protected-access
             # pylint: disable=protected-access
             commit_mock._requester.requestJsonAndCheck.return_value = (
-                {}, {'check_suites': []})
+                {}, {'check_suites': [], 'check_runs': []})
         else:
             mock_combined_status = Mock(spec=CommitCombinedStatus)
             mock_combined_status.statuses = []
@@ -287,6 +289,9 @@ class GitHubApiTestCase(TestCase):
             commit_mock = Mock(spec=Commit, url="some.fake.repo/")
             commit_mock.get_combined_status.return_value = mock_combined_status
             self.repo_mock.get_commit.return_value = commit_mock
+
+            self.api.get_branch_protection_rules = Mock(return_value=['App {}'.format(i) for i in statuses])
+
             commit_mock._requester = Mock()  # pylint: disable=protected-access
             # pylint: disable=protected-access
             commit_mock._requester.requestJsonAndCheck.return_value = (
@@ -300,8 +305,18 @@ class GitHubApiTestCase(TestCase):
                             'conclusion': state,
                             'url': 'some.fake.repo'
                         } for i in statuses
+                    ],
+                    'check_runs': [
+                        {
+                            'name': 'App {}'.format(i),
+                            'app': {
+                                'name': 'App {}'.format(i)
+                            },
+                            'conclusion': state,
+                            'url': 'some.fake.repo'
+                        } for i in statuses
                     ]
-                }
+                },
             )
 
         successful, statuses = self.api.check_combined_status_commit(sha)
@@ -337,11 +352,11 @@ class GitHubApiTestCase(TestCase):
                 '{}-{}'.format(state, valtype)
                 for state in ['passed', 'pending', None, 'failed']
                 for valtype in ['status', 'check']
-            ]
+            ] + ['python-unit-tests']
         ),
-        ('status', None, ['passed-check', 'pending-check', 'None-check', 'failed-check']),
-        ('check', None, ['passed-status', 'pending-status', 'None-status', 'failed-status']),
-        ('check', 'passed', ['passed-status', 'passed-check', 'pending-status', 'None-status', 'failed-status']),
+        ('status', None, ['passed-check', 'pending-check', 'None-check', 'failed-check', 'python-unit-tests']),
+        ('check', None, ['passed-status', 'pending-status', 'None-status', 'failed-status', 'python-unit-tests']),
+        ('check', 'passed', ['passed-status', 'passed-check', 'pending-status', 'None-status', 'failed-status', 'python-unit-tests']),
         ('.*', 'passed', ['passed-status', 'passed-check']),
     )
     @ddt.unpack
@@ -362,6 +377,11 @@ class GitHubApiTestCase(TestCase):
                     include_contexts=include_contexts
                 )
         api.log_rate_limit = Mock(return_value=None)
+        api.get_branch_protection_rules = Mock(
+            return_value=[
+                'passed-check', 'pending-check', 'python-unit-tests',
+                'None-check', 'python-unit-tests', 'failed-check']
+        )
 
         mock_combined_status = Mock(name='combined-status', spec=CommitCombinedStatus)
         mock_combined_status.statuses = [
@@ -381,6 +401,16 @@ class GitHubApiTestCase(TestCase):
             {
                 'check_suites': [
                     {
+                        'app': {
+                            'name': '{}-check'.format(state)
+                        },
+                        'conclusion': state,
+                        'url': 'some.fake.repo'
+                    } for state in filterable_states
+                ],
+                'check_runs': [
+                    {
+                        'name': 'python-unit-tests',
                         'app': {
                             'name': '{}-check'.format(state)
                         },
