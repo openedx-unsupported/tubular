@@ -28,35 +28,20 @@ LOG = logging.getLogger(__name__)
     default='edx'
 )
 @click.option(
-    '--repo',
-    help='Repo name from the GitHub repository URL of https://github.com/<org>/<repo>'
-)
-@click.option(
     '--token',
     envvar='GIT_TOKEN',
     help='The github access token, see https://help.github.com/articles/creating-an-access-token-for-command-line-use/'
 )
-def get_ready_to_merge_prs(org, repo, token):
+def get_ready_to_merge_prs(org, token):
     """
-    Creates a target "release-candidate" branch
+    get a list of all prs which are open and have a label "Ready to merge" in organization.
 
     Args:
         org (str):
-        repo (str):
-        source_branch (str):
-        sha (str):
-        target_branch (str):
         token (str):
-        output_file (str):
 
-    Outputs a yaml file with information about the newly created branch.
-    e.g.
-     ---
-    repo_name: edx-platform
-    org_name: edx
-    source_branch_name: master
-    target_branch_name: release-candidate
-    sha: af538da6b229cf1dfa33d0171e75fbff6de4c283
+    Returns:
+            list of all prs.
     """
     LOG.info("Getting GitHub token...")
 
@@ -69,8 +54,8 @@ def get_ready_to_merge_prs(org, repo, token):
 
 def get_github_api_response(org, token):
     """
-    GoCD get elastic profile
-    https://api.gocd.org/current/#elastic-agent-profiles
+    get github pull requests
+    https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests
     """
     url = 'https://api.github.com/search/issues?'
 
@@ -85,7 +70,6 @@ def get_github_api_response(org, token):
         content = resp.content.decode('utf-8')
 
     return content
-
 
 if __name__ == "__main__":
     get_ready_to_merge_prs()  # pylint: disable=no-value-for-parameter
