@@ -61,8 +61,12 @@ def get_github_api_response(org, token):
         resp = requests.get(GIT_API_URL, params=params, headers=headers)
         if resp.status_code == 200:
             data = resp.json()
-            LOG.info("Got {count} prs.".format(count = data['total_count']))
-            return [item['html_url'] for item in data['items']]
+            LOG.info("Got {count} prs.".format(count=data['total_count']))
+            data = [parse_urls(item['html_url']) for item in data['items']]
+            for item in data:
+                print(item)
+            return data
+
         else:
             LOG.error(
                 'api return status code {code} and error {con}'.format(code=resp.status_code, con=resp.content)
@@ -72,6 +76,14 @@ def get_github_api_response(org, token):
         LOG.error('Github api throws error: {con}'.format(con=str(err)))
 
     return data
+
+
+def parse_urls(data):
+    """
+    parse data to return only org, repo and pull request number
+    """
+    raw_data = data.replace('https://github.com/', '').split('/')
+    return raw_data[0], raw_data[1], raw_data[3]
 
 
 if __name__ == "__main__":

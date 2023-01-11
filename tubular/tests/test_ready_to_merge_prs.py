@@ -54,12 +54,7 @@ class TestReadyToMergePRS(unittest.TestCase):
         mock_get.return_value = mock_resp
         content = get_github_api_response('openedx', '12345')
 
-        self.assertEqual(
-            sorted(
-                ['https://github.com/openedx/edx-platform/pull/300001',
-                 'https://github.com/openedx/edx-toggles/pull/2001']
-            ), sorted(content)
-        )
+        self.assertEqual([('openedx', 'edx-platform', '300001'), ('openedx', 'edx-toggles', '2001')], content)
 
     @mock.patch('requests.get')
     def test_apis_without_records(self, mock_get):
