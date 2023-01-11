@@ -49,6 +49,7 @@ def get_github_api_response(org, token):
     get github pull requests
     https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests
     """
+    LOG.info("Preparing to hit api")
     params = 'q=is:pr is:open label:"Ready to merge" org:{org}'.format(org=org)
     headers = {
         'Accept': "application/vnd.github.antiope-preview+json",
@@ -60,9 +61,8 @@ def get_github_api_response(org, token):
         resp = requests.get(GIT_API_URL, params=params, headers=headers)
         if resp.status_code == 200:
             data = resp.json()
-            LOG.info("Got the data.")
+            LOG.info("Got {count} prs.".format(count = data['total_count']))
             return [item['html_url'] for item in data['items']]
-
         else:
             LOG.error(
                 'api return status code {code} and error {con}'.format(code=resp.status_code, con=resp.content)
