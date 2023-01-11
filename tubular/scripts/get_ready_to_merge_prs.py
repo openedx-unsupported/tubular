@@ -41,11 +41,7 @@ def get_ready_to_merge_prs(org, token):
     Returns:
             list of all prs.
     """
-    LOG.info("Getting GitHub token...")
-
-    data = get_github_api_response(org, token)
-    if data is not None:
-        return [item['html_url'] for item in data['items']]
+    return get_github_api_response(org, token)
 
 
 def get_github_api_response(org, token):
@@ -64,7 +60,9 @@ def get_github_api_response(org, token):
         resp = requests.get(GIT_API_URL, params=params, headers=headers)
         if resp.status_code == 200:
             data = resp.json()
+            LOG.info("Got the data.")
             return [item['html_url'] for item in data['items']]
+
         else:
             LOG.error(
                 'api return status code {code} and error {con}'.format(code=resp.status_code, con=resp.content)
