@@ -3,6 +3,7 @@
 """
 Command-line script to get open prs with label 'Ready to merge'
 """
+import json
 import logging
 import sys
 from os import path
@@ -62,9 +63,14 @@ def get_github_api_response(org, token):
         if resp.status_code == 200:
             data = resp.json()
             LOG.info("Got {count} prs.".format(count=data['total_count']))
-            data = [parse_urls(item['html_url']) for item in data['items']]
-            for item in data:
-                print(item)
+            urls = []
+            for item in data['items']:
+                urls.append(item['html_url'])
+            for item in data['items']:
+                urls.append(item['html_url'])
+            for item in data['items']:
+                urls.append(item['html_url'])
+            print(json.dumps(urls))
             return data
 
         else:
