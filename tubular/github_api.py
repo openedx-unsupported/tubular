@@ -177,7 +177,7 @@ class GitHubAPI:
     def __init__(
             self, org, repo, token,
             max_tries=None, initial_wait=None, interval=None,
-            exclude_contexts=None, include_contexts=None
+            exclude_contexts=None, include_contexts=None, all_checks=False
     ):
         """
         Creates a new API access object.
@@ -199,6 +199,7 @@ class GitHubAPI:
         self.org = org
         self.repo = repo
         self._set_up_repo_and_org()
+        self.all_checks = all_checks
 
         if max_tries is None:
             max_tries = envvar_get_int("MAX_PR_TEST_POLL_TRIES", MAX_PR_TEST_TRIES_DEFAULT)
@@ -473,7 +474,7 @@ class GitHubAPI:
                 suite['url']
             )
             for suite in check_suites['check_suites']
-            if suite['app']['name'] in required_checks
+            if self.all_checks or suite['app']['name'] in required_checks
         })
 
         # get more results from commit check runs
@@ -484,7 +485,7 @@ class GitHubAPI:
                 suite['url']
             )
             for suite in check_runs['check_runs']
-            if suite['name'] in required_checks
+            if self.all_checks or suite['name'] in required_checks
         })
 
         return results
