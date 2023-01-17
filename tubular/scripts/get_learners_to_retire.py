@@ -41,12 +41,19 @@ LOG = logging.getLogger(__name__)
     '--user_count_error_threshold',
     help="If more users than this number are returned we will error out instead of retiring. This is a failsafe"
          "against attacks that somehow manage to add users to the retirement queue.",
+    default=300
+)
+@click.option(
+    '--max_user_batch_size',
+    help="This setting will only get at most X number of users. If this number is lower than the user_count_error_threshold"
+         "setting then it will not error.",
     default=200
 )
 def get_learners_to_retire(config_file,
                            cool_off_days,
                            output_dir,
-                           user_count_error_threshold):
+                           user_count_error_threshold,
+                           max_user_batch_size):
     """
     Retrieves a JWT token as the retirement service user, then calls the LMS
     endpoint to retrieve the list of learners awaiting retirement.
@@ -72,6 +79,8 @@ def get_learners_to_retire(config_file,
 
     # Retrieve the learners to retire and export them to separate Jenkins property files.
     learners_to_retire = api.learners_to_retire(states_to_request, cool_off_days)
+    if max_user_batch_size:
+        learners_to_retire = learners_to_retire[:max_user_batch_size]
     learners_to_retire_cnt = len(learners_to_retire)
 
     if learners_to_retire_cnt > user_count_error_threshold:
