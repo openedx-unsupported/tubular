@@ -3,10 +3,11 @@
 """
 Command-line script to create or update the release page for a specific release.
 """
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
 
+from tubular.github_api import (  # pylint: disable=wrong-import-position
+    default_expected_release_date,
+)
+from tubular.confluence_api import ReleasePage, publish_page, AMI, ReleaseStatus  # pylint: disable=wrong-import-position
 from os import path
 from datetime import datetime
 import sys
@@ -20,10 +21,6 @@ import yaml
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from tubular.confluence_api import ReleasePage, publish_page, AMI, ReleaseStatus  # pylint: disable=wrong-import-position
-from tubular.github_api import (  # pylint: disable=wrong-import-position
-    default_expected_release_date,
-)
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -87,7 +84,8 @@ EXPECTED_RELEASE_DATE = default_expected_release_date()
     '--status',
     help=u"The current status of this deployment",
     required=True,
-    type=click.Choice(ReleaseStatus.__members__.keys()),  # pylint: disable=no-member
+    type=click.Choice(ReleaseStatus.__members__.keys()
+                      ),  # pylint: disable=no-member
 )
 @click.option(
     '--out-file',
