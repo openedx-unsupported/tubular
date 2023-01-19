@@ -17,14 +17,14 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
-GIT_API_URL = 'https://api.github.com/search/issues?'
+GIT_API_URL = 'https://api.github.com/search/issues?per_page=100'
 
 
 @click.command("get_ready_to_merge_prs")
 @click.option(
     '--org',
     help='Org from the GitHub repository URL of https://github.com/<org>/<repo>',
-    default='edx'
+    default='openedx'
 )
 @click.option(
     '--token',
@@ -53,7 +53,7 @@ def get_github_api_response(org, token):
     https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests
     """
     LOG.info("Preparing to hit api")
-    params = 'q=is:pr is:open label:"Ready to merge" org:{org}'.format(org=org)
+    params = f'q=is:pr is:open label:"Ready to merge" org:{org}'
     headers = {
         'Accept': "application/vnd.github.antiope-preview+json",
         'Authorization': "bearer {token}".format(token=token),
