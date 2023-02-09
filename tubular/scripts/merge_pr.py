@@ -84,8 +84,11 @@ def merge_pull_request(org,
 
     try:
         pull_request = github_api.get_pull_request(pr_number)
+
+        # few repos has disabled `allow_merge_commit`.
+        merge_commit = "merge" if github_api.github_repo.allow_merge_commit else "squash"
         if not pull_request.is_merged():
-            pull_request.merge()
+            pull_request.merge(merge_method=merge_commit)
         else:
             LOG.info("This PR was already merged - no merge is necessary.")
     except (GithubException, UnknownObjectException):
