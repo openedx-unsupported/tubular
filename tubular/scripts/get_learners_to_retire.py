@@ -78,7 +78,7 @@ def get_learners_to_retire(config_file,
     api = LmsApi(lms_base_url, lms_base_url, client_id, client_secret)
 
     # Retrieve the learners to retire and export them to separate Jenkins property files.
-    learners_to_retire = api.learners_to_retire(states_to_request, cool_off_days)
+    learners_to_retire = api.learners_to_retire(states_to_request, cool_off_days, max_user_batch_size)
     if max_user_batch_size:
         learners_to_retire = learners_to_retire[:max_user_batch_size]
     learners_to_retire_cnt = len(learners_to_retire)
