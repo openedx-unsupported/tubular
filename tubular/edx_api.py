@@ -190,7 +190,7 @@ class LmsApi(BaseApiClient):
     LMS API client with convenience methods for making API calls.
     """
     @_retry_lms_api()
-    def learners_to_retire(self, states_to_request, cool_off_days=7):
+    def learners_to_retire(self, states_to_request, cool_off_days=7, limit=None):
         """
         Retrieves a list of learners awaiting retirement actions.
         """
@@ -198,6 +198,8 @@ class LmsApi(BaseApiClient):
             'cool_off_days': cool_off_days,
             'states': states_to_request
         }
+        if limit:
+            params['limit'] = limit
         api_url = self.get_api_url('api/user/v1/accounts/retirement_queue')
         return self._request('GET', api_url, params=params)
 
