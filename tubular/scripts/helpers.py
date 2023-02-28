@@ -27,6 +27,7 @@ from tubular.braze_api import BrazeApi  # pylint: disable=wrong-import-position
 from tubular.segment_api import SegmentApi  # pylint: disable=wrong-import-position
 from tubular.salesforce_api import SalesforceApi  # pylint: disable=wrong-import-position
 from tubular.hubspot_api import HubspotAPI  # pylint: disable=wrong-import-position
+from tubular.amplitude_api import AmplitudeApi  # pylint: disable=wrong-import-position
 
 
 def _log(kind, message):
@@ -157,6 +158,8 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
         client_secret = config['client_secret']
         braze_api_key = config.get('braze_api_key', None)
         braze_instance = config.get('braze_instance', None)
+        amplitude_api_key = config.get('amplitude_api_key', None)
+        amplitude_secret_key = config.get('amplitude_secret_key', None)
         salesforce_user = config.get('salesforce_user', None)
         salesforce_password = config.get('salesforce_password', None)
         salesforce_token = config.get('salesforce_token', None)
@@ -172,6 +175,7 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
         for state in config['retirement_pipeline']:
             for service, service_url in (
                     ('BRAZE', braze_api_key),
+                    ('AMPLITUDE', amplitude_api_key),
                     ('ECOMMERCE', ecommerce_base_url),
                     ('CREDENTIALS', credentials_base_url),
                     ('SEGMENT', segment_base_url),
@@ -187,6 +191,12 @@ def _setup_all_apis_or_exit(fail_func, fail_code, config):
             config['BRAZE'] = BrazeApi(
                 braze_api_key,
                 braze_instance,
+            )
+
+        if amplitude_api_key and amplitude_secret_key:
+            config['AMPLITUDE'] = AmplitudeApi(
+                amplitude_api_key,
+                amplitude_secret_key,
             )
 
         if salesforce_user and salesforce_password and salesforce_token:
