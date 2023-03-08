@@ -14,7 +14,6 @@ import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tubular.confluence_api import ReleasePage, publish_page, AMI, ReleaseStatus  # pylint: disable=wrong-import-position
 from tubular.gocd_api import (  # pylint: disable=wrong-import-position
     get_elastic_profile,
     put_elastic_profile,

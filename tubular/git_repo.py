@@ -136,21 +136,6 @@ class LocalGitAPI:
         else:
             return self.repo.head.commit.hexsha
 
-    def create_branch(self, branch_name, commit='HEAD'):
-        """
-        Creates a branch with a specified name in the local repo.
-        """
-        self.repo.create_head(branch_name, commit)
-
-    def track_remote_branch(self, remote_name, remote_branch):
-        """
-        Create a local branch which tracks a remote branch.
-        """
-        branch_ref = self.repo.remote(remote_name).refs[remote_branch]
-        self.create_branch(remote_branch, branch_ref)
-        self.repo.heads[remote_branch].set_tracking_branch(branch_ref)
-        self.checkout_branch(remote_branch)
-
     def octopus_merge(self, base_branch, commitishes):
         """
         Merge all ``commitishes`` into ``base_branch`` in this repo.

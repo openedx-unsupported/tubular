@@ -1,6 +1,5 @@
 -c constraints.txt
 
-atlassian-python-api
 backoff==1.5.0
 boto==2.43.0
 boto3
@@ -15,7 +14,6 @@ GitPython==3.1.18
 google-api-python-client==1.7.3
 jenkinsapi==0.3.3
 kubernetes==12.0.1
-lxml
 PyGithub
 pymongo==3.5.1
 pytz==2016.10
