@@ -67,8 +67,19 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
 )
 @click.option(
     '--target-branch',
-    help='The branch to create in the target repository from the merged PRs.',
+    help=(
+        'The branch to create or update in the target repository to point to '
+        'the deployment commit (a new merge commit, if there are PRs to merge)'
+    ),
     required=True,
+)
+@click.option(
+    '--target-tag',
+    help=(
+        'The base for the tag to create for the deployment commit '
+        '(a new merge commit, if there are PRs to merge). Defaults to '
+        'release-candidate-<timestamp> to ensure uniqueness.'
+    ),
 )
 @click.option(
     '--source-deploy-commit',
@@ -99,7 +110,7 @@ def find_approved_prs(target_repo, source_repo, target_base_branch, source_base_
 @click_log.simple_verbosity_option(default=u'INFO')
 def octomerge(
         token, target_repo, source_repo, target_base_branch, source_base_branch,
-        target_branch, source_deploy_commit, out_file, target_reference_repo,
+        target_branch, target_tag, source_deploy_commit, out_file, target_reference_repo,
         repo_variable, sha_variable
 ):
     u"""
@@ -138,8 +149,10 @@ def octomerge(
         else:
             logging.info("No PRs to merge")
 
-        # The tag encodes the time to ensure that it is a distinct tag.
-        release_name = 'release-{date}'.format(date=datetime.now().strftime("%Y%m%d%H%M%S"))
+        if target_tag:
+            release_name = target_tag
+        else:
+            release_name = 'release-candidate-{date}'.format(date=datetime.now().strftime("%Y%m%d%H%M%S"))
         deploy_sha = local_repo.get_head_sha(branch=target_branch)
         logging.info(f"Pushing commit {deploy_sha} to {target_branch} branch and tagging as {release_name}")
         local_repo.repo.create_tag(
