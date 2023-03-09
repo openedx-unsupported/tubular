@@ -30,13 +30,8 @@ from tubular import github_api
 from tubular.exception import InvalidUrlException
 from tubular.github_api import (
     GitHubAPI,
-    NoValidCommitsError,
     InvalidPullRequestError,
     GitTagMismatchError,
-    default_expected_release_date,
-    extract_message_summary,
-    rc_branch_name_for_date,
-    RELEASE_CUTOFF
 )
 
 # SHA1 is hash function designed to be difficult to reverse.
@@ -145,19 +140,6 @@ class GitHubApiTestCase(TestCase):
         ref_mock.delete.assert_called()
 
     @ddt.data(
-        ('blah-candidate', 'falafel'),
-        ('meow', 'schwarma ')
-    )
-    @ddt.unpack
-    def test_create_branch(self, branch_name, sha):
-        create_git_ref_mock = Mock()
-        self.repo_mock.create_git_ref = create_git_ref_mock
-
-        self.api.create_branch(branch_name, sha)
-
-        create_git_ref_mock.assert_called_with(ref='refs/heads/{}'.format(branch_name), sha=sha)
-
-    @ddt.data(
         ('blah-candidate', 'release', 'test', 'test_pr'),
         ('catnip', 'release', 'My meowsome PR', 'this PR has lots of catnip inside, go crazy!'),
     )
@@ -238,16 +220,6 @@ class GitHubApiTestCase(TestCase):
         with patch.object(Github, 'get_user', return_value=mock_user):
             with self.assertRaises(GithubException):
                 self.api.create_tag('abc', 'test_tag')
-
-    @ddt.data(
-        ('diverged', True),
-        ('divergent', False),
-        ('ahead', False)
-    )
-    @ddt.unpack
-    def test_have_branches_diverged(self, status, expected):
-        self.repo_mock.compare.return_value = Mock(spec=Comparison, status=status)
-        self.assertEqual(self.api.have_branches_diverged('base', 'head'), expected)
 
     @ddt.data(
         ('123', list(range(10)), 10, 'SuCcEsS', True, True, False),
@@ -427,34 +399,6 @@ class GitHubApiTestCase(TestCase):
         assert set(expected_contexts) == set(filtered_results.keys())
 
     @ddt.data(
-        ('release-candidate', 4),
-        ('meow-candidate', 6),
-        ('should-have-gone-to-law-school', 1),
-    )
-    @ddt.unpack
-    def test_most_recent_good_commit(self, branch, good_commit_id):
-        commits = [Mock(spec=Commit, sha=i) for i in range(1, 10)]
-        self.api.get_commits_by_branch = Mock(return_value=commits)
-
-        def _side_effect(sha):
-            """
-            side effect returns True when the commit ID matches the current iteration
-            """
-            return (sha == good_commit_id, {})
-
-        self.api._is_commit_successful = Mock(side_effect=_side_effect)  # pylint: disable=protected-access
-
-        self.api.most_recent_good_commit(branch)
-        self.assertEqual(self.api._is_commit_successful.call_count, good_commit_id)  # pylint: disable=protected-access
-
-    def test_most_recent_good_commit_no_commit(self):
-        commits = [Mock(spec=Commit, sha=i) for i in range(1, 10)]
-        self.api.get_commits_by_branch = Mock(return_value=commits)
-
-        self.api._is_commit_successful = Mock(return_value=(False, {}))  # pylint: disable=protected-access
-        self.assertRaises(NoValidCommitsError, self.api.most_recent_good_commit, 'release-candidate')
-
-    @ddt.data(
         # 1 unique SHA should result in 1 search query and 1 PR.
         (SHAS[:1], 1, 1),
         # 18 unique SHAs should result in 1 search query and 18 PRs.
@@ -534,31 +478,6 @@ class GitHubApiTestCase(TestCase):
         with patch.object(self.repo_mock, 'get_pull', side_effect=UnknownObjectException(404, '', {})):
             self.assertRaises(InvalidPullRequestError, self.api.message_pull_request, 3, 'test', 'test')
 
-    def test_message_pr_deployed_stage(self):
-        deploy_date = github_api.default_expected_release_date()
-        with patch.object(self.api, 'message_pull_request') as mock:
-            self.api.message_pr_with_type(1, github_api.MessageType.stage, deploy_date=deploy_date)
-            mock.assert_called_with(
-                1,
-                github_api.PR_MESSAGE_FORMAT.format(
-                    prefix=github_api.PR_PREFIX,
-                    message=github_api.MessageType.stage.value,
-                    extra_text=github_api.PR_ON_STAGE_DATE_EXTRA.format(
-                        date=deploy_date,
-                        extra_text=''
-                    )
-                ),
-                github_api.PR_MESSAGE_FORMAT.format(
-                    prefix=github_api.PR_PREFIX,
-                    message=github_api.MessageType.stage.value,
-                    extra_text=github_api.PR_ON_STAGE_DATE_EXTRA.format(
-                        date=deploy_date,
-                        extra_text=''
-                    )
-                ),
-                False
-            )
-
     @ddt.data(
         (datetime(2017, 1, 9, 11), date(2017, 1, 10)),
         (datetime(2017, 1, 13, 11), date(2017, 1, 16)),
@@ -609,59 +528,3 @@ class GitHubApiTestCase(TestCase):
                 ),
                 force_message
             )
-
-
-@ddt.ddt
-class ReleaseUtilsTestCase(TestCase):
-    """
-    Test Cases for release utility functions
-    """
-
-    def test_rc_formatting(self):
-        """
-        Tests that rc branch names are properly formatted
-        """
-        release_date = datetime(year=1983, month=12, day=7, hour=6)
-        name = rc_branch_name_for_date(release_date.date())
-        self.assertEqual(name, 'rc/1983-12-07')
-
-    @ddt.data(
-        ('some title', 'some title'),
-        (
-            'some incredibly long title that will eventually be cut off',
-            'some incredibly long title that will eventually be...'
-        ),
-        (
-            'some title with\na new line in it',
-            'some title with'
-        ),
-        (
-            'some incredibly long title that will eventually be cut \noff',
-            'some incredibly long title that will eventually be...'
-        )
-    )
-    @ddt.unpack
-    def test_extract_short(self, message, expected):
-        """
-        Tests that commit messages are properly summarized
-        """
-        summary = extract_message_summary(message)
-        self.assertEqual(summary, expected)
-
-    @ddt.data(
-        # on Friday morning, the release date is Friday
-        (datetime(2017, 2, 17, 4, 0, 0), datetime(2017, 2, 17)),
-        # on Friday afternoon, the release date is Monday
-        (datetime(2017, 2, 17, 11, 0, 0), datetime(2017, 2, 20)),
-        # on Wednesday morning, the release date is Wednesday
-        (datetime(2017, 2, 15, 4, 0, 0), datetime(2017, 2, 15)),
-        # on Wednesday afternoon, the release date is Thursday
-        (datetime(2017, 2, 15, 11, 0, 0), datetime(2017, 2, 16)),
-    )
-    @ddt.unpack
-    def test_expected_release_date(self, at_time, expected_date):
-        """
-        Tests that we don't start on the current day
-        """
-        release_date = default_expected_release_date(at_time=at_time)
-        self.assertEqual(release_date, datetime.combine(expected_date, RELEASE_CUTOFF))

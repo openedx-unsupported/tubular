@@ -36,13 +36,6 @@ PR_ON_STAGE_DATE_EXTRA = 'in preparation for a release to production on {date:%A
 DEFAULT_TAG_USERNAME = 'no_user'
 DEFAULT_TAG_EMAIL_ADDRESS = 'no.public.email@edx.org'
 
-# Day of week constant
-_MONDAY = 0
-_FRIDAY = 4
-_NORMAL_RELEASE_WEEKDAYS = tuple(range(_MONDAY, _FRIDAY + 1))
-RELEASE_TZ = timezone('US/Eastern')
-RELEASE_CUTOFF = time(10, tzinfo=RELEASE_TZ)
-
 # Defaults for the polling of a PR's tests.
 MAX_PR_TEST_TRIES_DEFAULT = 5
 PR_TEST_INITIAL_WAIT_INTERVAL_DEFAULT = 10
@@ -77,12 +70,6 @@ class SearchRateLimitError(Exception):
     """
 
 
-class NoValidCommitsError(Exception):
-    """
-    Error indicating that there are no commits with valid statuses
-    """
-
-
 class InvalidPullRequestError(Exception):
     """
     Error indicating that a PR could not be found
@@ -99,41 +86,6 @@ class GitTagMismatchError(Exception):
     """
     Error indicating that a tag is pointing at an incorrect SHA.
     """
-
-
-def extract_message_summary(message, max_length=50):
-    """
-    Take a commit message and return the first part of it.
-    """
-    title = message.split('\n')[0] or ''
-    if len(title) < max_length:
-        return title
-    return title[0:max_length] + '...'
-
-
-def default_expected_release_date(at_time=None, release_days=_NORMAL_RELEASE_WEEKDAYS):
-    """
-    Returns the default expected release date given the current date.
-    Currently the nearest weekday in the future (can't be today).
-    """
-    if at_time is None:
-        at_time = datetime.now(RELEASE_TZ)
-
-    if at_time.timetz() < RELEASE_CUTOFF:
-        proposal = at_time.date()
-    else:
-        proposal = at_time.date() + timedelta(days=1)
-
-    while proposal.weekday() not in release_days:
-        proposal = proposal + timedelta(days=1)
-    return datetime.combine(proposal, RELEASE_CUTOFF)
-
-
-def rc_branch_name_for_date(date):
-    """
-    Returns the standard release candidate branch name
-    """
-    return 'rc/{date}'.format(date=date.isoformat())
 
 
 def _backoff_logger(details):
@@ -733,33 +685,10 @@ class GitHubAPI:
 
     @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
-    def create_branch(self, branch_name, sha):
-        """
-        Calls GitHub's create ref (branch) API
-
-        Arguments:
-            branch_name (str): The name of the branch to create
-            sha (str): The commit to base the branch off of
-
-        Returns:
-            github.GitRef.GitRef
-
-        Raises:
-            github.GithubException.GithubException: If the branch isn't created/already exists.
-            github.GithubException.UnknownObjectException: if the branch can not be fetched after creation
-        """
-        self.log_rate_limit()
-        return self.github_repo.create_git_ref(
-            ref='refs/heads/{}'.format(branch_name),
-            sha=sha
-        )
-
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
-                          jitter=backoff.random_jitter, on_backoff=_backoff_logger)
     def create_pull_request(
             self,
             head,
-            base='release',
+            base,
             title='',
             body=''):
         """
@@ -930,55 +859,6 @@ class GitHubAPI:
                     )
                 )
         return created_tag
-
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
-                          jitter=backoff.random_jitter, on_backoff=_backoff_logger)
-    def have_branches_diverged(self, base_branch, compare_branch):
-        """
-        Checks to see if all the commits that are in the compare_branch are already in the base_branch.
-
-        Arguments:
-            base_branch (str): Branch to use as a base when comparing.
-            compare_branch (str): Branch to compare against base to see if it contains commits the base does not.
-
-        Returns:
-            bool: False if all commits in the compare_branch are already in the base_branch.
-                  True if the compare_branch contains commits which the base_branch does not.
-
-        Raises:
-            github.GithubException.GithubException: If the call fails.
-            github.GithubException.UnknownObjectException: If either branch does not exist.
-        """
-        self.log_rate_limit()
-        return self.github_repo.compare(
-            base='refs/heads/{}'.format(base_branch),
-            head='refs/heads/{}'.format(compare_branch)
-        ).status == 'diverged'
-
-    def most_recent_good_commit(self, branch):
-        """
-        Returns the most recent commit on master that has passed the tests
-
-        Arguments:
-            branch (str): branch name to check for valid commits
-
-        Returns:
-            github.GitCommit.GitCommit
-
-        Raises:
-            NoValidCommitsError: When no commit is found
-
-        """
-        commits = self.get_commits_by_branch(branch)
-
-        result = None
-        for commit in commits:
-            if self._is_commit_successful(commit.sha)[0]:
-                result = commit
-                return result
-
-        # no result
-        raise NoValidCommitsError()
 
     @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
                           jitter=backoff.random_jitter, on_backoff=_backoff_logger)
