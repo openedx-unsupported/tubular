@@ -36,17 +36,14 @@ class AmplitudeApi:
         self.base_url = "https://amplitude.com/"
         self.delete_user_path = "api/2/deletions/users"
 
-    def auth_headers(self):
+    def auth(self):
         """
-        Returns authorization headers suitable for passing to the requests library.
+        Returns auth credentials for Amplitude authorization.
 
         Returns:
-            Dict: Returns authorization headers dictionary.
+            Tuple: Returns authorization tuple.
         """
-        return {
-            "Authorization": "Basic {api_key}:{secret_key}".format(api_key=self.amplitude_api_key, secret_key=self.amplitude_secret_key),
-            "Content-Type": "application/json"
-        }
+        return (self.amplitude_api_key, self.amplitude_secret_key)
 
 
     @backoff.on_exception(
@@ -71,11 +68,13 @@ class AmplitudeApi:
         """
         response = requests.post(
             self.base_url + self.delete_user_path,
-            headers = self.auth_headers(),
-            data = json.dumps({
+            headers = {"Content-Type": "application/json"},
+            json = {
                 "user_ids": [user["user"]["id"]],
-                "requester": "user-retirement-pipeline"
-            })
+                'ignore_invalid_id': 'true', # When true, the job ignores users that don't exist in the project.
+                "requester": "user-retirement-pipeline",
+            },
+            auth = self.auth()
         )
 
         if response.status_code == 200:

@@ -31,10 +31,7 @@ class TestAmplitude(unittest.TestCase):
         """
         req_mock.post(
             "https://amplitude.com/api/2/deletions/users",
-            request_headers = {
-                "Authorization": "Basic test-api-key:test-secret-key",
-                "Content-Type": "application/json"
-            },
+            headers = {"Content-Type": "application/json"},
             json = {},
             status_code = status_code
         )
@@ -45,7 +42,6 @@ class TestAmplitude(unittest.TestCase):
 
         """
         self._mock_delete(req_mock, 200)
-
         logger = logging.getLogger("tubular.amplitude_api")
         with mock.patch.object(logger, "info") as mock_info:
             self.amplitude.delete_user(self.user)
@@ -54,7 +50,7 @@ class TestAmplitude(unittest.TestCase):
 
         self.assertEqual(len(req_mock.request_history), 1)
         request = req_mock.request_history[0]
-        self.assertEqual(request.json(), {"user_ids": ["1234"], "requester": "user-retirement-pipeline"})
+        self.assertEqual(request.json(), {"user_ids": ["1234"], 'ignore_invalid_id': 'true', "requester": "user-retirement-pipeline"})
 
     def test_delete_fatal_error(self, req_mock):
         """
