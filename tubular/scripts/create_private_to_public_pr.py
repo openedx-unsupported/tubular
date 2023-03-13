@@ -110,7 +110,7 @@ def create_private_to_public_pr(private_org,
                 body='Merges private security fixes back to the public repo.\n\n'
                      'This PR should be automatically merged by the bot once tests pass. '
                      'If this needs to be merged manually, please **do not squash or rebase**; '
-                     'the commits should remain intact, via a merge commit.',
+                     'the commits must remain intact, via a merge commit.',
                 head=new_branch_name,
                 base=public_target_branch
             )
