@@ -106,9 +106,11 @@ def create_private_to_public_pr(private_org,
         # Create a PR from new public branch to public master.
         try:
             pull_request = github_api.create_pull_request(
-                title='Mergeback PR from private to public.',
-                body='Merge private changes back to the public repo post-PR-merge.\n\n'
-                     'Please review and tag appropriate parties.',
+                title='Merge private patch back to public.',
+                body='Merges private security fixes back to the public repo.\n\n'
+                     'This PR should be automatically merged by the bot once tests pass. '
+                     'If this needs to be merged manually, please **do not squash or rebase**; '
+                     'the commits should remain intact, via a merge commit.',
                 head=new_branch_name,
                 base=public_target_branch
             )
