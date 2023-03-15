@@ -66,6 +66,9 @@ class AmplitudeApi:
           AmplitudeException: if the error from amplitude is unrecoverable/unretryable.
           AmplitudeRecoverableException: if the error from amplitude is recoverable/retryable.
         """
+        print(u'Amplitude delete user URL: {}: {}'.format(self.base_url, self.delete_user_path).encode('utf-8'))
+        print(u'Amplitude user ID: {}'.format(user["user"]["id"]).encode('utf-8'))
+        print(u'Amplitude auth: {}'.format(self.auth()).encode('utf-8'))
         response = requests.post(
             self.base_url + self.delete_user_path,
             headers = {"Content-Type": "application/json"},
@@ -76,6 +79,8 @@ class AmplitudeApi:
             },
             auth = self.auth()
         )
+        print(u'Amplitude response content: {}'.format(response.content).encode('utf-8'))
+        print(u'Amplitude response json: {}'.format(response.json()).encode('utf-8'))
 
         if response.status_code == 200:
             logger.info("Amplitude user deletion succeeded")

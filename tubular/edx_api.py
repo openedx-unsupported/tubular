@@ -60,9 +60,13 @@ class BaseApiClient:
 
         try:
             response = requests.request(method, url, auth=SuppliedJwtAuth(self._access_token), **kwargs)
+            print(u'Amplitude response status_code: {}'.format(response.status_code))
+            print(u'Amplitude response url: {}'.format(response.url))
+            print(u'Amplitude response content: {}'.format(response.content))
             response.raise_for_status()
 
             if response.status_code != 204:
+                print(u'Amplitude response status_code1: {}'.format(response.status_code))
                 return response.json()
         except HTTPError as exc:
             status_code = exc.response.status_code
@@ -84,7 +88,6 @@ class BaseApiClient:
         except Timeout:
             LOG.error("The request is timed out.")
             raise
-
         return response
 
     @staticmethod
@@ -241,7 +244,7 @@ class LmsApi(BaseApiClient):
             'new_state': new_state_name,
             'response': message
         }
-
+        print(u'Amplitude update request send data: {}'.format(data))
         if force:
             data['force'] = True
 
