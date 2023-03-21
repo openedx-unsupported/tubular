@@ -8,6 +8,7 @@ from mock import DEFAULT, patch
 from tubular.exception import HttpDoesNotExistException
 from tubular.scripts.retire_one_learner import (
     END_STATES,
+    ERROR_STATE,
     ERR_BAD_CONFIG,
     ERR_BAD_LEARNER,
     ERR_SETUP_FAILED,
@@ -22,7 +23,7 @@ from tubular.tests.retirement_helpers import (
 )
 
 
-def _call_script(username, fetch_ecom_segment_id=False):
+def _call_script(username, fetch_ecom_segment_id=False, redrive_errored=False):
     """
     Call the retired learner script with the given username and a generic, temporary config file.
     Returns the CliRunner.invoke results
@@ -31,7 +32,10 @@ def _call_script(username, fetch_ecom_segment_id=False):
     with runner.isolated_filesystem():
         with open('test_config.yml', 'w') as f:
             fake_config_file(f, fetch_ecom_segment_id=fetch_ecom_segment_id)
-        result = runner.invoke(retire_learner, args=['--username', username, '--config_file', 'test_config.yml'])
+        args = ['--username', username, '--config_file', 'test_config.yml']
+        if redrive_errored:
+            args.append("--redrive-errored")
+        result = runner.invoke(retire_learner, args=args)
     print(result)
     print(result.output)
     return result
@@ -236,6 +240,41 @@ def test_user_in_end_state(*args, **kwargs):
         # Reset our call counts for the next test
         mock_get_access_token.reset_mock()
         mock_get_retirement_state.reset_mock()
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    get_learner_retirement_state=DEFAULT,
+    update_learner_retirement_state=DEFAULT,
+)
+def test_user_in_errored_state(*args, **kwargs):
+    username = 'test_username'
+
+    mock_get_access_token = args[0]
+    mock_get_retirement_state = kwargs['get_learner_retirement_state']
+    mock_update_learner_state = kwargs['update_learner_retirement_state']
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_get_retirement_state.return_value = get_fake_user_retirement(
+        original_username=username,
+        current_state_name=ERROR_STATE,
+        last_state_name='RETIRING_FORUMS',
+    )
+
+    # pytest.parameterize doesn't play nicely with patch.multiple, this seemed more
+    # readable than the alternatives.
+
+    result = _call_script(username, redrive_errored=True)
+
+    assert mock_get_access_token.call_count == 3
+    mock_get_retirement_state.assert_called_once_with(username)
+    mock_update_learner_state.assert_not_called()
+
+    assert result.exit_code == ERR_USER_IN_WORKING_STATE
+
+    # Reset our call counts for the next test
+    mock_get_access_token.reset_mock()
+    mock_get_retirement_state.reset_mock()
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token')

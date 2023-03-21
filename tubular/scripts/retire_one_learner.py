@@ -73,7 +73,7 @@ END_STATES = (ERROR_STATE, ABORTED_STATE, COMPLETE_STATE)
 AUTH_HEADER = {}
 
 
-def _get_learner_state_index_or_exit(learner, config):
+def _get_learner_state_index_or_exit(learner, config, redrive_errored=False):
     """
     Returns the index in the ALL_STATES retirement state list, validating that it is in
     an appropriate state to work on.
@@ -82,9 +82,12 @@ def _get_learner_state_index_or_exit(learner, config):
         learner_state = learner['current_state']['state_name']
         learner_state_index = config['all_states'].index(learner_state)
 
+        if redrive_errored and learner_state == ERROR_STATE:
+             prev_learner_state = learner['last_state']['state_name']
+             learner_state_index = config['all_states'].index(prev_learner_state)
+             learner_state = learner['last_state']['state_name']
         if learner_state in END_STATES:
             FAIL(ERR_USER_AT_END_STATE, 'User already in end state: {}'.format(learner_state))
-
         if learner_state in config['working_states']:
             FAIL(ERR_USER_IN_WORKING_STATE, 'User is already in a working state! {}'.format(learner_state))
 
@@ -112,7 +115,7 @@ def _config_retirement_pipeline(config):
         config['all_states'].append(end)
 
 
-def _get_learner_and_state_index_or_exit(config, username):
+def _get_learner_and_state_index_or_exit(config, username, redrive_errored=False):
     """
     Double-checks the current learner state, contacting LMS, and maps that state to its
     index in the pipeline. Exits out if the learner is in an invalid state or not found
@@ -120,7 +123,7 @@ def _get_learner_and_state_index_or_exit(config, username):
     """
     try:
         learner = config['LMS'].get_learner_retirement_state(username)
-        learner_state_index = _get_learner_state_index_or_exit(learner, config)
+        learner_state_index = _get_learner_state_index_or_exit(learner, config, redrive_errored)
         return learner, learner_state_index
     except HttpDoesNotExistException:
         FAIL(ERR_BAD_LEARNER, 'Learner {} not found. Please check that the learner is present in '
@@ -154,9 +157,16 @@ def _get_ecom_segment_id(config, learner):
     '--config_file',
     help='File in which YAML config exists that overrides all other params.'
 )
+@click.option(
+    '--redrive-errored',
+    help='This will accept users in an errored state and restart them at their last known complete state',
+    is_flag=True,
+    default=False
+)
 def retire_learner(
         username,
-        config_file
+        config_file,
+        redrive_errored
 ):
     """
     Retrieves a JWT token as the retirement service learner, then performs the retirement process as
@@ -171,7 +181,7 @@ def retire_learner(
     _config_retirement_pipeline(config)
     SETUP_ALL_APIS_OR_EXIT(config)
 
-    learner, learner_state_index = _get_learner_and_state_index_or_exit(config, username)
+    learner, learner_state_index = _get_learner_and_state_index_or_exit(config, username, redrive_errored)
 
     if config.get('fetch_ecommerce_segment_id', False):
         learner['ecommerce_segment_id'] = _get_ecom_segment_id(config, learner)
