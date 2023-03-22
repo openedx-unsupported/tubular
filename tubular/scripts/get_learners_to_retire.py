@@ -49,11 +49,18 @@ LOG = logging.getLogger(__name__)
          "setting then it will not error.",
     default=200
 )
+@click.option(
+    '--get-errored-users',
+    help="This will collect users who have errored instead of users who are pending",
+    is_flag=True,
+    default=False,
+)
 def get_learners_to_retire(config_file,
                            cool_off_days,
                            output_dir,
                            user_count_error_threshold,
-                           max_user_batch_size):
+                           max_user_batch_size,
+                           get_errored_users):
     """
     Retrieves a JWT token as the retirement service user, then calls the LMS
     endpoint to retrieve the list of learners awaiting retirement.
@@ -73,7 +80,10 @@ def get_learners_to_retire(config_file,
     lms_base_url = config_yaml['base_urls']['lms']
     retirement_pipeline = config_yaml['retirement_pipeline']
     end_states = [state[1] for state in retirement_pipeline]
-    states_to_request = ['PENDING'] + end_states
+    if get_errored_users:
+        states_to_request = ['ERRORED']
+    else:
+        states_to_request = ['PENDING'] + end_states
 
     api = LmsApi(lms_base_url, lms_base_url, client_id, client_secret)
 

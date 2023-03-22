@@ -14,7 +14,7 @@ from tubular.scripts.get_learners_to_retire import (
 from tubular.tests.retirement_helpers import fake_config_file, get_fake_user_retirement
 
 
-def _call_script(expected_user_files, cool_off_days=1, output_dir='test', user_count_error_threshold=200, max_user_batch_size=201):
+def _call_script(expected_user_files, cool_off_days=1, output_dir='test', user_count_error_threshold=200, max_user_batch_size=201, get_errored_users=False):
     """
     Call the retired learner script with the given username and a generic, temporary config file.
     Returns the CliRunner.invoke results
@@ -23,15 +23,17 @@ def _call_script(expected_user_files, cool_off_days=1, output_dir='test', user_c
     with runner.isolated_filesystem():
         with open('test_config.yml', 'w') as f:
             fake_config_file(f)
-        result = runner.invoke(
-            get_learners_to_retire,
-            args=[
+        args = [
                 '--config_file', 'test_config.yml',
                 '--cool_off_days', cool_off_days,
                 '--output_dir', output_dir,
                 '--user_count_error_threshold', user_count_error_threshold,
                 '--max_user_batch_size', max_user_batch_size
             ]
+        args.append("--get-errored-users") if get_errored_users else None
+        result = runner.invoke(
+            get_learners_to_retire,
+            args=args
         )
         print(result)
         print(result.output)
@@ -152,6 +154,29 @@ def test_users_limit(*args, **kwargs):
     ]
 
     result = _call_script(1, user_count_error_threshold=200, max_user_batch_size=1)
+
+    # Called once per API we instantiate (LMS, ECommerce, Credentials)
+    assert mock_get_access_token.call_count == 1
+    mock_get_learners_to_retire.assert_called_once()
+
+    assert result.exit_code == 0
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token')
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    learners_to_retire=DEFAULT
+)
+def test_users_in_errored_state(*args, **kwargs):
+    mock_get_access_token = args[0]
+    mock_get_learners_to_retire = kwargs['learners_to_retire']
+
+    mock_get_access_token.return_value = ('THIS_IS_A_JWT', None)
+    mock_get_learners_to_retire.return_value = [
+        get_fake_user_retirement(original_username='test_user1', current_state_name='ERRORED'),
+        get_fake_user_retirement(original_username='test_user2', current_state_name='ERRORED'),
+    ]
+
+    result = _call_script(1, user_count_error_threshold=200, max_user_batch_size=1, get_errored_users=True)
 
     # Called once per API we instantiate (LMS, ECommerce, Credentials)
     assert mock_get_access_token.call_count == 1
