@@ -81,7 +81,7 @@ def _update_learners_or_exit(config, learners, new_state=None, rewind_state=Fals
     will be reset to their previous state.
     """
     if (not new_state and not rewind_state) or (rewind_state and new_state):
-        raise ValueError("You must specify either the boolean rewind_state or a new state to set learners to.")
+        FAIL(ERR_BAD_CONFIG, "You must specify either the boolean rewind_state or a new state to set learners to.")
     LOG('Updating {} learners to {}'.format(len(learners), new_state))
     try:
         for learner in learners:

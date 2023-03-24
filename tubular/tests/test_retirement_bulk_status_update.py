@@ -134,6 +134,27 @@ def test_successful_rewind(*args, **kwargs):
     assert result.exit_code == 0
     assert 'Bulk update complete' in result.output
 
+@patch('tubular.edx_api.BaseApiClient.get_access_token', return_value=('THIS_IS_A_JWT', None))
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    get_learners_by_date_and_status=DEFAULT,
+    update_learner_retirement_state=DEFAULT
+)
+def test_rewind_bad_args(*args, **kwargs):
+    mock_get_access_token = args[0]
+    mock_get_learners = kwargs['get_learners_by_date_and_status']
+
+    mock_get_learners.return_value = fake_learners_to_retire(current_state_name='ERRORED')
+
+    result = _call_script(rewind_state=True)
+
+    # Called once to get the LMS token
+    assert mock_get_access_token.call_count == 1
+    mock_get_learners.assert_called_once()
+
+    assert result.exit_code == ERR_BAD_CONFIG
+    assert 'boolean rewind_state or a new state to set learners to' in result.output
+
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token', return_value=('THIS_IS_A_JWT', None))
 @patch('tubular.edx_api.LmsApi.__init__', side_effect=Exception)
