@@ -74,14 +74,19 @@ def _fetch_learners_to_update_or_exit(config, start_date, end_date, initial_stat
         FAIL_EXCEPTION(ERR_FETCHING, 'Unexpected error occurred fetching users to update!', exc)
 
 
-def _update_learners_or_exit(config, learners, new_state):
+def _update_learners_or_exit(config, learners, new_state=None, rewind_state=False):
     """
     Iterates the list of learners, setting each to the new state. On any error
-    it will exit the script.
+    it will exit the script. If rewind_state is set to True then the learner
+    will be reset to their previous state.
     """
+    if (not new_state and not rewind_state) or (rewind_state and new_state):
+        FAIL(ERR_BAD_CONFIG, "You must specify either the boolean rewind_state or a new state to set learners to.")
     LOG('Updating {} learners to {}'.format(len(learners), new_state))
     try:
         for learner in learners:
+            if rewind_state:
+                new_state = learner['last_state']['state_name']
             config['LMS'].update_learner_retirement_state(
                 learner['original_username'],
                 new_state,
@@ -103,7 +108,8 @@ def _update_learners_or_exit(config, learners, new_state):
 )
 @click.option(
     '--new_state',
-    help='Set any found learners to this new state. Use the state name ex: PENDING, COMPLETE'
+    help='Set any found learners to this new state. Use the state name ex: PENDING, COMPLETE',
+    default=None
 )
 @click.option(
     '--start_date',
@@ -115,7 +121,13 @@ def _update_learners_or_exit(config, learners, new_state):
     callback=validate_dates,
     help='(YYYY-MM-DD) Latest creation date for retirements to act on.'
 )
-def update_statuses(config_file, initial_state, new_state, start_date, end_date):
+@click.option(
+    '--rewind-state',
+    help='Rewinds to the last_state for learners. Useful for resetting ERRORED users',
+    default=False,
+    is_flag=True
+)
+def update_statuses(config_file, initial_state, new_state, start_date, end_date, rewind_state):
     """
     Bulk-updates user retirement statuses which are in the specified state -and- retirement was
     requested between a start date and end date.
@@ -130,7 +142,7 @@ def update_statuses(config_file, initial_state, new_state, start_date, end_date)
         SETUP_LMS_OR_EXIT(config)
 
         learners = _fetch_learners_to_update_or_exit(config, start_date, end_date, initial_state)
-        _update_learners_or_exit(config, learners, new_state)
+        _update_learners_or_exit(config, learners, new_state, rewind_state)
 
         LOG('Bulk update complete')
     except Exception as exc:

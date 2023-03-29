@@ -18,7 +18,7 @@ from tubular.scripts.retirement_bulk_status_update import (
 from tubular.tests.retirement_helpers import fake_config_file, get_fake_user_retirement
 
 
-def _call_script(initial_state='COMPLETE', new_state='PENDING', start_date='2018-01-01', end_date='2018-01-15'):
+def _call_script(initial_state='COMPLETE', new_state='PENDING', start_date='2018-01-01', end_date='2018-01-15', rewind_state=False):
     """
     Call the bulk update statuses script with the given params and a generic config file.
     Returns the CliRunner.invoke results
@@ -27,31 +27,33 @@ def _call_script(initial_state='COMPLETE', new_state='PENDING', start_date='2018
     with runner.isolated_filesystem():
         with open('test_config.yml', 'w') as f:
             fake_config_file(f)
-        result = runner.invoke(
-            update_statuses,
-            args=[
+        args = [
                 '--config_file', 'test_config.yml',
                 '--initial_state', initial_state,
-                '--new_state', new_state,
                 '--start_date', start_date,
                 '--end_date', end_date
             ]
+        args.extend(['--new_state', new_state]) if new_state else None
+        args.append('--rewind-state') if rewind_state else None
+        result = runner.invoke(
+            update_statuses,
+            args=args
         )
     print(result)
     print(result.output)
     return result
 
 
-def fake_learners_to_retire():
+def fake_learners_to_retire(**overrides):
     """
     A simple hard-coded list of fake learners with the only piece of
     information this script cares about.
     """
 
     return [
-        get_fake_user_retirement(original_username="user1"),
-        get_fake_user_retirement(original_username="user2"),
-        get_fake_user_retirement(original_username="user3"),
+        get_fake_user_retirement(**{"original_username": "user1", **overrides}),
+        get_fake_user_retirement(**{"original_username": "user2", **overrides}),
+        get_fake_user_retirement(**{"original_username": "user3", **overrides}),
     ]
 
 
@@ -108,6 +110,50 @@ def test_bad_config():
     )
     assert result.exit_code == ERR_BAD_CONFIG
     assert 'does_not_exist.yml' in result.output
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token', return_value=('THIS_IS_A_JWT', None))
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    get_learners_by_date_and_status=DEFAULT,
+    update_learner_retirement_state=DEFAULT
+)
+def test_successful_rewind(*args, **kwargs):
+    mock_get_access_token = args[0]
+    mock_get_learners = kwargs['get_learners_by_date_and_status']
+    mock_update_learner_state = kwargs['update_learner_retirement_state']
+
+    mock_get_learners.return_value = fake_learners_to_retire(current_state_name='ERRORED')
+
+    result = _call_script(new_state=None, rewind_state=True)
+
+    # Called once to get the LMS token
+    assert mock_get_access_token.call_count == 1
+    mock_get_learners.assert_called_once()
+    assert mock_update_learner_state.call_count == 3
+
+    assert result.exit_code == 0
+    assert 'Bulk update complete' in result.output
+
+@patch('tubular.edx_api.BaseApiClient.get_access_token', return_value=('THIS_IS_A_JWT', None))
+@patch.multiple(
+    'tubular.edx_api.LmsApi',
+    get_learners_by_date_and_status=DEFAULT,
+    update_learner_retirement_state=DEFAULT
+)
+def test_rewind_bad_args(*args, **kwargs):
+    mock_get_access_token = args[0]
+    mock_get_learners = kwargs['get_learners_by_date_and_status']
+
+    mock_get_learners.return_value = fake_learners_to_retire(current_state_name='ERRORED')
+
+    result = _call_script(rewind_state=True)
+
+    # Called once to get the LMS token
+    assert mock_get_access_token.call_count == 1
+    mock_get_learners.assert_called_once()
+
+    assert result.exit_code == ERR_BAD_CONFIG
+    assert 'boolean rewind_state or a new state to set learners to' in result.output
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token', return_value=('THIS_IS_A_JWT', None))
