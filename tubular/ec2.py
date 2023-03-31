@@ -351,7 +351,7 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
     tag = {
         'Key': ASG_DELETE_TAG_KEY,
         'Value': tag_value,
-        'PropogateAtLaunch': False,
+        'PropagateAtLaunch': False,
         'ResourceId': asg_name,
     }
     return tag
