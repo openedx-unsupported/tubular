@@ -86,15 +86,16 @@ def get_all_load_balancers(names=None):
     Returns:
         a list of :class:`boto.ec2.elb.loadbalancer.LoadBalancer`
     """
-    elb_conn = boto.connect_elb()
+    client = boto3.client('elb')
+    paginator = client.get_paginator('describe_load_balancers')
+    if names:
+        response_iterator = paginator.paginate(Name=names)
+    else:
+        response_iterator = paginator.paginate()
     fetched_elbs = elb_conn.get_all_load_balancers(names)
     total_elbs = []
-    while True:
-        total_elbs.extend(list(fetched_elbs))
-        if fetched_elbs.next_token:
-            fetched_elbs = elb_conn.get_all_load_balancers(names, fetched_elbs.next_token)
-        else:
-            break
+    for page in response_iterator:
+        total_elbs.extend(page['LoadBalancerDescriptions'])
     return total_elbs
 
 
@@ -502,8 +503,8 @@ def wait_for_in_service(all_asgs, timeout):
         asgs = get_all_autoscale_groups(asgs_left_to_check)
         for asg in asgs:
             all_healthy = True
-            for instance in asg.instances:
-                if instance.health_status.lower() != 'healthy' or instance.lifecycle_state.lower() != 'inservice':
+            for instance in asg['Instances']:
+                if instance['HealthStatus'].lower() != 'healthy' or instance['LifecycleState'].lower() != 'inservice':
                     # Instance is not ready.
                     all_healthy = False
                     break
@@ -537,6 +538,7 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     Raises:
         TimeoutException: We we have run out of time.
     """
+    client = boto3.client('elb')
 
     @backoff.on_exception(backoff.expo,
                           BotoServerError,
@@ -548,13 +550,20 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
         Get the health of an ELB
 
         Args:
-            selected_elb (boto.ec2.elb.loadbalancer.LoadBalancer):
+            selected_elb str name of the elb
 
         Returns:
-            list of InstanceState <boto.ec2.elb.instancestate.InstanceState>
+            list of
+        {
+            'InstanceId': 'string',
+            'State': 'string',
+            'ReasonCode': 'string',
+            'Description': 'string'
+        },
 
         """
-        return selected_elb.get_instance_health()
+        response = client.describe_instance_health(LoadBalancerName=selected_elb)
+        return response['InstanceStates']
 
     if not elbs_to_monitor:
         LOG.info("No ELBs to monitor - skipping health check.")
@@ -565,18 +574,18 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     while end_time > datetime.utcnow():
         elbs = get_all_load_balancers(elbs_left)
         for elb in elbs:
-            LOG.info("Checking health for ELB: {}".format(elb.name))
+            LOG.info("Checking health for ELB: {}".format(elb['LoadBalancerName']))
             all_healthy = True
-            for instance in _get_elb_health(elb):
-                if instance.state != 'InService':
+            for instance in _get_elb_health(elb['LoadBalancerName']):
+                if instance['State'] != 'InService':
                     all_healthy = False
                     break
 
             if all_healthy:
                 LOG.info("All instances are healthy, remove {} from list of load balancers {}.".format(
-                    elb.name, elbs_left
+                    elb['LoadBalancerName'], elbs_left
                 ))
-                elbs_left.remove(elb.name)
+                elbs_left.remove(elb['LoadBalancerName'])
 
         LOG.info("Number of load balancers remaining with unhealthy instances: {}".format(len(elbs_left)))
         if not elbs_left:
