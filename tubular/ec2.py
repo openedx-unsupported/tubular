@@ -510,9 +510,9 @@ def wait_for_in_service(all_asgs, timeout):
 
             if all_healthy:
                 # Then all are healthy we can stop checking this.
-                LOG.debug("All instances healthy in ASG: {}".format(asg.name))
+                LOG.debug("All instances healthy in ASG: {}".format(asg['AutoScalingGroupName']))
                 LOG.debug(asgs_left_to_check)
-                asgs_left_to_check.remove(asg.name)
+                asgs_left_to_check.remove(asg['AutoScalingGroupName'])
 
         if not asgs_left_to_check:
             return
