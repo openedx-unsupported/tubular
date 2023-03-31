@@ -92,7 +92,6 @@ def get_all_load_balancers(names=None):
         response_iterator = paginator.paginate(Name=names)
     else:
         response_iterator = paginator.paginate()
-    fetched_elbs = elb_conn.get_all_load_balancers(names)
     total_elbs = []
     for page in response_iterator:
         total_elbs.extend(page['LoadBalancerDescriptions'])
