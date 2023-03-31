@@ -138,33 +138,47 @@ def active_ami_for_edp(env, dep, play):
     """
     LOG.info("Looking up AMI for {}-{}-{}...".format(env, dep, play))
     edp = EDP(env, dep, play)
-    ec2_conn = boto.connect_ec2()
-
+    #ec2_conn = boto.connect_ec2()
+    ec2_client = boto3.client('ec2')
     asg_client = boto3.client('autoscaling')
 
     all_elbs = get_all_load_balancers()
     LOG.info("Found {} load balancers.".format(len(all_elbs)))
-
     edp_filter = {
         "tag:environment": env,
         "tag:deployment": dep,
         "tag:play": play,
     }
-    reservations = ec2_conn.get_all_reservations(filters=edp_filter)
-    LOG.info("{} reservations found for EDP {}-{}-{}".format(len(reservations), env, dep, play))
+    edp_filter_env = {
+        "Name": "tag:environment",
+        "Values": [env]
+    }
+    edp_filter_deployment = {
+        "Name": "tag:deployment",
+        "Values": [dep]
+    }
+    edp_filter_play = {
+        "Name": "tag:play",
+        "Values": [play]
+    }
     amis = set()
     instances_by_id = {}
-    for reservation in reservations:
-        for instance in reservation.instances:
+    ec2 = boto3.resource('ec2')
+    instances = ec2.instances.filter(
+        Filters=[edp_filter_env, edp_filter_deployment, edp_filter_play])
+    #LOG.info("{} reservations found for EDP {}-{}-{}".format(len(instances), env, dep, play))
+    for instance in instances:
+        print(instance.id, instance.instance_type)
             # Need to build up instances_by_id for code below
-            instances_by_id[instance.id] = instance
+        instances_by_id[instance.id] = instance
 
     asgs = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=asgs_for_edp(edp))
+
     for asg in asgs['AutoScalingGroups']:
         for asg_inst in asg['Instances']:
             instance = instances_by_id[asg_inst['InstanceId']]
             asg_enabled = len(asg['SuspendedProcesses']) == 0
-            if instance.state == 'running' and asg_enabled:
+            if instance.state['Name'] == "running" and asg_enabled:
                 amis.add(instance.image_id)
                 LOG.info("AMI found in ASG {} for {}-{}-{}: {}".format(asg['AutoScalingGroupName'], env, dep, play, instance.image_id))
             else:
