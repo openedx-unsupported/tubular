@@ -295,6 +295,10 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
     LOG.info("Found {} ASGs".format(len(all_groups)))
 
     for group in all_groups:
+        # Error handling around boto returning bad data.
+        if group.name is None:
+            continue
+
         LOG.debug("Checking group {}".format(group))
         tags = {tag.key: tag.value for tag in group.tags}
         LOG.debug("Tags for asg {}: {}".format(group.name, tags))
@@ -405,6 +409,9 @@ def get_asgs_pending_delete():
     LOG.debug("Found {0} autoscale groups".format(len(asgs)))
     for asg in asgs:
         LOG.debug("Checking for {0} on asg: {1}".format(ASG_DELETE_TAG_KEY, asg.name))
+        if asg.name is None:
+            continue
+
         for tag in asg.tags:
             try:
                 if tag.key == ASG_DELETE_TAG_KEY:
