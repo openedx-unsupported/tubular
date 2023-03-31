@@ -625,7 +625,8 @@ def test_reporting_error(*args):
     assert result.exit_code == ERR_REPORTING
     assert error_msg in result.output
 
-
+@patch('tubular.google_api.DriveApi.list_permissions_for_files')
+@patch('tubular.google_api.DriveApi.create_comments_for_files')
 @patch('tubular.google_api.DriveApi.walk_files')
 @patch('tubular.google_api.DriveApi.__init__')
 @patch('tubular.google_api.DriveApi.create_file_in_folder')
@@ -640,6 +641,8 @@ def test_cleanup_error(*args, **kwargs):
     mock_create_files = args[1]
     mock_driveapi = args[2]
     mock_walk_files = args[3]
+    mock_create_comments = args[4]
+    mock_list_permissions = args[5]
     mock_retirement_report = kwargs['retirement_partner_report']
     mock_retirement_cleanup = kwargs['retirement_partner_cleanup']
 
@@ -647,6 +650,18 @@ def test_cleanup_error(*args, **kwargs):
     mock_create_files.return_value = True
     mock_driveapi.return_value = None
     mock_walk_files.return_value = [{'name': partner, 'id': 'folder' + partner} for partner in flatten_partner_list(FAKE_ORGS.values())]
+    fake_partners = list(itervalues(FAKE_ORGS))
+    # Generate the list_permissions return value.
+    mock_list_permissions.return_value = {
+        'folder' + partner: [
+            {'emailAddress': 'some.contact@example.com'},  # The POC.
+            {'emailAddress': 'another.contact@edx.org'},
+            {'emailAddress': 'third@edx.org'}
+        ]
+        for partner in flatten_partner_list(fake_partners)
+    }
+    mock_create_comments.return_value = None
+
 
     mock_retirement_report.return_value = _fake_retirement_report(user_orgs=list(FAKE_ORGS.keys()))
     mock_retirement_cleanup.side_effect = Exception('Mock cleanup exception')
@@ -654,7 +669,7 @@ def test_cleanup_error(*args, **kwargs):
     result = _call_script(expect_success=False)
 
     mock_retirement_cleanup.assert_called_with(
-        [user[LEARNER_ORIGINAL_USERNAME_KEY] for user in mock_retirement_report.return_value]
+        [{'original_username': user[LEARNER_ORIGINAL_USERNAME_KEY]} for user in mock_retirement_report.return_value]
     )
 
     assert result.exit_code == ERR_CLEANUP
