@@ -164,12 +164,10 @@ def active_ami_for_edp(env, dep, play):
     amis = set()
     instances_by_id = {}
     ec2 = boto3.resource('ec2')
-    instances = ec2.instances.filter(
-        Filters=[edp_filter_env, edp_filter_deployment, edp_filter_play])
+    instances = ec2.instances.filter(Filters=[edp_filter_env, edp_filter_deployment, edp_filter_play])
     #LOG.info("{} reservations found for EDP {}-{}-{}".format(len(instances), env, dep, play))
     for instance in instances:
-        print(instance.id, instance.instance_type)
-            # Need to build up instances_by_id for code below
+        # Need to build up instances_by_id for code below
         instances_by_id[instance.id] = instance
 
     asgs = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=asgs_for_edp(edp))
@@ -425,7 +423,7 @@ def get_asgs_pending_delete():
     asgs = get_all_autoscale_groups()
     LOG.debug("Found {0} autoscale groups".format(len(asgs)))
     for asg in asgs:
-        LOG.debug("Checking for {0} on asg: {1}".format(ASG_DELETE_TAG_KEY, asg.name))
+        LOG.debug("Checking for {0} on asg: {1}".format(ASG_DELETE_TAG_KEY, asg['AutoScalingGroupName']))
         for tag in asg['Tags']:
             try:
                 if tag['Key'] == ASG_DELETE_TAG_KEY:
