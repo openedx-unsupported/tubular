@@ -353,6 +353,7 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
         'Value': tag_value,
         'PropagateAtLaunch': False,
         'ResourceId': asg_name,
+        'ResourceType': 'auto-scaling-group',
     }
     return tag
 
