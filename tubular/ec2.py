@@ -8,6 +8,7 @@ import logging
 import time
 from datetime import datetime, timedelta
 import backoff
+import boto3
 import boto
 from boto.exception import EC2ResponseError, BotoServerError
 from boto.ec2.autoscale.tag import Tag
@@ -57,15 +58,16 @@ def get_all_autoscale_groups(names=None):
     Returns:
         List of :class:`boto.ec2.autoscale.group.AutoScalingGroup` instances.
     """
-    autoscale_conn = boto.connect_autoscale()
-    fetched_asgs = autoscale_conn.get_all_groups(names=names)
+    autoscale_client = boto3.client('autoscaling')
+    asg_paginator = autoscale_client.get_paginator('describe_auto_scaling_groups')
     total_asgs = []
-    while True:
-        total_asgs.extend(list(fetched_asgs))
-        if fetched_asgs.next_token:
-            fetched_asgs = autoscale_conn.get_all_groups(names=names, next_token=fetched_asgs.next_token)
-        else:
-            break
+    if names is None:
+        paginator = asg_paginator.paginate()
+    else:
+        paginator = asg_paginator.paginate(AutoScalingGroupNames=names)
+    for asg_page in paginator:
+        total_asgs.extend(asg_page['AutoScalingGroups'])
+
     return total_asgs
 
 
@@ -137,7 +139,9 @@ def active_ami_for_edp(env, dep, play):
     LOG.info("Looking up AMI for {}-{}-{}...".format(env, dep, play))
     edp = EDP(env, dep, play)
     ec2_conn = boto.connect_ec2()
-    asg_conn = boto.connect_autoscale()
+
+    asg_client = boto3.client('autoscaling')
+
     all_elbs = get_all_load_balancers()
     LOG.info("Found {} load balancers.".format(len(all_elbs)))
 
@@ -155,17 +159,17 @@ def active_ami_for_edp(env, dep, play):
             # Need to build up instances_by_id for code below
             instances_by_id[instance.id] = instance
 
-    asgs = asg_conn.get_all_groups(names=asgs_for_edp(edp))
-    for asg in asgs:
-        for asg_inst in asg.instances:
-            instance = instances_by_id[asg_inst.instance_id]
-            asg_enabled = len(asg.suspended_processes) == 0
+    asgs = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=asgs_for_edp(edp))
+    for asg in asgs['AutoScalingGroups']:
+        for asg_inst in asg['Instances']:
+            instance = instances_by_id[asg_inst['InstanceId']]
+            asg_enabled = len(asg['SuspendedProcesses']) == 0
             if instance.state == 'running' and asg_enabled:
                 amis.add(instance.image_id)
-                LOG.info("AMI found in ASG {} for {}-{}-{}: {}".format(asg.name, env, dep, play, instance.image_id))
+                LOG.info("AMI found in ASG {} for {}-{}-{}: {}".format(asg['AutoScalingGroupName'], env, dep, play, instance.image_id))
             else:
                 LOG.info("Instance {} state: {} - asg {} enabled: {}".format(
-                    instance.id, instance.state, asg.name, asg_enabled))
+                    instance.id, instance.state, asg['AutoScalingGroupName'], asg_enabled))
 
     if not amis:
         msg = "No AMIs found for {}-{}-{}.".format(env, dep, play)
@@ -296,11 +300,11 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
 
     for group in all_groups:
         LOG.debug("Checking group {}".format(group))
-        tags = {tag.key: tag.value for tag in group.tags}
-        LOG.debug("Tags for asg {}: {}".format(group.name, tags))
+        tags = {tag['Key']: tag['Value'] for tag in group['Tags']}
+        LOG.debug("Tags for asg {}: {}".format(group['AutoScalingGroupName'], tags))
         if filter_asgs_pending_delete and ASG_DELETE_TAG_KEY in tags.keys():
             LOG.info("filtering ASG: {0} because it is tagged for deletion on: {1}"
-                     .format(group.name, tags[ASG_DELETE_TAG_KEY]))
+                     .format(group['AutoScalingGroupName'], tags[ASG_DELETE_TAG_KEY]))
             continue
 
         edp_keys = ['environment', 'deployment', 'play']
@@ -312,7 +316,7 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
             group_edp = EDP(group_env, group_deployment, group_play)
 
             if group_edp == edp:
-                matching_groups.append(group.name)
+                matching_groups.append(group['AutoScalingGroupName'])
 
     LOG.info(
         "Returning %s ASGs for EDP %s-%s-%s.",
@@ -332,10 +336,13 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
         tag_value = None
     else:
         tag_value = (datetime.utcnow() + timedelta(seconds=seconds_until_delete_delta)).isoformat()
-    return Tag(key=ASG_DELETE_TAG_KEY,
-               value=tag_value,
-               propagate_at_launch=False,
-               resource_id=asg_name)
+    tag = {
+        'Key': ASG_DELETE_TAG_KEY,
+        'Value': tag_value,
+        'PropogateAtLaunch': False,
+        'ResourceId': asg_name,
+    }
+    return tag
 
 
 @backoff.on_exception(backoff.expo,
@@ -355,11 +362,11 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=600):
         None
     """
     tag = create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta)
-    autoscale = boto.connect_autoscale()
+    autoscale = boto3.client('autoscaling')
     if len(get_all_autoscale_groups([asg_name])) < 1:
         LOG.info("ASG {} no longer exists, will not tag".format(asg_name))
     else:
-        autoscale.create_or_update_tags([tag])
+        autoscale.create_or_update_tags(Tags=[tag])
 
 
 @backoff.on_exception(backoff.expo,
@@ -382,8 +389,8 @@ def remove_asg_deletion_tag(asg_name):
         LOG.info("ASG {} no longer exists, will not remove deletion tag.".format(asg_name))
     else:
         for asg in asgs:
-            for tag in asg.tags:
-                if tag.key == ASG_DELETE_TAG_KEY:
+            for tag in asg['Tags']:
+                if tag['Key'] == ASG_DELETE_TAG_KEY:
                     tag.delete()
 
 
@@ -405,19 +412,19 @@ def get_asgs_pending_delete():
     LOG.debug("Found {0} autoscale groups".format(len(asgs)))
     for asg in asgs:
         LOG.debug("Checking for {0} on asg: {1}".format(ASG_DELETE_TAG_KEY, asg.name))
-        for tag in asg.tags:
+        for tag in asg['Tags']:
             try:
-                if tag.key == ASG_DELETE_TAG_KEY:
-                    LOG.debug("Found {0} tag, deletion time: {1}".format(ASG_DELETE_TAG_KEY, tag.value))
-                    if datetime.strptime(tag.value, ISO_DATE_FORMAT) - current_datetime < timedelta(0, 0, 0):
-                        LOG.debug("Adding ASG: {0} to the list of ASGs to delete.".format(asg.name))
+                if tag['Key'] == ASG_DELETE_TAG_KEY:
+                    LOG.debug("Found {0} tag, deletion time: {1}".format(ASG_DELETE_TAG_KEY, tag['Value']))
+                    if datetime.strptime(tag['Value'], ISO_DATE_FORMAT) - current_datetime < timedelta(0, 0, 0):
+                        LOG.debug("Adding ASG: {0} to the list of ASGs to delete.".format(asg['AutoScalingGroupName']))
                         asgs_pending_delete.append(asg)
                         break
             except ValueError:
                 LOG.warning(
                     "ASG {0} has an improperly formatted datetime string for the key {1}. Value: {2} . "
                     "Format must match {3}".format(
-                        asg.name, tag.key, tag.value, ISO_DATE_FORMAT
+                        asg['AutoScalingGroupName'], tag['Key'], tag['Value'], ISO_DATE_FORMAT
                     )
                 )
                 continue
