@@ -653,7 +653,7 @@ def test_cleanup_error(*args, **kwargs):
 
     result = _call_script(expect_success=False)
 
-    assert mock_retirement_cleanup.called_with(
+    mock_retirement_cleanup.assert_called_with(
         [user[LEARNER_ORIGINAL_USERNAME_KEY] for user in mock_retirement_report.return_value]
     )
 
