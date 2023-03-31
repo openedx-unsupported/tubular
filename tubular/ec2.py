@@ -89,7 +89,7 @@ def get_all_load_balancers(names=None):
     client = boto3.client('elb')
     paginator = client.get_paginator('describe_load_balancers')
     if names:
-        response_iterator = paginator.paginate(LoadBalancerNames=names)
+        response_iterator = paginator.paginate(LoadBalancerNames=list(names))
     else:
         response_iterator = paginator.paginate()
     total_elbs = []
