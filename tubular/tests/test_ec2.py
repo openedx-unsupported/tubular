@@ -36,11 +36,11 @@ class TestEC2(unittest.TestCase):
         """
         Method to make a fake AMI.
         """
-
         ec2_client = boto3.client('ec2', region_name='us-east-1')  # Replace 'us-east-1' with the region of your choice
-
         # Create a test EC2 instance
-        response = ec2_client.run_instances(ImageId='ami-0123456789abcdefg', MinCount=1, MaxCount=1)
+        random_id = random_ami_id()
+        response = ec2_client.run_instances(ImageId=random_id, MinCount=1, MaxCount=1)
+
         instance_id = response['Instances'][0]['InstanceId']
 
         # Use the EC2 client to create a fake AMI from the test instance
@@ -48,12 +48,19 @@ class TestEC2(unittest.TestCase):
         ami_description = 'This is a fake AMI created for testing purposes'
 
         response = ec2_client.create_image(
-            InstanceId=instance_id, Name=ami_name, Description=ami_description, NoReboot=True
+            InstanceId=instance_id, Name=ami_name,
+            Description=ami_description, NoReboot=True
         )
         ami_id = response['ImageId']
 
         # Verify that the correct AMI ID was returned
         assert ami_id.startswith('ami-')
+        import pdb;
+        pdb.set_trace()
+
+        ami_resp = ec2_client.describe_images(ImageIds=[ami_id])
+
+        assert ami_resp['Images'][0]['Name'] == "fake-ami-for-testing"
 
         # ami = ec2_connection.describe_images(ImageIds=[ami_id['ImageId']])
         ec2_client.create_tags(
@@ -149,6 +156,8 @@ class TestEC2(unittest.TestCase):
     @mock_ec2
     def test_ami_for_edp_success(self):
 
+        import pdb;
+        pdb.set_trace()
         fake_ami_id = self._make_fake_ami()
         fake_elb_name = "healthy-lb-1"
         fake_elb = create_elb(fake_elb_name)
@@ -164,6 +173,7 @@ class TestEC2(unittest.TestCase):
             ami_id=fake_ami_id,
             elbs=[fake_elb]
         )
+
         self.assertEqual(ec2.active_ami_for_edp('foo', 'bar', 'baz'), fake_ami_id)
 
     @unittest.skip("Test always fails due to not successfuly creating two different AMI IDs in single ELB.")
@@ -346,36 +356,52 @@ class TestEC2(unittest.TestCase):
         """
         # pylint: disable=attribute-defined-outside-init
         self.test_asg_name = "test-asg-random-tags"
-        self.test_autoscale = boto.connect_autoscale()
-        launch_config = boto.ec2.autoscale.LaunchConfiguration(
-            name='my-launch_config',
-            image_id='my-ami',
-            key_name='my_key_name',
-            security_groups=['my_security_groups']
+
+        launch_config_name = 'my-launch-config'
+        self.test_autoscale = boto3.client('autoscaling', region_name='us-east-1')
+
+        self.test_autoscale.create_launch_configuration(
+            LaunchConfigurationName=launch_config_name,
+            ImageId='my-ami',
+            InstanceType='t2.micro',
+            KeyName='my_key_name',
+            SecurityGroups=['my_security_groups'],
         )
-        self.test_autoscale.create_launch_configuration(launch_config)
-        asg = boto.ec2.autoscale.AutoScalingGroup(
-            group_name=self.test_asg_name,
-            load_balancers=['my-lb'],
-            availability_zones=['us-east-1a', 'us-east-1b'],
-            launch_config=launch_config,
-            min_size=4,
-            max_size=8,
-            connection=self.test_autoscale
+
+        grp = self.test_autoscale.create_auto_scaling_group(
+            AutoScalingGroupName=self.test_asg_name,
+            AvailabilityZones=['us-east-1a', 'us-east-1b'],
+            DefaultCooldown=60,
+            DesiredCapacity=2,
+            LoadBalancerNames=['healthy-lb-1'],
+            HealthCheckGracePeriod=100,
+            HealthCheckType="EC2",
+            MaxSize=2,
+            MinSize=2,
+            LaunchConfigurationName=launch_config_name,
+            PlacementGroup="test_placement",
+            TerminationPolicies=["OldestInstance", "NewestInstance"],
         )
+
         create_elb('my-lb')
-        self.test_autoscale.create_auto_scaling_group(asg)
+        import pdb;
+        pdb.set_trace()
         ec2.tag_asg_for_deletion(self.test_asg_name, 0)
-        self.test_asg = self.test_autoscale.get_all_groups([self.test_asg_name])[0]
+
+        instances_by_id = {}
+        groups = self.test_autoscale.describe_auto_scaling_groups()
+
+        self.test_asg = groups['AutoScalingGroups'][0]
 
     @mock_autoscaling
     @mock_elb
     @mock_ec2
     def test_create_or_update_tags_on_asg(self):
         self._setup_test_asg_to_be_deleted()
-
+        import pdb;
+        pdb.set_trace()
         # Ensure a single delete tag exists.
-        delete_tags = [tag for tag in self.test_asg.tags if tag.key == ec2.ASG_DELETE_TAG_KEY]
+        delete_tags = [tag for tag in self.test_asg['Tags'] if tag.key == ec2.ASG_DELETE_TAG_KEY]
         self.assertEqual(len(delete_tags), 1)
 
         # Ensure tag value is a parseable datetime.
@@ -514,7 +540,7 @@ class TestEC2(unittest.TestCase):
                     'ami_id': 'ami-puppydog',
                     'tags': {'Name': 'Normal Instance run by dogs'}
                 }
-            ], 0, 'do_not_delete', {'tag:Name': 'gocd*'}, 1
+            ], 0, 'do_not_delete', {'Name': 'tag:Name', 'Values': ['gocd*']}, 1
         ),
         (
             [
@@ -526,7 +552,7 @@ class TestEC2(unittest.TestCase):
                     'ami_id': 'ami-puppydog',
                     'tags': {'Name': 'Hamster_Dance_001 '}
                 }
-            ], 1, 'do_not_delete', {'tag:Name': 'gocd*'}, 0
+            ], 1, 'do_not_delete', {'Name': 'tag:Name', 'Values': ['gocd*']}, 0
         ),
         (
             [
@@ -538,7 +564,7 @@ class TestEC2(unittest.TestCase):
                     'ami_id': 'ami-puppydog',
                     'tags': {'Name': 'Hamster_Dance_001'},
                 }
-            ], 0, 'do_not_delete', {'tag:Name': 'gocd*'}, 0
+            ], 0, 'do_not_delete', {'Name': 'tag:Name', 'Values': ['gocd*']}, 0
         ),
         (
             [
@@ -550,7 +576,7 @@ class TestEC2(unittest.TestCase):
                     'ami_id': 'ami-puppydog',
                     'tags': {'Name': 'Hamster_Dance_001'},
                 }
-            ], 1, 'do_not_delete', {'tag:Name': 'gocd*'}, 0
+            ], 1, 'do_not_delete', {'Name': 'tag:Name', 'Values': ['gocd*']}, 0
         ),
         (
             [
@@ -566,19 +592,27 @@ class TestEC2(unittest.TestCase):
                     'ami_id': 'ami-1234fug',
                     'tags': {'Name': 'gocd automation run 002'}
                 },
-            ], 0, 'do_not_delete', {'tag:Name': 'gocd*'}, 2
+            ], 0, 'do_not_delete', {'Name': 'tag:Name', 'Values': ['gocd*']}, 2
         ),
     )
     @ddt.unpack
     @mock_ec2
     def test_terminate_instances(self, instances, max_run_hours, skip_if_tag, tags, expected_count):
-        conn = boto.connect_ec2('dummy_key', 'dummy_secret')
+        conn = boto3.client('ec2')
         for requested_instance in instances:
-            reservation = conn.run_instances(requested_instance['ami_id'])
-            for instance in reservation.instances:
+            import pdb;
+            pdb.set_trace()
+            response = conn.run_instances(ImageId=requested_instance['ami_id'], MinCount=1, MaxCount=1)
+            for instance in response['reservations']:
                 for key, val in requested_instance['tags'].items():
-                    instance.add_tag(key, val)
+                    # instance.add_tag(key, val)
+                    conn.create_tags(
+                        Resources=[instance['InstanceId']],
+                        Tags=[{'Key': 'key', 'Value': val}]
+                    )
 
+        import pdb;
+        pdb.set_trace()
         terminated_instances = ec2.terminate_instances(
             'us-east-1',
             max_run_hours=max_run_hours,

@@ -153,7 +153,8 @@ def active_ami_for_edp(env, dep, play):
         MultipleImagesFoundException: If multiple AMI IDs are found within the EDP's ELB.
         ImageNotFoundException: If no AMI IDs are found for the EDP.
     """
-
+    import pdb;
+    pdb.set_trace()
     LOG.info("Looking up AMI for {}-{}-{}...".format(env, dep, play))
     edp = EDP(env, dep, play)
     #ec2_conn = boto.connect_ec2()
@@ -163,20 +164,20 @@ def active_ami_for_edp(env, dep, play):
     all_elbs = get_all_load_balancers()
     LOG.info("Found {} load balancers.".format(len(all_elbs)))
     edp_filter = {
-        "tag:environment": env,
-        "tag:deployment": dep,
-        "tag:play": play,
+        "environment": env,
+        "deployment": dep,
+        "play": play,
     }
     edp_filter_env = {
-        "Name": "tag:environment",
+        "Name": "environment",
         "Values": [env]
     }
     edp_filter_deployment = {
-        "Name": "tag:deployment",
+        "Name": "deployment",
         "Values": [dep]
     }
     edp_filter_play = {
-        "Name": "tag:play",
+        "Name": "play",
         "Values": [play]
     }
 
@@ -365,10 +366,13 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
     """
     Create a tag that will be used to mark an ASG for deletion.
     """
+    import pdb;
+    pdb.set_trace()
     if seconds_until_delete_delta is None:
         tag_value = None
     else:
         tag_value = (datetime.utcnow() + timedelta(seconds=seconds_until_delete_delta)).isoformat()
+
     tag = {
         'Key': ASG_DELETE_TAG_KEY,
         'Value': tag_value,
@@ -376,6 +380,7 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
         'ResourceId': asg_name,
         'ResourceType': 'auto-scaling-group',
     }
+
     return tag
 
 
@@ -483,14 +488,17 @@ def terminate_instances(region, tags, max_run_hours, skip_if_tag):
     Returns:
         list: of the instance IDs terminated.
     """
-    conn = boto.ec2.connect_to_region(region)
+    conn = boto3.client('ec2')
     instances_to_terminate = []
 
-    reservations = conn.get_all_instances(filters=tags)
+    # reservations = conn.get_all_instances(filters=tags)
+    reservations = conn.describe_instances(Filters=[tags])
+
     for reservation in reservations:
-        for instance in reservation.instances:
-            total_run_time = datetime.utcnow() - datetime.strptime(instance.launch_time[:-1], ISO_DATE_FORMAT)
-            if total_run_time > timedelta(hours=max_run_hours) and skip_if_tag not in instance.tags:
+
+        for instance in reservation['Instances']:
+            total_run_time = datetime.utcnow() - datetime.strptime(instance['LaunchTime'][:-1], ISO_DATE_FORMAT)
+            if total_run_time > timedelta(hours=max_run_hours) and skip_if_tag not in instance['Tags']:
                 instances_to_terminate.append(instance.id)
     if instances_to_terminate:
         conn.terminate_instances(instance_ids=instances_to_terminate)
