@@ -10,6 +10,9 @@ class TimeoutException(Exception):
 class ImageNotFoundException(Exception):
     pass
 
+class InvalidAMIID(Exception):
+    pass
+
 
 class MultipleImagesFoundException(Exception):
     pass
@@ -68,6 +71,13 @@ class RateLimitedException(Exception):
 
 
 class HttpDoesNotExistException(Exception):
+    """
+    Called when the server sends a 404 error.
+    """
+    pass
+
+
+class HTTPClientError(Exception):
     """
     Called when the server sends a 404 error.
     """

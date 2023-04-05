@@ -10,7 +10,12 @@ from datetime import datetime, timedelta
 import backoff
 import boto3
 import boto
-from boto.exception import EC2ResponseError, BotoServerError
+from boto.exception import EC2ResponseError
+from boto3.exceptions import Boto3Error
+from botocore.exceptions import HTTPClientError
+from botocore.exceptions import OperationNotPageableError
+
+
 from boto.ec2.autoscale.tag import Tag
 from tubular.utils import EDP, WAIT_SLEEP_TIME
 from tubular.exception import (
@@ -18,6 +23,7 @@ from tubular.exception import (
     MultipleImagesFoundException,
     MissingTagException,
     TimeoutException,
+    HTTPClientError
 )
 
 LOG = logging.getLogger(__name__)
@@ -30,22 +36,23 @@ RETRY_FACTOR = os.environ.get('RETRY_FACTOR', 1.5)
 
 def giveup_if_not_throttling(ex):
     """
-    Checks that a BotoServerError exceptions message contains the throttling string.
+    Checks that a Boto3Error exceptions message contains the throttling string.
 
     Args:
-        ex (boto.exception.BotoServerError):
+        ex (boto.exception.Boto3Error):
 
     Returns:
         False if the throttling string is not found.
         True if ex is of type MultipleImagesFoundException
     """
-    if isinstance(ex, MultipleImagesFoundException):
+    if isinstance(ex, OperationNotPageableError):
         return True
-    return not (str(ex.status) == "400" and ex.body and '<Code>Throttling</Code>' in ex.body)
+
+    return not False
 
 
 @backoff.on_exception(backoff.expo,
-                      BotoServerError,
+                      Boto3Error,
                       max_tries=MAX_ATTEMPTS,
                       giveup=giveup_if_not_throttling,
                       factor=RETRY_FACTOR)
@@ -72,7 +79,7 @@ def get_all_autoscale_groups(names=None):
 
 
 @backoff.on_exception(backoff.expo,
-                      BotoServerError,
+                      Boto3Error,
                       max_tries=MAX_ATTEMPTS,
                       giveup=giveup_if_not_throttling,
                       factor=RETRY_FACTOR)
@@ -86,15 +93,25 @@ def get_all_load_balancers(names=None):
     Returns:
         a list of :class:`boto.ec2.elb.loadbalancer.LoadBalancer`
     """
+
     client = boto3.client('elb')
     paginator = client.get_paginator('describe_load_balancers')
+
     if names:
         response_iterator = paginator.paginate(LoadBalancerNames=list(names))
     else:
         response_iterator = paginator.paginate()
+
     total_elbs = []
-    for page in response_iterator:
-        total_elbs.extend(page['LoadBalancerDescriptions'])
+
+    if response_iterator is not None:
+        try:
+            for page in response_iterator:
+                if 'LoadBalancerDescriptions' in page:
+                    total_elbs.extend(page['LoadBalancerDescriptions'])
+        except Exception as e:
+            raise Exception("Unexpected error in check_pagination: " + e.__str__())
+
     return total_elbs
 
 
@@ -118,7 +135,7 @@ def _instance_elbs(instance_id, elbs):
 
 
 @backoff.on_exception(backoff.expo,
-                      (BotoServerError, MultipleImagesFoundException),
+                      OperationNotPageableError,
                       max_tries=MAX_ATTEMPTS,
                       giveup=giveup_if_not_throttling,
                       factor=RETRY_FACTOR)
@@ -136,6 +153,7 @@ def active_ami_for_edp(env, dep, play):
         MultipleImagesFoundException: If multiple AMI IDs are found within the EDP's ELB.
         ImageNotFoundException: If no AMI IDs are found for the EDP.
     """
+
     LOG.info("Looking up AMI for {}-{}-{}...".format(env, dep, play))
     edp = EDP(env, dep, play)
     #ec2_conn = boto.connect_ec2()
@@ -161,6 +179,7 @@ def active_ami_for_edp(env, dep, play):
         "Name": "tag:play",
         "Values": [play]
     }
+
     amis = set()
     instances_by_id = {}
     ec2 = boto3.resource('ec2')
@@ -191,7 +210,7 @@ def active_ami_for_edp(env, dep, play):
 
 
 @backoff.on_exception(backoff.expo,
-                      BotoServerError,
+                      Boto3Error,
                       max_tries=MAX_ATTEMPTS,
                       giveup=giveup_if_not_throttling,
                       factor=RETRY_FACTOR)
@@ -207,17 +226,18 @@ def tags_for_ami(ami_id):
         ImageNotFoundException: No image found with this ami ID.
         MissingTagException: AMI is missing one or more of the expected tags.
     """
-    LOG.debug("Looking up edp for {}".format(ami_id))
-    ec2 = boto.connect_ec2()
 
+    LOG.debug("Looking up edp for {}".format(ami_id))
+    ec2 = boto3.client('ec2', region_name='us-east-1')
     try:
-        ami = ec2.get_all_images(ami_id)[0]
+        resp = ec2.describe_images(ImageIds=[ami_id])
+        ami = resp['Images']
     except IndexError:
         raise ImageNotFoundException("ami: {} not found".format(ami_id))
     except EC2ResponseError as error:
         raise ImageNotFoundException(str(error))
 
-    return ami.tags
+    return ami[0]['Tags']
 
 
 def edp_for_ami(ami_id):
@@ -235,8 +255,8 @@ def edp_for_ami(ami_id):
     tags = tags_for_ami(ami_id)
 
     try:
-        edp = EDP(tags['environment'], tags['deployment'], tags['play'])
-    except KeyError as key_err:
+        edp = EDP(tags[0]['Value'], tags[1]['Value'], tags[2]['Value'])
+    except (KeyError, IndexError) as key_err:
         missing_key = key_err.args[0]
         msg = "{} is missing the {} tag.".format(ami_id, missing_key)
         raise MissingTagException(msg)
@@ -257,6 +277,7 @@ def validate_edp(ami_id, environment, deployment, play):
     Returns:
         True if AMI EDP matches specified EDP, otherwise False.
     """
+
     edp = edp_for_ami(ami_id)
     edp_matched = (edp.environment == environment and
                    edp.deployment == deployment and
@@ -359,7 +380,7 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
 
 
 @backoff.on_exception(backoff.expo,
-                      BotoServerError,
+                      Boto3Error,
                       max_tries=MAX_ATTEMPTS,
                       giveup=giveup_if_not_throttling,
                       factor=RETRY_FACTOR)
@@ -383,7 +404,7 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=600):
 
 
 @backoff.on_exception(backoff.expo,
-                      BotoServerError,
+                      Boto3Error,
                       max_tries=MAX_ATTEMPTS,
                       giveup=giveup_if_not_throttling,
                       factor=RETRY_FACTOR)
@@ -541,7 +562,7 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     client = boto3.client('elb')
 
     @backoff.on_exception(backoff.expo,
-                          BotoServerError,
+                          Boto3Error,
                           max_tries=MAX_ATTEMPTS,
                           giveup=giveup_if_not_throttling,
                           factor=RETRY_FACTOR)

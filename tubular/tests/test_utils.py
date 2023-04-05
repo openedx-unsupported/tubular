@@ -3,13 +3,8 @@ Tests of the utility code.
 """
 
 from copy import copy
-import boto
-from boto.ec2.autoscale.launchconfig import LaunchConfiguration
-from boto.ec2.autoscale.group import AutoScalingGroup
-from boto.vpc.subnet import Subnet
-from boto.vpc import VPCConnection
-from boto.ec2.autoscale import Tag
 import six
+import boto3
 
 
 def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
@@ -26,73 +21,116 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         boto.ec2.autoscale.group.AutoScalingGroup
     """
 
-    tag_list = [
-        Tag(
-            key=k,
-            value=v,
-            resource_id=asg_name,
-            propagate_at_launch=True
-        ) for k, v in six.iteritems(tags)
-    ]
+    tag_list =[
+            {
+                'Key': k,
+                'Value': v,
+            } for k, v in six.iteritems(tags)
+        ]
 
     if elbs is None:
         elbs = []
 
-    # Create asgs
-    vpcconn = VPCConnection()
-    conn = boto.ec2.autoscale.connect_to_region('us-east-1')
-    config = LaunchConfiguration(
-        name='{}_lc'.format(asg_name),
-        image_id=ami_id,
-        instance_type='t2.medium',
-    )
-    conn.create_launch_configuration(config)
-    vpc = vpcconn.create_vpc('10.0.0.0/24')
-    subnetc = vpcconn.create_subnet(vpc.id, '10.0.0.0/28', 'us-east-1c')
-    subnetb = vpcconn.create_subnet(vpc.id, '10.0.0.16/28', 'us-east-1b')
+    ec2 = boto3.client('ec2', region_name='us-east-1')
 
-    group = AutoScalingGroup(
-        name=asg_name,
-        availability_zones=['us-east-1c', 'us-east-1b'],
-        default_cooldown=60,
-        desired_capacity=2,
-        load_balancers=elbs,
-        health_check_period=100,
-        health_check_type="EC2",
-        max_size=2,
-        min_size=2,
-        launch_config=config,
-        placement_group="test_placement",
-        vpc_zone_identifier="{subnetbid},{subnetcid}".format(subnetbid=subnetb.id, subnetcid=subnetc.id),
-        termination_policies=["OldestInstance", "NewestInstance"],
-        tags=tag_list,
+    vpc = ec2.create_vpc(CidrBlock='10.0.0.0/24')
+    subnetc = ec2.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.0.0/28', AvailabilityZone='us-east-1c')
+    subnetb = ec2.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.0.16/28', AvailabilityZone='us-east-1b')
+    launch_config_name = 'my-launch-config'
+    autoscale = boto3.client('autoscaling', region_name='us-east-1')
+
+    autoscale.create_launch_configuration(
+        LaunchConfigurationName=launch_config_name,
+        ImageId='ami-0123456789abcdef',
+        InstanceType='t2.micro',
+        KeyName='my-keypair',
+        SecurityGroups=['sg-0123456789abcdef'],
+        UserData='#!/bin/bash\necho "Hello, world!"',
+        IamInstanceProfile='my-iam-profile',
+        EbsOptimized=True,
+        AssociatePublicIpAddress=False,
+        BlockDeviceMappings=[
+            {
+                'DeviceName': '/dev/sda1',
+                'Ebs': {
+                    'VolumeSize': 30,
+                    'VolumeType': 'gp2',
+                    'DeleteOnTermination': True
+                }
+            }
+        ]
     )
-    conn.create_auto_scaling_group(group)
+
+    # Create the Auto Scaling group using the `create_auto_scaling_group` method
+    grp = autoscale.create_auto_scaling_group(
+        AutoScalingGroupName=asg_name,
+        AvailabilityZones=['us-east-1c', 'us-east-1b'],
+        DefaultCooldown=60,
+        DesiredCapacity=2,
+        LoadBalancerNames=['healthy-lb-1'],
+        HealthCheckGracePeriod=100,
+        HealthCheckType="EC2",
+        MaxSize=2,
+        MinSize=2,
+        LaunchConfigurationName=launch_config_name,
+        PlacementGroup="test_placement",
+        VPCZoneIdentifier='{},{}'.format(subnetb['Subnet']['SubnetId'], subnetc['Subnet']['SubnetId']),
+        TerminationPolicies=["OldestInstance", "NewestInstance"],
+        Tags=tag_list
+    )
 
     # Each ASG tag that has 'propagate_at_launch' set to True is *supposed* to be set on the instances.
     # However, it seems that moto (as of 0.4.30) does not properly set the tags on the instances created by the ASG.
     # So set the tags on the ASG instances manually instead.
-    ec2_conn = boto.connect_ec2()
-    for asg in conn.get_all_groups():
-        if asg.name == asg_name:
-            asg_instance_ids = [instance.instance_id for instance in asg.instances]
+    response = autoscale.describe_auto_scaling_groups()
+    for asg in response['AutoScalingGroups']:
+        if asg['AutoScalingGroupName'] == asg_name:
+            asg_instance_ids = [instance['InstanceId'] for instance in asg['Instances']]
             for instance_id in asg_instance_ids:
-                ec2_conn.create_tags(instance_id, tags)
+                ec2.create_tags(
+                    Resources=[instance_id],
+                    Tags=tag_list
+                )
 
-    return group
+    return grp
 
 
 def create_elb(elb_name):
     """
     Method to create an Elastic Load Balancer.
     """
-    boto_elb = boto.connect_elb()
+    boto_elb = boto3.client('elb')
     zones = ['us-east-1a', 'us-east-1b']
-    ports = [(80, 8080, 'http'), (443, 8443, 'tcp')]
-    load_balancer = boto_elb.create_load_balancer(elb_name, zones, ports)
+    # ['us-east-1c', 'us-east-1b']
+    ports = [
+        {
+            'LoadBalancerPort': 80,
+            'InstancePort': 8080,
+            'Protocol': 'HTTP'
+        },
+        {
+            'LoadBalancerPort': 443,
+            'InstancePort': 8443,
+            'Protocol': 'TCP'
+        }
+    ]
+
+    load_balancer = boto_elb.create_load_balancer(
+        LoadBalancerName=elb_name,
+        AvailabilityZones=zones,
+        Listeners=ports
+    )
+
     instance_ids = ['i-4f8cf126', 'i-0bb7ca62']
-    load_balancer.register_instances(instance_ids)
-    return load_balancer
+
+    res_instances =  boto_elb.register_instances_with_load_balancer(
+        LoadBalancerName=elb_name,
+        Instances=[
+            {'InstanceId': instance_id} for instance_id in instance_ids
+        ]
+    )
+
+    return res_instances
 
 
 def clone_elb_instances_with_state(elb, state):
