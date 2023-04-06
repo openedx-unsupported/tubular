@@ -21,30 +21,22 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         boto.ec2.autoscale.group.AutoScalingGroup
     """
 
-    tag_list =[
-            {
-                'Key': k,
-                'Value': v,
-            } for k, v in six.iteritems(tags)
-        ]
-
     if elbs is None:
         elbs = []
 
-    ec2 = boto3.client('ec2', region_name='us-east-1')
+    ec2 = boto3.client('ec2')
 
     vpc = ec2.create_vpc(CidrBlock='10.0.0.0/24')
     subnetc = ec2.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.0.0/28', AvailabilityZone='us-east-1c')
     subnetb = ec2.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.0.16/28', AvailabilityZone='us-east-1b')
-    autoscale = boto3.client('autoscaling', region_name='us-east-1')
+    autoscale = boto3.client('autoscaling')
 
-    launch_config_name = 'my-launch-config'
+    launch_config_name ='{}_lc'.format(asg_name)
     autoscale.create_launch_configuration(
         LaunchConfigurationName=launch_config_name,
         ImageId=ami_id,
-        InstanceType='t2.micro'
+        InstanceType='t2.medium'
     )
-
 
     # Create the Auto Scaling group using the `create_auto_scaling_group` method
     asg = autoscale.create_auto_scaling_group(
@@ -60,7 +52,6 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         MinSize=2,
         VPCZoneIdentifier='{},{}'.format(subnetb['Subnet']['SubnetId'], subnetc['Subnet']['SubnetId']),
         TerminationPolicies=["OldestInstance", "NewestInstance"],
-        Tags=tag_list
     )
 
     # Each ASG tag that has 'propagate_at_launch' set to True is *supposed* to be set on the instances.
@@ -70,22 +61,31 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
     assert response['AutoScalingGroups'][0]['LaunchConfigurationName'] == launch_config_name
     assert response["AutoScalingGroups"][0]["MinSize"] == 2
     assert response["AutoScalingGroups"][0]["MaxSize"] == 3
-    import pdb;
-    pdb.set_trace()
 
-    import pdb;
-    pdb.set_trace()
+
+    tag_list = [
+        {
+            'Key': k,
+            'Value': v,
+            'ResourceType': 'auto-scaling-group',
+            'ResourceId': asg_name
+        } for k, v in six.iteritems(tags)
+    ]
 
     for asg in response['AutoScalingGroups']:
         if asg['AutoScalingGroupName'] == asg_name:
             asg_instance_ids = [instance['InstanceId'] for instance in asg['Instances']]
             for instance_id in asg_instance_ids:
-                ec2.create_tags(
-                    Resources=[instance_id],
+                autoscale.create_or_update_tags(
                     Tags=tag_list
-                )
+            )
 
-    return asg
+    # autoscale.create_or_update_tags(
+    #     Filters=[{"Name": "auto-scaling-group", "Values": [asg_name]}], Tags=tag_list
+    # )
+
+    asg_tags = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])["AutoScalingGroups"]
+    return asg_tags[0]['Tags']
 
 
 def create_elb(elb_name):

@@ -6,7 +6,7 @@ when we deploy using asgard.
 import os
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import backoff
 import boto3
 import boto
@@ -45,7 +45,10 @@ def giveup_if_not_throttling(ex):
         False if the throttling string is not found.
         True if ex is of type MultipleImagesFoundException
     """
-    if isinstance(ex, OperationNotPageableError):
+
+    if 'throttling' not in str(ex).lower():
+        return False
+    elif ex.response['Error']['Code'] == 'MultipleImagesFoundException':
         return True
 
     return not False
@@ -153,8 +156,7 @@ def active_ami_for_edp(env, dep, play):
         MultipleImagesFoundException: If multiple AMI IDs are found within the EDP's ELB.
         ImageNotFoundException: If no AMI IDs are found for the EDP.
     """
-    import pdb;
-    pdb.set_trace()
+
     LOG.info("Looking up AMI for {}-{}-{}...".format(env, dep, play))
     edp = EDP(env, dep, play)
     #ec2_conn = boto.connect_ec2()
@@ -366,8 +368,7 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
     """
     Create a tag that will be used to mark an ASG for deletion.
     """
-    import pdb;
-    pdb.set_trace()
+
     if seconds_until_delete_delta is None:
         tag_value = None
     else:
@@ -491,17 +492,24 @@ def terminate_instances(region, tags, max_run_hours, skip_if_tag):
     conn = boto3.client('ec2')
     instances_to_terminate = []
 
+    import pdb;
+    pdb.set_trace()
+
+    now = datetime.now(timezone.utc)
+
     # reservations = conn.get_all_instances(filters=tags)
     reservations = conn.describe_instances(Filters=[tags])
 
-    for reservation in reservations:
-
+    for reservation in reservations['Reservations']:
         for instance in reservation['Instances']:
-            total_run_time = datetime.utcnow() - datetime.strptime(instance['LaunchTime'][:-1], ISO_DATE_FORMAT)
+            launch_time = instance['LaunchTime']
+            total_run_time = datetime.utcnow() - datetime.strptime(launch_time.strftime(ISO_DATE_FORMAT), ISO_DATE_FORMAT)
             if total_run_time > timedelta(hours=max_run_hours) and skip_if_tag not in instance['Tags']:
-                instances_to_terminate.append(instance.id)
+                instances_to_terminate.append(instance['InstanceId'])
+
     if instances_to_terminate:
-        conn.terminate_instances(instance_ids=instances_to_terminate)
+        conn.terminate_instances(InstanceIds=instances_to_terminate)
+
     return instances_to_terminate
 
 

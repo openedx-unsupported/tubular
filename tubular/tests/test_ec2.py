@@ -12,6 +12,7 @@ from moto.ec2.utils import random_ami_id
 import boto
 import boto3
 from boto3.exceptions import Boto3Error
+import botocore
 import six
 import tubular.ec2 as ec2
 from tubular.tests.test_utils import *
@@ -55,8 +56,6 @@ class TestEC2(unittest.TestCase):
 
         # Verify that the correct AMI ID was returned
         assert ami_id.startswith('ami-')
-        import pdb;
-        pdb.set_trace()
 
         ami_resp = ec2_client.describe_images(ImageIds=[ami_id])
 
@@ -156,8 +155,8 @@ class TestEC2(unittest.TestCase):
     @mock_ec2
     def test_ami_for_edp_success(self):
 
-        import pdb;
-        pdb.set_trace()
+        # aa = ec2.active_amx/i_for_edp('foo', 'bar', 'baz')
+
         fake_ami_id = self._make_fake_ami()
         fake_elb_name = "healthy-lb-1"
         fake_elb = create_elb(fake_elb_name)
@@ -272,8 +271,9 @@ class TestEC2(unittest.TestCase):
 
         self.assertIsInstance(asgs, list)
         self.assertEqual(len(asgs), expected_result_count)
+
         if name_filter:
-            self.assertTrue(all(asg.name in name_filter for asg in asgs))
+            self.assertTrue(all(asg['AutoScalingGroupName'] in name_filter for asg in asgs))
 
     @mock_autoscaling
     @mock_ec2
@@ -384,8 +384,7 @@ class TestEC2(unittest.TestCase):
         )
 
         create_elb('my-lb')
-        import pdb;
-        pdb.set_trace()
+
         ec2.tag_asg_for_deletion(self.test_asg_name, 0)
 
         instances_by_id = {}
@@ -398,8 +397,7 @@ class TestEC2(unittest.TestCase):
     @mock_ec2
     def test_create_or_update_tags_on_asg(self):
         self._setup_test_asg_to_be_deleted()
-        import pdb;
-        pdb.set_trace()
+
         # Ensure a single delete tag exists.
         delete_tags = [tag for tag in self.test_asg['Tags'] if tag.key == ec2.ASG_DELETE_TAG_KEY]
         self.assertEqual(len(delete_tags), 1)
@@ -526,7 +524,16 @@ class TestEC2(unittest.TestCase):
     )
     @ddt.unpack
     def test_giveup_if_not_throttling(self, status, body, expected_result):
-        ex = Boto3Error(status, "reasons", body)
+
+
+        error_message = body
+        error_code = status
+        reasons = ["some reason"]
+
+        ex = botocore.exceptions.ClientError(
+            {'Error': {'Code': error_code, 'Message': error_message},
+             'ResponseMetadata': {'HTTPStatusCode': 400}}, reasons
+        )
         self.assertEqual(ec2.giveup_if_not_throttling(ex), expected_result)
 
     @ddt.data(
@@ -599,23 +606,31 @@ class TestEC2(unittest.TestCase):
     @mock_ec2
     def test_terminate_instances(self, instances, max_run_hours, skip_if_tag, tags, expected_count):
         conn = boto3.client('ec2')
-        for requested_instance in instances:
-            import pdb;
-            pdb.set_trace()
-            response = conn.run_instances(ImageId=requested_instance['ami_id'], MinCount=1, MaxCount=1)
-            for instance in response['reservations']:
-                for key, val in requested_instance['tags'].items():
-                    # instance.add_tag(key, val)
-                    conn.create_tags(
-                        Resources=[instance['InstanceId']],
-                        Tags=[{'Key': 'key', 'Value': val}]
-                    )
+        from datetime import datetime, timezone
 
-        import pdb;
-        pdb.set_trace()
+        for requested_instance in instances:
+            response = conn.run_instances(ImageId=requested_instance['ami_id'], MinCount=1, MaxCount=1)
+            instance_id = response['Instances'][0]['InstanceId']
+            reservation_id = response['ReservationId']
+
+            tag_list = [
+                {
+                    'Key': k,
+                    'Value': v
+                } for k, v in requested_instance['tags'].items()
+            ]
+
+            for instance in response['Instances']:
+                conn.create_tags(Resources=[instance['InstanceId']], Tags=tag_list)
+
         terminated_instances = ec2.terminate_instances(
             'us-east-1',
+            # InstanceIds=[instance_id],
             max_run_hours=max_run_hours,
             skip_if_tag=skip_if_tag,
-            tags=tags)
+            tags=tags
+        )
+        import pdb;
+        pdb.set_trace()
+
         self.assertEqual(len(terminated_instances), expected_count)
