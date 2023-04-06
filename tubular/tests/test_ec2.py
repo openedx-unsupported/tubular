@@ -449,6 +449,7 @@ class TestEC2(unittest.TestCase):
         asg_name2 = "test-asg-deletion-bad-timestamp"
         deletion_dttm_str1 = datetime.datetime.utcnow().isoformat()
         deletion_dttm_str2 = "2016-05-18 18:19:46.144884"
+
         create_asg_with_tags(asg_name1, {ec2.ASG_DELETE_TAG_KEY: deletion_dttm_str1})
         create_asg_with_tags(asg_name2, {ec2.ASG_DELETE_TAG_KEY: deletion_dttm_str2})
 
@@ -456,8 +457,8 @@ class TestEC2(unittest.TestCase):
         self.assertEqual(len(asgs), 1)
         # boto.ec2.autoscale.group.AutoScalingGroup does not implement __eq__ so we need to iterate the list to see if
         # the ASGs we are interested in are members
-        self.assertEqual(len([asg for asg in asgs if asg.name == asg_name1]), 1)
-        self.assertEqual(len([asg for asg in asgs if asg.name == asg_name2]), 0)
+        self.assertEqual(len([asg for asg in asgs if asg['AutoScalingGroupName'] == asg_name1]), 1)
+        self.assertEqual(len([asg for asg in asgs if asg['AutoScalingGroupName'] == asg_name2]), 0)
 
     def test_create_tag_for_asg_deletion(self):
         asg_name = "test-asg-tags"
