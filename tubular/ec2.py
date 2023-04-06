@@ -68,6 +68,8 @@ def get_all_autoscale_groups(names=None):
     Returns:
         List of :class:`boto.ec2.autoscale.group.AutoScalingGroup` instances.
     """
+    import pdb;
+    pdb.set_trace()
     autoscale_client = boto3.client('autoscaling')
     asg_paginator = autoscale_client.get_paginator('describe_auto_scaling_groups')
     total_asgs = []
@@ -401,6 +403,8 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=600):
     Returns:
         None
     """
+    import pdb;
+    pdb.set_trace()
     tag = create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta)
     autoscale = boto3.client('autoscaling')
     if len(get_all_autoscale_groups([asg_name])) < 1:

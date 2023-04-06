@@ -355,21 +355,34 @@ class TestEC2(unittest.TestCase):
         Setup a test ASG that is tagged to be deleted.
         """
         # pylint: disable=attribute-defined-outside-init
+
+        dummy_ami_id = 'ami-12c6146b'
+
+        import pdb;
+        pdb.set_trace()
+
+        boto3.resource("ec2", "us-east-1")
+        ec2_client = boto3.client("ec2", region_name="us-east-1")
+        autoscale = boto3.client("autoscaling", region_name="us-east-1")
+
+        random_image_id = ec2_client.describe_images()["Images"][0]["ImageId"]
+        asg_name = f"asg-{random_image_id}"
+
         self.test_asg_name = "test-asg-random-tags"
-
         launch_config_name = 'my-launch-config'
-        self.test_autoscale = boto3.client('autoscaling', region_name='us-east-1')
 
-        self.test_autoscale.create_launch_configuration(
-            LaunchConfigurationName=launch_config_name,
-            ImageId='my-ami',
-            InstanceType='t2.micro',
-            KeyName='my_key_name',
-            SecurityGroups=['my_security_groups'],
+        autoscale.create_launch_configuration(
+            LaunchConfigurationName="tester",
+            ImageId=dummy_ami_id,
+            InstanceType="t1.micro",
         )
 
-        grp = self.test_autoscale.create_auto_scaling_group(
-            AutoScalingGroupName=self.test_asg_name,
+        launch_config = autoscale.describe_launch_configurations()["LaunchConfigurations"][0]
+
+        import pdb;
+        pdb.set_trace()
+        autoscale.create_auto_scaling_group(
+            AutoScalingGroupName=asg_name,
             AvailabilityZones=['us-east-1a', 'us-east-1b'],
             DefaultCooldown=60,
             DesiredCapacity=2,
@@ -378,19 +391,16 @@ class TestEC2(unittest.TestCase):
             HealthCheckType="EC2",
             MaxSize=2,
             MinSize=2,
-            LaunchConfigurationName=launch_config_name,
+            LaunchConfigurationName=launch_config["LaunchConfigurationName"],
             PlacementGroup="test_placement",
             TerminationPolicies=["OldestInstance", "NewestInstance"],
         )
-
+        instances = autoscale.describe_auto_scaling_instances()["AutoScalingInstances"]
+        import pdb;
+        pdb.set_trace()
         create_elb('my-lb')
+        ec2.tag_asg_for_deletion(asg_name, 0)
 
-        ec2.tag_asg_for_deletion(self.test_asg_name, 0)
-
-        instances_by_id = {}
-        groups = self.test_autoscale.describe_auto_scaling_groups()
-
-        self.test_asg = groups['AutoScalingGroups'][0]
 
     @mock_autoscaling
     @mock_elb
