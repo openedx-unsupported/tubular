@@ -433,12 +433,13 @@ class TestEC2(unittest.TestCase):
         deletion_dttm_str = datetime.datetime.utcnow().isoformat()
         create_asg_with_tags(asg_name, {ec2.ASG_DELETE_TAG_KEY: deletion_dttm_str})
 
+
         asgs = ec2.get_asgs_pending_delete()
         self.assertEqual(len(asgs), 1)
         asg = asgs.pop()
-        self.assertEqual(asg.name, asg_name)
-        self.assertEqual(asg.tags[0].key, ec2.ASG_DELETE_TAG_KEY)
-        self.assertEqual(asg.tags[0].value, deletion_dttm_str)
+        self.assertEqual(asg['AutoScalingGroupName'], asg_name)
+        self.assertEqual(asg['Tags'][0]['Key'], ec2.ASG_DELETE_TAG_KEY)
+        self.assertEqual(asg['Tags'][0]['Value'], deletion_dttm_str)
 
     @mock_autoscaling
     @mock_ec2
