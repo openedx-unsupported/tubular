@@ -609,9 +609,7 @@ class TestEC2(unittest.TestCase):
         from datetime import datetime, timezone
 
         for requested_instance in instances:
-            response = conn.run_instances(ImageId=requested_instance['ami_id'], MinCount=1, MaxCount=1)
-            instance_id = response['Instances'][0]['InstanceId']
-            reservation_id = response['ReservationId']
+            response = conn.run_instances(ImageId=requested_instance['ami_id'], MinCount=1, MaxCount=3)
 
             tag_list = [
                 {
@@ -630,7 +628,5 @@ class TestEC2(unittest.TestCase):
             skip_if_tag=skip_if_tag,
             tags=tags
         )
-        import pdb;
-        pdb.set_trace()
 
         self.assertEqual(len(terminated_instances), expected_count)

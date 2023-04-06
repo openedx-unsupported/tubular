@@ -492,19 +492,13 @@ def terminate_instances(region, tags, max_run_hours, skip_if_tag):
     conn = boto3.client('ec2')
     instances_to_terminate = []
 
-    import pdb;
-    pdb.set_trace()
-
-    now = datetime.now(timezone.utc)
-
-    # reservations = conn.get_all_instances(filters=tags)
     reservations = conn.describe_instances(Filters=[tags])
 
     for reservation in reservations['Reservations']:
         for instance in reservation['Instances']:
             launch_time = instance['LaunchTime']
             total_run_time = datetime.utcnow() - datetime.strptime(launch_time.strftime(ISO_DATE_FORMAT), ISO_DATE_FORMAT)
-            if total_run_time > timedelta(hours=max_run_hours) and skip_if_tag not in instance['Tags']:
+            if total_run_time > timedelta(hours=max_run_hours) and skip_if_tag not in [tag['Key'] for tag in instance['Tags']]:
                 instances_to_terminate.append(instance['InstanceId'])
 
     if instances_to_terminate:
