@@ -368,9 +368,6 @@ class TestEC2(unittest.TestCase):
         random_image_id = ec2_client.describe_images()["Images"][0]["ImageId"]
         asg_name = f"asg-{random_image_id}"
 
-        self.test_asg_name = "test-asg-random-tags"
-        launch_config_name = 'my-launch-config'
-
         autoscale.create_launch_configuration(
             LaunchConfigurationName="tester",
             ImageId=dummy_ami_id,
@@ -379,8 +376,6 @@ class TestEC2(unittest.TestCase):
 
         launch_config = autoscale.describe_launch_configurations()["LaunchConfigurations"][0]
 
-        import pdb;
-        pdb.set_trace()
         autoscale.create_auto_scaling_group(
             AutoScalingGroupName=asg_name,
             AvailabilityZones=['us-east-1a', 'us-east-1b'],
@@ -395,11 +390,19 @@ class TestEC2(unittest.TestCase):
             PlacementGroup="test_placement",
             TerminationPolicies=["OldestInstance", "NewestInstance"],
         )
-        instances = autoscale.describe_auto_scaling_instances()["AutoScalingInstances"]
+
+        describe_auto_scaling_instances = autoscale.describe_auto_scaling_instances()["AutoScalingInstances"]
+
         import pdb;
         pdb.set_trace()
         create_elb('my-lb')
-        ec2.tag_asg_for_deletion(asg_name, 0)
+
+        self.test_asg_name = asg_name
+        ec2.tag_asg_for_deletion(self.test_asg_name, 0)
+
+        self.test_autoscale.create_auto_scaling_group(asg)
+        ec2.tag_asg_for_deletion(self.test_asg_name, 0)
+        self.test_asg = self.test_autoscale.get_all_groups([self.test_asg_name])[0]
 
 
     @mock_autoscaling
