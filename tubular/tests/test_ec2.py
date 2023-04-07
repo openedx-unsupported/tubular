@@ -321,18 +321,18 @@ class TestEC2(unittest.TestCase):
         # balancer will ensure that the ELB will be removed from the list on the second iteration, then the second ELB
         # is removed on the 3rd iteation.
 
-        first_elb_instances = first_elb.describe_target_health()
-        second_elb_instances = second_elb.get_instance_health()
+        # first_elb_instances = first_elb.get_instance_health()
+        # second_elb_instances = second_elb.get_instance_health()
 
         return_vals = [
-            clone_elb_instances_with_state(first_elb_instances, "OutOfService"),
-            clone_elb_instances_with_state(second_elb_instances, "OutOfService")
+            clone_elb_instances_with_state(first_elb, "OutOfService"),
+            clone_elb_instances_with_state(second_elb, "OutOfService")
         ]
         return_vals += [
-            clone_elb_instances_with_state(first_elb_instances, "InService"),
-            clone_elb_instances_with_state(second_elb_instances, "OutOfService")
+            clone_elb_instances_with_state(first_elb, "InService"),
+            clone_elb_instances_with_state(second_elb, "OutOfService")
         ]
-        return_vals += [clone_elb_instances_with_state(second_elb_instances, "InService")]
+        return_vals += [clone_elb_instances_with_state(second_elb, "InService")]
 
         with mock.patch(mock_function, side_effect=return_vals):
             with mock.patch('tubular.ec2.WAIT_SLEEP_TIME', 1):

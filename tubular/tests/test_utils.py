@@ -97,8 +97,7 @@ def create_elb(elb_name):
     """
     Method to create an Elastic Load Balancer.
     """
-
-    boto_elb = boto3.client('elb')
+    boto_elb = boto3.client('elb', region_name="us-east-1")
     zones = ['us-east-1a', 'us-east-1b']
     ports = [
         {
@@ -113,22 +112,23 @@ def create_elb(elb_name):
         }
     ]
 
-    load_balancer = boto_elb.create_load_balancer(
+    boto_elb.create_load_balancer(
         LoadBalancerName=elb_name,
         AvailabilityZones=zones,
         Listeners=ports
     )
 
     instance_ids = ['i-4f8cf126', 'i-0bb7ca62']
-
-    res_instances = boto_elb.register_instances_with_load_balancer(
+    boto_elb.register_instances_with_load_balancer(
         LoadBalancerName=elb_name,
         Instances=[
             {'InstanceId': instance_id} for instance_id in instance_ids
         ]
     )
 
-    return res_instances
+    import pdb;
+    pdb.set_trace()
+    return boto_elb.describe_instance_health(LoadBalancerName=elb_name)['InstanceStates']
 
 
 def clone_elb_instances_with_state(elb, state):
@@ -145,6 +145,5 @@ def clone_elb_instances_with_state(elb, state):
     elb_copy = copy(elb)
     for idx, instance in enumerate(elb):
         elb_copy[idx] = copy(instance)
-        elb_copy[idx].state = state
-
+        elb_copy[idx]['State'] = state
     return elb_copy

@@ -161,8 +161,8 @@ def active_ami_for_edp(env, dep, play):
     LOG.info("Looking up AMI for {}-{}-{}...".format(env, dep, play))
     edp = EDP(env, dep, play)
     #ec2_conn = boto.connect_ec2()
-    ec2_client = boto3.client('ec2', region_name='us-east-1')
-    asg_client = boto3.client('autoscaling', region_name='us-east-1')
+    ec2_client = boto3.client('ec2')
+    asg_client = boto3.client('autoscaling')
 
     all_elbs = get_all_load_balancers()
     LOG.info("Found {} load balancers.".format(len(all_elbs)))
