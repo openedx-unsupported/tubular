@@ -351,7 +351,7 @@ class TestEC2(unittest.TestCase):
         load_balancer[0]['State'] = "OutOfService"
 
         with self.assertRaises(TimeoutException):
-            ec2.wait_for_healthy_elbs(elb_name, 2)
+            ec2.wait_for_healthy_elbs([elb_name], 2)
 
     @mock_autoscaling
     @mock_elb

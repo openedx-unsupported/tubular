@@ -604,11 +604,12 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     import pdb;
     pdb.set_trace()
 
-    elbs_left = []
-    if isinstance(elbs_to_monitor, str):
-        elbs_left.append(elbs_to_monitor)
-    else:
-        elbs_left = elbs_to_monitor
+    # elbs_left = []
+    # if isinstance(elbs_to_monitor, str):
+    #     elbs_left.append(elbs_to_monitor)
+    # else:
+
+    elbs_left = elbs_to_monitor
 
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
@@ -626,8 +627,7 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
                     elb['LoadBalancerName'], elbs_left
                 ))
                 elbs_left.remove(elb['LoadBalancerName'])
-        import pdb;
-        pdb.set_trace()
+
         LOG.info("Number of load balancers remaining with unhealthy instances: {}".format(len(elbs_left)))
         if not elbs_left:
             LOG.info("All instances in all ELBs are healthy, returning.")
