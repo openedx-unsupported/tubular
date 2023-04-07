@@ -68,9 +68,9 @@ def get_all_autoscale_groups(names=None):
     Returns:
         List of :class:`boto.ec2.autoscale.group.AutoScalingGroup` instances.
     """
-
-    autoscale_client = boto3.client('autoscaling', region_name="us-east-1")
+    autoscale_client = boto3.client('autoscaling')
     asg_paginator = autoscale_client.get_paginator('describe_auto_scaling_groups')
+
     total_asgs = []
     if names is None:
         paginator = asg_paginator.paginate()
@@ -195,8 +195,6 @@ def active_ami_for_edp(env, dep, play):
 
     asgs = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=asgs_for_edp(edp))
 
-    import pdb;
-    pdb.set_trace()
     for asg in asgs['AutoScalingGroups']:
         for asg_inst in asg['Instances']:
             asg_enabled = len(asg['SuspendedProcesses']) == 0
@@ -332,8 +330,7 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
      ]
 
     """
-    import pdb;
-    pdb.set_trace()
+
     all_groups = get_all_autoscale_groups()
     matching_groups = []
     LOG.info("Found {} ASGs".format(len(all_groups)))
@@ -405,7 +402,7 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=600):
     """
     tag = create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta)
 
-    autoscale = boto3.client('autoscaling', region_name="us-east-1")
+    autoscale = boto3.client('autoscaling')
     if len(get_all_autoscale_groups([asg_name])) < 1:
         LOG.info("ASG {} no longer exists, will not tag".format(asg_name))
     else:

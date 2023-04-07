@@ -5,6 +5,20 @@ Tests of the utility code.
 from copy import copy
 import six
 import boto3
+from moto import mock_ec2
+
+
+@mock_ec2
+def setup_networking(region_name="us-east-1"):
+    ec2 = boto3.resource("ec2", region_name=region_name)
+    vpc = ec2.create_vpc(CidrBlock="10.11.0.0/16")
+    subnet1 = ec2.create_subnet(
+        VpcId=vpc.id, CidrBlock="10.11.1.0/24", AvailabilityZone=f"{region_name}a"
+    )
+    subnet2 = ec2.create_subnet(
+        VpcId=vpc.id, CidrBlock="10.11.2.0/24", AvailabilityZone=f"{region_name}b"
+    )
+    return {"vpc": vpc.id, "subnet1": subnet1.id, "subnet2": subnet2.id}
 
 
 def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
@@ -24,34 +38,25 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
     if elbs is None:
         elbs = []
 
-    ec2 = boto3.client('ec2')
+    boto3.resource('ec2', region_name='us-east-1')
+    ec2_client = boto3.client('ec2')
+    vpc = ec2_client.create_vpc(CidrBlock='10.0.0.0/16')
+    subnet1 = ec2_client.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.0.0/24', AvailabilityZone='us-east-1a')
+    subnet2 = ec2_client.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.1.0/24', AvailabilityZone='us-east-1b')
 
-    vpc = ec2.create_vpc(CidrBlock='10.0.0.0/24')
-    subnetc = ec2.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.0.0/28', AvailabilityZone='us-east-1c')
-    subnetb = ec2.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.0.16/28', AvailabilityZone='us-east-1b')
-    autoscale = boto3.client('autoscaling')
-
-    # ec2_res = boto3.resource("ec2", "us-east-1")
-    # ec2_client = boto3.client("ec2", region_name="us-east-1")
-    autoscale = boto3.client("autoscaling", region_name="us-east-1")
-
-    # random_image_id = ec2_client.describe_images()["Images"][0]["ImageId"]
-    dummy_ami_id = 'ami-12c6146b'
+    autoscale = boto3.client("autoscaling")
 
     autoscale.create_launch_configuration(
         LaunchConfigurationName="tester",
-        ImageId=dummy_ami_id,
-        InstanceType="t1.micro",
+        ImageId=ami_id,
+        InstanceType="t2.medium",
     )
-
     launch_config = autoscale.describe_launch_configurations()["LaunchConfigurations"][0]
-
     autoscale.create_auto_scaling_group(
         AutoScalingGroupName=asg_name,
         AvailabilityZones=['us-east-1a', 'us-east-1b'],
         DefaultCooldown=60,
         DesiredCapacity=2,
-        LoadBalancerNames=['healthy-lb-1'],
         HealthCheckGracePeriod=100,
         HealthCheckType="EC2",
         MaxSize=3,
@@ -59,6 +64,7 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         LaunchConfigurationName=launch_config["LaunchConfigurationName"],
         PlacementGroup="test_placement",
         TerminationPolicies=["OldestInstance", "NewestInstance"],
+        VPCZoneIdentifier='{0},{1}'.format(subnet1['Subnet']['SubnetId'], subnet2['Subnet']['SubnetId']),
     )
 
     # Each ASG tag that has 'propagate_at_launch' set to True is *supposed* to be set on the instances.
@@ -91,9 +97,8 @@ def create_elb(elb_name):
     """
     Method to create an Elastic Load Balancer.
     """
-    import pdb;
-    pdb.set_trace()
-    boto_elb = boto3.client('elb', region_name="us-east-1")
+
+    boto_elb = boto3.client('elb')
     zones = ['us-east-1a', 'us-east-1b']
     ports = [
         {

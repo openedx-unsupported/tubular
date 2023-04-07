@@ -157,8 +157,6 @@ class TestEC2(unittest.TestCase):
         # aa = ec2.active_amx/i_for_edp('foo', 'bar', 'baz')
 
         fake_ami_id = self._make_fake_ami()
-        import pdb;
-        pdb.set_trace()
         fake_elb_name = "healthy-lb-1"
         fake_elb = create_elb(fake_elb_name)
         fake_asg_name = "fully_tagged_asg"
@@ -167,6 +165,7 @@ class TestEC2(unittest.TestCase):
             "deployment": "bar",
             "play": "baz"
         }
+
         create_asg_with_tags(
             fake_asg_name,
             fake_asg_tags,
@@ -174,7 +173,8 @@ class TestEC2(unittest.TestCase):
             elbs=[fake_elb]
         )
 
-        acc = ec2.active_ami_for_edp('foo', 'bar', 'baz')
+
+        ec2.active_ami_for_edp('foo', 'bar', 'baz')
         self.assertEqual(ec2.active_ami_for_edp('foo', 'bar', 'baz'), fake_ami_id)
 
     @unittest.skip("Test always fails due to not successfuly creating two different AMI IDs in single ELB.")
@@ -441,7 +441,6 @@ class TestEC2(unittest.TestCase):
         asg_name = "test-asg-deletion"
         deletion_dttm_str = datetime.datetime.utcnow().isoformat()
         create_asg_with_tags(asg_name, {ec2.ASG_DELETE_TAG_KEY: deletion_dttm_str})
-
 
         asgs = ec2.get_asgs_pending_delete()
         self.assertEqual(len(asgs), 1)
