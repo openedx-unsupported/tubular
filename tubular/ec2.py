@@ -97,12 +97,13 @@ def get_all_load_balancers(names=None):
     Returns:
         a list of :class:`boto.ec2.elb.loadbalancer.LoadBalancer`
     """
-
     client = boto3.client('elb')
     paginator = client.get_paginator('describe_load_balancers')
+    import pdb;
+    pdb.set_trace()
 
     if names:
-        response_iterator = paginator.paginate(LoadBalancerNames=list(names))
+        response_iterator = paginator.paginate(LoadBalancerNames=names)
     else:
         response_iterator = paginator.paginate()
 
@@ -600,7 +601,15 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
         LOG.info("No ELBs to monitor - skipping health check.")
         return
 
-    elbs_left = set(elbs_to_monitor)
+    import pdb;
+    pdb.set_trace()
+
+    elbs_left = []
+    if isinstance(elbs_to_monitor, str):
+        elbs_left.append(elbs_to_monitor)
+    else:
+        elbs_left = elbs_to_monitor
+
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
         elbs = get_all_load_balancers(elbs_left)
@@ -617,7 +626,8 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
                     elb['LoadBalancerName'], elbs_left
                 ))
                 elbs_left.remove(elb['LoadBalancerName'])
-
+        import pdb;
+        pdb.set_trace()
         LOG.info("Number of load balancers remaining with unhealthy instances: {}".format(len(elbs_left)))
         if not elbs_left:
             LOG.info("All instances in all ELBs are healthy, returning.")

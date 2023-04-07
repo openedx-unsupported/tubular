@@ -118,7 +118,7 @@ class TestEC2(unittest.TestCase):
     @mock_elb
     def test_describe_load_balancers_paginator(self):
         # Create a mock ELB client
-        elb_client = boto3.client('elb', region_name='us-east-1')
+        elb_client = boto3.client('elbv2', region_name='us-east-1')
 
         # Create some test load balancers
         elb_client.create_load_balancer(LoadBalancerName='test-lb-1', Listeners=[
@@ -334,21 +334,24 @@ class TestEC2(unittest.TestCase):
         ]
         return_vals += [clone_elb_instances_with_state(second_elb, "InService")]
 
-        with mock.patch(mock_function, side_effect=return_vals):
-            with mock.patch('tubular.ec2.WAIT_SLEEP_TIME', 1):
-                self.assertEqual(None, ec2.wait_for_healthy_elbs([first_elb_name, second_elb_name], 3))
+        import pdb;
+        pdb.set_trace()
+
+        with mock.patch('tubular.ec2.WAIT_SLEEP_TIME', 1):
+            self.assertEqual(None, ec2.wait_for_healthy_elbs([first_elb_name, second_elb_name], 3))
 
     @mock_elb
     @mock_ec2
     def test_wait_for_healthy_elbs_failure(self):
+        import pdb;
+        pdb.set_trace()
         elb_name = "unhealthy-lb"
         load_balancer = create_elb(elb_name)
         # Make one of the instances un-healthy.
-        instances = load_balancer.get_instance_health()
-        instances[0].state = "OutOfService"
-        mock_function = "boto.ec2.elb.loadbalancer.LoadBalancer.get_instance_health"
-        with mock.patch(mock_function, return_value=instances):
-            self.assertRaises(TimeoutException, ec2.wait_for_healthy_elbs, [elb_name], 2)
+        load_balancer[0]['State'] = "OutOfService"
+
+        with self.assertRaises(TimeoutException):
+            ec2.wait_for_healthy_elbs(elb_name, 2)
 
     @mock_autoscaling
     @mock_elb

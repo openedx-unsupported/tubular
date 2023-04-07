@@ -35,6 +35,7 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         boto.ec2.autoscale.group.AutoScalingGroup
     """
 
+
     if elbs is None:
         elbs = []
 
@@ -97,7 +98,8 @@ def create_elb(elb_name):
     """
     Method to create an Elastic Load Balancer.
     """
-    boto_elb = boto3.client('elb', region_name="us-east-1")
+
+    boto_elb = boto3.client('elb')
     zones = ['us-east-1a', 'us-east-1b']
     ports = [
         {
@@ -126,8 +128,6 @@ def create_elb(elb_name):
         ]
     )
 
-    import pdb;
-    pdb.set_trace()
     return boto_elb.describe_instance_health(LoadBalancerName=elb_name)['InstanceStates']
 
 
@@ -147,3 +147,11 @@ def clone_elb_instances_with_state(elb, state):
         elb_copy[idx] = copy(instance)
         elb_copy[idx]['State'] = state
     return elb_copy
+
+
+def get_elb(elb_name):
+    """
+    Method to create an Elastic Load Balancer.
+    """
+    boto_elb = boto3.client('elb', region_name="us-east-1")
+    return boto_elb.describe_instance_health(LoadBalancerName=elb_name)['InstanceStates']
