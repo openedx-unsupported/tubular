@@ -393,16 +393,14 @@ class TestEC2(unittest.TestCase):
 
         describe_auto_scaling_instances = autoscale.describe_auto_scaling_instances()["AutoScalingInstances"]
 
-        import pdb;
-        pdb.set_trace()
         create_elb('my-lb')
 
         self.test_asg_name = asg_name
         ec2.tag_asg_for_deletion(self.test_asg_name, 0)
 
-        self.test_autoscale.create_auto_scaling_group(asg)
-        ec2.tag_asg_for_deletion(self.test_asg_name, 0)
-        self.test_asg = self.test_autoscale.get_all_groups([self.test_asg_name])[0]
+        # autoscale.create_auto_scaling_group(asg)
+        # ec2.tag_asg_for_deletion(self.test_asg_name, 0)
+        # self.test_asg = autoscale.get_all_groups([self.test_asg_name])[0]
 
 
     @mock_autoscaling

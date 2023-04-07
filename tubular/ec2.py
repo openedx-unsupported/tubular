@@ -404,9 +404,8 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=600):
         None
     """
     tag = create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta)
-    import pdb;
-    pdb.set_trace()
-    autoscale = boto3.client('autoscaling')
+
+    autoscale = boto3.client('autoscaling', region_name="us-east-1")
     if len(get_all_autoscale_groups([asg_name])) < 1:
         LOG.info("ASG {} no longer exists, will not tag".format(asg_name))
     else:
