@@ -68,8 +68,6 @@ def get_all_autoscale_groups(names=None):
     Returns:
         List of :class:`boto.ec2.autoscale.group.AutoScalingGroup` instances.
     """
-    import pdb;
-    pdb.set_trace()
     autoscale_client = boto3.client('autoscaling', region_name="us-east-1")
     asg_paginator = autoscale_client.get_paginator('describe_auto_scaling_groups')
     total_asgs = []

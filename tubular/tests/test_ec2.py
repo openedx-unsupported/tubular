@@ -391,12 +391,10 @@ class TestEC2(unittest.TestCase):
             TerminationPolicies=["OldestInstance", "NewestInstance"],
         )
 
-        describe_auto_scaling_instances = autoscale.describe_auto_scaling_instances()["AutoScalingInstances"]
-
         create_elb('my-lb')
-
         self.test_asg_name = asg_name
         ec2.tag_asg_for_deletion(self.test_asg_name, 0)
+        self.test_asg = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
 
         # autoscale.create_auto_scaling_group(asg)
         # ec2.tag_asg_for_deletion(self.test_asg_name, 0)
@@ -410,13 +408,13 @@ class TestEC2(unittest.TestCase):
         self._setup_test_asg_to_be_deleted()
 
         # Ensure a single delete tag exists.
-        delete_tags = [tag for tag in self.test_asg['Tags'] if tag.key == ec2.ASG_DELETE_TAG_KEY]
+        delete_tags = [tag for tag in self.test_asg['AutoScalingGroups'][0]['Tags'] if tag['Key'] == ec2.ASG_DELETE_TAG_KEY]
         self.assertEqual(len(delete_tags), 1)
 
         # Ensure tag value is a parseable datetime.
         delete_tag = delete_tags.pop()
-        self.assertIsInstance(delete_tag.value, six.string_types)
-        datetime.datetime.strptime(delete_tag.value, ec2.ISO_DATE_FORMAT)
+        self.assertIsInstance(delete_tag['Value'], six.string_types)
+        datetime.datetime.strptime(delete_tag['Value'], ec2.ISO_DATE_FORMAT)
 
     # Moto does not currently implement delete_tags() - so this test can't complete successfully.
     # Once moto implements delete_tags(), uncomment this test.
