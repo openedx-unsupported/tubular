@@ -31,11 +31,11 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
     subnetb = ec2.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.0.16/28', AvailabilityZone='us-east-1b')
     autoscale = boto3.client('autoscaling')
 
-    boto3.resource("ec2", "us-east-1")
-    ec2_client = boto3.client("ec2", region_name="us-east-1")
+    # ec2_res = boto3.resource("ec2", "us-east-1")
+    # ec2_client = boto3.client("ec2", region_name="us-east-1")
     autoscale = boto3.client("autoscaling", region_name="us-east-1")
 
-    random_image_id = ec2_client.describe_images()["Images"][0]["ImageId"]
+    # random_image_id = ec2_client.describe_images()["Images"][0]["ImageId"]
     dummy_ami_id = 'ami-12c6146b'
 
     autoscale.create_launch_configuration(
@@ -65,7 +65,6 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
     # However, it seems that moto (as of 0.4.30) does not properly set the tags on the instances created by the ASG.
     # So set the tags on the ASG instances manually instead.
     response = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
-    response = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
     # assert response['AutoScalingGroups'][0]['LaunchConfigurationName'] == launch_config_name
     assert response["AutoScalingGroups"][0]["MinSize"] == 2
     assert response["AutoScalingGroups"][0]["MaxSize"] == 3
@@ -92,9 +91,10 @@ def create_elb(elb_name):
     """
     Method to create an Elastic Load Balancer.
     """
-    boto_elb = boto3.client('elb')
+    import pdb;
+    pdb.set_trace()
+    boto_elb = boto3.client('elb', region_name="us-east-1")
     zones = ['us-east-1a', 'us-east-1b']
-    # ['us-east-1c', 'us-east-1b']
     ports = [
         {
             'LoadBalancerPort': 80,

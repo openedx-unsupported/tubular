@@ -161,8 +161,8 @@ def active_ami_for_edp(env, dep, play):
     LOG.info("Looking up AMI for {}-{}-{}...".format(env, dep, play))
     edp = EDP(env, dep, play)
     #ec2_conn = boto.connect_ec2()
-    ec2_client = boto3.client('ec2')
-    asg_client = boto3.client('autoscaling')
+    ec2_client = boto3.client('ec2', region_name='us-east-1')
+    asg_client = boto3.client('autoscaling', region_name='us-east-1')
 
     all_elbs = get_all_load_balancers()
     LOG.info("Found {} load balancers.".format(len(all_elbs)))
@@ -188,22 +188,24 @@ def active_ami_for_edp(env, dep, play):
     ec2 = boto3.resource('ec2')
     instances = ec2.instances.filter(Filters=[edp_filter_env, edp_filter_deployment, edp_filter_play])
     #LOG.info("{} reservations found for EDP {}-{}-{}".format(len(instances), env, dep, play))
+
     for instance in instances:
         # Need to build up instances_by_id for code below
         instances_by_id[instance.id] = instance
 
     asgs = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=asgs_for_edp(edp))
 
+    import pdb;
+    pdb.set_trace()
     for asg in asgs['AutoScalingGroups']:
         for asg_inst in asg['Instances']:
-            instance = instances_by_id[asg_inst['InstanceId']]
             asg_enabled = len(asg['SuspendedProcesses']) == 0
-            if instance.state['Name'] == "running" and asg_enabled:
-                amis.add(instance.image_id)
-                LOG.info("AMI found in ASG {} for {}-{}-{}: {}".format(asg['AutoScalingGroupName'], env, dep, play, instance.image_id))
+            if asg_inst['LifecycleState'] == "InService" and asg_enabled:
+                amis.add(asg_inst['InstanceId'])
+                LOG.info("AMI found in ASG {} for {}-{}-{}: {}".format(asg['AutoScalingGroupName'], env, dep, play, asg_inst['InstanceId']))
             else:
                 LOG.info("Instance {} state: {} - asg {} enabled: {}".format(
-                    instance.id, instance.state, asg['AutoScalingGroupName'], asg_enabled))
+                    asg_inst['InstanceId']['InstanceId'], asg_inst['LifecycleState'], asg['AutoScalingGroupName'], asg_enabled))
 
     if not amis:
         msg = "No AMIs found for {}-{}-{}.".format(env, dep, play)
@@ -330,6 +332,8 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
      ]
 
     """
+    import pdb;
+    pdb.set_trace()
     all_groups = get_all_autoscale_groups()
     matching_groups = []
     LOG.info("Found {} ASGs".format(len(all_groups)))
