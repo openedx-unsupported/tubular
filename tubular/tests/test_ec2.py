@@ -41,7 +41,6 @@ class TestEC2(unittest.TestCase):
         # Create a test EC2 instance
         random_id = random_ami_id()
         response = ec2_client.run_instances(ImageId=random_id, MinCount=1, MaxCount=1)
-
         instance_id = response['Instances'][0]['InstanceId']
 
         # Use the EC2 client to create a fake AMI from the test instance
@@ -73,9 +72,10 @@ class TestEC2(unittest.TestCase):
         response = ec2_client.describe_tags(Filters=[{'Name': 'resource-id', 'Values': [ami_id]}])
         retrieved_tags = response['Tags']
 
-        assert {'Key': 'environment', 'ResourceId': ami_id, 'ResourceType': 'image', 'Value': 'foo'} in retrieved_tags
-        assert {'Key': 'deployment', 'ResourceId': ami_id, 'ResourceType': 'image', 'Value': 'bar'} in retrieved_tags
-        assert {'Key': 'play', 'ResourceId': ami_id, 'ResourceType': 'image', 'Value': 'baz'} in retrieved_tags
+
+        assert {'Key': 'environment', 'ResourceId': ami_id, 'ResourceType': 'image', 'Value': environment} in retrieved_tags
+        assert {'Key': 'deployment', 'ResourceId': ami_id, 'ResourceType': 'image', 'Value': deployment} in retrieved_tags
+        assert {'Key': 'play', 'ResourceId': ami_id, 'ResourceType': 'image', 'Value': play} in retrieved_tags
 
         return ami_id
 
@@ -112,6 +112,10 @@ class TestEC2(unittest.TestCase):
 
     @mock_ec2
     def test_restrict_ami_to_stage(self):
+        import pdb;
+        pdb.set_trace()
+        fake = self._make_fake_ami(environment='stage')
+        is_stage_ami = ec2.is_stage_ami(self._make_fake_ami(environment='stage'))
         self.assertEqual(True, ec2.is_stage_ami(self._make_fake_ami(environment='stage')))
         self.assertEqual(False, ec2.is_stage_ami(self._make_fake_ami(environment='prod')))
         self.assertEqual(False, ec2.is_stage_ami(self._make_fake_ami(deployment='stage', play='stage')))

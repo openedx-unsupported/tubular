@@ -255,6 +255,8 @@ def edp_for_ami(ami_id):
         ImageNotFoundException: No image found with this ami ID.
         MissingTagException: AMI is missing one or more of the expected tags.
     """
+    import pdb;
+    pdb.set_trace()
     tags = tags_for_ami(ami_id)
 
     try:
@@ -282,9 +284,9 @@ def validate_edp(ami_id, environment, deployment, play):
     """
 
     edp = edp_for_ami(ami_id)
-    edp_matched = (edp.environment == environment and
-                   edp.deployment == deployment and
-                   edp.play == play)
+    edp_matched = (edp['environment'] == environment and
+                   edp['deployment'] == deployment and
+                   edp['play'] == play)
     if not edp_matched:
         LOG.info("AMI {0} EDP did not match specified: {1} != ({2}, {3}, {4})".format(
             ami_id, edp, environment, deployment, play
