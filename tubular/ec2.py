@@ -99,8 +99,6 @@ def get_all_load_balancers(names=None):
     """
     client = boto3.client('elb')
     paginator = client.get_paginator('describe_load_balancers')
-    import pdb;
-    pdb.set_trace()
 
     if names:
         response_iterator = paginator.paginate(LoadBalancerNames=names)
@@ -600,14 +598,6 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     if not elbs_to_monitor:
         LOG.info("No ELBs to monitor - skipping health check.")
         return
-
-    import pdb;
-    pdb.set_trace()
-
-    # elbs_left = []
-    # if isinstance(elbs_to_monitor, str):
-    #     elbs_left.append(elbs_to_monitor)
-    # else:
 
     elbs_left = elbs_to_monitor
 

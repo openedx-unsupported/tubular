@@ -334,17 +334,13 @@ class TestEC2(unittest.TestCase):
         ]
         return_vals += [clone_elb_instances_with_state(second_elb, "InService")]
 
-        import pdb;
-        pdb.set_trace()
-
         with mock.patch('tubular.ec2.WAIT_SLEEP_TIME', 1):
             self.assertEqual(None, ec2.wait_for_healthy_elbs([first_elb_name, second_elb_name], 3))
 
     @mock_elb
     @mock_ec2
     def test_wait_for_healthy_elbs_failure(self):
-        import pdb;
-        pdb.set_trace()
+
         elb_name = "unhealthy-lb"
         load_balancer = create_elb(elb_name)
         # Make one of the instances un-healthy.
