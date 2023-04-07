@@ -172,6 +172,7 @@ class TestEC2(unittest.TestCase):
             elbs=[fake_elb]
         )
 
+        acc = ec2.active_ami_for_edp('foo', 'bar', 'baz')
         self.assertEqual(ec2.active_ami_for_edp('foo', 'bar', 'baz'), fake_ami_id)
 
     @unittest.skip("Test always fails due to not successfuly creating two different AMI IDs in single ELB.")
@@ -266,8 +267,8 @@ class TestEC2(unittest.TestCase):
         """
         for i in range(asg_count):
             create_asg_with_tags("asg_{}".format(i), {"environment": "foo", "deployment": "bar", "play": "baz"})
-        asgs = ec2.get_all_autoscale_groups(name_filter)
 
+        asgs = ec2.get_all_autoscale_groups(name_filter)
         self.assertIsInstance(asgs, list)
         self.assertEqual(len(asgs), expected_result_count)
 
@@ -311,13 +312,14 @@ class TestEC2(unittest.TestCase):
         second_elb_name = "healthy-lb-2"
         first_elb = create_elb(first_elb_name)
         second_elb = create_elb(second_elb_name)
-        mock_function = "boto.ec2.elb.loadbalancer.LoadBalancer.get_instance_health"
+        mock_function = "boto3.ec2.elb.loadbalancer.LoadBalancer.get_instance_health"
 
         # Setup a side effect to simulate how a instances may come online in the load balancer.
         # 2 load balancers * 2 instances per * 3 iterations (They way these instances come online in to the load
         # balancer will ensure that the ELB will be removed from the list on the second iteration, then the second ELB
         # is removed on the 3rd iteation.
-        first_elb_instances = first_elb.get_instance_health()
+
+        first_elb_instances = first_elb.describe_target_health()
         second_elb_instances = second_elb.get_instance_health()
 
         return_vals = [
@@ -356,9 +358,6 @@ class TestEC2(unittest.TestCase):
         # pylint: disable=attribute-defined-outside-init
 
         dummy_ami_id = 'ami-12c6146b'
-
-        import pdb;
-        pdb.set_trace()
 
         boto3.resource("ec2", "us-east-1")
         ec2_client = boto3.client("ec2", region_name="us-east-1")

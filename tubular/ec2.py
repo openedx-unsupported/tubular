@@ -68,6 +68,7 @@ def get_all_autoscale_groups(names=None):
     Returns:
         List of :class:`boto.ec2.autoscale.group.AutoScalingGroup` instances.
     """
+
     autoscale_client = boto3.client('autoscaling', region_name="us-east-1")
     asg_paginator = autoscale_client.get_paginator('describe_auto_scaling_groups')
     total_asgs = []
@@ -166,23 +167,22 @@ def active_ami_for_edp(env, dep, play):
     all_elbs = get_all_load_balancers()
     LOG.info("Found {} load balancers.".format(len(all_elbs)))
     edp_filter = {
-        "environment": env,
-        "deployment": dep,
-        "play": play,
+        "tag:environment": env,
+        "tag:deployment": dep,
+        "tag:play": play,
     }
     edp_filter_env = {
-        "Name": "environment",
+        "Name": "tag:environment",
         "Values": [env]
     }
     edp_filter_deployment = {
-        "Name": "deployment",
+        "Name": "tag:deployment",
         "Values": [dep]
     }
     edp_filter_play = {
-        "Name": "play",
+        "Name": "tag:play",
         "Values": [play]
     }
-
     amis = set()
     instances_by_id = {}
     ec2 = boto3.resource('ec2')
@@ -255,8 +255,7 @@ def edp_for_ami(ami_id):
         ImageNotFoundException: No image found with this ami ID.
         MissingTagException: AMI is missing one or more of the expected tags.
     """
-    import pdb;
-    pdb.set_trace()
+
     tags = tags_for_ami(ami_id)
 
     try:
@@ -282,7 +281,6 @@ def validate_edp(ami_id, environment, deployment, play):
     Returns:
         True if AMI EDP matches specified EDP, otherwise False.
     """
-
     edp = edp_for_ami(ami_id)
     edp_matched = (edp.environment == environment and
                    edp.deployment == deployment and
@@ -370,12 +368,10 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
     """
     Create a tag that will be used to mark an ASG for deletion.
     """
-
     if seconds_until_delete_delta is None:
         tag_value = None
     else:
         tag_value = (datetime.utcnow() + timedelta(seconds=seconds_until_delete_delta)).isoformat()
-
     tag = {
         'Key': ASG_DELETE_TAG_KEY,
         'Value': tag_value,

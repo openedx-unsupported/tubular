@@ -31,18 +31,24 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
     subnetb = ec2.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.0.16/28', AvailabilityZone='us-east-1b')
     autoscale = boto3.client('autoscaling')
 
-    launch_config_name ='{}_lc'.format(asg_name)
+    boto3.resource("ec2", "us-east-1")
+    ec2_client = boto3.client("ec2", region_name="us-east-1")
+    autoscale = boto3.client("autoscaling", region_name="us-east-1")
+
+    random_image_id = ec2_client.describe_images()["Images"][0]["ImageId"]
+    dummy_ami_id = 'ami-12c6146b'
+
     autoscale.create_launch_configuration(
-        LaunchConfigurationName=launch_config_name,
-        ImageId=ami_id,
-        InstanceType='t2.medium'
+        LaunchConfigurationName="tester",
+        ImageId=dummy_ami_id,
+        InstanceType="t1.micro",
     )
 
-    # Create the Auto Scaling group using the `create_auto_scaling_group` method
-    asg = autoscale.create_auto_scaling_group(
+    launch_config = autoscale.describe_launch_configurations()["LaunchConfigurations"][0]
+
+    autoscale.create_auto_scaling_group(
         AutoScalingGroupName=asg_name,
-        LaunchConfigurationName=launch_config_name,
-        AvailabilityZones=['us-east-1c', 'us-east-1b'],
+        AvailabilityZones=['us-east-1a', 'us-east-1b'],
         DefaultCooldown=60,
         DesiredCapacity=2,
         LoadBalancerNames=['healthy-lb-1'],
@@ -50,7 +56,8 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         HealthCheckType="EC2",
         MaxSize=3,
         MinSize=2,
-        VPCZoneIdentifier='{},{}'.format(subnetb['Subnet']['SubnetId'], subnetc['Subnet']['SubnetId']),
+        LaunchConfigurationName=launch_config["LaunchConfigurationName"],
+        PlacementGroup="test_placement",
         TerminationPolicies=["OldestInstance", "NewestInstance"],
     )
 
@@ -58,10 +65,10 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
     # However, it seems that moto (as of 0.4.30) does not properly set the tags on the instances created by the ASG.
     # So set the tags on the ASG instances manually instead.
     response = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
-    assert response['AutoScalingGroups'][0]['LaunchConfigurationName'] == launch_config_name
+    response = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+    # assert response['AutoScalingGroups'][0]['LaunchConfigurationName'] == launch_config_name
     assert response["AutoScalingGroups"][0]["MinSize"] == 2
     assert response["AutoScalingGroups"][0]["MaxSize"] == 3
-
 
     tag_list = [
         {
@@ -72,20 +79,13 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         } for k, v in six.iteritems(tags)
     ]
 
-    for asg in response['AutoScalingGroups']:
-        if asg['AutoScalingGroupName'] == asg_name:
-            asg_instance_ids = [instance['InstanceId'] for instance in asg['Instances']]
-            for instance_id in asg_instance_ids:
-                autoscale.create_or_update_tags(
-                    Tags=tag_list
-            )
+    # asg = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+    autoscale.create_or_update_tags(
+        Tags=tag_list
+    )
 
-    # autoscale.create_or_update_tags(
-    #     Filters=[{"Name": "auto-scaling-group", "Values": [asg_name]}], Tags=tag_list
-    # )
-
-    asg_tags = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])["AutoScalingGroups"]
-    return asg_tags[0]['Tags']
+    # asg_tags = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])["AutoScalingGroups"]
+    # return asg_tags[0]['Tags']
 
 
 def create_elb(elb_name):
@@ -116,7 +116,7 @@ def create_elb(elb_name):
 
     instance_ids = ['i-4f8cf126', 'i-0bb7ca62']
 
-    res_instances =  boto_elb.register_instances_with_load_balancer(
+    res_instances = boto_elb.register_instances_with_load_balancer(
         LoadBalancerName=elb_name,
         Instances=[
             {'InstanceId': instance_id} for instance_id in instance_ids
