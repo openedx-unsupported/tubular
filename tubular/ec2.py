@@ -106,7 +106,8 @@ def get_all_load_balancers(names=None):
         response_iterator = paginator.paginate()
 
     total_elbs = []
-
+    import pdb;
+    pdb.set_trace()
     if response_iterator is not None:
         try:
             for page in response_iterator:

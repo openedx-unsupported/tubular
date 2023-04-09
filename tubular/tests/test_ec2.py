@@ -320,18 +320,14 @@ class TestEC2(unittest.TestCase):
     def test_wait_for_healthy_elbs(self):
         first_elb_name = "healthy-lb-1"
         second_elb_name = "healthy-lb-2"
+        elb = boto3.client('elb')
+
         first_elb = create_elb(first_elb_name)
         second_elb = create_elb(second_elb_name)
-        mock_function = "boto3.ec2.elb.loadbalancer.LoadBalancer.get_instance_health"
-
         # Setup a side effect to simulate how a instances may come online in the load balancer.
         # 2 load balancers * 2 instances per * 3 iterations (They way these instances come online in to the load
         # balancer will ensure that the ELB will be removed from the list on the second iteration, then the second ELB
         # is removed on the 3rd iteation.
-
-        # first_elb_instances = first_elb.get_instance_health()
-        # second_elb_instances = second_elb.get_instance_health()
-
         return_vals = [
             clone_elb_instances_with_state(first_elb, "OutOfService"),
             clone_elb_instances_with_state(second_elb, "OutOfService")
@@ -341,6 +337,24 @@ class TestEC2(unittest.TestCase):
             clone_elb_instances_with_state(second_elb, "OutOfService")
         ]
         return_vals += [clone_elb_instances_with_state(second_elb, "InService")]
+
+        stubber = botocore.stub.Stubber(elb)
+        import pdb;
+        pdb.set_trace()
+
+        response = [
+                {'InstanceId': 'i-1234567890abcdef0', 'State': 'OutOfService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
+                {'InstanceId': 'i-0987654321fedcba0', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'}
+        ]
+        stubber.add_response('describe_instance_health', response)
+
+        paginated_response = {
+            'InstanceStates': return_vals,
+            'NextToken': None
+        }
+
+        stubber.add_response('describe_instance_health', response)
+        stubber.add_response('describe_instance_health', paginated_response)
 
         with mock.patch('tubular.ec2.WAIT_SLEEP_TIME', 1):
             self.assertEqual(None, ec2.wait_for_healthy_elbs([first_elb_name, second_elb_name], 3))
