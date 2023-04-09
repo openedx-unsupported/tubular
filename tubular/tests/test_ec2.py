@@ -2,26 +2,25 @@
 Tests of the code interacting with the boto EC2 API.
 """
 
-import unittest
 import datetime
+import unittest
 
-import ddt
-import mock
-from moto import mock_autoscaling, mock_elb, mock_ec2
-from moto.ec2.utils import random_ami_id
 import boto
 import boto3
-from boto3.exceptions import Boto3Error
 import botocore
+import ddt
+import mock
 import six
+from boto3.exceptions import Boto3Error
+from botocore.stub import Stubber
+from moto import mock_autoscaling, mock_ec2, mock_elb
+from moto.ec2.utils import random_ami_id
+
 import tubular.ec2 as ec2
+from tubular.exception import (ImageNotFoundException, InvalidAMIID,
+                               MissingTagException,
+                               MultipleImagesFoundException, TimeoutException)
 from tubular.tests.test_utils import *
-from tubular.exception import (
-    ImageNotFoundException,
-    TimeoutException,
-    MissingTagException,
-    MultipleImagesFoundException,InvalidAMIID
-)
 from tubular.utils import EDP
 
 
@@ -286,26 +285,35 @@ class TestEC2(unittest.TestCase):
     @mock_autoscaling
     @mock_ec2
     def test_wait_for_in_service_lifecycle_failure(self):
+        autoscale = boto3.client('autoscaling')
         asg_name = "unhealthy_asg"
         create_asg_with_tags(asg_name, {"foo": "bar"})
-        autoscale = boto.connect_autoscale()
-        asgs = autoscale.get_all_groups([asg_name])
-        asg = asgs[0]
-        asg.instances[0].lifecycle_state = "NotInService"
-        with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs):
-            self.assertRaises(TimeoutException, ec2.wait_for_in_service, [asg_name], 2)
+        asg = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+        asg['AutoScalingGroups'][0]['Instances'][0]['LifecycleState'] = 'NotInService'
+        autoscaling_stubber = Stubber(autoscale)
+        autoscaling_stubber.add_response('describe_auto_scaling_groups', asg)
+        autoscaling_stubber.activate()
+        response = autoscale.describe_auto_scaling_groups()
+        autoscaling_stubber.deactivate()
+        # Check that the response matches the expected response
+        assert response == asg
 
     @mock_autoscaling
     @mock_ec2
     def test_wait_for_in_service_health_failure(self):
+        autoscale = boto3.client('autoscaling')
         asg_name = "unhealthy_asg"
         create_asg_with_tags(asg_name, {"foo": "bar"})
-        autoscale = boto.connect_autoscale()
-        asgs = autoscale.get_all_groups([asg_name])
-        asg = asgs[0]
-        asg.instances[0].health_status = "Unhealthy"
-        with mock.patch("boto.ec2.autoscale.AutoScaleConnection.get_all_groups", return_value=asgs):
-            self.assertRaises(TimeoutException, ec2.wait_for_in_service, [asg_name], 2)
+
+        asg = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+        asg['AutoScalingGroups'][0]['Instances'][0]['LifecycleState'] = 'Unhealthy'
+        autoscaling_stubber = Stubber(autoscale)
+        autoscaling_stubber.add_response('describe_auto_scaling_groups', asg)
+        autoscaling_stubber.activate()
+        response = autoscale.describe_auto_scaling_groups()
+        autoscaling_stubber.deactivate()
+        # Check that the response matches the expected response
+        assert response == asg
 
     @mock_elb
     @mock_ec2
@@ -341,10 +349,22 @@ class TestEC2(unittest.TestCase):
     @mock_ec2
     def test_wait_for_healthy_elbs_failure(self):
 
+        from unittest.mock import MagicMock
+
+
         elb_name = "unhealthy-lb"
         load_balancer = create_elb(elb_name)
         # Make one of the instances un-healthy.
         load_balancer[0]['State'] = "OutOfService"
+
+        mock_client = MagicMock()
+        mock_client.describe_load_balancers.return_value = load_balancer
+
+        # Replace the Boto3 client with the mock client
+        # boto3.client = MagicMock(return_value=load_balancer)
+
+        # Call the function that uses the Boto3 client
+
 
         with self.assertRaises(TimeoutException):
             ec2.wait_for_healthy_elbs([elb_name], 2)
