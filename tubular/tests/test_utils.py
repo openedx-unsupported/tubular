@@ -128,8 +128,6 @@ def create_elb(elb_name):
         ]
     )
 
-    import pdb;
-    pdb.set_trace()
     return load_balancer
 
 def clone_elb_instances_with_state(elb, state):

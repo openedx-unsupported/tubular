@@ -100,6 +100,8 @@ def get_all_load_balancers(names=None):
 
     client = boto3.client('elb')
 
+    import pdb;
+    pdb.set_trace()
     paginator = client.get_paginator('describe_load_balancers')
 
     if names:
@@ -601,9 +603,6 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     if not elbs_to_monitor:
         LOG.info("No ELBs to monitor - skipping health check.")
         return
-
-    import pdb;
-    pdb.set_trace()
 
     elbs_left = elbs_to_monitor
     end_time = datetime.utcnow() + timedelta(seconds=timeout)

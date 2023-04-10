@@ -333,20 +333,41 @@ class TestEC2(unittest.TestCase):
         first_elb_instances = elb.describe_instance_health(LoadBalancerName=first_elb_name)
         second_elb_instances = elb.describe_instance_health(LoadBalancerName=second_elb_name)
 
-        return_vals = [
-            clone_elb_instances_with_state(first_elb_instances, "OutOfService"),
-            clone_elb_instances_with_state(second_elb_instances, "OutOfService")
-        ]
-        return_vals += [
-            clone_elb_instances_with_state(first_elb_instances, "InService"),
-            clone_elb_instances_with_state(second_elb_instances, "OutOfService")
-        ]
-        return_vals += [clone_elb_instances_with_state(second_elb_instances, "InService")]
-
-        # with mock.patch('tubular.ec2.WAIT_SLEEP_TIME', 1):
         import pdb;
         pdb.set_trace()
-        self.assertEqual(None, ec2.wait_for_healthy_elbs([first_elb_name, second_elb_name], 3))
+
+        return_vals = [
+            clone_elb_instances_with_state(first_elb_instances, "OutOfService")['InstanceStates'],
+            clone_elb_instances_with_state(second_elb_instances, "OutOfService")['InstanceStates']
+        ]
+        return_vals += [
+            clone_elb_instances_with_state(first_elb_instances, "InService")['InstanceStates'],
+            clone_elb_instances_with_state(second_elb_instances, "OutOfService")['InstanceStates']
+        ]
+        return_vals += [clone_elb_instances_with_state(second_elb_instances, "InService")['InstanceStates']]
+
+        import pdb;
+        pdb.set_trace()
+
+        stubber = botocore.stub.Stubber(elb)
+        mock_instance_health_response = {
+            'InstanceStates': [
+                {'InstanceId': 'i-4f8cf126', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
+                {'InstanceId': 'i-0bb7ca62', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
+                {'InstanceId': 'i-4f8cf126', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
+                {'InstanceId': 'i-0bb7ca62', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
+                {'InstanceId': 'i-4f8cf126', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
+                {'InstanceId': 'i-0bb7ca62', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
+                {'InstanceId': 'i-4f8cf126', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
+                {'InstanceId': 'i-0bb7ca62', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
+                {'InstanceId': 'i-4f8cf126', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
+                {'InstanceId': 'i-0bb7ca62', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'}
+            ]
+        }
+
+        stubber.add_response('describe_instance_health', mock_instance_health_response)
+        with mock.patch('tubular.ec2.WAIT_SLEEP_TIME', 1):
+            self.assertEqual(None, ec2.wait_for_healthy_elbs([first_elb_name, second_elb_name], 3))
 
     @mock_elb
     @mock_ec2
@@ -367,7 +388,6 @@ class TestEC2(unittest.TestCase):
         # boto3.client = MagicMock(return_value=load_balancer)
 
         # Call the function that uses the Boto3 client
-
 
         with self.assertRaises(TimeoutException):
             ec2.wait_for_healthy_elbs([elb_name], 2)
