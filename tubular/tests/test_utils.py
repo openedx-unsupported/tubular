@@ -114,7 +114,7 @@ def create_elb(elb_name):
         }
     ]
 
-    boto_elb.create_load_balancer(
+    load_balancer = boto_elb.create_load_balancer(
         LoadBalancerName=elb_name,
         AvailabilityZones=zones,
         Listeners=ports
@@ -128,8 +128,9 @@ def create_elb(elb_name):
         ]
     )
 
-    return boto_elb.describe_instance_health(LoadBalancerName=elb_name)['InstanceStates']
-
+    import pdb;
+    pdb.set_trace()
+    return load_balancer
 
 def clone_elb_instances_with_state(elb, state):
     """
@@ -143,7 +144,7 @@ def clone_elb_instances_with_state(elb, state):
         Returns: an elb object
     """
     elb_copy = copy(elb)
-    for idx, instance in enumerate(elb):
+    for idx, instance in enumerate(elb['InstanceStates']):
         elb_copy[idx] = copy(instance)
         elb_copy[idx]['State'] = state
     return elb_copy
@@ -154,7 +155,7 @@ def get_elb(elb_name):
     Method to create an Elastic Load Balancer.
     """
     boto_elb = boto3.client('elb', region_name="us-east-1")
-    return boto_elb.describe_instance_health(LoadBalancerName=elb_name)['InstanceStates']
+    return boto_elb.describe_instance_health(LoadBalancerName=elb_name)
 
 
 def mock_time_now():

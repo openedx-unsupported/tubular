@@ -97,7 +97,9 @@ def get_all_load_balancers(names=None):
     Returns:
         a list of :class:`boto.ec2.elb.loadbalancer.LoadBalancer`
     """
+
     client = boto3.client('elb')
+
     paginator = client.get_paginator('describe_load_balancers')
 
     if names:
@@ -600,7 +602,10 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
         LOG.info("No ELBs to monitor - skipping health check.")
         return
 
-    elbs_left = set(elbs_to_monitor)
+    import pdb;
+    pdb.set_trace()
+
+    elbs_left = elbs_to_monitor
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
         elbs = get_all_load_balancers(elbs_left)
