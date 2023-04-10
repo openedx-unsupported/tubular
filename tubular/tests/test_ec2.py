@@ -333,41 +333,36 @@ class TestEC2(unittest.TestCase):
         first_elb_instances = elb.describe_instance_health(LoadBalancerName=first_elb_name)
         second_elb_instances = elb.describe_instance_health(LoadBalancerName=second_elb_name)
 
-        import pdb;
-        pdb.set_trace()
-
         return_vals = [
-            clone_elb_instances_with_state(first_elb_instances, "OutOfService")['InstanceStates'],
-            clone_elb_instances_with_state(second_elb_instances, "OutOfService")['InstanceStates']
+            clone_elb_instances_with_state(first_elb_instances, "OutOfService"),
+            clone_elb_instances_with_state(second_elb_instances, "OutOfService")
         ]
+
         return_vals += [
-            clone_elb_instances_with_state(first_elb_instances, "InService")['InstanceStates'],
-            clone_elb_instances_with_state(second_elb_instances, "OutOfService")['InstanceStates']
+            clone_elb_instances_with_state(first_elb_instances, "InService"),
+            clone_elb_instances_with_state(second_elb_instances, "OutOfService")
         ]
-        return_vals += [clone_elb_instances_with_state(second_elb_instances, "InService")['InstanceStates']]
+        return_vals += [clone_elb_instances_with_state(second_elb_instances, "InService")]
 
-        import pdb;
-        pdb.set_trace()
-
-        stubber = botocore.stub.Stubber(elb)
         mock_instance_health_response = {
-            'InstanceStates': [
-                {'InstanceId': 'i-4f8cf126', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
-                {'InstanceId': 'i-0bb7ca62', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
-                {'InstanceId': 'i-4f8cf126', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
-                {'InstanceId': 'i-0bb7ca62', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
-                {'InstanceId': 'i-4f8cf126', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
-                {'InstanceId': 'i-0bb7ca62', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
-                {'InstanceId': 'i-4f8cf126', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
-                {'InstanceId': 'i-0bb7ca62', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
-                {'InstanceId': 'i-4f8cf126', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'},
-                {'InstanceId': 'i-0bb7ca62', 'State': 'InService', 'ReasonCode': 'N/A', 'Description': 'N/A'}
-            ]
+            'InstanceStates': [InstanceStates['InstanceStates'][0] for InstanceStates in return_vals]
         }
 
-        stubber.add_response('describe_instance_health', mock_instance_health_response)
-        with mock.patch('tubular.ec2.WAIT_SLEEP_TIME', 1):
-            self.assertEqual(None, ec2.wait_for_healthy_elbs([first_elb_name, second_elb_name], 3))
+        stubber = Stubber(elb)
+        load_balancer_name = first_elb_name
+        describe_instance_health_params = {'LoadBalancerName': 'healthy-lb-1'}
+        describe_instance_health_response = mock_instance_health_response
+
+        stubber.add_response(
+            'describe_instance_health',
+            describe_instance_health_response,
+            describe_instance_health_params
+        )
+
+        # mock_function = "tubular.elb.describe_instance_health"
+        with stubber:
+            with mock.patch('tubular.ec2.WAIT_SLEEP_TIME', 1):
+                self.assertEqual(None, ec2.wait_for_healthy_elbs([first_elb_name, second_elb_name], 3))
 
     @mock_elb
     @mock_ec2

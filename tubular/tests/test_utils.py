@@ -154,9 +154,3 @@ def get_elb(elb_name):
     """
     boto_elb = boto3.client('elb', region_name="us-east-1")
     return boto_elb.describe_instance_health(LoadBalancerName=elb_name)
-
-
-def mock_time_now():
-    now = datetime.datetime.utcnow()
-    five_seconds_ago = now - timedelta(seconds=5)
-    # do something with five_seconds_ago
