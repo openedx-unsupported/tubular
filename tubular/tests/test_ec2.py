@@ -215,7 +215,7 @@ class TestEC2(unittest.TestCase):
 
     @mock_ec2
     def test_edp_for_untagged_ami(self):
-        ec2_connection = boto3.client('ec2', region_name='us-east-1')
+        ec2_connection = boto3.client('ec2')
 
         random_ami = random_ami_id()
         response = ec2_connection.run_instances(ImageId=random_ami, MinCount=1, MaxCount=1)
