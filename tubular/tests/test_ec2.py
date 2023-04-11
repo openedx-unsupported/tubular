@@ -174,7 +174,10 @@ class TestEC2(unittest.TestCase):
             elbs=[fake_elb]
         )
 
-        self.assertEqual(ec2.active_ami_for_edp('foo', 'bar', 'baz'), fake_ami_id)
+        mock_function = "tubular.ec2.instances_for_ami"
+        ec2_client = boto3.resource('ec2')
+        with mock.patch(mock_function, return_value=ec2_client.instances.all()):
+            self.assertEqual(ec2.active_ami_for_edp('foo', 'bar', 'baz'), fake_ami_id)
 
     @unittest.skip("Test always fails due to not successfuly creating two different AMI IDs in single ELB.")
     @mock_autoscaling
@@ -210,6 +213,7 @@ class TestEC2(unittest.TestCase):
     @mock_ec2
     def test_edp_for_ami_bad_id(self):
         # Bad AMI Id
+
         self.assertRaises(ImageNotFoundException, ec2.edp_for_ami, "ami-fakeid")
 
     @mock_ec2
@@ -369,8 +373,6 @@ class TestEC2(unittest.TestCase):
     def test_wait_for_healthy_elbs_failure(self):
 
         from unittest.mock import MagicMock
-
-
         elb_name = "unhealthy-lb"
         load_balancer = create_elb(elb_name)
         # Make one of the instances un-healthy.

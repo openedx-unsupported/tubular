@@ -154,7 +154,6 @@ def active_ami_for_edp(env, dep, play):
         MultipleImagesFoundException: If multiple AMI IDs are found within the EDP's ELB.
         ImageNotFoundException: If no AMI IDs are found for the EDP.
     """
-
     LOG.info("Looking up AMI for {}-{}-{}...".format(env, dep, play))
     edp = EDP(env, dep, play)
     #ec2_conn = boto.connect_ec2()
@@ -184,9 +183,9 @@ def active_ami_for_edp(env, dep, play):
     instances_by_id = {}
     ec2 = boto3.resource('ec2')
 
-    instances = ec2.instances.all()
-    #LOG.info("{} reservations found for EDP {}-{}-{}".format(len(instances), env, dep, play))
+    instances = instances_for_ami(ec2, edp_filter_env, edp_filter_deployment, edp_filter_play)
 
+    #LOG.info("{} reservations found for EDP {}-{}-{}".format(len(instances), env, dep, play))
     for instance in instances:
         # Need to build up instances_by_id for code below
         instances_by_id[instance.id] = instance
@@ -228,9 +227,9 @@ def tags_for_ami(ami_id):
         ImageNotFoundException: No image found with this ami ID.
         MissingTagException: AMI is missing one or more of the expected tags.
     """
-
     LOG.debug("Looking up edp for {}".format(ami_id))
-    ec2 = boto3.client('ec2', region_name='us-east-1')
+    ec2 = boto.connect_ec2()
+
     try:
         resp = ec2.describe_images(ImageIds=[ami_id])
         ami = resp['Images']
@@ -240,6 +239,22 @@ def tags_for_ami(ami_id):
         raise ImageNotFoundException(str(error))
 
     return ami[0]['Tags']
+
+
+def instances_for_ami(ec2, edp_filter_env, edp_filter_deployment, edp_filter_play):
+    """
+        Look up the instances for edp filters.
+
+        Arguments:
+            client: ec2 client
+            edp_filter_env:
+            edp_filter_deployment:
+            edp_filter_play:
+        Returns:
+            Returns matching instances
+        """
+
+    return ec2.instances.filter(Filters=[edp_filter_env, edp_filter_deployment, edp_filter_play])
 
 
 def edp_for_ami(ami_id):
