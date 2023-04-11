@@ -228,8 +228,7 @@ def tags_for_ami(ami_id):
         MissingTagException: AMI is missing one or more of the expected tags.
     """
     LOG.debug("Looking up edp for {}".format(ami_id))
-    ec2 = boto.connect_ec2()
-
+    ec2 = boto3.client('ec2', region_name='us-east-1')
     try:
         resp = ec2.describe_images(ImageIds=[ami_id])
         ami = resp['Images']

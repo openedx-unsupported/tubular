@@ -155,16 +155,14 @@ class TestEC2(unittest.TestCase):
 
         # aa = ec2.active_amx/i_for_edp('foo', 'bar', 'baz')
 
-        # ec2.active_ami_for_edp('foo', 'bar', 'baz')
-
         fake_ami_id = self._make_fake_ami()
         fake_elb_name = "healthy-lb-1"
         fake_elb = create_elb(fake_elb_name)
         fake_asg_name = "fully_tagged_asg"
         fake_asg_tags = {
-            "tag:environment": "foo",
-            "tag:deployment": "bar",
-            "tag:play": "baz"
+            "environment": "foo",
+            "deployment": "bar",
+            "play": "baz"
         }
 
         create_asg_with_tags(
@@ -213,7 +211,6 @@ class TestEC2(unittest.TestCase):
     @mock_ec2
     def test_edp_for_ami_bad_id(self):
         # Bad AMI Id
-
         self.assertRaises(ImageNotFoundException, ec2.edp_for_ami, "ami-fakeid")
 
     @mock_ec2
