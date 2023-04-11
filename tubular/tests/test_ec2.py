@@ -211,7 +211,9 @@ class TestEC2(unittest.TestCase):
     @mock_ec2
     def test_edp_for_ami_bad_id(self):
         # Bad AMI Id
-        self.assertRaises(ImageNotFoundException, ec2.edp_for_ami, "ami-fakeid")
+        self.assertRaises(
+            InvalidAMIID, ec2.edp_for_ami, "ami-fakeid"
+        )
 
     @mock_ec2
     def test_edp_for_untagged_ami(self):
