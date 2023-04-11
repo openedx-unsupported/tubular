@@ -36,7 +36,7 @@ class TestEC2(unittest.TestCase):
         """
         Method to make a fake AMI.
         """
-        ec2_client = boto3.client('ec2', region_name='us-east-1')  # Replace 'us-east-1' with the region of your choice
+        ec2_client = boto3.client('ec2')  # Replace 'us-east-1' with the region of your choice
         # Create a test EC2 instance
         random_id = random_ami_id()
         response = ec2_client.run_instances(ImageId=random_id, MinCount=1, MaxCount=1)

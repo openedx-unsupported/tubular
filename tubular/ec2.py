@@ -12,7 +12,7 @@ import boto3
 import boto
 from boto.exception import EC2ResponseError
 from boto3.exceptions import Boto3Error
-from botocore.exceptions import HTTPClientError
+from botocore.exceptions import ClientError
 from botocore.exceptions import OperationNotPageableError
 
 
@@ -23,7 +23,7 @@ from tubular.exception import (
     MultipleImagesFoundException,
     MissingTagException,
     TimeoutException,
-    HTTPClientError
+    InvalidAMIID
 )
 
 LOG = logging.getLogger(__name__)
@@ -70,7 +70,6 @@ def get_all_autoscale_groups(names=None):
     """
     autoscale_client = boto3.client('autoscaling')
     asg_paginator = autoscale_client.get_paginator('describe_auto_scaling_groups')
-
     total_asgs = []
     if names is None:
         paginator = asg_paginator.paginate()
@@ -182,9 +181,7 @@ def active_ami_for_edp(env, dep, play):
     amis = set()
     instances_by_id = {}
     ec2 = boto3.resource('ec2')
-
     instances = instances_for_ami(ec2, edp_filter_env, edp_filter_deployment, edp_filter_play)
-
     #LOG.info("{} reservations found for EDP {}-{}-{}".format(len(instances), env, dep, play))
     for instance in instances:
         # Need to build up instances_by_id for code below
@@ -211,7 +208,7 @@ def active_ami_for_edp(env, dep, play):
 
 
 @backoff.on_exception(backoff.expo,
-                      Boto3Error,
+                      ClientError,
                       max_tries=MAX_ATTEMPTS,
                       giveup=giveup_if_not_throttling,
                       factor=RETRY_FACTOR)
@@ -227,8 +224,9 @@ def tags_for_ami(ami_id):
         ImageNotFoundException: No image found with this ami ID.
         MissingTagException: AMI is missing one or more of the expected tags.
     """
+    from botocore.exceptions import ClientError
     LOG.debug("Looking up edp for {}".format(ami_id))
-    ec2 = boto3.client('ec2', region_name='us-east-1')
+    ec2 = boto3.client('ec2')
     try:
         resp = ec2.describe_images(ImageIds=[ami_id])
         ami = resp['Images']
@@ -236,6 +234,9 @@ def tags_for_ami(ami_id):
         raise ImageNotFoundException("ami: {} not found".format(ami_id))
     except EC2ResponseError as error:
         raise ImageNotFoundException(str(error))
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'InvalidAMIID.NotFound':
+            raise InvalidAMIID(ami_id) from e
 
     return ami[0]['Tags']
 
@@ -343,7 +344,6 @@ def asgs_for_edp(edp, filter_asgs_pending_delete=True):
      ]
 
     """
-
     all_groups = get_all_autoscale_groups()
     matching_groups = []
     LOG.info("Found {} ASGs".format(len(all_groups)))
@@ -393,7 +393,6 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
         'ResourceId': asg_name,
         'ResourceType': 'auto-scaling-group',
     }
-
     return tag
 
 
@@ -414,7 +413,6 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=600):
         None
     """
     tag = create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta)
-
     autoscale = boto3.client('autoscaling')
     if len(get_all_autoscale_groups([asg_name])) < 1:
         LOG.info("ASG {} no longer exists, will not tag".format(asg_name))
@@ -502,7 +500,7 @@ def terminate_instances(region, tags, max_run_hours, skip_if_tag):
     Returns:
         list: of the instance IDs terminated.
     """
-    conn = boto3.client('ec2')
+    conn = boto3.client('ec2', region=region)
     instances_to_terminate = []
 
     reservations = conn.describe_instances(Filters=[tags])

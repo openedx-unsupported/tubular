@@ -10,8 +10,15 @@ class TimeoutException(Exception):
 class ImageNotFoundException(Exception):
     pass
 
+
 class InvalidAMIID(Exception):
-    pass
+    def __init__(self, ami_id):
+        self.ami_id = ami_id
+        self.message = f"AMI ID '{ami_id}' not found in the current region."
+        super().__init__(self.message)
+
+    def __str__(self):
+        return self.message
 
 
 class MultipleImagesFoundException(Exception):
@@ -71,13 +78,6 @@ class RateLimitedException(Exception):
 
 
 class HttpDoesNotExistException(Exception):
-    """
-    Called when the server sends a 404 error.
-    """
-    pass
-
-
-class HTTPClientError(Exception):
     """
     Called when the server sends a 404 error.
     """
