@@ -99,19 +99,12 @@ def get_all_load_balancers(names=None):
     """
 
     client = boto3.client('elb')
-
-    import pdb;
-    pdb.set_trace()
     paginator = client.get_paginator('describe_load_balancers')
-
     if names:
         response_iterator = paginator.paginate(LoadBalancerNames=names)
     else:
         response_iterator = paginator.paginate()
-
     total_elbs = []
-    import pdb;
-    pdb.set_trace()
     if response_iterator is not None:
         try:
             for page in response_iterator:
@@ -190,7 +183,8 @@ def active_ami_for_edp(env, dep, play):
     amis = set()
     instances_by_id = {}
     ec2 = boto3.resource('ec2')
-    instances = ec2.instances.filter(Filters=[edp_filter_env, edp_filter_deployment, edp_filter_play])
+
+    instances = ec2.instances.all()
     #LOG.info("{} reservations found for EDP {}-{}-{}".format(len(instances), env, dep, play))
 
     for instance in instances:
@@ -201,13 +195,14 @@ def active_ami_for_edp(env, dep, play):
 
     for asg in asgs['AutoScalingGroups']:
         for asg_inst in asg['Instances']:
+            instance = instances_by_id[asg_inst['InstanceId']]
             asg_enabled = len(asg['SuspendedProcesses']) == 0
-            if asg_inst['LifecycleState'] == "InService" and asg_enabled:
-                amis.add(asg_inst['InstanceId'])
-                LOG.info("AMI found in ASG {} for {}-{}-{}: {}".format(asg['AutoScalingGroupName'], env, dep, play, asg_inst['InstanceId']))
+            if instance.state['Name'] == "running" and asg_enabled:
+                amis.add(instance.image_id)
+                LOG.info("AMI found in ASG {} for {}-{}-{}: {}".format(asg['AutoScalingGroupName'], env, dep, play, instance.image_id))
             else:
                 LOG.info("Instance {} state: {} - asg {} enabled: {}".format(
-                    asg_inst['InstanceId']['InstanceId'], asg_inst['LifecycleState'], asg['AutoScalingGroupName'], asg_enabled))
+                    instance.id, instance.state, asg['AutoScalingGroupName'], asg_enabled))
 
     if not amis:
         msg = "No AMIs found for {}-{}-{}.".format(env, dep, play)

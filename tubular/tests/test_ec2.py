@@ -155,14 +155,16 @@ class TestEC2(unittest.TestCase):
 
         # aa = ec2.active_amx/i_for_edp('foo', 'bar', 'baz')
 
+        # ec2.active_ami_for_edp('foo', 'bar', 'baz')
+
         fake_ami_id = self._make_fake_ami()
         fake_elb_name = "healthy-lb-1"
         fake_elb = create_elb(fake_elb_name)
         fake_asg_name = "fully_tagged_asg"
         fake_asg_tags = {
-            "environment": "foo",
-            "deployment": "bar",
-            "play": "baz"
+            "tag:environment": "foo",
+            "tag:deployment": "bar",
+            "tag:play": "baz"
         }
 
         create_asg_with_tags(
@@ -172,8 +174,6 @@ class TestEC2(unittest.TestCase):
             elbs=[fake_elb]
         )
 
-
-        ec2.active_ami_for_edp('foo', 'bar', 'baz')
         self.assertEqual(ec2.active_ami_for_edp('foo', 'bar', 'baz'), fake_ami_id)
 
     @unittest.skip("Test always fails due to not successfuly creating two different AMI IDs in single ELB.")
