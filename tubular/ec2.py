@@ -500,7 +500,7 @@ def terminate_instances(region, tags, max_run_hours, skip_if_tag):
     Returns:
         list: of the instance IDs terminated.
     """
-    conn = boto3.client('ec2', region=region)
+    conn = boto3.client('ec2', region_name=region)
     instances_to_terminate = []
 
     reservations = conn.describe_instances(Filters=[tags])
