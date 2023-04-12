@@ -128,7 +128,11 @@ def create_elb(elb_name):
         ]
     )
 
-    return load_balancer
+    return boto_elb.describe_instance_health(
+        LoadBalancerName=elb_name,
+        Instances=[{'InstanceId': instance_id} for instance_id in instance_ids]
+    )["InstanceStates"]
+
 
 def clone_elb_instances_with_state(elb, state):
     """

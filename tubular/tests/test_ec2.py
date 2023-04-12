@@ -375,18 +375,28 @@ class TestEC2(unittest.TestCase):
         elb_name = "unhealthy-lb"
         load_balancer = create_elb(elb_name)
         # Make one of the instances un-healthy.
+
         load_balancer[0]['State'] = "OutOfService"
 
-        mock_client = MagicMock()
-        mock_client.describe_load_balancers.return_value = load_balancer
+        elb_client_mock = MagicMock()
+        elb_paginator_mock = MagicMock()
+        # Set up the expected responses for the paginator
+        elb_paginator_mock.paginate.return_value = [
+            {'LoadBalancers': [{'LoadBalancerName': elb_name}]}
+        ]
+
+        # Set up the expected response for the client
+        elb_client_mock.get_paginator.return_value = elb_paginator_mock
+
 
         # Replace the Boto3 client with the mock client
         # boto3.client = MagicMock(return_value=load_balancer)
 
         # Call the function that uses the Boto3 client
-
-        with self.assertRaises(TimeoutException):
-            ec2.wait_for_healthy_elbs([elb_name], 2)
+        with unittest.mock.patch('boto3.client') as mock_client:
+            mock_client.return_value = elb_client_mock
+            with self.assertRaises(TimeoutException):
+                ec2.wait_for_healthy_elbs([elb_name], 2)
 
     @mock_autoscaling
     @mock_elb

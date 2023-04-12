@@ -46,12 +46,17 @@ def giveup_if_not_throttling(ex):
         True if ex is of type MultipleImagesFoundException
     """
 
-    if 'throttling' not in str(ex).lower():
-        return False
-    elif ex.response['Error']['Code'] == 'MultipleImagesFoundException':
+    if isinstance(ex, MultipleImagesFoundException):
         return True
+    return not (str(ex.status) == "400" and ex.body and '<Code>Throttling</Code>' in ex.body)
 
-    return not False
+    # if 'throttling' not in str(ex).lower():
+    #     return False
+    #
+    # elif ex.response['Error']['Code'] == 'MultipleImagesFoundException':
+    #     return True
+    #
+    # return not False
 
 
 @backoff.on_exception(backoff.expo,
@@ -97,8 +102,11 @@ def get_all_load_balancers(names=None):
         a list of :class:`boto.ec2.elb.loadbalancer.LoadBalancer`
     """
 
+    import pdb;
+    pdb.set_trace()
     client = boto3.client('elb')
     paginator = client.get_paginator('describe_load_balancers')
+
     if names:
         response_iterator = paginator.paginate(LoadBalancerNames=names)
     else:
@@ -502,13 +510,13 @@ def terminate_instances(region, tags, max_run_hours, skip_if_tag):
     """
     conn = boto3.client('ec2', region_name=region)
     instances_to_terminate = []
-
     reservations = conn.describe_instances(Filters=[tags])
 
     for reservation in reservations['Reservations']:
         for instance in reservation['Instances']:
             launch_time = instance['LaunchTime']
             total_run_time = datetime.utcnow() - datetime.strptime(launch_time.strftime(ISO_DATE_FORMAT), ISO_DATE_FORMAT)
+
             if total_run_time > timedelta(hours=max_run_hours) and skip_if_tag not in [tag['Key'] for tag in instance['Tags']]:
                 instances_to_terminate.append(instance['InstanceId'])
 
@@ -604,6 +612,7 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
         },
 
         """
+
         response = client.describe_instance_health(LoadBalancerName=selected_elb)
         return response['InstanceStates']
 
