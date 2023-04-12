@@ -572,8 +572,6 @@ class TestEC2(unittest.TestCase):
     )
     @ddt.unpack
     def test_giveup_if_not_throttling(self, status, body, expected_result):
-
-
         error_message = body
         error_code = status
         reasons = ["some reason"]
@@ -653,11 +651,13 @@ class TestEC2(unittest.TestCase):
     @ddt.unpack
     @mock_ec2
     def test_terminate_instances(self, instances, max_run_hours, skip_if_tag, tags, expected_count):
-        conn = boto3.client('ec2')
-        from datetime import datetime, timezone
-
+        conn = boto3.client("ec2", region_name="us-east-1")
+        instance_ids = []
         for requested_instance in instances:
             response = conn.run_instances(ImageId=requested_instance['ami_id'], MinCount=1, MaxCount=3)
+
+            instance = response["Instances"][0]
+            instance_ids.append(instance["InstanceId"])
 
             tag_list = [
                 {
@@ -671,10 +671,8 @@ class TestEC2(unittest.TestCase):
 
         terminated_instances = ec2.terminate_instances(
             'us-east-1',
-            # InstanceIds=[instance_id],
             max_run_hours=max_run_hours,
             skip_if_tag=skip_if_tag,
-            tags=tags
-        )
+            tags=tags)
 
         self.assertEqual(len(terminated_instances), expected_count)
