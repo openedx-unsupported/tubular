@@ -117,7 +117,7 @@ class TestEC2(unittest.TestCase):
     @mock_elb
     def test_describe_load_balancers_paginator(self):
         # Create a mock ELB client
-        elb_client = boto3.client('elbv2', region_name='us-east-1')
+        elb_client = boto3.client('elb', region_name='us-east-1')
 
         # Create some test load balancers
         elb_client.create_load_balancer(LoadBalancerName='test-lb-1', Listeners=[
