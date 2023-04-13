@@ -433,8 +433,9 @@ class TestEC2(unittest.TestCase):
             PlacementGroup="test_placement",
         )
         create_elb('my-lb')
-        self.test_asg = self.test_autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[self.test_asg_name])
+
         ec2.tag_asg_for_deletion(self.test_asg_name, 0)
+        self.test_asg = self.test_autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[self.test_asg_name])
 
     @mock_autoscaling
     @mock_elb
