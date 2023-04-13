@@ -11,9 +11,8 @@ import backoff
 import boto3
 import boto
 from boto.exception import EC2ResponseError
-from boto3.exceptions import Boto3Error
 from botocore.exceptions import ClientError
-from botocore.exceptions import OperationNotPageableError
+from botocore.exceptions import OperationNotPageableError, ClientError
 
 
 from boto.ec2.autoscale.tag import Tag
@@ -36,10 +35,10 @@ RETRY_FACTOR = os.environ.get('RETRY_FACTOR', 1.5)
 
 def giveup_if_not_throttling(ex):
     """
-    Checks that a Boto3Error exceptions message contains the throttling string.
+    Checks that a ClientError exceptions message contains the throttling string.
 
     Args:
-        ex (boto.exception.Boto3Error):
+        ex (boto.exception.ClientError):
 
     Returns:
         False if the throttling string is not found.
@@ -47,19 +46,14 @@ def giveup_if_not_throttling(ex):
     """
     if isinstance(ex, MultipleImagesFoundException):
         return True
-    return not (str(ex.status) == "400" and ex.body and '<Code>Throttling</Code>' in ex.body)
+    elif ex.response['Error']['Code'] in ['LimitExceededException']:
+        return False
 
-    # if 'throttling' not in str(ex).lower():
-    #     return False
-    #
-    # elif ex.response['Error']['Code'] == 'MultipleImagesFoundException':
-    #     return True
-    #
-    # return not False
+    return not (str(ex.response['Error']['Code']) == "400" and ex.response and 'Throttling' in ex.response['Error']['Message'])
 
 
 @backoff.on_exception(backoff.expo,
-                      Boto3Error,
+                    ClientError,
                       max_tries=MAX_ATTEMPTS,
                       giveup=giveup_if_not_throttling,
                       factor=RETRY_FACTOR)
@@ -86,7 +80,7 @@ def get_all_autoscale_groups(names=None):
 
 
 @backoff.on_exception(backoff.expo,
-                      Boto3Error,
+                      ClientError,
                       max_tries=MAX_ATTEMPTS,
                       giveup=giveup_if_not_throttling,
                       factor=RETRY_FACTOR)
@@ -400,7 +394,7 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
 
 
 @backoff.on_exception(backoff.expo,
-                      Boto3Error,
+                      ClientError,
                       max_tries=MAX_ATTEMPTS,
                       giveup=giveup_if_not_throttling,
                       factor=RETRY_FACTOR)
@@ -424,7 +418,7 @@ def tag_asg_for_deletion(asg_name, seconds_until_delete_delta=600):
 
 
 @backoff.on_exception(backoff.expo,
-                      Boto3Error,
+                      ClientError,
                       max_tries=MAX_ATTEMPTS,
                       giveup=giveup_if_not_throttling,
                       factor=RETRY_FACTOR)
@@ -585,7 +579,7 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
     client = boto3.client('elb')
 
     @backoff.on_exception(backoff.expo,
-                          Boto3Error,
+                          ClientError,
                           max_tries=MAX_ATTEMPTS,
                           giveup=giveup_if_not_throttling,
                           factor=RETRY_FACTOR)

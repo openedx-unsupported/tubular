@@ -572,7 +572,6 @@ class TestEC2(unittest.TestCase):
         error_message = body
         error_code = status
         reasons = ["some reason"]
-
         ex = botocore.exceptions.ClientError(
             {'Error': {'Code': error_code, 'Message': error_message},
              'ResponseMetadata': {'HTTPStatusCode': 400}}, reasons
