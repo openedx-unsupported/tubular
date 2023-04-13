@@ -6,11 +6,12 @@ import os
 import unittest
 import itertools
 import boto
+import boto3
 import mock
 import requests_mock
 
 from ddt import ddt, data, unpack
-from moto import mock_ec2_deprecated, mock_autoscaling_deprecated, mock_elb_deprecated
+from moto import mock_autoscaling, mock_ec2, mock_elb
 from moto.ec2.utils import random_ami_id
 from six.moves import urllib, reload_module
 import tubular.asgard as asgard
@@ -839,8 +840,8 @@ class TestAsgard(unittest.TestCase):
         with mock.patch("tubular.ec2.remove_asg_deletion_tag"):
             self.assertRaises(CannotDeleteLastASG, asgard.delete_asg, asg)
 
-    @mock_autoscaling_deprecated
-    @mock_ec2_deprecated
+    @mock_autoscaling
+    @mock_ec2
     @data(*itertools.product(
         ((asgard.ASG_ACTIVATE_URL, asgard.enable_asg), (asgard.ASG_DEACTIVATE_URL, asgard.disable_asg)),
         (True, False)
@@ -906,9 +907,9 @@ class TestAsgard(unittest.TestCase):
         else:
             self.assertRaises(BackendError, test_function, asg)
 
-    @mock_autoscaling_deprecated
-    @mock_ec2_deprecated
-    @mock_elb_deprecated
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
     def test_deploy_asg_error_did_not_create_multiple_asgs(self, req_mock):
         """
         Test that new_asg is not called more than the number of asgs that
@@ -941,14 +942,15 @@ class TestAsgard(unittest.TestCase):
         )
 
         try:
+
             asgard.deploy(ami_id)
         except BackendError:
             pass
         self.assertEqual(1, counter)  # We fail midway here, so we dont expect additional calls to new_asg
 
-    @mock_autoscaling_deprecated
-    @mock_ec2_deprecated
-    @mock_elb_deprecated
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
     def test_deploy_asg_rate_limit_did_not_create_multiple_asgs(self, req_mock):
         """
         Test that new_asg is not called more than the number of asgs that are
@@ -1013,23 +1015,49 @@ class TestAsgard(unittest.TestCase):
         """
         Setup all the variables for an ASG deployment.
         """
-        # Make the AMI
-        ec2 = boto.connect_ec2()
-        reservation = ec2.run_instances(random_ami_id())
-        instance_id = reservation.instances[0].id
-        ami_id = ec2.create_image(instance_id, "Existing AMI")
-        ami = ec2.get_all_images(ami_id)[0]
-        ami.add_tag("environment", "foo")
-        ami.add_tag("deployment", "bar")
-        ami.add_tag("play", "baz")
+        ec2_client = boto3.client('ec2')
+        # Create a test EC2 instance
+        random_id = random_ami_id()
+        response = ec2_client.run_instances(ImageId=random_id, MinCount=1, MaxCount=1)
+        instance_id = response['Instances'][0]['InstanceId']
 
-        # Make the current ASGs
-        # pylint: disable=attribute-defined-outside-init
+        # Use the EC2 client to create a fake AMI from the test instance
+        ami_name = 'fake-ami-for-testing'
+        ami_description = 'This is a fake AMI created for testing purposes'
+
+        response = ec2_client.create_image(
+            InstanceId=instance_id, Name=ami_name,
+            Description=ami_description, NoReboot=True
+        )
+        ami_id = response['ImageId']
+
+        # Verify that the correct AMI ID was returned
+        assert ami_id.startswith('ami-')
+        ami_resp = ec2_client.describe_images(ImageIds=[ami_id])
+        assert ami_resp['Images'][0]['Name'] == "fake-ami-for-testing"
+
         self.test_asg_tags = {
             "environment": "foo",
             "deployment": "bar",
             "play": "baz",
         }
+
+        ec2_client.create_tags(
+            Resources=[ami_id], Tags=[
+                {'Key': 'environment', 'Value': 'foo'},
+                {'Key': 'deployment', 'Value': 'bar'},
+                {'Key': 'play', 'Value': 'baz'}
+            ]
+        )
+
+        response = ec2_client.describe_tags(Filters=[{'Name': 'resource-id', 'Values': [ami_id]}])
+        retrieved_tags = response['Tags']
+
+        assert {'Key': 'environment', 'ResourceId': ami_id, 'ResourceType': 'image',
+                'Value': 'foo'} in retrieved_tags
+        assert {'Key': 'deployment', 'ResourceId': ami_id, 'ResourceType': 'image',
+                'Value': 'bar'} in retrieved_tags
+        assert {'Key': 'play', 'ResourceId': ami_id, 'ResourceType': 'image', 'Value': 'baz'} in retrieved_tags
 
         self.test_elb_name = "app_elb"
         create_elb(self.test_elb_name)
@@ -1182,9 +1210,9 @@ class TestAsgard(unittest.TestCase):
                 json=deleted_asg_in_progress(asg),
                 status_code=response_code)
 
-    @mock_autoscaling_deprecated
-    @mock_ec2_deprecated
-    @mock_elb_deprecated
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
     def test_deploy_asg_failed(self, req_mock):
         ami_id = self._setup_for_deploy(
             req_mock,
@@ -1192,9 +1220,9 @@ class TestAsgard(unittest.TestCase):
         )
         self.assertRaises(Exception, asgard.deploy, ami_id)
 
-    @mock_autoscaling_deprecated
-    @mock_ec2_deprecated
-    @mock_elb_deprecated
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
     def test_deploy_enable_asg_failed(self, req_mock):
         ami_id = self._setup_for_deploy(
             req_mock,
@@ -1203,18 +1231,18 @@ class TestAsgard(unittest.TestCase):
         )
         self.assertRaises(Exception, asgard.deploy, ami_id)
 
-    @mock_autoscaling_deprecated
-    @mock_ec2_deprecated
-    @mock_elb_deprecated
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
     def test_deploy_elb_health_failed(self, req_mock):
         ami_id = self._setup_for_deploy(req_mock, COMPLETED_SAMPLE_TASK, COMPLETED_SAMPLE_TASK)
         mock_function = "tubular.ec2.wait_for_healthy_elbs"
         with mock.patch(mock_function, side_effect=Exception("Never became healthy.")):
             self.assertRaises(Exception, asgard.deploy, ami_id)
 
-    @mock_autoscaling_deprecated
-    @mock_ec2_deprecated
-    @mock_elb_deprecated
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
     def test_deploy(self, req_mock):
         ami_id = self._setup_for_deploy(req_mock)
 
@@ -1265,9 +1293,9 @@ class TestAsgard(unittest.TestCase):
 
         self.assertEqual(expected_output, asgard.deploy(ami_id))
 
-    @mock_autoscaling_deprecated
-    @mock_ec2_deprecated
-    @mock_elb_deprecated
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
     def test_deploy_new_asg_disabled(self, req_mock):
         ami_id = self._setup_for_deploy(req_mock)
         asgs = ["loadtest-edx-edxapp-v058", "loadtest-edx-edxapp-v059",
@@ -1287,9 +1315,9 @@ class TestAsgard(unittest.TestCase):
             )
         self.assertRaises(BackendError, asgard.deploy, ami_id)
 
-    @mock_autoscaling_deprecated
-    @mock_ec2_deprecated
-    @mock_elb_deprecated
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
     def test_rollback(self, req_mock):
         ami_id = self._setup_for_deploy(req_mock)
 
@@ -1449,9 +1477,9 @@ class TestAsgard(unittest.TestCase):
             json=VALID_CLUSTER_JSON_INFO
         )
 
-    @mock_autoscaling_deprecated
-    @mock_ec2_deprecated
-    @mock_elb_deprecated
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
     def test_rollback_with_failure_and_with_redeploy(self, req_mock):
         self._setup_rollback(req_mock)
 
@@ -1498,9 +1526,9 @@ class TestAsgard(unittest.TestCase):
             expected_output
         )
 
-    @mock_autoscaling_deprecated
-    @mock_ec2_deprecated
-    @mock_elb_deprecated
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
     def test_rollback_with_failure_and_without_redeploy(self, req_mock):
         self._setup_rollback(req_mock)
 
@@ -1550,13 +1578,12 @@ class TestAsgard(unittest.TestCase):
             expected_output
         )
 
-    @mock_autoscaling_deprecated
-    @mock_ec2_deprecated
-    @mock_elb_deprecated
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
     @mock.patch('boto.ec2.autoscale.AutoScaleConnection.delete_tags', lambda *args: None)
     def test_rollback_with_failure_and_asgs_tagged_for_deletion(self, req_mock):
         self._setup_rollback(req_mock)
-
         tag_asg_for_deletion('loadtest-edx-edxapp-v097', -2000)
         tag_asg_for_deletion('loadtest-edx-worker-v098', -2000)
         self._mock_asgard_not_pending_delete(req_mock, self.rollback_to_asgs, json_builder=enabled_asg)
@@ -1604,9 +1631,9 @@ class TestAsgard(unittest.TestCase):
             expected_output
         )
 
-    @mock_autoscaling_deprecated
-    @mock_ec2_deprecated
-    @mock_elb_deprecated
+    @mock_autoscaling
+    @mock_ec2
+    @mock_elb
     @mock.patch('boto.ec2.autoscale.AutoScaleConnection.delete_tags', lambda *args: None)
     def test_rollback_asg_does_not_exist(self, req_mock):
         self._setup_rollback_deleted(req_mock)
