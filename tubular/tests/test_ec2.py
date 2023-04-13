@@ -223,6 +223,7 @@ class TestEC2(unittest.TestCase):
         autoscale = boto3.client('autoscaling')
         asg_name = "unhealthy_asg"
         create_asg_with_tags(asg_name, {"foo": "bar"})
+
         asg = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
         asg['AutoScalingGroups'][0]['Instances'][0]['LifecycleState'] = 'Unhealthy'
 

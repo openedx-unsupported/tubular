@@ -77,7 +77,7 @@ mock==5.0.2
     # via -r requirements/testing.in
 more-itertools==9.1.0
     # via moto
-moto==2.2.11
+moto==4.1.9
     # via -r requirements/testing.in
 packaging==23.1
     # via pytest

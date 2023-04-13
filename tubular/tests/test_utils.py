@@ -35,13 +35,20 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
     if elbs is None:
         elbs = []
 
-    boto3.resource('ec2')
+    ec2 = boto3.resource('ec2')
     ec2_client = boto3.client('ec2')
-    vpc = ec2_client.create_vpc(CidrBlock='10.0.0.0/24')
-    subnet1 = ec2_client.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.0.0/28', AvailabilityZone='us-east-1c')
-    subnet2 = ec2_client.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.0.16/28', AvailabilityZone='us-east-1b')
+    vpc = ec2.create_vpc(CidrBlock="10.0.0.0/24", InstanceTenancy="default")
+    subnet1 = ec2_client.create_subnet(
+        VpcId=vpc.id, CidrBlock='10.0.0.0/28', AvailabilityZone='us-east-1c'
+    )
+    subnet2 = ec2_client.create_subnet(
+        VpcId=vpc.id, CidrBlock='10.0.0.16/28', AvailabilityZone='us-east-1b'
+    )
+
+    response = ec2_client.describe_subnets(SubnetIds=[subnet1['Subnet']['SubnetId'],subnet2['Subnet']['SubnetId']])
+
     autoscale = boto3.client("autoscaling")
-    
+
     security_group1 = ec2_client.create_security_group(
         GroupName=asg_name, Description=f"{asg_name}-desc details."
     )
@@ -70,6 +77,14 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         Tags=tag_list,
         LoadBalancerNames=elbs,
     )
+
+    # Each ASG tag that has 'propagate_at_launch' set to True is *supposed* to be set on the instances.
+    # However, it seems that moto (as of 0.4.30) does not properly set the tags on the instances created by the ASG.
+    # So set the tags on the ASG instances manually instead.
+    response = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+    # assert response['AutoScalingGroups'][0]['LaunchConfigurationName'] == launch_config_name
+    assert response["AutoScalingGroups"][0]["MinSize"] == 2
+    assert response["AutoScalingGroups"][0]["MaxSize"] == 3
 
     autoscale.create_or_update_tags(
         Tags=tag_list
@@ -101,6 +116,13 @@ def create_elb(elb_name):
     """
 
     boto_elb = boto3.client('elb')
+
+    ec2 = boto3.resource("ec2")
+    response = ec2.create_instances(ImageId='ami-272-72-589', MinCount=2, MaxCount=2)
+    vpc = ec2.create_vpc(CidrBlock="172.28.7.0/24", InstanceTenancy="default")
+    subnet1 = ec2.create_subnet(VpcId=vpc.id, CidrBlock="172.28.7.192/26")
+    subnet2 = ec2.create_subnet(VpcId=vpc.id, CidrBlock="172.28.7.191/26")
+
     zones = ['us-east-1a', 'us-east-1b']
     ports = [
         {
@@ -116,12 +138,13 @@ def create_elb(elb_name):
     ]
 
     boto_elb.create_load_balancer(
+        Subnets=[subnet1.id, subnet2.id],
         LoadBalancerName=elb_name,
         AvailabilityZones=zones,
         Listeners=ports
     )
 
-    instance_ids = ['i-4f8cf126', 'i-0bb7ca62']
+    instance_ids = [response[0].id, response[1].id]
     boto_elb.register_instances_with_load_balancer(
         LoadBalancerName=elb_name,
         Instances=[
