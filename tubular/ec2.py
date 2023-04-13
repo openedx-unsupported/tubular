@@ -221,7 +221,6 @@ def tags_for_ami(ami_id):
         ImageNotFoundException: No image found with this ami ID.
         MissingTagException: AMI is missing one or more of the expected tags.
     """
-    from botocore.exceptions import ClientError
     LOG.debug("Looking up edp for {}".format(ami_id))
     ec2 = boto3.client('ec2')
 
