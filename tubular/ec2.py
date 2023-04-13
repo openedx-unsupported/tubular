@@ -100,10 +100,8 @@ def get_all_load_balancers(names=None):
     Returns:
         a list of :class:`boto.ec2.elb.loadbalancer.LoadBalancer`
     """
-
     client = boto3.client('elb')
     paginator = client.get_paginator('describe_load_balancers')
-
     if names:
         response_iterator = paginator.paginate(LoadBalancerNames=names)
     else:
@@ -232,6 +230,7 @@ def tags_for_ami(ami_id):
     from botocore.exceptions import ClientError
     LOG.debug("Looking up edp for {}".format(ami_id))
     ec2 = boto3.client('ec2')
+
     try:
         resp = ec2.describe_images(ImageIds=[ami_id])
         ami = resp['Images']
@@ -386,8 +385,6 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
     """
     Create a tag that will be used to mark an ASG for deletion.
     """
-    import pdb;
-    pdb.set_trace()
     if seconds_until_delete_delta is None:
         tag_value = None
     else:

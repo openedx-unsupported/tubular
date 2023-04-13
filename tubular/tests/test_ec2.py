@@ -462,8 +462,7 @@ class TestEC2(unittest.TestCase):
     @mock_ec2
     def test_create_or_update_tags_on_asg(self):
         self._setup_test_asg_to_be_deleted()
-        import pdb;
-        pdb.set_trace()
+
         # Ensure a single delete tag exists.
         delete_tags = [tag for tag in self.test_asg['AutoScalingGroups'][0]['Tags'] if tag['Key'] == ec2.ASG_DELETE_TAG_KEY]
         self.assertEqual(len(delete_tags), 1)
