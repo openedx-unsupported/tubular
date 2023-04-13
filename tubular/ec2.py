@@ -45,7 +45,6 @@ def giveup_if_not_throttling(ex):
         False if the throttling string is not found.
         True if ex is of type MultipleImagesFoundException
     """
-
     if isinstance(ex, MultipleImagesFoundException):
         return True
     return not (str(ex.status) == "400" and ex.body and '<Code>Throttling</Code>' in ex.body)
@@ -102,8 +101,6 @@ def get_all_load_balancers(names=None):
         a list of :class:`boto.ec2.elb.loadbalancer.LoadBalancer`
     """
 
-    import pdb;
-    pdb.set_trace()
     client = boto3.client('elb')
     paginator = client.get_paginator('describe_load_balancers')
 
@@ -277,7 +274,6 @@ def edp_for_ami(ami_id):
         ImageNotFoundException: No image found with this ami ID.
         MissingTagException: AMI is missing one or more of the expected tags.
     """
-
     tags = tags_for_ami(ami_id)
 
     try:
@@ -390,6 +386,8 @@ def create_tag_for_asg_deletion(asg_name, seconds_until_delete_delta=None):
     """
     Create a tag that will be used to mark an ASG for deletion.
     """
+    import pdb;
+    pdb.set_trace()
     if seconds_until_delete_delta is None:
         tag_value = None
     else:
@@ -510,8 +508,8 @@ def terminate_instances(region, tags, max_run_hours, skip_if_tag):
     """
     conn = boto3.client('ec2', region_name=region)
     instances_to_terminate = []
-    reservations = conn.describe_instances(Filters=[tags])
 
+    reservations = conn.describe_instances(Filters=[tags])
     for reservation in reservations['Reservations']:
         for instance in reservation['Instances']:
             launch_time = instance['LaunchTime']
@@ -522,7 +520,6 @@ def terminate_instances(region, tags, max_run_hours, skip_if_tag):
 
     if instances_to_terminate:
         conn.terminate_instances(InstanceIds=instances_to_terminate)
-
     return instances_to_terminate
 
 
@@ -612,7 +609,6 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
         },
 
         """
-
         response = client.describe_instance_health(LoadBalancerName=selected_elb)
         return response['InstanceStates']
 

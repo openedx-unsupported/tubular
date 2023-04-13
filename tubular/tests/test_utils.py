@@ -44,7 +44,6 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
     vpc = ec2_client.create_vpc(CidrBlock='10.0.0.0/16')
     subnet1 = ec2_client.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.0.0/24', AvailabilityZone='us-east-1a')
     subnet2 = ec2_client.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.1.0/24', AvailabilityZone='us-east-1b')
-
     autoscale = boto3.client("autoscaling")
 
     autoscale.create_launch_configuration(

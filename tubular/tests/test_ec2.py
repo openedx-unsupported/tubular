@@ -401,52 +401,60 @@ class TestEC2(unittest.TestCase):
     @mock_autoscaling
     @mock_elb
     @mock_ec2
+    def setup_networking(region_name="us-west-2"):
+        ec2 = boto3.resource("ec2", region_name=region_name)
+        print(ec2.meta.region_name)
+        vpc = ec2.create_vpc(CidrBlock="10.11.0.0/16")
+        subnet1 = ec2.create_subnet(
+            VpcId=vpc.id, CidrBlock="10.11.1.0/24", AvailabilityZone=f"{region_name}a"
+        )
+        subnet2 = ec2.create_subnet(
+            VpcId=vpc.id, CidrBlock="10.11.2.0/24", AvailabilityZone=f"{region_name}b"
+        )
+        return {"vpc": vpc.id, "subnet1": subnet1.id, "subnet2": subnet2.id}
+
+    @mock_autoscaling
+    @mock_elb
+    @mock_ec2
     def _setup_test_asg_to_be_deleted(self):
         """
         Setup a test ASG that is tagged to be deleted.
         """
         # pylint: disable=attribute-defined-outside-init
 
-        dummy_ami_id = 'ami-12c6146b'
+        self.test_autoscale = boto3.client("autoscaling", region_name="us-west-2")
+        ec2_resource = boto3.resource("ec2", region_name="us-west-2")
+        vpc = ec2_resource.create_vpc(CidrBlock='10.11.0.0/16')
+        subnet1 = ec2_resource.create_subnet(VpcId=vpc.id, CidrBlock='10.11.1.0/24', AvailabilityZone='us-west-1a')
+        subnet2 = ec2_resource.create_subnet(VpcId=vpc.id, CidrBlock='10.11.2.0/24', AvailabilityZone='us-west-1b')
 
-        boto3.resource("ec2", "us-east-1")
-        ec2_client = boto3.client("ec2", region_name="us-east-1")
-        autoscale = boto3.client("autoscaling", region_name="us-east-1")
-
-        random_image_id = ec2_client.describe_images()["Images"][0]["ImageId"]
-        asg_name = f"asg-{random_image_id}"
-
-        autoscale.create_launch_configuration(
+        self.test_asg_name = "test-asg-random-tags"
+        dummy_ami_id = 'my-ami'
+        print(self.test_autoscale.meta.region_name)
+        self.test_autoscale.create_launch_configuration(
             LaunchConfigurationName="tester",
             ImageId=dummy_ami_id,
             InstanceType="t1.micro",
         )
-
-        launch_config = autoscale.describe_launch_configurations()["LaunchConfigurations"][0]
-
-        autoscale.create_auto_scaling_group(
-            AutoScalingGroupName=asg_name,
-            AvailabilityZones=['us-east-1a', 'us-east-1b'],
+        launch_config = self.test_autoscale.describe_launch_configurations()["LaunchConfigurations"][0]
+        self.test_autoscale.create_auto_scaling_group(
+            AvailabilityZones=['us-west-2a', 'us-west-2b'],
+            AutoScalingGroupName=self.test_asg_name,
             DefaultCooldown=60,
             DesiredCapacity=2,
-            LoadBalancerNames=['healthy-lb-1'],
+            LoadBalancerNames=['my-lb'],
             HealthCheckGracePeriod=100,
             HealthCheckType="EC2",
-            MaxSize=2,
-            MinSize=2,
+            MinSize=4,
+            MaxSize=8,
             LaunchConfigurationName=launch_config["LaunchConfigurationName"],
             PlacementGroup="test_placement",
-            TerminationPolicies=["OldestInstance", "NewestInstance"],
+            # VPCZoneIdentifier='{0},{1}'.format(subnet1.id, subnet2.id),
         )
-
         create_elb('my-lb')
-        self.test_asg_name = asg_name
+        self.test_asg = self.test_autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[self.test_asg_name])
         ec2.tag_asg_for_deletion(self.test_asg_name, 0)
-        self.test_asg = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
-
-        # autoscale.create_auto_scaling_group(asg)
-        # ec2.tag_asg_for_deletion(self.test_asg_name, 0)
-        # self.test_asg = autoscale.get_all_groups([self.test_asg_name])[0]
+        self.test_asg = self.test_autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[self.test_asg_name])
 
 
     @mock_autoscaling
@@ -454,7 +462,8 @@ class TestEC2(unittest.TestCase):
     @mock_ec2
     def test_create_or_update_tags_on_asg(self):
         self._setup_test_asg_to_be_deleted()
-
+        import pdb;
+        pdb.set_trace()
         # Ensure a single delete tag exists.
         delete_tags = [tag for tag in self.test_asg['AutoScalingGroups'][0]['Tags'] if tag['Key'] == ec2.ASG_DELETE_TAG_KEY]
         self.assertEqual(len(delete_tags), 1)
