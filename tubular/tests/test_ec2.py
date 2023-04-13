@@ -401,36 +401,18 @@ class TestEC2(unittest.TestCase):
     @mock_autoscaling
     @mock_elb
     @mock_ec2
-    def setup_networking(region_name="us-west-2"):
-        ec2 = boto3.resource("ec2", region_name=region_name)
-        print(ec2.meta.region_name)
-        vpc = ec2.create_vpc(CidrBlock="10.11.0.0/16")
-        subnet1 = ec2.create_subnet(
-            VpcId=vpc.id, CidrBlock="10.11.1.0/24", AvailabilityZone=f"{region_name}a"
-        )
-        subnet2 = ec2.create_subnet(
-            VpcId=vpc.id, CidrBlock="10.11.2.0/24", AvailabilityZone=f"{region_name}b"
-        )
-        return {"vpc": vpc.id, "subnet1": subnet1.id, "subnet2": subnet2.id}
-
-    @mock_autoscaling
-    @mock_elb
-    @mock_ec2
     def _setup_test_asg_to_be_deleted(self):
         """
         Setup a test ASG that is tagged to be deleted.
         """
         # pylint: disable=attribute-defined-outside-init
+        region_name = "us-west-2"
 
-        self.test_autoscale = boto3.client("autoscaling", region_name="us-west-2")
-        ec2_resource = boto3.resource("ec2", region_name="us-west-2")
-        vpc = ec2_resource.create_vpc(CidrBlock='10.11.0.0/16')
-        subnet1 = ec2_resource.create_subnet(VpcId=vpc.id, CidrBlock='10.11.1.0/24', AvailabilityZone='us-west-1a')
-        subnet2 = ec2_resource.create_subnet(VpcId=vpc.id, CidrBlock='10.11.2.0/24', AvailabilityZone='us-west-1b')
+        self.test_autoscale = boto3.client("autoscaling", region_name=region_name)
+        boto3.resource("ec2", region_name=region_name)
 
         self.test_asg_name = "test-asg-random-tags"
         dummy_ami_id = 'my-ami'
-        print(self.test_autoscale.meta.region_name)
         self.test_autoscale.create_launch_configuration(
             LaunchConfigurationName="tester",
             ImageId=dummy_ami_id,
@@ -449,13 +431,10 @@ class TestEC2(unittest.TestCase):
             MaxSize=8,
             LaunchConfigurationName=launch_config["LaunchConfigurationName"],
             PlacementGroup="test_placement",
-            # VPCZoneIdentifier='{0},{1}'.format(subnet1.id, subnet2.id),
         )
         create_elb('my-lb')
         self.test_asg = self.test_autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[self.test_asg_name])
         ec2.tag_asg_for_deletion(self.test_asg_name, 0)
-        self.test_asg = self.test_autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[self.test_asg_name])
-
 
     @mock_autoscaling
     @mock_elb
