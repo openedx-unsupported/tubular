@@ -6,7 +6,7 @@
 #
 asgiref==3.6.0
     # via django
-attrs==22.2.0
+attrs==23.1.0
     # via
     #   jsonlines
     #   zeep
@@ -44,7 +44,7 @@ click-log==0.4.0
     # via -r requirements/base.in
 cloudflare==2.1.0
     # via -r requirements/base.in
-cryptography==40.0.1
+cryptography==40.0.2
     # via pyjwt
 decorator==5.1.1
     # via validators
@@ -61,7 +61,7 @@ django-waffle==3.0.0
     # via edx-django-utils
 easydict==1.10
     # via yagocd
-edx-django-utils==5.3.0
+edx-django-utils==5.4.0
     # via edx-rest-api-client
 edx-opaque-keys==0.4.0
     # via -r requirements/base.in
@@ -79,7 +79,7 @@ gitpython==3.1.18
     # via -r requirements/base.in
 google-api-python-client==1.7.3
     # via -r requirements/base.in
-google-auth==2.17.1
+google-auth==2.17.3
     # via
     #   google-api-python-client
     #   google-auth-httplib2
@@ -187,7 +187,7 @@ sailthru-client==2.3.5
     # via -r requirements/base.in
 simple-salesforce==1.12.3
     # via -r requirements/base.in
-simplejson==3.18.4
+simplejson==3.19.1
     # via sailthru-client
 six==1.16.0
     # via
