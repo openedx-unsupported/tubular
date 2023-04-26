@@ -12,8 +12,13 @@ from tubular.tubular_email import send_email
 LOG = logging.getLogger(__name__)
 MAX_ATTEMPTS = int(os.environ.get('RETRY_HUBSPOT_MAX_ATTEMPTS', 5))
 
-GET_VID_FROM_EMAIL_URL_TEMPLATE = "https://api.hubapi.com/contacts/v1/contact/email/{email}/profile?hapikey={apikey}"
-DELETE_USER_FROM_VID_TEMPLATE = "https://api.hubapi.com/contacts/v1/contact/vid/{vid}?hapikey={apikey}"
+GET_VID_FROM_EMAIL_URL_TEMPLATE = "https://api.hubapi.com/contacts/v1/contact/email/{email}/profile?"
+DELETE_USER_FROM_VID_TEMPLATE = "https://api.hubapi.com/contacts/v1/contact/vid/{vid}?"
+
+HEADERS = {
+    'content-type': 'application/json',
+    'authorization': 'Bearer %s' % {apikey}
+}
 
 
 class HubspotException(Exception):
@@ -61,7 +66,7 @@ class HubspotAPI:
         req = requests.delete(DELETE_USER_FROM_VID_TEMPLATE.format(
             vid=vid,
             apikey=self.api_key
-        ))
+        ), headers=HEADERS)
         error_msg = ""
         if req.status_code == 200:
             LOG.info("User successfully deleted from Hubspot")
@@ -86,7 +91,7 @@ class HubspotAPI:
         req = requests.get(GET_VID_FROM_EMAIL_URL_TEMPLATE.format(
             email=email,
             apikey=self.api_key
-        ))
+        ), headers=HEADERS)
         if req.status_code == 200:
             req_data = req.json()
             return req_data.get('vid')
