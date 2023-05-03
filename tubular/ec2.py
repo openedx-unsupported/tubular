@@ -245,29 +245,6 @@ def edp_for_ami(ami_id):
     return edp
 
 
-def validate_edp(ami_id, environment, deployment, play):
-    """
-    Validate that an AMI is tagged for a specific EDP (environment, deployment, play).
-
-    Arguments:
-        ami_id (str): An AMI Id.
-        environment (str): Environment for AMI, e.g. prod, stage
-        deployment (str): Deployment for AMI, e.g. edx, edge
-        play (str): Play for AMI, e.g. edxapp, insights, discovery
-    Returns:
-        True if AMI EDP matches specified EDP, otherwise False.
-    """
-    edp = edp_for_ami(ami_id)
-    edp_matched = (edp.environment == environment and
-                   edp.deployment == deployment and
-                   edp.play == play)
-    if not edp_matched:
-        LOG.info("AMI {0} EDP did not match specified: {1} != ({2}, {3}, {4})".format(
-            ami_id, edp, environment, deployment, play
-        ))
-    return edp_matched
-
-
 def is_stage_ami(ami_id):
     """
     Check if an AMI is intended for stage deployment.
