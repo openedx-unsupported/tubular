@@ -5,7 +5,7 @@ Command-line script to retrieve list of learners that have requested to be retir
 The script calls the appropriate LMS endpoint to get this list of learners.
 """
 
-from os import path
+from os import path, environ
 import io
 import sys
 import logging
@@ -26,6 +26,11 @@ LOG = logging.getLogger(__name__)
 @click.option(
     '--config_file',
     help='File in which YAML config exists that overrides all other params.'
+)
+@click.option(
+    '--env_secrets',
+    is_flag=True,
+    help='Use system environment variables for CLIENT_ID and CLIENT_SECRET'
 )
 @click.option(
     '--cool_off_days',
@@ -50,6 +55,7 @@ LOG = logging.getLogger(__name__)
     default=200
 )
 def get_learners_to_retire(config_file,
+                           env_secrets,
                            cool_off_days,
                            output_dir,
                            user_count_error_threshold,
@@ -58,6 +64,7 @@ def get_learners_to_retire(config_file,
     Retrieves a JWT token as the retirement service user, then calls the LMS
     endpoint to retrieve the list of learners awaiting retirement.
     """
+
     if not config_file:
         click.echo('A config file is required.')
         sys.exit(-1)
@@ -68,8 +75,16 @@ def get_learners_to_retire(config_file,
     user_count_error_threshold = int(user_count_error_threshold)
     cool_off_days = int(cool_off_days)
 
-    client_id = config_yaml['client_id']
-    client_secret = config_yaml['client_secret']
+    if not env_secrets:
+        client_id = config_yaml['client_id']
+        client_secret = config_yaml['client_secret']
+    else:
+        try:
+            client_id = environ['TUBULAR_CLIENT_ID']
+            client_secret = environ['TUBULAR_CLIENT_SECRET']
+        except KeyError:
+            click.echo("You must set TUBULAR_CLIENT_ID and TUBULAR_CLIENT_SECRET environment variables if if --env_secrets is specified.")
+
     lms_base_url = config_yaml['base_urls']['lms']
     retirement_pipeline = config_yaml['retirement_pipeline']
     end_states = [state[1] for state in retirement_pipeline]
