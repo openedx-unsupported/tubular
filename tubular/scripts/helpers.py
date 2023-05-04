@@ -89,14 +89,11 @@ def _config_or_exit(fail_func, fail_code, config_file):
             config = yaml.safe_load(config)
 
         # Allow override of oauth client_id and client_secret from system environment variables
-        try:
-            config['client_id'] = environ['TUBULAR_OAUTH_CLIENT_ID']
-            config['client_secret'] = environ['TUBULAR_OAUTH_CLIENT_SECRET']
-            _log('oauth_credential_override','Overriding YAML client values with contents of TUBULAR_OAUTH_CLIENT_ID and TUBULAR_OAUTH_SECRET')
-        except KeyError:
-            pass
+        config['client_id'] = environ.get('TUBULAR_OAUTH_CLIENT_ID', config.get('client_id'))
+        config['client_secret'] = environ.get('TUBULAR_OAUTH_CLIENT_SECRET', config.get('client_secret'))
 
         return config
+
     except Exception as exc:  # pylint: disable=broad-except
         fail_func(fail_code, 'Failed to read config file {}'.format(config_file), exc)
 

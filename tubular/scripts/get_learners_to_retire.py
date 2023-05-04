@@ -69,16 +69,9 @@ def get_learners_to_retire(config_file,
     user_count_error_threshold = int(user_count_error_threshold)
     cool_off_days = int(cool_off_days)
 
-    client_id = config_yaml['client_id']
-    client_secret = config_yaml['client_secret']
-
     # If the user sets the env variables, override the YAML.
-    try:
-        client_id = environ['TUBULAR_OAUTH_CLIENT_ID']
-        client_secret = environ['TUBULAR_OAUTH_CLIENT_SECRET']
-        LOG.info("Overriding YAML client values with contents of TUBULAR_OAUTH_CLIENT_ID and TUBULAR_OAUTH_SECRET")
-    except KeyError:
-        pass
+    client_id = environ.get('TUBULAR_OAUTH_CLIENT_ID', config_yaml['client_id'])
+    client_secret = environ.get('TUBULAR_OAUTH_CLIENT_SECRET', config_yaml['client_secret'])
 
     lms_base_url = config_yaml['base_urls']['lms']
     retirement_pipeline = config_yaml['retirement_pipeline']
