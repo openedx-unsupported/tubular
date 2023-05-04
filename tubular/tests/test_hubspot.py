@@ -39,8 +39,7 @@ class TestHubspot(unittest.TestCase):
     def _mock_get_vid(self, req_mock, status_code):
         req_mock.get(
             hubspot_api.GET_VID_FROM_EMAIL_URL_TEMPLATE.format(
-                email=self.test_learner['original_email'],
-                apikey=self.api_key
+                email=self.test_learner['original_email']
             ),
             json={'vid': self.test_vid},
             status_code=status_code
@@ -49,8 +48,7 @@ class TestHubspot(unittest.TestCase):
     def _mock_delete(self, req_mock, status_code):
         req_mock.delete(
             hubspot_api.DELETE_USER_FROM_VID_TEMPLATE.format(
-                vid=self.test_vid,
-                apikey=self.api_key
+                vid=self.test_vid
             ),
             json={},
             status_code=status_code

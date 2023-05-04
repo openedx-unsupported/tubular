@@ -12,8 +12,8 @@ from tubular.tubular_email import send_email
 LOG = logging.getLogger(__name__)
 MAX_ATTEMPTS = int(os.environ.get('RETRY_HUBSPOT_MAX_ATTEMPTS', 5))
 
-GET_VID_FROM_EMAIL_URL_TEMPLATE = "https://api.hubapi.com/contacts/v1/contact/email/{email}/profile?hapikey={apikey}"
-DELETE_USER_FROM_VID_TEMPLATE = "https://api.hubapi.com/contacts/v1/contact/vid/{vid}?hapikey={apikey}"
+GET_VID_FROM_EMAIL_URL_TEMPLATE = "https://api.hubapi.com/contacts/v1/contact/email/{email}/profile"
+DELETE_USER_FROM_VID_TEMPLATE = "https://api.hubapi.com/contacts/v1/contact/vid/{vid}"
 
 
 class HubspotException(Exception):
@@ -58,10 +58,14 @@ class HubspotAPI:
         """
         Delete a learner from hubspot using their Hubspot `vid` (unique identifier)
         """
+        headers = {
+            'content-type': 'application/json',
+            'authorization': f'Bearer {self.api_key}'
+        }
+
         req = requests.delete(DELETE_USER_FROM_VID_TEMPLATE.format(
-            vid=vid,
-            apikey=self.api_key
-        ))
+            vid=vid
+        ), headers=headers)
         error_msg = ""
         if req.status_code == 200:
             LOG.info("User successfully deleted from Hubspot")
@@ -83,10 +87,14 @@ class HubspotAPI:
         """
         Get a user's `vid` from Hubspot. `vid` is the terminology that hubspot uses for a user ids
         """
+        headers = {
+            'content-type': 'application/json',
+            'authorization': f'Bearer {self.api_key}'
+        }
+
         req = requests.get(GET_VID_FROM_EMAIL_URL_TEMPLATE.format(
-            email=email,
-            apikey=self.api_key
-        ))
+            email=email
+        ), headers=headers)
         if req.status_code == 200:
             req_data = req.json()
             return req_data.get('vid')
