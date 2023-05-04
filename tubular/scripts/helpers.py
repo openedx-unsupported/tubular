@@ -13,7 +13,7 @@ import json
 import sys
 import traceback
 import unicodedata
-from os import path
+from os import path, environ
 
 import yaml
 from six import text_type
@@ -82,11 +82,19 @@ def _get_error_str_from_exception(exc):
 
 def _config_or_exit(fail_func, fail_code, config_file):
     """
-    Returns the config values from the given file, allows overriding of passed in values.
+    Returns the config values from the given file, allows overriding of client id and secret from the system environment.
     """
     try:
         with io.open(config_file, 'r') as config:
             config = yaml.safe_load(config)
+
+        # Allow override of oauth client_id and client_secret from system environment variables
+        try:
+            config['client_id'] = environ['TUBULAR_OAUTH_CLIENT_ID']
+            config['client_secret'] = environ['TUBULAR_OAUTH_CLIENT_SECRET']
+            _log('oauth_credential_override','Overriding YAML client values with contents of TUBULAR_OAUTH_CLIENT_ID and TUBULAR_OAUTH_SECRET')
+        except KeyError:
+            pass
 
         return config
     except Exception as exc:  # pylint: disable=broad-except

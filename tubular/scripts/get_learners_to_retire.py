@@ -28,11 +28,6 @@ LOG = logging.getLogger(__name__)
     help='File in which YAML config exists that overrides all other params.'
 )
 @click.option(
-    '--env_secrets',
-    is_flag=True,
-    help='Use system environment variables for CLIENT_ID and CLIENT_SECRET'
-)
-@click.option(
     '--cool_off_days',
     help='Number of days a learner should be in the retirement queue before being actually retired.',
     default=7
@@ -55,7 +50,6 @@ LOG = logging.getLogger(__name__)
     default=200
 )
 def get_learners_to_retire(config_file,
-                           env_secrets,
                            cool_off_days,
                            output_dir,
                            user_count_error_threshold,
@@ -75,15 +69,16 @@ def get_learners_to_retire(config_file,
     user_count_error_threshold = int(user_count_error_threshold)
     cool_off_days = int(cool_off_days)
 
-    if not env_secrets:
-        client_id = config_yaml['client_id']
-        client_secret = config_yaml['client_secret']
-    else:
-        try:
-            client_id = environ['TUBULAR_CLIENT_ID']
-            client_secret = environ['TUBULAR_CLIENT_SECRET']
-        except KeyError:
-            click.echo("You must set TUBULAR_CLIENT_ID and TUBULAR_CLIENT_SECRET environment variables if if --env_secrets is specified.")
+    client_id = config_yaml['client_id']
+    client_secret = config_yaml['client_secret']
+
+    # If the user sets the env variables, override the YAML.
+    try:
+        client_id = environ['TUBULAR_OAUTH_CLIENT_ID']
+        client_secret = environ['TUBULAR_OAUTH_CLIENT_SECRET']
+        LOG.info("Overriding YAML client values with contents of TUBULAR_OAUTH_CLIENT_ID and TUBULAR_OAUTH_SECRET")
+    except KeyError:
+        pass
 
     lms_base_url = config_yaml['base_urls']['lms']
     retirement_pipeline = config_yaml['retirement_pipeline']
