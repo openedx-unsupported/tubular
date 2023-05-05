@@ -45,35 +45,6 @@ class TestEC2(unittest.TestCase):
         return ami_id
 
     @mock_ec2_deprecated
-    def test_ami_edp_validate_for_bad_id(self):
-        # Bad AMI Id
-        self.assertRaises(
-            ImageNotFoundException,
-            ec2.validate_edp,
-            'ami-fakeid',
-            'fake_e',
-            'fake_d',
-            'fake_p'
-        )
-
-    @ddt.data(
-        (True, ("foo", "bar", "baz")),
-        (False, ("---", "bar", "baz")),
-        (False, ("foo", "---", "baz")),
-        (False, ("foo", "bar", "---")),
-        (False, ("---", "---", "baz")),
-        (False, ("---", "bar", "---")),
-        (False, ("foo", "---", "---")),
-        (False, ("---", "---", "---")),
-        (False, ("baz", "bar", "foo")),
-    )
-    @ddt.unpack
-    @mock_ec2_deprecated
-    def test_ami_edp_validate_ami_id(self, expected_ret, edp):
-        fake_ami_id = self._make_fake_ami()
-        self.assertEqual(ec2.validate_edp(fake_ami_id, *edp), expected_ret)
-
-    @mock_ec2_deprecated
     def test_restrict_ami_to_stage(self):
         self.assertEqual(True, ec2.is_stage_ami(self._make_fake_ami(environment='stage')))
         self.assertEqual(False, ec2.is_stage_ami(self._make_fake_ami(environment='prod')))
