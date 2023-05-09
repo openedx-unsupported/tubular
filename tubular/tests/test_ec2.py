@@ -55,6 +55,7 @@ class TestEC2(unittest.TestCase):
         )
         return ami_id
 
+    @mock_ec2
     def test_restrict_ami_to_stage(self):
         self.assertEqual(True, ec2.is_stage_ami(self._make_fake_ami(environment='stage')))
         self.assertEqual(False, ec2.is_stage_ami(self._make_fake_ami(environment='prod')))
