@@ -70,8 +70,8 @@ def get_learners_to_retire(config_file,
     cool_off_days = int(cool_off_days)
 
     # If the user sets the env variables, override the YAML.
-    client_id = environ.get('TUBULAR_OAUTH_CLIENT_ID', config_yaml['client_id'])
-    client_secret = environ.get('TUBULAR_OAUTH_CLIENT_SECRET', config_yaml['client_secret'])
+    client_id = environ.get('TUBULAR_OAUTH_CLIENT_ID', config_yaml.get('client_id'))
+    client_secret = environ.get('TUBULAR_OAUTH_CLIENT_SECRET', config_yaml.get('client_secret'))
 
     lms_base_url = config_yaml['base_urls']['lms']
     retirement_pipeline = config_yaml['retirement_pipeline']
