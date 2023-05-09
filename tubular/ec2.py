@@ -575,7 +575,7 @@ def wait_for_healthy_elbs(elbs_to_monitor, timeout):
         LOG.info("No ELBs to monitor - skipping health check.")
         return
 
-    elbs_left = elbs_to_monitor
+    elbs_left = set(elbs_to_monitor)
     end_time = datetime.utcnow() + timedelta(seconds=timeout)
     while end_time > datetime.utcnow():
         elbs = get_all_load_balancers(elbs_left)
