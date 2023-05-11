@@ -11,6 +11,16 @@ class ImageNotFoundException(Exception):
     pass
 
 
+class InvalidAMIID(Exception):
+    def __init__(self, ami_id):
+        self.ami_id = ami_id
+        self.message = f"AMI ID '{ami_id}' not found in the current region."
+        super().__init__(self.message)
+
+    def __str__(self):
+        return self.message
+
+
 class MultipleImagesFoundException(Exception):
     pass
 
