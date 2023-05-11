@@ -88,7 +88,7 @@ def _config_or_exit(fail_func, fail_code, config_file):
         with io.open(config_file, 'r') as config:
             config = yaml.safe_load(config)
 
-        # Allow override of oauth client_id and client_secret from system environment variables
+        # Allow override of oauth client_id / client_secret from system environment variables
         config['client_id'] = environ.get('TUBULAR_OAUTH_CLIENT_ID', config.get('client_id'))
         config['client_secret'] = environ.get('TUBULAR_OAUTH_CLIENT_SECRET', config.get('client_secret'))
 
@@ -136,7 +136,7 @@ def _setup_lms_api_or_exit(fail_func, fail_code, config):
     Performs setup of EdxRestClientApi for LMS and returns the validated, sorted list of users to report on.
     """
     try:
-        lms_base_url = config['base_urls']['lms']
+        lms_base_url = environ.get('TUBULAR_LMS_HOST',config.get('base_urls').get('lms'))
         client_id = config['client_id']
         client_secret = config['client_secret']
 

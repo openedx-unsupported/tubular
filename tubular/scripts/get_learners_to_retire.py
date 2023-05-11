@@ -73,7 +73,7 @@ def get_learners_to_retire(config_file,
     client_id = environ.get('TUBULAR_OAUTH_CLIENT_ID', config_yaml.get('client_id'))
     client_secret = environ.get('TUBULAR_OAUTH_CLIENT_SECRET', config_yaml.get('client_secret'))
 
-    lms_base_url = config_yaml['base_urls']['lms']
+    lms_base_url = environ.get('TUBULAR_LMS_HOST',config_yaml.get('base_urls').get('lms'))
     retirement_pipeline = config_yaml['retirement_pipeline']
     end_states = [state[1] for state in retirement_pipeline]
     states_to_request = ['PENDING'] + end_states
