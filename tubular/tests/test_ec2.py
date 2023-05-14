@@ -419,7 +419,7 @@ class TestEC2(unittest.TestCase):
 
         asgs = ec2.get_asgs_pending_delete()
         self.assertEqual(len(asgs), 1)
-        # boto.ec2.autoscale.group.AutoScalingGroup does not implement __eq__ so we need to iterate the list to see if
+
         # the ASGs we are interested in are members
         self.assertEqual(len([asg for asg in asgs if asg['AutoScalingGroupName'] == asg_name1]), 1)
         self.assertEqual(len([asg for asg in asgs if asg['AutoScalingGroupName'] == asg_name2]), 0)

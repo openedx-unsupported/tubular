@@ -19,6 +19,8 @@ from tubular.scripts.retirement_archive_and_cleanup import (
     archive_and_cleanup
 )
 from tubular.tests.retirement_helpers import fake_config_file, get_fake_user_retirement
+from moto import mock_ec2, mock_s3
+import boto3
 
 
 def _call_script(cool_off_days=37, batch_size=None, dry_run=None, start_date=None, end_date=None):
@@ -77,16 +79,17 @@ def fake_learners_to_retire():
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token', return_value=('THIS_IS_A_JWT', None))
-@patch('tubular.scripts.retirement_archive_and_cleanup.S3Connection')
-@patch('tubular.scripts.retirement_archive_and_cleanup.Key')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
     get_learners_by_date_and_status=DEFAULT,
     bulk_cleanup_retirements=DEFAULT
 )
+@mock_s3
 def test_successful(*args, **kwargs):
-    mock_get_access_token = args[2]
-    mock_s3connection_class = args[1]
+    conn = boto3.resource('s3')
+    conn.create_bucket(Bucket="fake_test_bucket")
+
+    mock_get_access_token = args[0]
     mock_get_learners = kwargs['get_learners_by_date_and_status']
     mock_bulk_cleanup_retirements = kwargs['bulk_cleanup_retirements']
 
@@ -97,24 +100,26 @@ def test_successful(*args, **kwargs):
     # Called once to get the LMS token
     assert mock_get_access_token.call_count == 1
     mock_get_learners.assert_called_once()
-    mock_bulk_cleanup_retirements.assert_called_once_with(['test1', 'test2', 'test3'])
-    mock_s3connection_class.assert_called_once_with()
+    mock_bulk_cleanup_retirements.assert_called_once_with(
+        ['test1', 'test2', 'test3'])
 
     assert result.exit_code == 0
     assert 'Archive and cleanup complete' in result.output
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token', return_value=('THIS_IS_A_JWT', None))
-@patch('tubular.scripts.retirement_archive_and_cleanup.S3Connection')
-@patch('tubular.scripts.retirement_archive_and_cleanup.Key')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
     get_learners_by_date_and_status=DEFAULT,
     bulk_cleanup_retirements=DEFAULT
 )
+@mock_ec2
+@mock_s3
 def test_successful_with_batching(*args, **kwargs):
-    mock_get_access_token = args[2]
-    mock_s3connection_class = args[1]
+    conn = boto3.resource('s3')
+    conn.create_bucket(Bucket="fake_test_bucket")
+
+    mock_get_access_token = args[0]
     mock_get_learners = kwargs['get_learners_by_date_and_status']
     mock_bulk_cleanup_retirements = kwargs['bulk_cleanup_retirements']
 
@@ -127,7 +132,6 @@ def test_successful_with_batching(*args, **kwargs):
     mock_get_learners.assert_called_once()
     get_learner_calls = [call(['test1', 'test2']), call(['test3'])]
     mock_bulk_cleanup_retirements.assert_has_calls(get_learner_calls)
-    assert mock_s3connection_class.call_count == 2
 
     assert result.exit_code == 0
     assert 'Archive and cleanup complete for batch #1' in result.output
@@ -135,16 +139,14 @@ def test_successful_with_batching(*args, **kwargs):
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token', return_value=('THIS_IS_A_JWT', None))
-@patch('tubular.scripts.retirement_archive_and_cleanup.S3Connection')
-@patch('tubular.scripts.retirement_archive_and_cleanup.Key')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
     get_learners_by_date_and_status=DEFAULT,
     bulk_cleanup_retirements=DEFAULT
 )
+@mock_s3
 def test_successful_dry_run(*args, **kwargs):
-    mock_get_access_token = args[2]
-    mock_s3connection_class = args[1]
+    mock_get_access_token = args[0]
     mock_get_learners = kwargs['get_learners_by_date_and_status']
     mock_bulk_cleanup_retirements = kwargs['bulk_cleanup_retirements']
 
@@ -224,7 +226,8 @@ def test_bad_s3_upload(*_):
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token', return_value=('THIS_IS_A_JWT', None))
 def test_conflicting_dates(*_):
-    result = _call_script(start_date=datetime.datetime(2021, 10, 10), end_date=datetime.datetime(2018, 10, 10))
+    result = _call_script(start_date=datetime.datetime(
+        2021, 10, 10), end_date=datetime.datetime(2018, 10, 10))
     assert result.exit_code == ERR_BAD_CLI_PARAM
     assert 'Conflicting start and end dates passed on CLI' in result.output
 

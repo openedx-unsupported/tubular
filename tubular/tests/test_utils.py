@@ -19,7 +19,7 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         ami_id(str): The ID of the AMI that should be deployed.
 
     Returns:
-        boto.ec2.autoscale.group.AutoScalingGroup
+        boto3 AutoScalingGroup
     """
 
     tag_list = [

@@ -4,6 +4,13 @@ Command-line script to bulk archive and cleanup retired learners from LMS
 """
 
 
+from tubular.scripts.helpers import (
+    _config_or_exit,
+    _fail,
+    _fail_exception,
+    _log,
+    _setup_lms_api_or_exit
+)
 from functools import partial
 from os import path
 import datetime
@@ -15,22 +22,15 @@ import time
 
 import backoff
 import click
-from boto.s3.connection import S3Connection
-from boto.s3.key import Key
-from boto.exception import BotoClientError, BotoServerError
 from six import text_type
+
+import boto3
+from botocore.exceptions import ClientError, BotoCoreError
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 # pylint: disable=wrong-import-position
-from tubular.scripts.helpers import (
-    _config_or_exit,
-    _fail,
-    _fail_exception,
-    _log,
-    _setup_lms_api_or_exit
-)
 
 
 SCRIPT_SHORTNAME = 'Archive and Cleanup'
@@ -61,13 +61,16 @@ def _fetch_learners_to_archive_or_exit(config, start_date, end_date, initial_sta
     """
     Makes the call to fetch learners to be cleaned up, returns the list of learners or exits.
     """
-    LOG('Fetching users in state {} created from {} to {}'.format(initial_state, start_date, end_date))
+    LOG('Fetching users in state {} created from {} to {}'.format(
+        initial_state, start_date, end_date))
     try:
-        learners = config['LMS'].get_learners_by_date_and_status(initial_state, start_date, end_date)
+        learners = config['LMS'].get_learners_by_date_and_status(
+            initial_state, start_date, end_date)
         LOG('Successfully fetched {} learners'.format(str(len(learners))))
         return learners
     except Exception as exc:  # pylint: disable=broad-except
-        FAIL_EXCEPTION(ERR_FETCHING, 'Unexpected error occurred fetching users to update!', exc)
+        FAIL_EXCEPTION(
+            ERR_FETCHING, 'Unexpected error occurred fetching users to update!', exc)
 
 
 def _batch_learners(learners=None, batch_size=None):
@@ -95,16 +98,18 @@ def _on_s3_backoff(details):
     """
     Callback that is called when backoff... backs off
     """
-    LOG("Backing off {wait:0.1f} seconds after {tries} tries calling function {target}".format(**details))
+    LOG("Backing off {wait:0.1f} seconds after {tries} tries calling function {target}".format(
+        **details))
 
 
 @backoff.on_exception(
     backoff.expo,
     (
-        BotoClientError,
-        BotoServerError
+        ClientError,
+        BotoCoreError
     ),
-    on_backoff=lambda details: _on_s3_backoff(details),  # pylint: disable=unnecessary-lambda,
+    on_backoff=lambda details: _on_s3_backoff(
+        details),  # pylint: disable=unnecessary-lambda,
     max_time=120,  # 2 minutes
 )
 def _upload_to_s3(config, filename, dry_run=False):
@@ -112,18 +117,17 @@ def _upload_to_s3(config, filename, dry_run=False):
     Upload the archive file to S3
     """
     try:
-        s3_connection = S3Connection()
-
         datestr = datetime.datetime.now().strftime('%Y/%m/')
-
-        bucket = s3_connection.get_bucket(config['s3_archive']['bucket_name'])
-        # Dry runs of this script should only generate the retirement archive file, not push it to s3.
-        key = Key(bucket, 'raw/' + datestr + filename)
+        s3 = boto3.resource('s3')
+        bucket_name = config['s3_archive']['bucket_name']
+        
+        bucket = s3.Bucket(bucket_name)
+        key = 'raw/' + datestr + filename
         if dry_run:
             LOG('Dry run. Skipping the step to upload data to {}'.format(key))
             return
         else:
-            key.set_contents_from_filename(filename)
+            bucket.upload_file(filename, key)
             LOG('Successfully uploaded retirement data to {}'.format(key))
     except Exception as exc:
         LOG(text_type(exc))
@@ -175,10 +179,12 @@ def _archive_retirements_or_exit(config, learners, dry_run=False):
     'retired_email': 'retired__user_d08919da55a0e03c032425567e4a33e860488a96@retired.invalid'
     }
     """
-    LOG('Archiving retirements for {} learners to {}'.format(len(learners), config['s3_archive']['bucket_name']))
+    LOG('Archiving retirements for {} learners to {}'.format(
+        len(learners), config['s3_archive']['bucket_name']))
     try:
         now = _get_utc_now()
-        filename = 'retirement_archive_{}.json.gz'.format(now.strftime('%Y_%d_%m_%H_%M_%S'))
+        filename = 'retirement_archive_{}.json.gz'.format(
+            now.strftime('%Y_%d_%m_%H_%M_%S'))
         LOG('Creating retirement archive file {}'.format(filename))
 
         # The file format is one JSON object per line with the newline as a separator. This allows for
@@ -197,6 +203,7 @@ def _archive_retirements_or_exit(config, learners, dry_run=False):
                 }
                 json.dump(user, out)
                 out.write("\n")
+
         if dry_run:
             LOG('Dry run. Logging the contents of {} for debugging'.format(filename))
             with gzip.open(filename, 'r') as archive_file:
@@ -204,7 +211,8 @@ def _archive_retirements_or_exit(config, learners, dry_run=False):
                     LOG(line)
         _upload_to_s3(config, filename, dry_run)
     except Exception as exc:  # pylint: disable=broad-except
-        FAIL_EXCEPTION(ERR_ARCHIVING, 'Unexpected error occurred archiving retirements!', exc)
+        FAIL_EXCEPTION(
+            ERR_ARCHIVING, 'Unexpected error occurred archiving retirements!', exc)
 
 
 def _cleanup_retirements_or_exit(config, learners):
@@ -216,7 +224,9 @@ def _cleanup_retirements_or_exit(config, learners):
         usernames = [l['original_username'] for l in learners]
         config['LMS'].bulk_cleanup_retirements(usernames)
     except Exception as exc:  # pylint: disable=broad-except
-        FAIL_EXCEPTION(ERR_DELETING, 'Unexpected error occurred deleting retirements!', exc)
+        FAIL_EXCEPTION(
+            ERR_DELETING, 'Unexpected error occurred deleting retirements!', exc)
+
 
 def _get_utc_now():
     """
@@ -291,14 +301,14 @@ def archive_and_cleanup(config_file, cool_off_days, dry_run, start_date, end_dat
             start_date = datetime.datetime.strptime('2018-01-01', '%Y-%m-%d')
         if end_date:
             if end_date > _get_utc_now() - datetime.timedelta(days=cool_off_days):
-                FAIL(ERR_BAD_CLI_PARAM, 'End date cannot occur within the cool_off_days period')
+                FAIL(ERR_BAD_CLI_PARAM,
+                     'End date cannot occur within the cool_off_days period')
         else:
             # Set an end_date of `cool_off_days` days before the time that this script is run
             end_date = _get_utc_now() - datetime.timedelta(days=cool_off_days)
 
         if start_date >= end_date:
             FAIL(ERR_BAD_CLI_PARAM, 'Conflicting start and end dates passed on CLI')
-
 
         LOG(
             'Fetching retirements for learners that have a COMPLETE status and were created '
@@ -320,13 +330,15 @@ def archive_and_cleanup(config_file, cool_off_days, dry_run, start_date, end_dat
                         str(index + 1), str(num_batches)
                     )
                 )
+
                 _archive_retirements_or_exit(config, batch, dry_run)
 
                 if dry_run:
                     LOG('This is a dry-run. Exiting before any retirements are cleaned up')
                 else:
                     _cleanup_retirements_or_exit(config, batch)
-                    LOG('Archive and cleanup complete for batch #{}'.format(str(index + 1)))
+                    LOG('Archive and cleanup complete for batch #{}'.format(
+                        str(index + 1)))
                     time.sleep(DELAY)
         else:
             LOG('No learners found!')
