@@ -4,6 +4,8 @@ Test the retirement_archive_and_cleanup.py script
 
 
 import datetime
+import os
+import unittest.mock as mock
 
 import boto3
 from click.testing import CliRunner
@@ -12,10 +14,12 @@ from moto import mock_ec2, mock_s3
 
 from tubular.scripts.retirement_archive_and_cleanup import (
     ERR_ARCHIVING, ERR_BAD_CLI_PARAM, ERR_BAD_CONFIG, ERR_DELETING,
-    ERR_FETCHING, ERR_NO_CONFIG, ERR_SETUP_FAILED, archive_and_cleanup)
-from tubular.tests.retirement_helpers import (
-    fake_config_file, get_fake_user_retirement
-)
+    ERR_FETCHING, ERR_NO_CONFIG, ERR_SETUP_FAILED, _upload_to_s3,
+    archive_and_cleanup)
+from tubular.tests.retirement_helpers import (fake_config_file,
+                                              get_fake_user_retirement)
+
+FAKE_BUCKET_NAME = "fake_test_bucket"
 
 
 def _call_script(cool_off_days=37, batch_size=None, dry_run=None, start_date=None, end_date=None):
@@ -82,7 +86,7 @@ def fake_learners_to_retire():
 @mock_s3
 def test_successful(*args, **kwargs):
     conn = boto3.resource('s3')
-    conn.create_bucket(Bucket="fake_test_bucket")
+    conn.create_bucket(Bucket=FAKE_BUCKET_NAME)
 
     mock_get_access_token = args[0]
     mock_get_learners = kwargs['get_learners_by_date_and_status']
@@ -112,7 +116,7 @@ def test_successful(*args, **kwargs):
 @mock_s3
 def test_successful_with_batching(*args, **kwargs):
     conn = boto3.resource('s3')
-    conn.create_bucket(Bucket="fake_test_bucket")
+    conn.create_bucket(Bucket=FAKE_BUCKET_NAME)
 
     mock_get_access_token = args[0]
     mock_get_learners = kwargs['get_learners_by_date_and_status']
@@ -239,3 +243,25 @@ def test_conflicting_cool_off_date(*_):
     )
     assert result.exit_code == ERR_BAD_CLI_PARAM
     assert 'End date cannot occur within the cool_off_days period' in result.output
+
+
+@mock_s3
+def test_s3_upload_data():
+    """
+    Test case to verify s3 upload and download.
+    """
+    s3 = boto3.client("s3")
+    s3.create_bucket(Bucket=FAKE_BUCKET_NAME)
+    config = {'s3_archive': {'bucket_name': FAKE_BUCKET_NAME}}
+
+    filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_data', 'uploading.txt')
+    fixed_datetime = datetime.datetime(2033, 5, 14, 10, 0, 0)
+    key = 'raw/' + fixed_datetime.strftime('%Y/%m/') + filename
+
+    with mock.patch('datetime.datetime') as mock_datetime:
+        mock_datetime.now.return_value = fixed_datetime
+        _upload_to_s3(config, filename, False)
+
+    resp = s3.get_object(Bucket=FAKE_BUCKET_NAME, Key=key)
+    data = resp["Body"].read()
+    assert data == "Upload this file on s3 in tests."
