@@ -255,13 +255,8 @@ def test_s3_upload_data():
     config = {'s3_archive': {'bucket_name': FAKE_BUCKET_NAME}}
 
     filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_data', 'uploading.txt')
-    fixed_datetime = datetime.datetime(2033, 5, 14, 10, 0, 0)
-    key = 'raw/' + fixed_datetime.strftime('%Y/%m/') + filename
-
-    with mock.patch('datetime.datetime') as mock_datetime:
-        mock_datetime.now.return_value = fixed_datetime
-        _upload_to_s3(config, filename, False)
-
+    key = 'raw/' + datetime.datetime.now().strftime('%Y/%m/') + filename
+    _upload_to_s3(config, filename, False)
     resp = s3.get_object(Bucket=FAKE_BUCKET_NAME, Key=key)
     data = resp["Body"].read()
-    assert data == "Upload this file on s3 in tests."
+    assert data.decode() == "Upload this file on s3 in tests."
