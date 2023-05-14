@@ -4,28 +4,24 @@ Command-line script to bulk archive and cleanup retired learners from LMS
 """
 
 
-from tubular.scripts.helpers import (
-    _config_or_exit,
-    _fail,
-    _fail_exception,
-    _log,
-    _setup_lms_api_or_exit
-)
-from functools import partial
-from os import path
 import datetime
 import gzip
 import json
 import logging
 import sys
 import time
+from functools import partial
+from os import path
 
 import backoff
+import boto3
 import click
+from botocore.exceptions import BotoCoreError, ClientError
 from six import text_type
 
-import boto3
-from botocore.exceptions import ClientError, BotoCoreError
+from tubular.scripts.helpers import (
+    _config_or_exit, _fail, _fail_exception, _log, _setup_lms_api_or_exit
+)
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))

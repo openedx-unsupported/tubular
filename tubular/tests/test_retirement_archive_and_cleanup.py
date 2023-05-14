@@ -4,23 +4,18 @@ Test the retirement_archive_and_cleanup.py script
 
 
 import datetime
-from mock import call, patch, DEFAULT
 
+import boto3
 from click.testing import CliRunner
+from mock import DEFAULT, call, patch
+from moto import mock_ec2, mock_s3
 
 from tubular.scripts.retirement_archive_and_cleanup import (
-    ERR_ARCHIVING,
-    ERR_BAD_CLI_PARAM,
-    ERR_BAD_CONFIG,
-    ERR_DELETING,
-    ERR_FETCHING,
-    ERR_NO_CONFIG,
-    ERR_SETUP_FAILED,
-    archive_and_cleanup
+    ERR_ARCHIVING, ERR_BAD_CLI_PARAM, ERR_BAD_CONFIG, ERR_DELETING,
+    ERR_FETCHING, ERR_NO_CONFIG, ERR_SETUP_FAILED, archive_and_cleanup)
+from tubular.tests.retirement_helpers import (
+    fake_config_file, get_fake_user_retirement
 )
-from tubular.tests.retirement_helpers import fake_config_file, get_fake_user_retirement
-from moto import mock_ec2, mock_s3
-import boto3
 
 
 def _call_script(cool_off_days=37, batch_size=None, dry_run=None, start_date=None, end_date=None):
