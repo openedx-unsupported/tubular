@@ -111,7 +111,7 @@ def _upload_to_s3(config, filename, dry_run=False):
         datestr = datetime.datetime.now().strftime('%Y/%m/')
         s3 = boto3.resource('s3')
         bucket_name = config['s3_archive']['bucket_name']
-        
+        # Dry runs of this script should only generate the retirement archive file, not push it to s3.
         bucket = s3.Bucket(bucket_name)
         key = 'raw/' + datestr + filename
         if dry_run:
