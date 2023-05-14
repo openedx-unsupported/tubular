@@ -8,6 +8,8 @@ import os
 import unittest.mock as mock
 
 import boto3
+import pytest
+from botocore.exceptions import ClientError
 from click.testing import CliRunner
 from mock import DEFAULT, call, patch
 from moto import mock_ec2, mock_s3
@@ -253,9 +255,16 @@ def test_s3_upload_data():
     s3 = boto3.client("s3")
     s3.create_bucket(Bucket=FAKE_BUCKET_NAME)
     config = {'s3_archive': {'bucket_name': FAKE_BUCKET_NAME}}
-
     filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_data', 'uploading.txt')
     key = 'raw/' + datetime.datetime.now().strftime('%Y/%m/') + filename
+
+    # first try dry run without uploading. Try to get object should raise error
+    with pytest.raises(ClientError) as exc_info:
+        _upload_to_s3(config, filename, True)
+        s3.get_object(Bucket=FAKE_BUCKET_NAME, Key=key)
+        assert exc_info.value.response['Error']['Code'] == 'NoSuchKey'
+
+    # upload a file, download and compare its content.
     _upload_to_s3(config, filename, False)
     resp = s3.get_object(Bucket=FAKE_BUCKET_NAME, Key=key)
     data = resp["Body"].read()
