@@ -4,21 +4,24 @@ Test the retirement_archive_and_cleanup.py script
 
 
 import datetime
-from mock import call, patch, DEFAULT
+import os
+import unittest.mock as mock
 
+import boto3
+import pytest
+from botocore.exceptions import ClientError
 from click.testing import CliRunner
+from mock import DEFAULT, call, patch
+from moto import mock_ec2, mock_s3
 
 from tubular.scripts.retirement_archive_and_cleanup import (
-    ERR_ARCHIVING,
-    ERR_BAD_CLI_PARAM,
-    ERR_BAD_CONFIG,
-    ERR_DELETING,
-    ERR_FETCHING,
-    ERR_NO_CONFIG,
-    ERR_SETUP_FAILED,
-    archive_and_cleanup
-)
-from tubular.tests.retirement_helpers import fake_config_file, get_fake_user_retirement
+    ERR_ARCHIVING, ERR_BAD_CLI_PARAM, ERR_BAD_CONFIG, ERR_DELETING,
+    ERR_FETCHING, ERR_NO_CONFIG, ERR_SETUP_FAILED, _upload_to_s3,
+    archive_and_cleanup)
+from tubular.tests.retirement_helpers import (fake_config_file,
+                                              get_fake_user_retirement)
+
+FAKE_BUCKET_NAME = "fake_test_bucket"
 
 
 def _call_script(cool_off_days=37, batch_size=None, dry_run=None, start_date=None, end_date=None):
@@ -77,16 +80,17 @@ def fake_learners_to_retire():
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token', return_value=('THIS_IS_A_JWT', None))
-@patch('tubular.scripts.retirement_archive_and_cleanup.S3Connection')
-@patch('tubular.scripts.retirement_archive_and_cleanup.Key')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
     get_learners_by_date_and_status=DEFAULT,
     bulk_cleanup_retirements=DEFAULT
 )
+@mock_s3
 def test_successful(*args, **kwargs):
-    mock_get_access_token = args[2]
-    mock_s3connection_class = args[1]
+    conn = boto3.resource('s3')
+    conn.create_bucket(Bucket=FAKE_BUCKET_NAME)
+
+    mock_get_access_token = args[0]
     mock_get_learners = kwargs['get_learners_by_date_and_status']
     mock_bulk_cleanup_retirements = kwargs['bulk_cleanup_retirements']
 
@@ -97,24 +101,26 @@ def test_successful(*args, **kwargs):
     # Called once to get the LMS token
     assert mock_get_access_token.call_count == 1
     mock_get_learners.assert_called_once()
-    mock_bulk_cleanup_retirements.assert_called_once_with(['test1', 'test2', 'test3'])
-    mock_s3connection_class.assert_called_once_with()
+    mock_bulk_cleanup_retirements.assert_called_once_with(
+        ['test1', 'test2', 'test3'])
 
     assert result.exit_code == 0
     assert 'Archive and cleanup complete' in result.output
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token', return_value=('THIS_IS_A_JWT', None))
-@patch('tubular.scripts.retirement_archive_and_cleanup.S3Connection')
-@patch('tubular.scripts.retirement_archive_and_cleanup.Key')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
     get_learners_by_date_and_status=DEFAULT,
     bulk_cleanup_retirements=DEFAULT
 )
+@mock_ec2
+@mock_s3
 def test_successful_with_batching(*args, **kwargs):
-    mock_get_access_token = args[2]
-    mock_s3connection_class = args[1]
+    conn = boto3.resource('s3')
+    conn.create_bucket(Bucket=FAKE_BUCKET_NAME)
+
+    mock_get_access_token = args[0]
     mock_get_learners = kwargs['get_learners_by_date_and_status']
     mock_bulk_cleanup_retirements = kwargs['bulk_cleanup_retirements']
 
@@ -127,7 +133,6 @@ def test_successful_with_batching(*args, **kwargs):
     mock_get_learners.assert_called_once()
     get_learner_calls = [call(['test1', 'test2']), call(['test3'])]
     mock_bulk_cleanup_retirements.assert_has_calls(get_learner_calls)
-    assert mock_s3connection_class.call_count == 2
 
     assert result.exit_code == 0
     assert 'Archive and cleanup complete for batch #1' in result.output
@@ -135,16 +140,14 @@ def test_successful_with_batching(*args, **kwargs):
 
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token', return_value=('THIS_IS_A_JWT', None))
-@patch('tubular.scripts.retirement_archive_and_cleanup.S3Connection')
-@patch('tubular.scripts.retirement_archive_and_cleanup.Key')
 @patch.multiple(
     'tubular.edx_api.LmsApi',
     get_learners_by_date_and_status=DEFAULT,
     bulk_cleanup_retirements=DEFAULT
 )
+@mock_s3
 def test_successful_dry_run(*args, **kwargs):
-    mock_get_access_token = args[2]
-    mock_s3connection_class = args[1]
+    mock_get_access_token = args[0]
     mock_get_learners = kwargs['get_learners_by_date_and_status']
     mock_bulk_cleanup_retirements = kwargs['bulk_cleanup_retirements']
 
@@ -224,7 +227,8 @@ def test_bad_s3_upload(*_):
 
 @patch('tubular.edx_api.BaseApiClient.get_access_token', return_value=('THIS_IS_A_JWT', None))
 def test_conflicting_dates(*_):
-    result = _call_script(start_date=datetime.datetime(2021, 10, 10), end_date=datetime.datetime(2018, 10, 10))
+    result = _call_script(start_date=datetime.datetime(
+        2021, 10, 10), end_date=datetime.datetime(2018, 10, 10))
     assert result.exit_code == ERR_BAD_CLI_PARAM
     assert 'Conflicting start and end dates passed on CLI' in result.output
 
@@ -241,3 +245,27 @@ def test_conflicting_cool_off_date(*_):
     )
     assert result.exit_code == ERR_BAD_CLI_PARAM
     assert 'End date cannot occur within the cool_off_days period' in result.output
+
+
+@mock_s3
+def test_s3_upload_data():
+    """
+    Test case to verify s3 upload and download.
+    """
+    s3 = boto3.client("s3")
+    s3.create_bucket(Bucket=FAKE_BUCKET_NAME)
+    config = {'s3_archive': {'bucket_name': FAKE_BUCKET_NAME}}
+    filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_data', 'uploading.txt')
+    key = 'raw/' + datetime.datetime.now().strftime('%Y/%m/') + filename
+
+    # first try dry run without uploading. Try to get object should raise error
+    with pytest.raises(ClientError) as exc_info:
+        _upload_to_s3(config, filename, True)
+        s3.get_object(Bucket=FAKE_BUCKET_NAME, Key=key)
+        assert exc_info.value.response['Error']['Code'] == 'NoSuchKey'
+
+    # upload a file, download and compare its content.
+    _upload_to_s3(config, filename, False)
+    resp = s3.get_object(Bucket=FAKE_BUCKET_NAME, Key=key)
+    data = resp["Body"].read()
+    assert data.decode() == "Upload this file on s3 in tests."

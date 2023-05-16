@@ -56,7 +56,7 @@ def get_all_autoscale_groups(names=None):
     Arguments:
         names (list) - A list of ASG names as strings
     Returns:
-        List of :class:`boto.ec2.autoscale.group.AutoScalingGroup` instances.
+        List of :class:`boto3 AutoScalingGroup` instances.
     """
     autoscale_client = boto3.client('autoscaling')
     asg_paginator = autoscale_client.get_paginator('describe_auto_scaling_groups')
@@ -84,7 +84,7 @@ def get_all_load_balancers(names=None):
         names (list): A list of ELB names as strings
 
     Returns:
-        a list of :class:`boto.ec2.elb.loadbalancer.LoadBalancer`
+        a list of :class:`boto3 LoadBalancer`
     """
     client = boto3.client('elb')
     paginator = client.get_paginator('describe_load_balancers')
@@ -109,10 +109,10 @@ def _instance_elbs(instance_id, elbs):
     Given an EC2 instance and ELBs, return the ELB(s) in which it is active.
 
     Arguments:
-        instance_id (:obj:`boto.ec2.instance.Reservation`): Instance used to find out which ELB it is active in.
-        elbs (:obj:`list` of :obj:`boto.ec2.elb.loadbalancer.LoadBalancer`): List of ELBs to us in checking.
+        instance_id (:obj:`boto3.ec2.instance.Reservation`): Instance used to find out which ELB it is active in.
+        elbs (:obj:`list` of :obj:`boto3.ec2.elb.loadbalancer.LoadBalancer`): List of ELBs to us in checking.
     Returns:
-        :obj:`list` of :obj:`boto.ec2.elb.loadbalancer.LoadBalancer`:
+        :obj:`list` of :obj:`boto3.ec2.elb.loadbalancer.LoadBalancer`:
                 One or more ELBs used by the passed-in instance -or- None.
     """
     instance_elbs = []
@@ -144,7 +144,7 @@ def active_ami_for_edp(env, dep, play):
     """
     LOG.info("Looking up AMI for {}-{}-{}...".format(env, dep, play))
     edp = EDP(env, dep, play)
-    #ec2_conn = boto.connect_ec2()
+
     ec2_client = boto3.client('ec2')
     asg_client = boto3.client('autoscaling')
 
@@ -419,7 +419,7 @@ def get_asgs_pending_delete():
     are pending delete as possible even if an error occurs during the process.
 
     Returns:
-        List(<boto.ec2.autoscale.group.AutoScalingGroup>)
+        List(<boto3 AutoScalingGroup>)
     """
     current_datetime = datetime.utcnow()
 
