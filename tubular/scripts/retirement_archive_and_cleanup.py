@@ -4,33 +4,29 @@ Command-line script to bulk archive and cleanup retired learners from LMS
 """
 
 
-from functools import partial
-from os import path
 import datetime
 import gzip
 import json
 import logging
 import sys
 import time
+from functools import partial
+from os import path
 
 import backoff
+import boto3
 import click
-from boto.s3.connection import S3Connection
-from boto.s3.key import Key
-from boto.exception import BotoClientError, BotoServerError
+from botocore.exceptions import BotoCoreError, ClientError
 from six import text_type
+
+from tubular.scripts.helpers import (
+    _config_or_exit, _fail, _fail_exception, _log, _setup_lms_api_or_exit
+)
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 # pylint: disable=wrong-import-position
-from tubular.scripts.helpers import (
-    _config_or_exit,
-    _fail,
-    _fail_exception,
-    _log,
-    _setup_lms_api_or_exit
-)
 
 
 SCRIPT_SHORTNAME = 'Archive and Cleanup'
@@ -101,8 +97,8 @@ def _on_s3_backoff(details):
 @backoff.on_exception(
     backoff.expo,
     (
-        BotoClientError,
-        BotoServerError
+        ClientError,
+        BotoCoreError
     ),
     on_backoff=lambda details: _on_s3_backoff(details),  # pylint: disable=unnecessary-lambda,
     max_time=120,  # 2 minutes
@@ -112,18 +108,17 @@ def _upload_to_s3(config, filename, dry_run=False):
     Upload the archive file to S3
     """
     try:
-        s3_connection = S3Connection()
-
         datestr = datetime.datetime.now().strftime('%Y/%m/')
-
-        bucket = s3_connection.get_bucket(config['s3_archive']['bucket_name'])
+        s3 = boto3.resource('s3')
+        bucket_name = config['s3_archive']['bucket_name']
         # Dry runs of this script should only generate the retirement archive file, not push it to s3.
-        key = Key(bucket, 'raw/' + datestr + filename)
+        bucket = s3.Bucket(bucket_name)
+        key = 'raw/' + datestr + filename
         if dry_run:
             LOG('Dry run. Skipping the step to upload data to {}'.format(key))
             return
         else:
-            key.set_contents_from_filename(filename)
+            bucket.upload_file(filename, key)
             LOG('Successfully uploaded retirement data to {}'.format(key))
     except Exception as exc:
         LOG(text_type(exc))
