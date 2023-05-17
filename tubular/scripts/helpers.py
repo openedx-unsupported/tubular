@@ -114,7 +114,7 @@ def _config_with_drive_or_exit(fail_func, config_fail_code, google_fail_code, co
         # Force the partner names into NFKC here and when we get the folders to ensure
         # they are using the same characters. Otherwise accented characters will not match.
         for org in config['org_partner_mapping']:
-            partner = config['org_partner_mapping'][org]
+            config['org_partner_mapping'][org]
             config['org_partner_mapping'][org] = [unicodedata.normalize('NFKC', text_type(partner)) for partner in config['org_partner_mapping'][org]]
     except Exception as exc:  # pylint: disable=broad-except
         fail_func(config_fail_code, 'Failed to read config file {}'.format(config_file), exc)
@@ -136,7 +136,7 @@ def _setup_lms_api_or_exit(fail_func, fail_code, config):
     Performs setup of EdxRestClientApi for LMS and returns the validated, sorted list of users to report on.
     """
     try:
-        lms_base_url = environ.get('TUBULAR_LMS_HOST',config.get('base_urls').get('lms'))
+        lms_base_url = environ.get('TUBULAR_LMS_HOST',config.get('base_urls',{}).get('lms'))
         client_id = config['client_id']
         client_secret = config['client_secret']
 
