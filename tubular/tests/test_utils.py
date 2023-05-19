@@ -26,6 +26,7 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         {
             'Key': k,
             'Value': v,
+            "PropagateAtLaunch": True,
             'ResourceType': 'auto-scaling-group',
             'ResourceId': asg_name
         } for k, v in six.iteritems(tags)
@@ -40,11 +41,17 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
     subnet1 = ec2_client.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.0.0/28', AvailabilityZone='us-east-1c')
     subnet2 = ec2_client.create_subnet(VpcId=vpc['Vpc']['VpcId'], CidrBlock='10.0.0.16/28', AvailabilityZone='us-east-1b')
     autoscale = boto3.client("autoscaling")
+    
+    security_group1 = ec2_client.create_security_group(
+        GroupName=asg_name, Description=f"{asg_name}-desc details."
+    )
 
     autoscale.create_launch_configuration(
         LaunchConfigurationName="tester",
         ImageId=ami_id,
         InstanceType="t2.medium",
+        SecurityGroups=[security_group1['GroupId']]
+
     )
     launch_config = autoscale.describe_launch_configurations()["LaunchConfigurations"][0]
     autoscale.create_auto_scaling_group(
@@ -60,18 +67,31 @@ def create_asg_with_tags(asg_name, tags, ami_id="ami-abcd1234", elbs=None):
         PlacementGroup="test_placement",
         TerminationPolicies=["OldestInstance", "NewestInstance"],
         VPCZoneIdentifier='{0},{1}'.format(subnet1['Subnet']['SubnetId'], subnet2['Subnet']['SubnetId']),
+        Tags=tag_list,
+        LoadBalancerNames=elbs,
     )
-
-    # Each ASG tag that has 'propagate_at_launch' set to True is *supposed* to be set on the instances.
-    # However, it seems that moto (as of 0.4.30) does not properly set the tags on the instances created by the ASG.
-    # So set the tags on the ASG instances manually instead.
-    response = autoscale.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
-    # assert response['AutoScalingGroups'][0]['LaunchConfigurationName'] == launch_config_name
-    assert response["AutoScalingGroups"][0]["MinSize"] == 2
-    assert response["AutoScalingGroups"][0]["MaxSize"] == 3
 
     autoscale.create_or_update_tags(
         Tags=tag_list
+    )
+
+    ec2_client.authorize_security_group_ingress(
+        GroupId=security_group1['GroupId'],
+        IpProtocol='tcp',
+        FromPort=80,
+        ToPort=80,
+        CidrIp='10.0.0.0/24'
+    )
+
+    # fill the rules up the limit
+    permissions = [
+        {
+            "IpProtocol": "-1",
+            "IpRanges": [{"CidrIp": f"{i}.0.0.0/0"} for i in range(10 - 1)],
+        }
+    ]
+    ec2_client.authorize_security_group_ingress(
+        GroupId=security_group1['GroupId'], IpPermissions=permissions
     )
 
 
@@ -95,7 +115,7 @@ def create_elb(elb_name):
         }
     ]
 
-    load_balancer = boto_elb.create_load_balancer(
+    boto_elb.create_load_balancer(
         LoadBalancerName=elb_name,
         AvailabilityZones=zones,
         Listeners=ports
@@ -105,14 +125,16 @@ def create_elb(elb_name):
     boto_elb.register_instances_with_load_balancer(
         LoadBalancerName=elb_name,
         Instances=[
-            {'InstanceId': instance_id} for instance_id in instance_ids
+            {
+                'InstanceId': instance_id
+            }
+            for instance_id in instance_ids
         ]
     )
 
-    return boto_elb.describe_instance_health(
-        LoadBalancerName=elb_name,
-        Instances=[{'InstanceId': instance_id} for instance_id in instance_ids]
-    )["InstanceStates"]
+    response = boto_elb.describe_instance_health(LoadBalancerName=elb_name)
+    assert sorted([ins['InstanceId'] for ins in response['InstanceStates']]) == sorted(instance_ids)
+    return elb_name
 
 
 def clone_elb_instances_with_state(elb, state):

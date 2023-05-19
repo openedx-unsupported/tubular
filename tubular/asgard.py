@@ -11,7 +11,7 @@ from collections import defaultdict
 import backoff
 import requests
 import six
-from boto.exception import EC2ResponseError
+from botocore.exceptions import ClientError
 import tubular.ec2 as ec2
 
 from tubular.exception import (
@@ -569,8 +569,12 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True, wait_for_deletion=Tr
         LOG.warning(msg)
         try:
             ec2.remove_asg_deletion_tag(asg)
-        except EC2ResponseError as tagging_error:
-            LOG.warning("Failed to remove deletion tag from asg {}. Ignoring: {}".format(asg, tagging_error))
+        except ClientError as tagging_error:
+            LOG.warning(
+                "Failed to remove deletion tag from asg {}. Ignoring: {}".format(
+                    asg, tagging_error.response.get('Error', {}).get('Message')
+                )
+            )
         raise CannotDeleteActiveASG(msg)
 
     if fail_if_last and is_last_asg(asg):
@@ -578,8 +582,12 @@ def delete_asg(asg, fail_if_active=True, fail_if_last=True, wait_for_deletion=Tr
         LOG.warning(msg)
         try:
             ec2.remove_asg_deletion_tag(asg)
-        except EC2ResponseError as tagging_error:
-            LOG.warning("Failed to remove deletion tag from asg {}. Ignoring: {}".format(asg, tagging_error))
+        except ClientError as tagging_error:
+            LOG.warning(
+                "Failed to remove deletion tag from asg {}. Ignoring: {}".format(
+                    asg, tagging_error.response.get('Error', {}).get('Message')
+                )
+            )
         raise CannotDeleteLastASG(msg)
 
     payload = {"name": asg}
@@ -649,7 +657,8 @@ def rollback(current_clustered_asgs, rollback_to_clustered_asgs, ami_id=None):
     # First, ensure that the ASGs to which we'll rollback are not tagged for deletion.
     # Also, ensure that those same ASGs are not in the process of deletion.
     rollback_ready = True
-    asgs_tagged_for_deletion = [asg.name for asg in ec2.get_asgs_pending_delete()]
+
+    asgs_tagged_for_deletion = [asg['AutoScalingGroupName'] for asg in ec2.get_asgs_pending_delete()]
     for asgs in rollback_to_clustered_asgs.values():
         for asg in asgs:
             try:

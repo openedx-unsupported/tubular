@@ -259,7 +259,6 @@ def edp_for_ami(ami_id):
         MissingTagException: AMI is missing one or more of the expected tags.
     """
     tags = tags_for_ami(ami_id)
-    
     try:
         edp = EDP(tags['environment'], tags['deployment'], tags['play'])
     except (KeyError, IndexError) as key_err:
@@ -407,7 +406,8 @@ def remove_asg_deletion_tag(asg_name):
         for asg in asgs:
             for tag in asg['Tags']:
                 if tag['Key'] == ASG_DELETE_TAG_KEY:
-                    tag.delete()
+                    autoscale_client = boto3.client('autoscaling')
+                    autoscale_client.delete_tags(Tags=[tag])
 
 
 def get_asgs_pending_delete():

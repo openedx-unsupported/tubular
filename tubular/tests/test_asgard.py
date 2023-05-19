@@ -5,7 +5,7 @@ Tests of the code interacting with the Asgard API.
 import os
 import unittest
 import itertools
-import boto
+import boto3
 import mock
 import requests_mock
 
@@ -813,6 +813,7 @@ class TestAsgard(unittest.TestCase):
             asgard.ASG_DELETE_URL,
             json=post_callback
         )
+
         with mock.patch("tubular.ec2.remove_asg_deletion_tag"):
             self.assertRaises(CannotDeleteActiveASG, asgard.delete_asg, asg, True)
 
@@ -1014,22 +1015,30 @@ class TestAsgard(unittest.TestCase):
         Setup all the variables for an ASG deployment.
         """
         # Make the AMI
-        ec2 = boto.connect_ec2()
-        reservation = ec2.run_instances(random_ami_id())
-        instance_id = reservation.instances[0].id
-        ami_id = ec2.create_image(instance_id, "Existing AMI")
-        ami = ec2.get_all_images(ami_id)[0]
-        ami.add_tag("environment", "foo")
-        ami.add_tag("deployment", "bar")
-        ami.add_tag("play", "baz")
+        ec2_client = boto3.client('ec2')
+        response = ec2_client.run_instances(ImageId=random_ami_id(), MinCount=1, MaxCount=1)
+        instance_id = response['Instances'][0]['InstanceId']
+        ami_name = 'fake-ami-for-testing'
+        ami_description = 'This is a fake AMI created for testing purposes'
+        response = ec2_client.create_image(
+            InstanceId=instance_id, Name=ami_name,
+            Description=ami_description, NoReboot=True
+        )
+        ami_id = response['ImageId']
+        ec2_client.create_tags(
+            Resources=[ami_id], Tags=[
+                {'Key': 'environment', 'Value': 'foo'},
+                {'Key': 'deployment', 'Value': 'bar'},
+                {'Key': 'play', 'Value': 'baz'}
+            ]
+        )
 
-        # Make the current ASGs
-        # pylint: disable=attribute-defined-outside-init
         self.test_asg_tags = {
             "environment": "foo",
             "deployment": "bar",
             "play": "baz",
         }
+
 
         self.test_elb_name = "app_elb"
         create_elb(self.test_elb_name)
@@ -1553,7 +1562,6 @@ class TestAsgard(unittest.TestCase):
     @mock_autoscaling
     @mock_ec2
     @mock_elb
-    @mock.patch('boto.ec2.autoscale.AutoScaleConnection.delete_tags', lambda *args: None)
     def test_rollback_with_failure_and_asgs_tagged_for_deletion(self, req_mock):
         self._setup_rollback(req_mock)
 
@@ -1607,7 +1615,6 @@ class TestAsgard(unittest.TestCase):
     @mock_autoscaling
     @mock_ec2
     @mock_elb
-    @mock.patch('boto.ec2.autoscale.AutoScaleConnection.delete_tags', lambda *args: None)
     def test_rollback_asg_does_not_exist(self, req_mock):
         self._setup_rollback_deleted(req_mock)
 
