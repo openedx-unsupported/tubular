@@ -9,6 +9,7 @@ mock
 pylint
 pytest
 pycodestyle
+pytest-cov
 pytest-pycodestyle
 pytest-xdist
 pytest-pylint
