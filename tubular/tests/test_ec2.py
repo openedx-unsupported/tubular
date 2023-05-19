@@ -10,6 +10,8 @@ import boto3
 import botocore
 import ddt
 import mock
+from unittest.mock import MagicMock
+
 import six
 from boto3.exceptions import Boto3Error
 from botocore.stub import Stubber
@@ -293,12 +295,13 @@ class TestEC2(unittest.TestCase):
     @mock_ec2
     def test_wait_for_healthy_elbs_failure(self):
 
-        from unittest.mock import MagicMock
+        boto_elb = boto3.client('elb')
         elb_name = "unhealthy-lb"
-        load_balancer = create_elb(elb_name)
+        create_elb(elb_name)
         # Make one of the instances un-healthy.
+        load_balancer = boto_elb.describe_instance_health(LoadBalancerName=elb_name)
 
-        load_balancer[0]['State'] = "OutOfService"
+        load_balancer['InstanceStates'][0] = "OutOfService"
 
         elb_client_mock = MagicMock()
         elb_paginator_mock = MagicMock()
@@ -309,10 +312,6 @@ class TestEC2(unittest.TestCase):
 
         # Set up the expected response for the client
         elb_client_mock.get_paginator.return_value = elb_paginator_mock
-
-
-        # Replace the Boto3 client with the mock client
-        # boto3.client = MagicMock(return_value=load_balancer)
 
         # Call the function that uses the Boto3 client
         with unittest.mock.patch('boto3.client') as mock_client:
@@ -568,7 +567,7 @@ class TestEC2(unittest.TestCase):
     @ddt.unpack
     @mock_ec2
     def test_terminate_instances(self, instances, max_run_hours, skip_if_tag, tags, expected_count):
-        conn = boto3.client("ec2", region_name="us-east-1")
+        conn = boto3.client("ec2")
         instance_ids = []
         for requested_instance in instances:
             response = conn.run_instances(ImageId=requested_instance['ami_id'], MinCount=1, MaxCount=3)
@@ -584,7 +583,15 @@ class TestEC2(unittest.TestCase):
             ]
 
             for instance in response['Instances']:
-                conn.create_tags(Resources=[instance['InstanceId']], Tags=tag_list)
+                conn.create_tags(
+                    Resources=[instance['InstanceId']],
+                    Tags=[
+                        {
+                            'Key': k,
+                            'Value': v
+                        } for k, v in requested_instance['tags'].items()
+                    ]
+                )
 
         terminated_instances = ec2.terminate_instances(
             'us-east-1',
