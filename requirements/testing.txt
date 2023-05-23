@@ -69,15 +69,12 @@ lazy-object-proxy==1.9.0
 markupsafe==2.1.2
     # via
     #   jinja2
-    #   moto
     #   werkzeug
 mccabe==0.7.0
     # via pylint
 mock==5.0.2
     # via -r requirements/testing.in
-more-itertools==9.1.0
-    # via moto
-moto==4.1.9
+moto==4.1.10
     # via -r requirements/testing.in
 packaging==23.1
     # via pytest
@@ -107,7 +104,7 @@ pylint-celery==0.3
     # via edx-lint
 pylint-django==2.5.3
     # via edx-lint
-pylint-plugin-utils==0.8.1
+pylint-plugin-utils==0.8.2
     # via
     #   pylint-celery
     #   pylint-django
@@ -132,11 +129,9 @@ python-dateutil==2.8.2
     #   moto
 python-slugify==8.0.1
     # via code-annotations
-pytz==2023.3
-    # via moto
 pyyaml==6.0
     # via code-annotations
-requests==2.30.0
+requests==2.31.0
     # via
     #   moto
     #   requests-mock
@@ -168,11 +163,11 @@ tomli==2.0.1
     #   pytest
 tomlkit==0.11.8
     # via pylint
-typing-extensions==4.5.0
+typing-extensions==4.6.0
     # via
     #   astroid
     #   pylint
-urllib3==1.26.15
+urllib3==1.26.16
     # via
     #   botocore
     #   requests
