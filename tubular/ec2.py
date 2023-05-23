@@ -170,7 +170,6 @@ def active_ami_for_edp(env, dep, play):
     amis = set()
     instances_by_id = {}
     ec2 = boto3.resource('ec2')
-
     instances = instances_for_ami(ec2, edp_filter_env, edp_filter_deployment, edp_filter_play)
     #LOG.info("{} reservations found for EDP {}-{}-{}".format(len(instances), env, dep, play))
     for instance in instances:
