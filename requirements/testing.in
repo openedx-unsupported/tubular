@@ -4,7 +4,7 @@ astroid
 ddt
 edx_lint
 httpretty
-moto==2.2.11
+moto
 mock
 pylint
 pytest
