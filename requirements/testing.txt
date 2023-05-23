@@ -107,7 +107,7 @@ pylint-celery==0.3
     # via edx-lint
 pylint-django==2.5.3
     # via edx-lint
-pylint-plugin-utils==0.8.1
+pylint-plugin-utils==0.8.2
     # via
     #   pylint-celery
     #   pylint-django
@@ -136,7 +136,7 @@ pytz==2023.3
     # via moto
 pyyaml==6.0
     # via code-annotations
-requests==2.30.0
+requests==2.31.0
     # via
     #   moto
     #   requests-mock
@@ -168,11 +168,11 @@ tomli==2.0.1
     #   pytest
 tomlkit==0.11.8
     # via pylint
-typing-extensions==4.5.0
+typing-extensions==4.6.0
     # via
     #   astroid
     #   pylint
-urllib3==1.26.15
+urllib3==1.26.16
     # via
     #   botocore
     #   requests

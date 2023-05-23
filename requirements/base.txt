@@ -4,15 +4,13 @@
 #
 #    make upgrade
 #
-asgiref==3.6.0
+asgiref==3.7.0
     # via django
 attrs==23.1.0
     # via
     #   jsonlines
     #   zeep
 backoff==1.5.0
-    # via -r requirements/base.in
-boto==2.49.0
     # via -r requirements/base.in
 boto3==1.20.22
     # via
@@ -159,7 +157,7 @@ pyyaml==5.4
     #   -r requirements/base.in
     #   cloudflare
     #   kubernetes
-requests==2.30.0
+requests==2.31.0
     # via
     #   -r requirements/base.in
     #   cloudflare
@@ -215,11 +213,13 @@ stevedore==1.32.0
     # via
     #   edx-django-utils
     #   edx-opaque-keys
+typing-extensions==4.6.0
+    # via asgiref
 unicodecsv==0.14.1
     # via -r requirements/base.in
 uritemplate==3.0.1
     # via google-api-python-client
-urllib3==1.26.15
+urllib3==1.26.16
     # via
     #   botocore
     #   google-auth
@@ -227,7 +227,7 @@ urllib3==1.26.15
     #   requests
 validators==0.20.0
     # via -r requirements/base.in
-websocket-client==1.5.1
+websocket-client==1.5.2
     # via kubernetes
 wrapt==1.11.2
     # via

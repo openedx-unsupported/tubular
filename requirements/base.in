@@ -1,7 +1,6 @@
 -c constraints.txt
 
 backoff==1.5.0
-boto
 boto3
 click-log
 click>=7.0.0
