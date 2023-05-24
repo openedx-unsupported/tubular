@@ -5,7 +5,6 @@ Tests of the code interacting with the boto EC2 API.
 import datetime
 import unittest
 
-import boto
 import boto3
 import botocore
 import ddt
