@@ -18,6 +18,7 @@ jobs:
       team_reviewers: "site-reliability-engineering"
       email_address: sre@edx.org
       send_success_notification: false
+      python-version: "3.10"
     secrets:
       requirements_bot_github_token: ${{ secrets.REQUIREMENTS_BOT_GITHUB_TOKEN }}
       requirements_bot_github_email: ${{ secrets.REQUIREMENTS_BOT_GITHUB_EMAIL }}
