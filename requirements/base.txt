@@ -146,7 +146,7 @@ python-dateutil==2.8.2
     #   botocore
     #   freezegun
     #   kubernetes
-pytz==2016.10
+pytz==2023.3
     # via
     #   -r requirements/base.in
     #   django
