@@ -1,6 +1,7 @@
 -c constraints.txt
 
 astroid
+bson
 ddt
 edx_lint
 httpretty

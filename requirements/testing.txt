@@ -19,6 +19,8 @@ botocore==1.23.54
     #   boto3
     #   moto
     #   s3transfer
+bson==0.5.10
+    # via -r requirements/testing.in
 certifi==2023.5.7
     # via requests
 cffi==1.15.1
@@ -126,6 +128,7 @@ pytest-xdist==3.3.1
 python-dateutil==2.8.2
     # via
     #   botocore
+    #   bson
     #   moto
 python-slugify==8.0.1
     # via code-annotations
@@ -147,6 +150,7 @@ s3transfer==0.5.2
     # via boto3
 six==1.16.0
     # via
+    #   bson
     #   edx-lint
     #   python-dateutil
     #   requests-mock
