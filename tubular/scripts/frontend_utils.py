@@ -56,10 +56,10 @@ class FrontendBuilder:
 
     def install_requirements(self):
         """ Install requirements for app to build """
-        proc = subprocess.Popen(['npm ci'], cwd=self.app_name, shell=True)
+        proc = subprocess.Popen(['npm install'], cwd=self.app_name, shell=True)
         return_code = proc.wait()
         if return_code != 0:
-            self.FAIL(1, 'Could not run `npm ci` for app {}.'.format(self.app_name))
+            self.FAIL(1, 'Could not run `npm install` for app {}.'.format(self.app_name))
 
         self.install_requirements_npm_aliases()
 
