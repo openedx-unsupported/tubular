@@ -56,7 +56,8 @@ def terminate_instances(region,
     """
     try:
         terminated_instances = ec2.terminate_instances(region,
-                                                       {'key-name': key_name_filter}, max_run_hours, skip_if_tag)
+                                                       {'Name': 'tag:Name', 'Values': [key_name_filter]}, max_run_hours,
+                                                       skip_if_tag)
         logging.info("terminated instances: {}".format(terminated_instances))
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
