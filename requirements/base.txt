@@ -4,7 +4,7 @@
 #
 #    make upgrade
 #
-asgiref==3.7.1
+asgiref==3.7.2
     # via django
 attrs==23.1.0
     # via
@@ -21,7 +21,7 @@ botocore==1.23.54
     #   -c requirements/constraints.txt
     #   boto3
     #   s3transfer
-cachetools==5.3.0
+cachetools==5.3.1
     # via google-auth
 certifi==2023.5.7
     # via
@@ -42,13 +42,13 @@ click-log==0.4.0
     # via -r requirements/base.in
 cloudflare==2.1.0
     # via -r requirements/base.in
-cryptography==40.0.2
+cryptography==41.0.1
     # via
     #   pyjwt
     #   simple-salesforce
 decorator==5.1.1
     # via validators
-deprecated==1.2.13
+deprecated==1.2.14
     # via pygithub
 django==3.2.19
     # via
@@ -61,7 +61,7 @@ django-waffle==3.0.0
     # via edx-django-utils
 easydict==1.10
     # via yagocd
-edx-django-utils==5.4.0
+edx-django-utils==5.5.0
     # via edx-rest-api-client
 edx-opaque-keys==0.4.0
     # via -r requirements/base.in
@@ -79,7 +79,7 @@ gitpython==3.1.18
     # via -r requirements/base.in
 google-api-python-client==1.7.3
     # via -r requirements/base.in
-google-auth==2.18.1
+google-auth==2.19.1
     # via
     #   google-api-python-client
     #   google-auth-httplib2
@@ -213,7 +213,7 @@ stevedore==1.32.0
     # via
     #   edx-django-utils
     #   edx-opaque-keys
-typing-extensions==4.6.1
+typing-extensions==4.6.3
     # via asgiref
 unicodecsv==0.14.1
     # via -r requirements/base.in
