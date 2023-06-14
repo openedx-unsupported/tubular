@@ -27,7 +27,7 @@ from .git_repo import LocalGitAPI
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
-PR_PREFIX = '**EdX Release Notice**: '
+PR_PREFIX = '**2U Release Notice**: '
 PR_MESSAGE_FORMAT = '{prefix} {message} {extra_text}'
 
 PR_ON_STAGE = 'in preparation for a release to production.'
@@ -47,19 +47,19 @@ class MessageType(enum.Enum):
     """
     Enum of the standard messages to add to PRs
     """
-    stage = 'This PR has been deployed to the staging environment'
-    stage_failed = 'This PR failed to deploy to the staging environment.'
-    stage_rollback = 'This PR has been rolled back from the staging environment.'
-    prod = 'This PR has been deployed to the production environment.'
-    prod_failed = 'This PR failed to deploy to the production environment.'
-    prod_rollback = 'This PR has been rolled back from the production environment.'
-    loadtest = 'This PR has been deployed to the loadtest environment.'
-    loadtest_failed = 'This PR failed to deploy to the loadtest environment.'
-    loadtest_rollback = 'This PR has been rolled back from the loadtest environment.'
+    stage = 'This PR has been deployed to the edX staging environment'
+    stage_failed = 'This PR failed to deploy to the edX staging environment.'
+    stage_rollback = 'This PR has been rolled back from the edX staging environment.'
+    prod = 'This PR has been deployed to the edX production environment.'
+    prod_failed = 'This PR failed to deploy to the edX production environment.'
+    prod_rollback = 'This PR has been rolled back from the edX production environment.'
+    loadtest = 'This PR has been deployed to the edX loadtest environment.'
+    loadtest_failed = 'This PR failed to deploy to the edX loadtest environment.'
+    loadtest_rollback = 'This PR has been rolled back from the edX loadtest environment.'
     broke_vagrant = 'This PR may have broken Vagrant Devstack CI.'
-    e2e_failed = "This PR may have caused e2e tests to fail on Stage. " \
-                 "If you're a member of the edX org, please visit #warroom on Slack to " \
-                 "help diagnose the cause of these failures. Otherwise, it is the reviewer's responsibility."
+    e2e_failed = "This PR may have caused e2e tests to fail on the edX staging environment. " \
+                 "If you merged this PR, please visit #cc-edx-platform in the Open edX Slack " \
+                 "(or #openedx-cc-edx-platform in the 2U Slack) to help diagnose the cause of these failures."
     jenkins = 'The job triggered by this PR has completed successfully'
     jenkins_failed = 'The job triggered by this PR has failed'
 
