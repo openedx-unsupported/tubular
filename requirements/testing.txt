@@ -80,7 +80,7 @@ packaging==23.1
     # via pytest
 pbr==5.11.1
     # via stevedore
-platformdirs==3.5.3
+platformdirs==3.6.0
     # via pylint
 pluggy==1.0.0
     # via pytest
