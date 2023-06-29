@@ -2,12 +2,13 @@
 Command-line script to submit an alert to Opsgenie Api.
 """
 
-import sys
 import logging
+import sys
 import traceback
+
 import click
 
-from tubular.opsgenie_api import OpsGenieAPI
+import tubular.opsgenie_api as opsgenie_api
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -33,18 +34,31 @@ LOG = logging.getLogger(__name__)
     default=None,
     help="Who will be paged for this alert",
 )
-def alert_opsgenie(auth_token, message, description, responders):
+@click.option(
+    '--alias',
+    default=None,
+    help="Alias of the OpsGenie alert"
+)
+def alert_opsgenie(auth_token, message, description, responders, alias):
     """
-    Sends an alert to an opsgenie team
+    Create an OpsGenie alert
+
+    Arguments:
+        auth_token: API token
+        message: The alert message
+        description: The alert description
+        responders: The team responsible for the alert
+        alias: The alert alias
     """
     try:
         logging.info("Creating alert on Opsgenie")
-        opsgenie = OpsGenieAPI(auth_token)
-        opsgenie.alert_opsgenie(message, description, responders)
+        opsgenie = opsgenie_api.OpsGenieAPI(auth_token)
+        opsgenie.alert_opsgenie(message, description, responders, alias=alias)
     except Exception as err:  # pylint: disable=broad-except
         traceback.print_exc()
         click.secho('{}'.format(err), fg='red')
         sys.exit(1)
+
 
 if __name__ == "__main__":
     alert_opsgenie()
