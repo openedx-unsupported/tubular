@@ -27,6 +27,8 @@ BULK_REGULATE_STATUS_URL = 'v1beta/workspaces/{}/regulations/{}'
 # https://reference.segmentapis.com/?version=latest#57a69434-76cc-43cc-a547-98c319182247
 MAXIMUM_USERS_IN_REGULATION_REQUEST = 5000
 
+POST_EVENT_URL = 'v1/track'
+
 LOG = logging.getLogger(__name__)
 
 
@@ -276,5 +278,14 @@ class SegmentApi:
         :param bulk_delete_id: ID returned from a previously-submitted bulk delete request.
         """
         resp = self._call_segment_get(BULK_REGULATE_STATUS_URL.format(self.workspace_slug, bulk_delete_id))
+        resp_json = resp.json()
+        LOG.info(text_type(resp_json))
+
+    def send_event_to_segment(self, eventName, properties):
+        """
+        Sends an event to segment.
+        """
+        params = { event: eventName, properties: properties }
+        resp = self._call_segment_post(POST_EVENT_URL, params)
         resp_json = resp.json()
         LOG.info(text_type(resp_json))
