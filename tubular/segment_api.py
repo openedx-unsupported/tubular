@@ -280,7 +280,7 @@ class SegmentApi:
         resp_json = resp.json()
         LOG.info(text_type(resp_json))
 
-    def send_event_to_segment(self, eventName, properties = {}):
+    def send_event_to_segment(self, eventName, properties):
         """
         Sends an event to segment.
         """

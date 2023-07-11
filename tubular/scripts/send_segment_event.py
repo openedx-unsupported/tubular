@@ -4,8 +4,8 @@ Script to submit an event to Segment.
 
 from os import path
 import sys
-import click
 import base64
+import click
 
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -38,7 +38,11 @@ from tubular.segment_api import SegmentApi  # pylint: disable=wrong-import-posit
     required=False,
     help="Properties dictionary for the event to send to Segment",
 )
+
 def send_segment_event(authToken, eventName, properties):
+    """
+    Sends an event to segmment.
+    """
     baseUrl = 'https://api.segment.io/'
     workSpaceSlug = 'edx'
     encodedAuthToken = base64.b64encode("{}:".format(authToken))
