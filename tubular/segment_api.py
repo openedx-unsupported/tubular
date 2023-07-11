@@ -268,7 +268,6 @@ class SegmentApi:
             }
 
             self._send_regulation_request(params)
-
             curr_idx += chunk_size
 
     def get_bulk_delete_status(self, bulk_delete_id):
@@ -281,11 +280,11 @@ class SegmentApi:
         resp_json = resp.json()
         LOG.info(text_type(resp_json))
 
-    def send_event_to_segment(self, eventName, properties):
+    def send_event_to_segment(self, eventName, properties = {}):
         """
         Sends an event to segment.
         """
-        params = { event: eventName, properties: properties }
+        params = { 'event': eventName, 'properties': properties, 'userId': 'edx_tubular_script' }
         resp = self._call_segment_post(POST_EVENT_URL, params)
         resp_json = resp.json()
         LOG.info(text_type(resp_json))
