@@ -14,16 +14,6 @@ from tubular.segment_api import SegmentApi  # pylint: disable=wrong-import-posit
 
 @click.command("send_segment_event")
 @click.option(
-    '--baseUrl',
-    required=True,
-    help="Base url for the segment API",
-)
-@click.option(
-    '--workplaceSlug',
-    required=True,
-    help="Workplace slug for Segment destination",
-)
-@click.option(
     '--authToken',
     required=True,
     help="Segment write token",
