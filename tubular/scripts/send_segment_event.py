@@ -23,11 +23,6 @@ from tubular.segment_api import SegmentApi  # pylint: disable=wrong-import-posit
     required=True,
     help="Name of the event to send to Segment",
 )
-@click.option(
-    '--properties',
-    required=False,
-    help="Properties dictionary for the event to send to Segment",
-)
 
 def send_segment_event(authToken, eventName, properties):
     """
@@ -38,7 +33,7 @@ def send_segment_event(authToken, eventName, properties):
     encodedAuthToken = base64.b64encode("{}:".format(authToken))
     segment_api = SegmentApi(baseUrl,
     encodedAuthToken, workSpaceSlug)
-    segment_api.send_event_to_segment(eventName, properties)
+    segment_api.send_event_to_segment(eventName)
     # An exit code of 0 means success and non-zero means failure.
     sys.exit(0)
 
