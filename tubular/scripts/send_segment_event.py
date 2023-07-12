@@ -24,7 +24,7 @@ from tubular.segment_api import SegmentApi  # pylint: disable=wrong-import-posit
     help="Name of the event to send to Segment",
 )
 
-def send_segment_event(authToken, eventName, properties):
+def send_segment_event(authToken, eventName):
     """
     Sends an event to segmment.
     """
