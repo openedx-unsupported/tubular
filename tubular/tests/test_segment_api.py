@@ -52,6 +52,24 @@ class FakeErrorResponse:
     def raise_for_status(self):
         raise requests.exceptions.HTTPError("", response=self)
 
+class Fake400Response:
+    """
+    Fakes an error response for the segment track call, which returns 400 if a request is poorly formatted. Otherwise it returns 200 which does not guarantee that segment actually tracked your event.
+    """
+    status_code = 400
+    text="{'error': 'Bad request'}"
+
+    def json(self):
+        """
+        Returns fake Segment retirement response error in the correct format
+        """
+        return json.loads(self.text)
+
+    def raise_for_status(self):
+        raise requests.exceptions.HTTPError("", response=self)
+
+
+
 
 @pytest.fixture
 def setup_regulation_api():
@@ -168,7 +186,10 @@ def test_bulk_unsuppress_error(setup_regulation_api, caplog):  # pylint: disable
     assert "Unsuppress" in caplog.text
     assert "Test error message" in caplog.text
 
-def test_send_event_to_segment_success(setup_regulation_api):
+def test_send_event_to_segment_success(setup_regulation_api): # pylint: disable=redefined-outer-name
+    """
+    Test simple success case
+    """
     mock_post, segment = setup_regulation_api
     mock_post.return_value = FakeResponse()
 
@@ -178,11 +199,24 @@ def test_send_event_to_segment_success(setup_regulation_api):
 
     fake_json = {
         "event": "test.event",
-        "userId": "edx-tubular-script"
+        "userId": "edx_tubular_script"
     }
 
     url = TEST_SEGMENT_CONFIG['fake_base_url'] + POST_EVENT_URL
     mock_post.assert_any_call(
         url, json=fake_json, headers=TEST_SEGMENT_CONFIG['headers']
     )
+
+def test_send_event_to_segment_error(setup_regulation_api): # pylint: disable=redefined-outer-name
+    """
+    Test simple error case
+    """
+    mock_post, segment = setup_regulation_api
+    mock_post.return_value = FakeErrorResponse()
+
+    with pytest.raises(Exception):
+        segment.send_event_to_segment('test.event')
+
+    assert mock_call.call_count = 1
+    assert "400 Bad Request" in caplog.text
 
