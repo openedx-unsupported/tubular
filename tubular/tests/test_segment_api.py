@@ -212,11 +212,11 @@ def test_send_event_to_segment_error(setup_regulation_api, caplog): # pylint: di
     Test simple error case
     """
     mock_post, segment = setup_regulation_api
-    mock_post.return_value = FakeErrorResponse()
+    mock_post.return_value = Fake400Response()
 
     with pytest.raises(Exception):
         segment.send_event_to_segment('test.event')
 
     assert mock_post.call_count == 4
-    assert "Bad request" in caplog.text
+    assert "400 Bad request" in caplog.text
 
