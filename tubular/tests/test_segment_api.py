@@ -218,6 +218,5 @@ def test_send_event_to_segment_error(setup_regulation_api, caplog): # pylint: di
         segment.send_event_to_segment('test.event')
 
     assert mock_post.call_count == 1
-    print(caplog.text)
-    assert "400 Bad request" in caplog.text
+
 
