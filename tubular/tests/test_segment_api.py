@@ -8,7 +8,7 @@ import pytest
 import requests
 from six import text_type
 
-from tubular.segment_api import SegmentApi, BULK_REGULATE_URL
+from tubular.segment_api import SegmentApi, BULK_REGULATE_URL, POST_EVENT_URL
 from tubular.tests.retirement_helpers import get_fake_user_retirement
 
 FAKE_AUTH_TOKEN = 'FakeToken'
@@ -167,3 +167,22 @@ def test_bulk_unsuppress_error(setup_regulation_api, caplog):  # pylint: disable
     assert "ecommerce-90" not in caplog.text
     assert "Unsuppress" in caplog.text
     assert "Test error message" in caplog.text
+
+def test_send_event_to_segment_success(setup_regulation_api):
+    mock_post, segment = setup_regulation_api
+    mock_post.return_value = FakeResponse()
+
+    segment.send_event_to_segment('test.event')
+
+    assert mock_post.call_count == 1
+
+    fake_json = {
+        "event": "test.event",
+        "userId": "edx-tubular-script"
+    }
+
+    url = TEST_SEGMENT_CONFIG['fake_base_url'] + POST_EVENT_URL
+    mock_post.assert_any_call(
+        url, json=fake_json, headers=TEST_SEGMENT_CONFIG['headers']
+    )
+
