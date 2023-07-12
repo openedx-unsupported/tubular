@@ -217,6 +217,6 @@ def test_send_event_to_segment_error(setup_regulation_api): # pylint: disable=re
     with pytest.raises(Exception):
         segment.send_event_to_segment('test.event')
 
-    assert mock_post.call_count = 1
+    assert mock_post.call_count == 1
     assert "400 Bad Request" in caplog.text
 
