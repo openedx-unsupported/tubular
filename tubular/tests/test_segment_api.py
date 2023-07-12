@@ -207,7 +207,7 @@ def test_send_event_to_segment_success(setup_regulation_api): # pylint: disable=
         url, json=fake_json, headers=TEST_SEGMENT_CONFIG['headers']
     )
 
-def test_send_event_to_segment_error(setup_regulation_api): # pylint: disable=redefined-outer-name
+def test_send_event_to_segment_error(setup_regulation_api, caplog): # pylint: disable=redefined-outer-name
     """
     Test simple error case
     """
