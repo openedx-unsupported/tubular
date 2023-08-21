@@ -95,7 +95,7 @@ def create_private_to_public_pr(private_org,
         # Add the public repo as a remote for the private git working tree.
         local_repo.add_remote('public', public_github_url)
         # Create a new public branch with unique name.
-        new_branch_name = 'private_to_public_{}'.format(local_repo.get_head_sha()[:7])
+        new_branch_name = 'private_to_public_{}'.format(local_repo.get_head_sha()[:12])
         # Push the private branch into the public repo.
         LOG.info(
             'Pushing private branch %s to public repo %s as branch %s.',

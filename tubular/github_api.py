@@ -664,8 +664,17 @@ class GitHubAPI:
         branch = self.github_repo.get_branch(branch)
         return self.github_repo.get_commits(branch.commit.sha)
 
-    @backoff.on_exception(backoff.expo, (RateLimitExceededException, socket.timeout), max_tries=7,
-                          jitter=backoff.random_jitter, on_backoff=_backoff_logger)
+    @backoff.on_exception(
+        backoff.expo,
+        (
+            RateLimitExceededException, socket.timeout,
+            # It seems we can sometimes try to delete too
+            # quickly after having created a branch:
+            # https://github.com/openedx/tubular/issues/687
+            UnknownObjectException,
+        ),
+        max_tries=7, jitter=backoff.random_jitter, on_backoff=_backoff_logger,
+    )
     def delete_branch(self, branch_name):
         """
         Call GitHub's delete ref (branch) API
