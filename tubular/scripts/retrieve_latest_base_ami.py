@@ -71,18 +71,15 @@ def retrieve_latest_base_ami(environment, deployment, play, override, ubuntu_ver
         else:
             url = ""
             click.secho('Ubuntu version requested: {}'.format(ubuntu_version), fg='green')
-            if ubuntu_version == "16.04":
-                url = "https://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
-                click.secho('Xenial.\n: {}'.format(url), fg='green')
+            if ubuntu_version == "20.04":
+                url = "https://cloud-images.ubuntu.com/query/focal/server/released.current.txt"
+                click.secho('Focal.\n: {}'.format(url), fg='green')
             elif ubuntu_version == "18.04":
                 url = "https://cloud-images.ubuntu.com/query/bionic/server/released.current.txt"
                 click.secho('Bionic.\n: {}'.format(url), fg='green')
-            elif ubuntu_version == "20.04":
-                url = "https://cloud-images.ubuntu.com/query/focal/server/released.current.txt"
-                click.secho('Focal.\n: {}'.format(url), fg='green')
             if url == "":
-                url = "https://cloud-images.ubuntu.com/query/xenial/server/released.current.txt"
-                click.secho('Using default xenial images.\n: {}'.format(url), fg='red')
+                url = "https://cloud-images.ubuntu.com/query/focal/server/released.current.txt"
+                click.secho('Using default focal images.\n: {}'.format(url), fg='red')
             data = requests.get(url)
             parse_ami = re.findall('ebs-ssd(.+?)amd64(.+?){}(.+?)hvm'.format(region), data.content.decode('utf-8'))
             ami_id = parse_ami[0][2].strip()
