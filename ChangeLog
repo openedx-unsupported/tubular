@@ -1,7 +1,179 @@
 CHANGES
 =======
 
-* escape salesforce api queries
+* fix: Default to Ubuntu 20.04 Focal, remove xenial
+* fix: Retry deleting a branch if GitHub says it's unknown
+* fix: Use a longer SHA prefix to avoid collisions (just a precaution)
+* feat: close alerts from opsgenie api (#679)
+* docs: update 2U/edX release notices (#675)
+* chore: Unpin and upgrade cloudflare library
+* chore: Updating Python Requirements
+* fix: Correct filter inputs
+* chore: fixing import order to fix retirement job. (#672)
+* Revert "Use 'npm ci' instead of 'npm install'"
+* chore: upgrading boto3 and botocore versions. (#666)
+* test: fixing tests as per new moto version. (#663)
+* fix: remove boto package from ec2 tests
+* chore: clear out remnants of boto
+* fix: remove toxenv
+* fix: update tox.ini for coverage report
+* chore: upgrade requirements
+* fix: add codecov.yml
+* fix: cut down on tox env
+* feat: add codecov to tubular repo
+* chore: removed un-used script
+* Fixing asgrard (#655)
+* Fixing s3 files (#656)
+* Fixing tests for ec2 (#647)
+* feat: update how auth to hubspot api is done
+* feat: remove old unused command using boto (not boto3)
+* docs: Update the contributing guidelines link
+* chore: Updating Python Requirements
+* fix: Add resource type to tags
+* fix: Fix spelling of tag parameter
+* fix: Pass through a list instead of a set
+* fix: Fix elb pagination call
+* fix: errant boto2 syntax
+* fix: remove old code from asg deployment
+* fix: Fix cleanup\_asgs for boto3
+* fix: elb-related deployment code boto3-ification
+* fix: Fix usage of old name
+* fix: add boto3 to more function calls
+* fix: Convert ASG code to use boto3
+* fix: unit test was out of date
+* fix: upgrade and unit tests
+* chore: Allow retirement redrive
+* chore: update tests and change error output
+* chore: Improve doc string
+* feat: Clarify mergeback PR description (#624)
+* feat!: Allow choosing deployment tag's name when merged private PRs (#622)
+* feat: Remove now-unused scripts relating to edxapp deployments (#620)
+* fix: fix 401 unauthorized error in user retirement amplitude\_api
+* feat: user retirement from Amplitdue integrated to user\_retirement script
+* build: Updating a missing workflow file \`add-depr-ticket-to-depr-board.yml\`
+* build: Creating a missing workflow file \`add-remove-label-on-comment.yml\`
+* build: Creating a missing workflow file \`self-assign-issue.yml\`
+* chore: Add test for user limit
+* chore(api update): Support new limit parameter for get\_learners\_to\_retire
+* fix: some repos disabled the \`allow\_merge\_commit\`. Using squash metho… (#609)
+* refactor: switched to ci to install dependencies
+* chore: add retrieve base ami script
+* chore: Add new CLI options for retire user actions
+* fix: Increased number of records per page to 100. (#602)
+* Add new option to prune batch size and change defaults for max size
+* feat: add flag to check all PR checks status
+* feat: Adding new script to get all open prs with ready to merge label
+* fix: adding new method to fetch all check runs by commit. (#591)
+* fix: fixing upgrade requirements. (#592)
+* fix: tox failures due to multiple package-looking directories
+* fix: Pin tox because it broke our tests
+* chore: update GDPR Email Template Learner
+* fix: Test broken by pruner fix
+* refactor: Early exit if missing structures
+* feat: Add --dump-structures option for debugging
+* refactor: Rename option for missing structures
+* feat: Improve logging of missing structures
+* feat: More output for missing ids
+* fix: Move debug logging so relink is accurate
+* refactor: Use list comprehension
+* refactor: Exit on missing structures
+* feat: Add more debug logging
+* refactor: Improve code quality
+* fix: Prevent crash if id doesn't exist
+* feat: Add force option for missing structures
+* fix: Log missing structures ISRE-1377
+* fix: Stop crashing on non existent id ISRE-1377
+* fix: slack bot authentication for GoCD notifications
+* Revert attempts to log slack api responses
+* fix: typo in slack message logging
+* fix: don't swallow errors returned from the slack api
+* fix: The error logging for FrontendBuilder object needs two arguments supplied. Fix the bug where in the FrontendBuilder object, there are logging statements only supplied 1 argument. Supply 2 arguments instead
+* fix: Duplicate checking blocking unique messages
+* feat: Add logging when skipping due to duplicate
+* feat: Add --force option to message\_prs\_in\_range
+* fix: update path to .github workflows to read from openedx org
+* fix: fix github url strings (org edx -> openedx)
+* chore: run \`edx\_lint\` update with the current version of the repo
+* fix: Send correct data to retirement partner report
+* chore: pin npm@8
+* refactor: Remove EdxRestApiClient usage in tubular
+* fix: change e2e troubleshooting slack channel (#571)
+* fix: handle ConnectionError from the edX API
+* Revert "fix: Publish release pages to 2u-internal wiki, not openedx (#566)" (#568)
+* build: Stop testing on Python 3.6 and 3.7 (#567)
+* fix: Publish release pages to 2u-internal wiki, not openedx (#566)
+* chore: Update DriveApi to add suppport for user accounts
+* Revert "FC-0001: Remove EdxRestApiClient usage in tubular"
+* refactor: Remove EdxRestApiClient usage in tubular
+* Revert "FC-0001: Remove EdxRestApiClient usage in tubular"
+* Revert "chore: Fix import error."
+* chore: Fix import error
+* refactor: Remove EdxRestApiClient usage in tubular
+* fix: reduced batch size due to userRateLimitExceeded
+* docs: Add description to temporary .github/ISSUE\_TEMPLATE files
+* build: add DEPR workflow automation & default issue overrides
+* feat: Add requirements upgrade workflow
+* feat: Remove \`--source-branch\` from merge-approved-prs (#549)
+* feat: Allow specifying source commit in merge-PRs; rm unused --sha option (#548)
+* chore: Move testing requirments out of setup file
+* fix: Don't try to merge security patches when there aren't any (#546)
+* chore: upgrading tubular to py3.8
+* chore: upgrade tubular to Py 3.8
+* feat: Add logging to diagnose race condition and branch behavior (#545)
+* fix: fix tubualr tests
+* fix: Make logging actually work
+* build: use the organization commitlint check
+* chore: edX API client: Added retry on ConnectionError(104)
+* fix: add sleep to calls to batches of users in user retirement archiver
+* fix: disable debug s3 logging in retirement archiver
+* fix: add raw prefix to s3 path for user retirements
+* Change retirement archive to use the Jenkins AWS assumed role
+* fix: improve logging in retirement archiver script
+* feat: script errors and exits if wrong version (#533)
+* fix: update PyGitHub to a version that doesn't use use\_2to3
+* feat: add cli params to retirement\_archive\_and\_cleanup script for testing and debugging
+* Update python requirements
+* fix: remove unnecessary logs (#527)
+* feat: adding loging to git pushes (#526)
+* Update k8s script
+* Updated opsgenie script to accept responders as param
+* Updated gocd script
+* Adding script to update and check config repo
+* feat!: explicitly limit types of frontend config values
+* test: add some cursory tests for frontend building
+* fix: make frontend\_build handle numeric/bool config values again
+* style: use f-strings in frontend\_build.py
+* fix: wrap frontend config override values in quotes
+* feat!: Remove WIP Modulestore pruning code
+* Bump pyyaml from 5.1 to 5.4 in /requirements
+* Fixing symlinks (#518)
+* Adding automation for pipeline\_group\_acls (#517)
+* chore: Remove the Sailthru retirement stage
+* Enable release tagging
+* fix: re-add python 3.6 support (for GoCD)
+* chore: update CI to test python 3.7, 3.8, remove 3.5
+* fix: switch send\_email to use boto3
+* fix: remove --no-index from pip-compile call, and run make upgrade
+* Revert "Merge pull request #509 from edx/aali/PSRE-594\_no\_comments\_on\_closed\_prs" (#511)
+* do not add comments on closed PRs
+* do not add comments on closed PRs
+* Added script to create k8s job
+* Added support for specifying multiple partners
+* Jkantor/escape salesforce query (#500)
+* fix: remove global flag on npm install
+* fix: pin npm@6
+* ISRE-618 | Delete 0 Instance ASGs during deploy step  if they are created (#496)
+* Revert "Python Code Cleanup (#493)" (#497)
+* Python Code Cleanup (#493)
+* AA-595: Add script to delete Braze user information
+* Added HTTP code
+* Update permission and add logging
+* Link opsgenie script
+* Link opsgenie script
+* Reduce rate limit confusion/red herrings
+* Log failed repo when github throws 404 exception
+* Throw an exception upon error that is caught in backoff decorator
+* Removing update recent deployers related code (#487)
 * Revert "Revert "Upgrade moto > 1.0.0, unpin testing dependencies for edx\_lint (#480)" (#484)" (#485)
 * Revert "Upgrade moto > 1.0.0, unpin testing dependencies for edx\_lint (#480)" (#484)
 * Remove calls to method that does not exist (#483)
