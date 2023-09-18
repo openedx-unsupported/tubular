@@ -4,7 +4,7 @@
 #
 #    make upgrade
 #
-astroid==2.15.5
+astroid==2.15.6
     # via
     #   -r requirements/testing.in
     #   pylint
@@ -19,34 +19,34 @@ botocore==1.23.54
     #   boto3
     #   moto
     #   s3transfer
-certifi==2023.5.7
+certifi==2023.7.22
     # via requests
 cffi==1.15.1
     # via cryptography
-charset-normalizer==3.1.0
+charset-normalizer==3.2.0
     # via requests
-click==8.1.3
+click==8.1.7
     # via
     #   click-log
     #   code-annotations
     #   edx-lint
 click-log==0.4.0
     # via edx-lint
-code-annotations==1.3.0
+code-annotations==1.5.0
     # via edx-lint
-coverage[toml]==7.2.7
+coverage[toml]==7.3.1
     # via pytest-cov
-cryptography==41.0.1
+cryptography==41.0.3
     # via moto
 ddt==1.6.0
     # via -r requirements/testing.in
-dill==0.3.6
+dill==0.3.7
     # via pylint
 edx-lint==5.3.4
     # via -r requirements/testing.in
-exceptiongroup==1.1.1
+exceptiongroup==1.1.3
     # via pytest
-execnet==1.9.0
+execnet==2.0.2
     # via pytest-xdist
 httpretty==1.1.4
     # via -r requirements/testing.in
@@ -72,27 +72,27 @@ markupsafe==2.1.3
     #   werkzeug
 mccabe==0.7.0
     # via pylint
-mock==5.0.2
+mock==5.1.0
     # via -r requirements/testing.in
-moto==4.1.11
+moto==4.2.3
     # via -r requirements/testing.in
 packaging==23.1
     # via pytest
 pbr==5.11.1
     # via stevedore
-platformdirs==3.5.3
+platformdirs==3.10.0
     # via pylint
-pluggy==1.0.0
+pluggy==1.3.0
     # via pytest
 py==1.11.0
     # via pytest-pycodestyle
-pycodestyle==2.10.0
+pycodestyle==2.11.0
     # via
     #   -r requirements/testing.in
     #   pytest-pycodestyle
 pycparser==2.21
     # via cffi
-pylint==2.17.4
+pylint==2.17.5
     # via
     #   -r requirements/testing.in
     #   edx-lint
@@ -108,7 +108,7 @@ pylint-plugin-utils==0.8.2
     # via
     #   pylint-celery
     #   pylint-django
-pytest==7.3.2
+pytest==7.4.2
     # via
     #   -r requirements/testing.in
     #   pytest-cov
@@ -129,7 +129,7 @@ python-dateutil==2.8.2
     #   moto
 python-slugify==8.0.1
     # via code-annotations
-pyyaml==6.0
+pyyaml==6.0.1
     # via code-annotations
 requests==2.31.0
     # via
@@ -161,9 +161,9 @@ tomli==2.0.1
     #   coverage
     #   pylint
     #   pytest
-tomlkit==0.11.8
+tomlkit==0.12.1
     # via pylint
-typing-extensions==4.6.3
+typing-extensions==4.7.1
     # via
     #   astroid
     #   pylint
@@ -172,7 +172,7 @@ urllib3==1.26.16
     #   botocore
     #   requests
     #   responses
-werkzeug==2.3.6
+werkzeug==2.3.7
     # via moto
 wrapt==1.11.2
     # via
