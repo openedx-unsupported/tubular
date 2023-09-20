@@ -17,7 +17,7 @@ jobs:
         architecture: x64
     - run: rm -f /etc/boto.cfg
     - run: pip3 install --upgrade pip setuptools
-    - run: pip3 install 'tox<4.11'
+    - run: pip3 install 'tox'
     - run: tox -- -n0
 
     - name: Run coverage
