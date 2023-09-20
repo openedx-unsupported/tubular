@@ -73,8 +73,10 @@ gitpython==3.1.37
     # via -r requirements/base.in
 google-api-core==2.12.0
     # via google-api-python-client
-google-api-python-client==2.101.0
-    # via -r requirements/base.in
+google-api-python-client==1.12.11
+    # via
+    #   -c requirements/constraints.txt
+    #   -r requirements/base.in
 google-auth==2.23.0
     # via
     #   google-api-core
@@ -209,6 +211,7 @@ simplejson==3.19.1
 six==1.16.0
     # via
     #   -r requirements/base.in
+    #   google-api-python-client
     #   isodate
     #   jenkinsapi
     #   kubernetes
@@ -233,7 +236,7 @@ typing-extensions==4.8.0
     #   edx-opaque-keys
 unicodecsv==0.14.1
     # via -r requirements/base.in
-uritemplate==4.1.1
+uritemplate==3.0.1
     # via google-api-python-client
 urllib3==1.26.16
     # via
