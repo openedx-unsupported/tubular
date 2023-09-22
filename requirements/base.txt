@@ -42,9 +42,9 @@ click==8.1.7
     #   edx-django-utils
 click-log==0.4.0
     # via -r requirements/base.in
-cloudflare==2.11.7
+cloudflare==2.12.4
     # via -r requirements/base.in
-cryptography==41.0.3
+cryptography==41.0.4
     # via
     #   pyjwt
     #   simple-salesforce
@@ -64,13 +64,11 @@ easydict==1.10
     # via yagocd
 edx-django-utils==5.7.0
     # via edx-rest-api-client
-edx-opaque-keys==0.4.0
+edx-opaque-keys==0.4
     # via -r requirements/base.in
 edx-rest-api-client==5.5.0
     # via -r requirements/base.in
 freezegun==0.3.8
-    # via -r requirements/base.in
-future==0.16.0
     # via -r requirements/base.in
 gitdb==4.0.10
     # via gitpython
@@ -219,7 +217,7 @@ stevedore==1.32.0
     # via
     #   edx-django-utils
     #   edx-opaque-keys
-typing-extensions==4.7.1
+typing-extensions==4.8.0
     # via asgiref
 unicodecsv==0.14.1
     # via -r requirements/base.in
