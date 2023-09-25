@@ -10,17 +10,14 @@ attrs==23.1.0
     # via
     #   jsonlines
     #   zeep
-backoff==1.5.0
+backoff==2.2.1
     # via -r requirements/base.in
 beautifulsoup4==4.12.2
     # via cloudflare
-boto3==1.20.54
+boto3==1.28.53
+    # via -r requirements/base.in
+botocore==1.31.53
     # via
-    #   -c requirements/constraints.txt
-    #   -r requirements/base.in
-botocore==1.23.54
-    # via
-    #   -c requirements/constraints.txt
     #   boto3
     #   s3transfer
 cachetools==5.3.1
@@ -64,25 +61,30 @@ easydict==1.10
     # via yagocd
 edx-django-utils==5.7.0
     # via edx-rest-api-client
-edx-opaque-keys==0.4
+edx-opaque-keys==2.5.1
     # via -r requirements/base.in
-edx-rest-api-client==5.5.0
+edx-rest-api-client==5.6.0
     # via -r requirements/base.in
-freezegun==0.3.8
+freezegun==1.2.2
     # via -r requirements/base.in
 gitdb==4.0.10
     # via gitpython
-gitpython==3.1.18
+gitpython==3.1.37
     # via -r requirements/base.in
-google-api-python-client==1.7.3
+google-api-core==2.12.0
+    # via google-api-python-client
+google-api-python-client==2.101.0
     # via -r requirements/base.in
 google-auth==2.23.0
     # via
+    #   google-api-core
     #   google-api-python-client
     #   google-auth-httplib2
     #   kubernetes
 google-auth-httplib2==0.1.1
     # via google-api-python-client
+googleapis-common-protos==1.60.0
+    # via google-api-core
 httplib2==0.22.0
     # via
     #   google-api-python-client
@@ -91,30 +93,40 @@ idna==3.4
     # via requests
 isodate==0.6.1
     # via zeep
-jenkinsapi==0.3.3
+jenkinsapi==0.3.13
     # via -r requirements/base.in
-jmespath==0.10.0
+jinja2==3.1.2
+    # via -r requirements/base.in
+jmespath==1.0.1
     # via
     #   boto3
     #   botocore
 jsonlines==4.0.0
     # via cloudflare
-kubernetes==12.0.1
+kubernetes==28.1.0
     # via -r requirements/base.in
 lxml==4.9.3
     # via zeep
+markupsafe==2.1.3
+    # via jinja2
 more-itertools==10.1.0
     # via simple-salesforce
 newrelic==9.0.0
     # via edx-django-utils
 oauthlib==3.2.2
-    # via requests-oauthlib
+    # via
+    #   kubernetes
+    #   requests-oauthlib
 pbr==5.11.1
     # via stevedore
 pendulum==2.1.2
     # via simple-salesforce
 platformdirs==3.10.0
     # via zeep
+protobuf==4.24.3
+    # via
+    #   google-api-core
+    #   googleapis-common-protos
 psutil==5.9.5
     # via edx-django-utils
 pyasn1==0.5.0
@@ -132,7 +144,7 @@ pyjwt[crypto]==2.8.0
     #   edx-rest-api-client
     #   pygithub
     #   simple-salesforce
-pymongo==3.5.1
+pymongo==3.13.0
     # via
     #   -r requirements/base.in
     #   edx-opaque-keys
@@ -148,7 +160,7 @@ python-dateutil==2.8.2
     #   freezegun
     #   kubernetes
     #   pendulum
-pytz==2016.10
+pytz==2023.3.post1
     # via
     #   -r requirements/base.in
     #   django
@@ -156,7 +168,7 @@ pytz==2016.10
     #   zeep
 pytzdata==2020.1
     # via pendulum
-pyyaml==5.4
+pyyaml==6.0.1
     # via
     #   -r requirements/base.in
     #   cloudflare
@@ -166,6 +178,7 @@ requests==2.31.0
     #   -r requirements/base.in
     #   cloudflare
     #   edx-rest-api-client
+    #   google-api-core
     #   jenkinsapi
     #   kubernetes
     #   pygithub
@@ -185,7 +198,7 @@ requests-toolbelt==1.0.0
     # via zeep
 rsa==4.9
     # via google-auth
-s3transfer==0.5.2
+s3transfer==0.6.2
     # via boto3
 sailthru-client==2.3.5
     # via -r requirements/base.in
@@ -196,14 +209,11 @@ simplejson==3.19.1
 six==1.16.0
     # via
     #   -r requirements/base.in
-    #   edx-opaque-keys
-    #   freezegun
-    #   google-api-python-client
     #   isodate
+    #   jenkinsapi
     #   kubernetes
     #   python-dateutil
     #   requests-file
-    #   stevedore
     #   yagocd
 slumber==0.7.1
     # via edx-rest-api-client
@@ -213,15 +223,17 @@ soupsieve==2.5
     # via beautifulsoup4
 sqlparse==0.4.4
     # via django
-stevedore==1.32.0
+stevedore==5.1.0
     # via
     #   edx-django-utils
     #   edx-opaque-keys
 typing-extensions==4.8.0
-    # via asgiref
+    # via
+    #   asgiref
+    #   edx-opaque-keys
 unicodecsv==0.14.1
     # via -r requirements/base.in
-uritemplate==3.0.1
+uritemplate==4.1.1
     # via google-api-python-client
 urllib3==1.26.16
     # via
@@ -233,14 +245,11 @@ validators==0.22.0
     # via -r requirements/base.in
 websocket-client==1.6.3
     # via kubernetes
-wrapt==1.11.2
+wrapt==1.15.0
     # via
     #   -r requirements/base.in
     #   deprecated
-yagocd==0.4.4
+yagocd==1.0.1
     # via -r requirements/base.in
 zeep==4.2.1
     # via simple-salesforce
-
-# The following packages are considered to be unsafe in a requirements file:
-# setuptools
