@@ -115,7 +115,7 @@ class TestDriveApi(unittest.TestCase):
         batch_response = b'''--batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+0>
+Content-ID: <response + 0>
 
 HTTP/1.1 204 OK
 ETag: "etag/pony"\r\n\r\n
@@ -123,7 +123,7 @@ ETag: "etag/pony"\r\n\r\n
 --batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+1>
+Content-ID: <response + 1>
 
 HTTP/1.1 204 OK
 ETag: "etag/sheep"\r\n\r\n
@@ -158,7 +158,7 @@ ETag: "etag/sheep"\r\n\r\n
         batch_response = b'''--batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+0>
+Content-ID: <response + 0>
 
 HTTP/1.1 404 NOT FOUND
 Content-Type: application/json
@@ -182,7 +182,7 @@ ETag: "etag/pony"\r\n\r\n{
 --batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+1>
+Content-ID: <response + 1>
 
 HTTP/1.1 204 OK
 ETag: "etag/sheep"\r\n\r\n
@@ -482,7 +482,7 @@ ETag: "etag/sheep"\r\n\r\n
         batch_response = b'''--batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+0>
+Content-ID: <response + 0>
 
 HTTP/1.1 204 OK
 ETag: "etag/pony"\r\n\r\n{"id": "fake-comment-id0"}
@@ -490,7 +490,7 @@ ETag: "etag/pony"\r\n\r\n{"id": "fake-comment-id0"}
 --batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+1>
+Content-ID: <response + 1>
 
 HTTP/1.1 204 OK
 ETag: "etag/sheep"\r\n\r\n{"id": "fake-comment-id1"}
@@ -524,7 +524,7 @@ ETag: "etag/sheep"\r\n\r\n{"id": "fake-comment-id1"}
             '''--batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+{idx}>
+Content-ID: <response + {idx}>
 
 HTTP/1.1 204 OK
 ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
@@ -536,7 +536,7 @@ ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
             '''--batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+{idx}>
+Content-ID: <response + {idx}>
 
 HTTP/1.1 204 OK
 ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
@@ -548,7 +548,7 @@ ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
             '''--batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+{idx}>
+Content-ID: <response + {idx}>
 
 HTTP/1.1 500 Internal Server Error
 ETag: "etag/pony{idx}"\r\n\r\n
@@ -560,7 +560,7 @@ ETag: "etag/pony{idx}"\r\n\r\n
             '''--batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+{idx}>
+Content-ID: <response + {idx}>
 
 HTTP/1.1 204 OK
 ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
@@ -600,7 +600,7 @@ ETag: "etag/pony{idx}"\r\n\r\n{{"id": "fake-comment-id{idx}"}}
         batch_response = b'''--batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+0>
+Content-ID: <response + 0>
 
 HTTP/1.1 404 NOT FOUND
 Content-Type: application/json
@@ -624,7 +624,7 @@ ETag: "etag/pony"\r\n\r\n{
 --batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+1>
+Content-ID: <response + 1>
 
 HTTP/1.1 204 OK
 ETag: "etag/sheep"\r\n\r\n{"id": "fake-comment-id1"}
@@ -671,7 +671,7 @@ ETag: "etag/sheep"\r\n\r\n{"id": "fake-comment-id1"}
         batch_response = b'''--batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+0>
+Content-ID: <response + 0>
 
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -680,7 +680,7 @@ ETag: "etag/pony"\r\n\r\n{"permissions": [{"emailAddress": "reader@example.com",
 --batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+1>
+Content-ID: <response + 1>
 
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -712,7 +712,7 @@ ETag: "etag/sheep"\r\n\r\n{"permissions": [{"emailAddress": "writer@example.com"
         batch_response = b'''--batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+0>
+Content-ID: <response + 0>
 
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -721,7 +721,7 @@ ETag: "etag/pony"\r\n\r\n{"permissions": [{"emailAddress": "reader@example.com",
 --batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+1>
+Content-ID: <response + 1>
 
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -730,7 +730,7 @@ ETag: "etag/sheep"\r\n\r\n{"permissions": [{"emailAddress": "writer@example.com"
 --batch_foobarbaz
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-ID: <response+2>
+Content-ID: <response + 2>
 
 HTTP/1.1 404 NOT FOUND
 Content-Type: application/json

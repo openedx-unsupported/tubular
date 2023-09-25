@@ -15,4 +15,4 @@ pytest-xdist
 pytest-pylint
 responses
 requests_mock
-wrapt==1.11.*
+wrapt

@@ -4,18 +4,15 @@
 #
 #    make upgrade
 #
-astroid==2.15.6
+astroid==2.15.7
     # via
     #   -r requirements/testing.in
     #   pylint
     #   pylint-celery
-boto3==1.20.54
+boto3==1.28.53
+    # via moto
+botocore==1.31.53
     # via
-    #   -c requirements/constraints.txt
-    #   moto
-botocore==1.23.54
-    # via
-    #   -c requirements/constraints.txt
     #   boto3
     #   moto
     #   s3transfer
@@ -60,7 +57,7 @@ jinja2==3.1.2
     # via
     #   code-annotations
     #   moto
-jmespath==0.10.0
+jmespath==1.0.1
     # via
     #   boto3
     #   botocore
@@ -74,7 +71,7 @@ mccabe==0.7.0
     # via pylint
 mock==5.1.0
     # via -r requirements/testing.in
-moto==4.2.3
+moto==4.2.4
     # via -r requirements/testing.in
 packaging==23.1
     # via pytest
@@ -92,7 +89,7 @@ pycodestyle==2.11.0
     #   pytest-pycodestyle
 pycparser==2.21
     # via cffi
-pylint==2.17.5
+pylint==2.17.6
     # via
     #   -r requirements/testing.in
     #   edx-lint
@@ -143,7 +140,7 @@ responses==0.20.0
     #   -c requirements/constraints.txt
     #   -r requirements/testing.in
     #   moto
-s3transfer==0.5.2
+s3transfer==0.6.2
     # via boto3
 six==1.16.0
     # via
@@ -174,7 +171,7 @@ urllib3==1.26.16
     #   responses
 werkzeug==2.3.7
     # via moto
-wrapt==1.11.2
+wrapt==1.15.0
     # via
     #   -r requirements/testing.in
     #   astroid
