@@ -4,7 +4,7 @@
 #
 #    make upgrade
 #
-astroid==2.15.6
+astroid==2.15.7
     # via
     #   -r requirements/testing.in
     #   pylint
@@ -74,7 +74,7 @@ mccabe==0.7.0
     # via pylint
 mock==5.1.0
     # via -r requirements/testing.in
-moto==4.2.3
+moto==4.2.4
     # via -r requirements/testing.in
 packaging==23.1
     # via pytest
