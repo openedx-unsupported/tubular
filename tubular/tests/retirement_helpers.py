@@ -63,6 +63,8 @@ def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
             'segment': 'https://segment.invalid/graphql',
         },
         'retirement_pipeline': TEST_RETIREMENT_PIPELINE,
+        'org_partner_mapping': orgs,
+        'drive_partners_folder': 'FakeDriveID',
         'denied_notification_domains': TEST_DENIED_NOTIFICATION_DOMAINS,
         'sailthru_key': 'fake_sailthru_key',
         'sailthru_secret': 'fake_sailthru_secret',
