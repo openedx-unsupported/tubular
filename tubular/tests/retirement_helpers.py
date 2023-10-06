@@ -42,16 +42,7 @@ TEST_PLATFORM_NAME = 'fakename'
 
 TEST_DENIED_NOTIFICATION_DOMAINS = {
     '@edx.org',
-    '@partner-reporting-automation.iam.gserviceaccount.com',
 }
-
-
-def flatten_partner_list(partner_list):
-    """
-    Flattens a list of lists into a list.
-    [["Org1X"], ["Org2X"], ["Org3X", "Org4X"]] => ["Org1X", "Org2X", "Org3X", "Org4X"]
-    """
-    return [partner for sublist in partner_list for partner in sublist]
 
 
 def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
@@ -72,9 +63,6 @@ def fake_config_file(f, orgs=None, fetch_ecom_segment_id=False):
             'segment': 'https://segment.invalid/graphql',
         },
         'retirement_pipeline': TEST_RETIREMENT_PIPELINE,
-        'partner_report_platform_name': TEST_PLATFORM_NAME,
-        'org_partner_mapping': orgs,
-        'drive_partners_folder': 'FakeDriveID',
         'denied_notification_domains': TEST_DENIED_NOTIFICATION_DOMAINS,
         'sailthru_key': 'fake_sailthru_key',
         'sailthru_secret': 'fake_sailthru_secret',
@@ -153,7 +141,6 @@ def fake_google_secrets_file(f):
 
     secrets = {
         "type": "service_account",
-        "project_id": "partner-reporting-automation",
         "private_key_id": "foo",
         "private_key": fake_private_key,
         "client_email": "bogus@serviceacct.invalid",

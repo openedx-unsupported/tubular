@@ -319,32 +319,6 @@ class LmsApi(BaseApiClient):
         return self._request('POST', api_url, json=data)
 
     @_retry_lms_api()
-    def retirement_partner_queue(self, learner):
-        """
-        Calls LMS to add the given user to the retirement reporting queue
-        """
-        data = {'username': learner['original_username']}
-        api_url = self.get_api_url('api/user/v1/accounts/retirement_partner_report')
-        return self._request('PUT', api_url, json=data)
-
-    @_retry_lms_api()
-    def retirement_partner_report(self):
-        """
-        Retrieves the list of users to create partner reports for and set their status to
-        processing
-        """
-        api_url = self.get_api_url('api/user/v1/accounts/retirement_partner_report')
-        return self._request('POST', api_url)
-
-    @_retry_lms_api()
-    def retirement_partner_cleanup(self, usernames):
-        """
-        Removes the given users from the partner reporting queue
-        """
-        api_url = self.get_api_url('api/user/v1/accounts/retirement_partner_report_cleanup')
-        return self._request('POST', api_url, json=usernames)
-
-    @_retry_lms_api()
     def retirement_retire_proctoring_data(self, learner):
         """
         Deletes or hashes learner data from edx-proctoring

@@ -161,11 +161,6 @@ class TestLmsApi(OAuth2Mixin, unittest.TestCase):
             'mock_method': 'retirement_lms_retire',
             'method': 'POST',
         },
-        {
-            'api_url': 'api/user/v1/accounts/retirement_partner_report/',
-            'mock_method': 'retirement_partner_queue',
-            'method': 'PUT',
-        },
     )
     @unpack
     @patch.multiple(
@@ -177,7 +172,6 @@ class TestLmsApi(OAuth2Mixin, unittest.TestCase):
         retirement_retire_notes=DEFAULT,
         retirement_lms_retire_misc=DEFAULT,
         retirement_lms_retire=DEFAULT,
-        retirement_partner_queue=DEFAULT,
     )
     def test_learner_retirement(self, api_url, mock_method, method, **kwargs):
         json_data = {
@@ -190,38 +184,6 @@ class TestLmsApi(OAuth2Mixin, unittest.TestCase):
         )
         getattr(self.lms_api, mock_method)(get_fake_user_retirement(original_username=FAKE_ORIGINAL_USERNAME))
         kwargs[mock_method].assert_called_once_with(get_fake_user_retirement(original_username=FAKE_ORIGINAL_USERNAME))
-
-    @patch.object(edx_api.LmsApi, 'retirement_partner_report')
-    def test_retirement_partner_report(self, mock_method):
-        responses.add(
-            POST,
-            urljoin(self.lms_base_url, 'api/user/v1/accounts/retirement_partner_report/')
-        )
-        self.lms_api.retirement_partner_report(
-            learner=get_fake_user_retirement(
-                original_username=FAKE_ORIGINAL_USERNAME
-            )
-        )
-        mock_method.assert_called_once_with(
-            learner=get_fake_user_retirement(
-                original_username=FAKE_ORIGINAL_USERNAME
-            )
-        )
-
-    @patch.object(edx_api.LmsApi, 'retirement_partner_cleanup')
-    def test_retirement_partner_cleanup(self, mock_method):
-        json_data = FAKE_USERNAMES
-        responses.add(
-            POST,
-            urljoin(self.lms_base_url, 'api/user/v1/accounts/retirement_partner_report_cleanup/'),
-            match=[matchers.json_params_matcher(json_data)]
-        )
-        self.lms_api.retirement_partner_cleanup(
-            usernames=FAKE_USERNAMES
-        )
-        mock_method.assert_called_once_with(
-            usernames=FAKE_USERNAMES
-        )
 
     @patch.object(edx_api.LmsApi, 'retirement_retire_proctoring_data')
     def test_retirement_retire_proctoring_data(self, mock_method):
@@ -305,25 +267,6 @@ class TestLmsApi(OAuth2Mixin, unittest.TestCase):
             self.lms_api.learners_to_retire(
                 TEST_RETIREMENT_QUEUE_STATES, cool_off_days=365)
 
-    @data(104)
-    @responses.activate
-    @patch('tubular.edx_api._backoff_handler')
-    @patch.object(edx_api.LmsApi, 'retirement_partner_cleanup')
-    def test_retirement_partner_cleanup_backoff_on_connection_error(
-            self,
-            svr_status_code,
-            mock_backoff_handler,
-            mock_retirement_partner_cleanup
-    ):
-        mock_backoff_handler.side_effect = BackoffTriedException
-        response = requests.Response()
-        response.status_code = svr_status_code
-        mock_retirement_partner_cleanup.retirement_partner_cleanup.side_effect = ConnectionError(
-            response=response
-        )
-        with self.assertRaises(BackoffTriedException):
-            self.lms_api.retirement_partner_cleanup([{'original_username': 'test'}])
-
 
 class TestEcommerceApi(OAuth2Mixin, unittest.TestCase):
     """
@@ -341,23 +284,6 @@ class TestEcommerceApi(OAuth2Mixin, unittest.TestCase):
             self.ecommerce_base_url,
             'the_client_id',
             'the_client_secret'
-        )
-
-    @patch.object(edx_api.EcommerceApi, 'retire_learner')
-    def test_retirement_partner_report(self, mock_method):
-        json_data = {
-            'username': FAKE_ORIGINAL_USERNAME,
-        }
-        responses.add(
-            POST,
-            urljoin(self.lms_base_url, 'api/v2/user/retire/'),
-            match=[matchers.json_params_matcher(json_data)]
-        )
-        self.ecommerce_api.retire_learner(
-            learner=get_fake_user_retirement(original_username=FAKE_ORIGINAL_USERNAME)
-        )
-        mock_method.assert_called_once_with(
-            learner=get_fake_user_retirement(original_username=FAKE_ORIGINAL_USERNAME)
         )
 
     @patch.object(edx_api.EcommerceApi, 'retire_learner')
