@@ -4,23 +4,23 @@
 #
 #    make upgrade
 #
-astroid==2.15.7
+astroid==2.15.8
     # via
     #   -r requirements/testing.in
     #   pylint
     #   pylint-celery
-boto3==1.28.53
+boto3==1.28.63
     # via moto
-botocore==1.31.53
+botocore==1.31.63
     # via
     #   boto3
     #   moto
     #   s3transfer
 certifi==2023.7.22
     # via requests
-cffi==1.15.1
+cffi==1.16.0
     # via cryptography
-charset-normalizer==3.2.0
+charset-normalizer==3.3.0
     # via requests
 click==8.1.7
     # via
@@ -31,7 +31,7 @@ click-log==0.4.0
     # via edx-lint
 code-annotations==1.5.0
     # via edx-lint
-coverage[toml]==7.3.1
+coverage[toml]==7.3.2
     # via pytest-cov
 cryptography==41.0.4
     # via moto
@@ -71,25 +71,25 @@ mccabe==0.7.0
     # via pylint
 mock==5.1.0
     # via -r requirements/testing.in
-moto==4.2.4
+moto==4.2.6
     # via -r requirements/testing.in
-packaging==23.1
+packaging==23.2
     # via pytest
 pbr==5.11.1
     # via stevedore
-platformdirs==3.10.0
+platformdirs==3.11.0
     # via pylint
 pluggy==1.3.0
     # via pytest
 py==1.11.0
     # via pytest-pycodestyle
-pycodestyle==2.11.0
+pycodestyle==2.11.1
     # via
     #   -r requirements/testing.in
     #   pytest-pycodestyle
 pycparser==2.21
     # via cffi
-pylint==2.17.6
+pylint==2.17.7
     # via
     #   -r requirements/testing.in
     #   edx-lint
@@ -116,7 +116,7 @@ pytest-cov==4.1.0
     # via -r requirements/testing.in
 pytest-pycodestyle==2.3.1
     # via -r requirements/testing.in
-pytest-pylint==0.19.0
+pytest-pylint==0.21.0
     # via -r requirements/testing.in
 pytest-xdist==3.3.1
     # via -r requirements/testing.in
@@ -140,7 +140,7 @@ responses==0.20.0
     #   -c requirements/constraints.txt
     #   -r requirements/testing.in
     #   moto
-s3transfer==0.6.2
+s3transfer==0.7.0
     # via boto3
 six==1.16.0
     # via
@@ -151,25 +151,24 @@ stevedore==5.1.0
     # via code-annotations
 text-unidecode==1.3
     # via python-slugify
-toml==0.10.2
-    # via pytest-pylint
 tomli==2.0.1
     # via
     #   coverage
     #   pylint
     #   pytest
+    #   pytest-pylint
 tomlkit==0.12.1
     # via pylint
 typing-extensions==4.8.0
     # via
     #   astroid
     #   pylint
-urllib3==1.26.16
+urllib3==1.26.17
     # via
     #   botocore
     #   requests
     #   responses
-werkzeug==2.3.7
+werkzeug==3.0.0
     # via moto
 wrapt==1.15.0
     # via
