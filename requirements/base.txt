@@ -14,13 +14,13 @@ backoff==2.2.1
     # via -r requirements/base.in
 beautifulsoup4==4.12.2
     # via cloudflare
-boto3==1.28.68
+boto3==1.28.73
     # via -r requirements/base.in
-botocore==1.31.68
+botocore==1.31.73
     # via
     #   boto3
     #   s3transfer
-cachetools==5.3.1
+cachetools==5.3.2
     # via google-auth
 certifi==2023.7.22
     # via
@@ -41,7 +41,7 @@ click-log==0.4.0
     # via -r requirements/base.in
 cloudflare==2.12.4
     # via -r requirements/base.in
-cryptography==41.0.4
+cryptography==41.0.5
     # via
     #   pyjwt
     #   simple-salesforce
@@ -57,7 +57,7 @@ django-crum==0.7.9
     # via edx-django-utils
 django-waffle==4.0.0
     # via edx-django-utils
-easydict==1.10
+easydict==1.11
     # via yagocd
 edx-django-utils==5.7.0
     # via edx-rest-api-client
