@@ -14,13 +14,13 @@ backoff==2.2.1
     # via -r requirements/base.in
 beautifulsoup4==4.12.2
     # via cloudflare
-boto3==1.28.68
+boto3==1.28.78
     # via -r requirements/base.in
-botocore==1.31.68
+botocore==1.31.78
     # via
     #   boto3
     #   s3transfer
-cachetools==5.3.1
+cachetools==5.3.2
     # via google-auth
 certifi==2023.7.22
     # via
@@ -30,7 +30,7 @@ cffi==1.16.0
     # via
     #   cryptography
     #   pynacl
-charset-normalizer==3.3.1
+charset-normalizer==3.3.2
     # via requests
 click==8.1.7
     # via
@@ -41,13 +41,13 @@ click-log==0.4.0
     # via -r requirements/base.in
 cloudflare==2.12.4
     # via -r requirements/base.in
-cryptography==41.0.4
+cryptography==41.0.5
     # via
     #   pyjwt
     #   simple-salesforce
 deprecated==1.2.14
     # via pygithub
-django==3.2.22
+django==3.2.23
     # via
     #   -c requirements/constraints.txt
     #   django-crum
@@ -57,9 +57,9 @@ django-crum==0.7.9
     # via edx-django-utils
 django-waffle==4.0.0
     # via edx-django-utils
-easydict==1.10
+easydict==1.11
     # via yagocd
-edx-django-utils==5.7.0
+edx-django-utils==5.8.0
     # via edx-rest-api-client
 edx-opaque-keys==2.5.1
     # via -r requirements/base.in
@@ -77,7 +77,7 @@ google-api-python-client==1.12.11
     # via
     #   -c requirements/constraints.txt
     #   -r requirements/base.in
-google-auth==2.23.3
+google-auth==2.23.4
     # via
     #   google-api-core
     #   google-api-python-client
@@ -125,7 +125,7 @@ pendulum==2.1.2
     # via simple-salesforce
 platformdirs==3.11.0
     # via zeep
-protobuf==4.24.4
+protobuf==4.25.0
     # via
     #   google-api-core
     #   googleapis-common-protos
