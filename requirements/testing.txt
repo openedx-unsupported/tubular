@@ -9,9 +9,9 @@ astroid==3.0.1
     #   -r requirements/testing.in
     #   pylint
     #   pylint-celery
-boto3==1.28.68
+boto3==1.28.84
     # via moto
-botocore==1.31.68
+botocore==1.31.84
     # via
     #   boto3
     #   moto
@@ -20,7 +20,7 @@ certifi==2023.7.22
     # via requests
 cffi==1.16.0
     # via cryptography
-charset-normalizer==3.3.1
+charset-normalizer==3.3.2
     # via requests
 click==8.1.7
     # via
@@ -35,13 +35,13 @@ coverage[toml]==7.3.2
     # via
     #   coverage
     #   pytest-cov
-cryptography==41.0.4
+cryptography==41.0.5
     # via moto
-ddt==1.6.0
+ddt==1.7.0
     # via -r requirements/testing.in
 dill==0.3.7
     # via pylint
-edx-lint==5.3.4
+edx-lint==5.3.6
     # via -r requirements/testing.in
 exceptiongroup==1.1.3
     # via pytest
@@ -71,13 +71,13 @@ mccabe==0.7.0
     # via pylint
 mock==5.1.0
     # via -r requirements/testing.in
-moto==4.2.6
+moto==4.2.8
     # via -r requirements/testing.in
 packaging==23.2
     # via pytest
-pbr==5.11.1
+pbr==6.0.0
     # via stevedore
-platformdirs==3.11.0
+platformdirs==4.0.0
     # via pylint
 pluggy==1.3.0
     # via pytest
@@ -99,13 +99,13 @@ pylint==3.0.2
     #   pytest-pylint
 pylint-celery==0.3
     # via edx-lint
-pylint-django==2.5.4
+pylint-django==2.5.5
     # via edx-lint
 pylint-plugin-utils==0.8.2
     # via
     #   pylint-celery
     #   pylint-django
-pytest==7.4.2
+pytest==7.4.3
     # via
     #   -r requirements/testing.in
     #   pytest-cov
@@ -118,7 +118,7 @@ pytest-pycodestyle==2.3.1
     # via -r requirements/testing.in
 pytest-pylint==0.21.0
     # via -r requirements/testing.in
-pytest-xdist==3.3.1
+pytest-xdist==3.4.0
     # via -r requirements/testing.in
 python-dateutil==2.8.2
     # via
@@ -157,7 +157,7 @@ tomli==2.0.1
     #   pylint
     #   pytest
     #   pytest-pylint
-tomlkit==0.12.1
+tomlkit==0.12.2
     # via pylint
 typing-extensions==4.8.0
     # via
@@ -168,9 +168,9 @@ urllib3==1.26.18
     #   botocore
     #   requests
     #   responses
-werkzeug==3.0.0
+werkzeug==3.0.1
     # via moto
-wrapt==1.15.0
+wrapt==1.16.0
     # via -r requirements/testing.in
 xmltodict==0.13.0
     # via moto
