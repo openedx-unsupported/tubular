@@ -80,7 +80,7 @@ def retrieve_latest_base_ami(environment, deployment, play, override, ubuntu_ver
             if url == "":
                 url = "https://cloud-images.ubuntu.com/query/focal/server/released.current.txt"
                 click.secho('Using default focal images.\n: {}'.format(url), fg='red')
-            data = get_with_retry(url)
+            data = requests.get(url)
             parse_ami = re.findall('ebs-ssd(.+?)amd64(.+?){}(.+?)hvm'.format(region), data.content.decode('utf-8'))
             ami_id = parse_ami[0][2].strip()
             click.secho('AMI ID fetched from Ubuntu Cloud : {}'.format(ami_id), fg='red')
@@ -110,14 +110,6 @@ def retrieve_latest_base_ami(environment, deployment, play, override, ubuntu_ver
 
     sys.exit(0)
 
-@backoff.on_exception(
-    backoff.expo,
-    requests.exceptions.RequestException,
-    max_tries=5, jitter=backoff.random_jitter, on_backoff=_backoff_logger,
-)
-def get_with_retry(url):
-    data = requests.get(url)
-    return data
 
 if __name__ == "__main__":
     retrieve_latest_base_ami()  # pylint: disable=no-value-for-parameter
