@@ -23,6 +23,7 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from tubular import ec2  # pylint: disable=wrong-import-position
 
 logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 
 @click.command("retrieve_latest_base_ami")
@@ -111,6 +112,15 @@ def retrieve_latest_base_ami(environment, deployment, play, override, ubuntu_ver
 
     sys.exit(0)
 
+
+def _backoff_logger(details):
+    log.warning(
+        "Backing off {wait:0.1f} seconds afters {tries} tries "
+        "calling function {target} with args {args} and kwargs "
+        "{kwargs}".format(**details)
+    )
+
+
 @backoff.on_exception(
     backoff.expo,
     requests.exceptions.RequestException,
@@ -119,6 +129,7 @@ def retrieve_latest_base_ami(environment, deployment, play, override, ubuntu_ver
 def get_with_retry(url):
     data = requests.get(url)
     return data
+
 
 if __name__ == "__main__":
     retrieve_latest_base_ami()  # pylint: disable=no-value-for-parameter
