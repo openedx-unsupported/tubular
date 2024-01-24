@@ -3,6 +3,8 @@
 import logging
 import requests
 
+from tubular.utils.retry import retry
+
 SLACK_API_URL = "https://slack.com"
 NOTIFICATION_POST = "/api/chat.postMessage"
 AUTH_HEADER_FIELD = "Authorization"
@@ -16,7 +18,7 @@ class SlackMessageSendFailure(Exception):
     Raised upon a failure to send a Slack message to a channel.
     """
 
-
+@retry()
 def submit_slack_message(auth_token, channels, message):
     """
     Post a message to one or more slack channels.
