@@ -47,7 +47,7 @@ cryptography==41.0.4
     #   simple-salesforce
 deprecated==1.2.14
     # via pygithub
-django==3.2.23
+django==3.2.24
     # via
     #   -c requirements/constraints.txt
     #   django-crum
