@@ -94,6 +94,8 @@ def configure_gocd_agents(token, host, agent_tag, profile_id, namespace, image_n
         )
         j2_template = j2_environment.get_template(f"{profile_id}.yaml.j2")
         new_pod_config = j2_template.render(agent_tag=agent_tag, namespace=namespace, image_name=image_name)
+        print(new_pod_config)
+        sys.exit(0)
         try:
             logging.info(f"Updating agent profile {profile_id} with agent image tag {agent_tag}")
             update_image_in_elastic_profile(host, token, profile_id, new_pod_config, apply)
