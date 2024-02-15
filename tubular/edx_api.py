@@ -189,73 +189,6 @@ class LmsApi(BaseApiClient):
     """
     LMS API client with convenience methods for making API calls.
     """
-    @_retry_lms_api()
-    def learners_to_retire(self, states_to_request, cool_off_days=7, limit=None):
-        """
-        Retrieves a list of learners awaiting retirement actions.
-        """
-        params = {
-            'cool_off_days': cool_off_days,
-            'states': states_to_request
-        }
-        if limit:
-            params['limit'] = limit
-        api_url = self.get_api_url('api/user/v1/accounts/retirement_queue')
-        return self._request('GET', api_url, params=params)
-
-    @_retry_lms_api()
-    def get_learners_by_date_and_status(self, state_to_request, start_date, end_date):
-        """
-        Retrieves a list of learners in the given retirement state that were
-        created in the retirement queue between the dates given. Date range
-        is inclusive, so to get one day you would set both dates to that day.
-
-        :param state_to_request: String LMS UserRetirementState state name (ex. COMPLETE)
-        :param start_date: Date or Datetime object
-        :param end_date: Date or Datetime
-        """
-        params = {
-            'start_date': start_date.strftime('%Y-%m-%d'),
-            'end_date': end_date.strftime('%Y-%m-%d'),
-            'state': state_to_request
-        }
-        api_url = self.get_api_url('api/user/v1/accounts/retirements_by_status_and_date')
-        return self._request('GET', api_url, params=params)
-
-    @_retry_lms_api()
-    def get_learner_retirement_state(self, username):
-        """
-        Retrieves the given learner's retirement state.
-        """
-        api_url = self.get_api_url(f'api/user/v1/accounts/{username}/retirement_status')
-        return self._request('GET', api_url)
-
-    @_retry_lms_api()
-    def update_learner_retirement_state(self, username, new_state_name, message, force=False):
-        """
-        Updates the given learner's retirement state to the retirement state name new_string
-        with the additional string information in message (for logging purposes).
-        """
-        data = {
-            'username': username,
-            'new_state': new_state_name,
-            'response': message
-        }
-
-        if force:
-            data['force'] = True
-
-        api_url = self.get_api_url('api/user/v1/accounts/update_retirement_status')
-        return self._request('PATCH', api_url, json=data)
-
-    @_retry_lms_api()
-    def retirement_deactivate_logout(self, learner):
-        """
-        Performs the user deactivation and forced logout step of learner retirement
-        """
-        data = {'username': learner['original_username']}
-        api_url = self.get_api_url('api/user/v1/accounts/deactivate_logout')
-        return self._request('POST', api_url, json=data)
 
     @_retry_lms_api()
     def retirement_retire_forum(self, learner):
@@ -289,26 +222,6 @@ class LmsApi(BaseApiClient):
         api_url = self.get_api_url('api/enrollment/v1/unenroll')
         return self._request('POST', api_url, json=data)
 
-    # This endpoint additionally returns 500 when the EdxNotes backend service is unavailable.
-    @_retry_lms_api()
-    def retirement_retire_notes(self, learner):
-        """
-        Deletes all the user's notes (aka. annotations)
-        """
-        data = {'username': learner['original_username']}
-        api_url = self.get_api_url('api/edxnotes/v1/retire_user')
-        return self._request('POST', api_url, json=data)
-
-    @_retry_lms_api()
-    def retirement_lms_retire_misc(self, learner):
-        """
-        Deletes, blanks, or one-way hashes personal information in LMS as
-        defined in EDUCATOR-2802 and sub-tasks.
-        """
-        data = {'username': learner['original_username']}
-        api_url = self.get_api_url('api/user/v1/accounts/retire_misc')
-        return self._request('POST', api_url, json=data)
-
     @_retry_lms_api()
     def retirement_lms_retire(self, learner):
         """
@@ -317,15 +230,6 @@ class LmsApi(BaseApiClient):
         data = {'username': learner['original_username']}
         api_url = self.get_api_url('api/user/v1/accounts/retire')
         return self._request('POST', api_url, json=data)
-
-    @_retry_lms_api()
-    def retirement_partner_queue(self, learner):
-        """
-        Calls LMS to add the given user to the retirement reporting queue
-        """
-        data = {'username': learner['original_username']}
-        api_url = self.get_api_url('api/user/v1/accounts/retirement_partner_report')
-        return self._request('PUT', api_url, json=data)
 
     @_retry_lms_api()
     def retirement_partner_report(self):
@@ -344,56 +248,6 @@ class LmsApi(BaseApiClient):
         api_url = self.get_api_url('api/user/v1/accounts/retirement_partner_report_cleanup')
         return self._request('POST', api_url, json=usernames)
 
-    @_retry_lms_api()
-    def retirement_retire_proctoring_data(self, learner):
-        """
-        Deletes or hashes learner data from edx-proctoring
-        """
-        api_url = self.get_api_url(f"api/edx_proctoring/v1/retire_user/{learner['user']['id']}")
-        return self._request('POST', api_url)
-
-    @_retry_lms_api()
-    def retirement_retire_proctoring_backend_data(self, learner):
-        """
-        Removes the given learner from 3rd party proctoring backends
-        """
-        api_url = self.get_api_url(f"api/edx_proctoring/v1/retire_backend_user/{learner['user']['id']}")
-        return self._request('POST', api_url)
-
-    @_retry_lms_api()
-    def bulk_cleanup_retirements(self, usernames):
-        """
-        Deletes the retirements for all given usernames
-        """
-        data = {'usernames': usernames}
-        api_url = self.get_api_url('api/user/v1/accounts/retirement_cleanup')
-        return self._request('POST', api_url, json=data)
-
-    def replace_lms_usernames(self, username_mappings):
-        """
-        Calls LMS API to replace usernames.
-
-        Param:
-            username_mappings: list of dicts where key is current username and value is new desired username
-            [{current_un_1: desired_un_1}, {current_un_2: desired_un_2}]
-        """
-        data = {"username_mappings": username_mappings}
-        api_url = self.get_api_url('api/user/v1/accounts/replace_usernames')
-        return self._request('POST', api_url, json=data)
-
-    def replace_forums_usernames(self, username_mappings):
-        """
-        Calls the discussion forums API inside of LMS to replace usernames.
-
-        Param:
-            username_mappings: list of dicts where key is current username and value is new unique username
-            [{current_un_1: new_un_1}, {current_un_2: new_un_2}]
-        """
-        data = {"username_mappings": username_mappings}
-        api_url = self.get_api_url('api/discussion/v1/accounts/replace_usernames')
-        return self._request('POST', api_url, json=data)
-
-
 class EcommerceApi(BaseApiClient):
     """
     Ecommerce API client with convenience methods for making API calls.
@@ -407,28 +261,6 @@ class EcommerceApi(BaseApiClient):
         api_url = self.get_api_url('api/v2/user/retire')
         return self._request('POST', api_url, json=data)
 
-    @_retry_lms_api()
-    def get_tracking_key(self, learner):
-        """
-        Fetches the ecommerce tracking id used for Segment tracking when
-        ecommerce doesn't have access to the LMS user id.
-        """
-        api_url = self.get_api_url(f"api/v2/retirement/tracking_id/{learner['original_username']}")
-        return self._request('GET', api_url)['ecommerce_tracking_id']
-
-    def replace_usernames(self, username_mappings):
-        """
-        Calls the ecommerce API to replace usernames.
-
-        Param:
-            username_mappings: list of dicts where key is current username and value is new unique username
-            [{current_un_1: new_un_1}, {current_un_2: new_un_2}]
-        """
-        data = {"username_mappings": username_mappings}
-        api_url = self.get_api_url('api/v2/user_management/replace_usernames')
-        return self._request('POST', api_url, json=data)
-
-
 class CredentialsApi(BaseApiClient):
     """
     Credentials API client with convenience methods for making API calls.
@@ -440,36 +272,6 @@ class CredentialsApi(BaseApiClient):
         """
         data = {'username': learner['original_username']}
         api_url = self.get_api_url('user/retire')
-        return self._request('POST', api_url, json=data)
-
-    def replace_usernames(self, username_mappings):
-        """
-        Calls the credentials API to replace usernames.
-
-        Param:
-            username_mappings: list of dicts where key is current username and value is new unique username
-            [{current_un_1: new_un_1}, {current_un_2: new_un_2}]
-        """
-        data = {"username_mappings": username_mappings}
-        api_url = self.get_api_url('api/v2/replace_usernames')
-        return self._request('POST', api_url, json=data)
-
-
-class DiscoveryApi(BaseApiClient):
-    """
-    Discovery API client with convenience methods for making API calls.
-    """
-
-    def replace_usernames(self, username_mappings):
-        """
-        Calls the discovery API to replace usernames.
-
-        Param:
-            username_mappings: list of dicts where key is current username and value is new unique username
-            [{current_un_1: new_un_1}, {current_un_2: new_un_2}]
-        """
-        data = {"username_mappings": username_mappings}
-        api_url = self.get_api_url('api/v1/replace_usernames')
         return self._request('POST', api_url, json=data)
 
 
