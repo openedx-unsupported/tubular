@@ -30,6 +30,8 @@ from time import time
 
 import click
 
+from tubular.utils.deprecation import deprecated_script
+
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
@@ -154,6 +156,7 @@ def _get_ecom_segment_id(config, learner):
     '--config_file',
     help='File in which YAML config exists that overrides all other params.'
 )
+@deprecated_script
 def retire_learner(
         username,
         config_file

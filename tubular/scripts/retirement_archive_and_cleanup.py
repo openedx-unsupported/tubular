@@ -19,6 +19,8 @@ import click
 from botocore.exceptions import BotoCoreError, ClientError
 from six import text_type
 
+from tubular.utils.deprecation import deprecated_script
+
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
@@ -263,6 +265,7 @@ def _get_utc_now():
     help='Number of user retirements to process',
     type=int
 )
+@deprecated_script
 def archive_and_cleanup(config_file, cool_off_days, dry_run, start_date, end_date, batch_size):
     """
     Cleans up UserRetirementStatus rows in LMS by:
