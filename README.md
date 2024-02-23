@@ -10,6 +10,32 @@ Python scripts for integrating pipelines with various services/tools such as:
 
 The scripts perform work to enable continuous delivery (CD) for https://edx.org. These scripts are called from various tasks/jobs/stages in GoCD pipelines - but could be called from any automation/CD framework.
 
+
+## ⚠️ Deprecation Notice ⚠️
+
+**Effective Date:** February 26, 2024
+
+**Repository Migration:**
+Following scripts related to user retirement feature has been [deprecated](https://github.com/openedx/axim-engineering/issues/881)
+and migrated [here](https://github.com/openedx/edx-platform/tree/master/scripts/user_retirement) on `edx-platform` repository.
+
+- `tubular/scripts/get_learners_to_retire.py`
+- `tubular/scripts/replace_usernames.py`
+- `tubular/scripts/retire_one_learner.py`
+- `tubular/scripts/retirement_archive_and_cleanup.py`
+- `tubular/scripts/retirement_bulk_status_update.py`
+- `tubular/scripts/retirement_partner_report.py`
+
+This decision was made to streamline and consolidate our codebase.
+
+The migration process was completed through this Pull Request: [PR #34063](https://github.com/openedx/edx-platform/pull/34063)
+
+**Archival**: Afterwards we are going to archive the `tubular` repository. This means that it will become read-only, and no further updates or changes will be accepted.
+
+We appreciate your understanding and cooperation during this transition. If you have any questions or concerns, please don't hesitate to reach out to us.
+
+Thank you for your continued support and contributions to the Open edX community.
+
 ## Configuration
 ```
 pip install -e .[dev]
