@@ -12,6 +12,8 @@ import logging
 import click
 import yaml
 
+from tubular.utils.deprecation import deprecated_script
+
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
@@ -49,6 +51,7 @@ LOG = logging.getLogger(__name__)
          "setting then it will not error.",
     default=200
 )
+@deprecated_script
 def get_learners_to_retire(config_file,
                            cool_off_days,
                            output_dir,

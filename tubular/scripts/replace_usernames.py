@@ -17,6 +17,8 @@ import logging
 import click
 import yaml
 
+from tubular.utils.deprecation import deprecated_script
+
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
@@ -42,6 +44,7 @@ def write_responses(writer, replacements, status):
     '--username_replacement_csv',
     help='File in which YAML config exists that overrides all other params.'
 )
+@deprecated_script
 def replace_usernames(config_file, username_replacement_csv):
     """
     Retrieves a JWT token as the retirement service user, then calls the LMS

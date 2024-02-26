@@ -17,6 +17,8 @@ import unicodecsv as csv
 import click
 from six import text_type
 
+from tubular.utils.deprecation import deprecated_script
+
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -354,6 +356,7 @@ def _add_comments_to_files(config, file_ids):
     default=True,
     help='Do or skip adding notification comments to the reports.'
 )
+@deprecated_script
 def generate_report(config_file, google_secrets_file, output_dir, comments):
     """
     Retrieves a JWT token as the retirement service learner, then performs the reporting process as that user.

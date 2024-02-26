@@ -13,6 +13,8 @@ import sys
 import click
 from six import text_type
 
+from tubular.utils.deprecation import deprecated_script
+
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
@@ -127,6 +129,7 @@ def _update_learners_or_exit(config, learners, new_state=None, rewind_state=Fals
     default=False,
     is_flag=True
 )
+@deprecated_script
 def update_statuses(config_file, initial_state, new_state, start_date, end_date, rewind_state):
     """
     Bulk-updates user retirement statuses which are in the specified state -and- retirement was
