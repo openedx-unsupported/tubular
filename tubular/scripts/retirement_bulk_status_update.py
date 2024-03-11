@@ -13,8 +13,6 @@ import sys
 import click
 from six import text_type
 
-from tubular.utils.deprecation import deprecated_script
-
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
@@ -26,6 +24,7 @@ from tubular.scripts.helpers import (
     _log,
     _setup_lms_api_or_exit
 )
+from tubular.utils.deprecation import deprecated_script
 
 
 SCRIPT_SHORTNAME = 'Bulk Status'

@@ -30,8 +30,6 @@ from time import time
 
 import click
 
-from tubular.utils.deprecation import deprecated_script
-
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
@@ -45,6 +43,7 @@ from tubular.scripts.helpers import (
     _log,
     _setup_all_apis_or_exit
 )
+from tubular.utils.deprecation import deprecated_script
 
 # Return codes for various fail cases
 ERR_SETUP_FAILED = -1

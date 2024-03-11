@@ -19,8 +19,6 @@ import click
 from botocore.exceptions import BotoCoreError, ClientError
 from six import text_type
 
-from tubular.utils.deprecation import deprecated_script
-
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
@@ -28,6 +26,7 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from tubular.scripts.helpers import (
     _config_or_exit, _fail, _fail_exception, _log, _setup_lms_api_or_exit
 )
+from tubular.utils.deprecation import deprecated_script
 
 
 SCRIPT_SHORTNAME = 'Archive and Cleanup'
