@@ -17,12 +17,11 @@ import logging
 import click
 import yaml
 
-from tubular.utils.deprecation import deprecated_script
-
 # Add top-level module path to sys.path before importing tubular code.
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from tubular.edx_api import CredentialsApi, DiscoveryApi, EcommerceApi, LmsApi  # pylint: disable=wrong-import-position
+from tubular.utils.deprecation import deprecated_script
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 LOG = logging.getLogger(__name__)
