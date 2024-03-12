@@ -25,6 +25,7 @@ and migrated [here](https://github.com/openedx/edx-platform/tree/master/scripts/
 - `tubular/scripts/retirement_archive_and_cleanup.py`
 - `tubular/scripts/retirement_bulk_status_update.py`
 - `tubular/scripts/retirement_partner_report.py`
+- `tubular/scripts/structures.py`
 
 This decision was made to streamline and consolidate our codebase.
 
