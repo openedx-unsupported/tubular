@@ -16,6 +16,7 @@ import click_log
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tubular.splitmongo import ChangePlan, SplitMongoBackend  # pylint: disable=wrong-import-position
+from tubular.utils.deprecation import deprecated_script
 
 LOG = logging.getLogger('structures')
 click_log.basic_config(LOG)
@@ -38,6 +39,7 @@ click_log.basic_config(LOG)
     help='Name of the edX Mongo database containing the course structures to prune.'
 )
 @click.pass_context
+@deprecated_script
 def cli(ctx, connection, database_name):
     """
     Recover space on MongoDB for edx-platform by deleting unreachable,
